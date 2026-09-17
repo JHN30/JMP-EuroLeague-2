@@ -1,0 +1,26 @@
+# Build Plan
+
+This plan covers the PERN rebuild of JMP Euroleague. Phase 1 supports only EuroLeague seasons `E2025` (2025-26) and `E2026` (2026-27). Build every feature against PostgreSQL data exposed through the TypeScript API; do not reuse the old MongoDB models or rating-based logic.
+
+Scaffolding, shared layout, design tokens, database connection setup, and deployment configuration are pre-build work rather than product features.
+
+## Your features
+
+- [ ] 1. **Season data access** - Expose validated `E2025` and `E2026` competition, phase, round, team, player, roster, game, standings, and statistics data through typed Express API endpoints backed by Drizzle and Neon PostgreSQL.
+- [ ] 2. **Season navigation** - Add a global season selector and preserve the selected season across routes, defaulting to the most relevant available season without mixing records from different seasons.
+- [ ] 3. **Home dashboard** - Present the selected season at a glance with current standings, recent results, upcoming games, and leading team and player statistics, with links into detailed pages.
+- [ ] 4. **Standings** - Display official season standings by phase with rank, record, scoring, streak/form when available, tie-break context, and clear indicators for known corrections or incomplete data.
+- [ ] 5. **Fixtures and results** - Browse games by round and status, distinguish scheduled from completed games, and open a game page containing score, metadata, and team/player box-score statistics when available.
+- [ ] 6. **Teams** - Browse teams and open a team page with identity, roster, schedule/results, season record, and team statistics for the selected season.
+- [ ] 7. **Players** - Search and browse players and open a player page with profile information, current team, season totals/per-game statistics, and game-by-game performance.
+- [ ] 8. **Statistics leaderboards** - Rank and filter team and player metrics for the selected season, supporting the available accumulated, per-game, and rate-based views without presenting missing values as zero.
+- [ ] 9. **Comparisons and trends** - Compare selected teams or players and visualize useful season/game trends with responsive, accessible charts and tables.
+- [ ] 10. **Playoffs** - Show play-in, playoff, and Final Four matchups/results for the selected season, handling future or incomplete rounds without inventing participants or outcomes.
+
+## Deferred beyond Phase 1
+
+- JMP Rating, win probabilities, and the Predictor page
+- Seasons earlier than `E2025`
+- EuroCup and other competitions
+- Authentication, profiles, saved favorites, and other user-specific data
+- Automated playoff simulation or outcome prediction

@@ -1,0 +1,168 @@
+# Project Plan
+
+## 1. Problem - What problem are we solving?
+
+JMP Euroleague should give basketball fans one clear, fast place to explore EuroLeague seasons without searching across scattered pages or interpreting raw API data. The rebuilt application will turn the project's PostgreSQL data into understandable standings, schedules, results, team pages, player pages, leaderboards, comparisons, and postseason views.
+
+This is a new PERN implementation of the existing JMP Euroleague product. The immediate goal is to prove the architecture and user experience with two seasons before expanding the historical range. Phase 1 covers:
+
+- `E2025`: the 2025-26 season
+- `E2026`: the 2026-27 season
+
+The previous custom JMP Rating and prediction experience is not part of this phase. Pages must explain official and descriptive statistics rather than imply predictive meaning.
+
+## 2. Users - Who is this for?
+
+- EuroLeague fans who want quick standings, schedules, results, rosters, and statistical context
+- Data-oriented fans who want to explore and compare teams and players in more depth
+- The project owner, who needs a trustworthy interface for validating the data warehouse and testing future features
+- Recruiters and engineers reviewing the project as a practical example of full-stack and data-engineering work
+
+Users should not need an account or specialist analytics knowledge. The main experience is public and read-only.
+
+## 3. Features - What does the MVP need?
+
+- Global season selection for `E2025` and `E2026`
+- Home dashboard with standings, recent results, upcoming games, and statistical leaders
+- Official standings by available competition phase
+- Fixtures and completed results grouped by round
+- Game detail and box-score views
+- Team directory and detailed team pages
+- Player search/directory and detailed player pages
+- Team and player statistical leaderboards
+- Team/player comparison and trend charts
+- Play-in, playoffs, and Final Four bracket/result views when data exists
+- Responsive loading, empty, unavailable, and error states for every data-driven page
+- Visible notes for known official corrections, anomalies, and incomplete current-season data
+
+## 4. Data - What are we storing?
+
+PostgreSQL is the application source of truth. The web app should consume curated, validated data rather than raw JSON directly.
+
+Core Phase 1 data includes:
+
+- Competitions, seasons, phases, groups where applicable, and rounds
+- Clubs/teams, names, codes, countries, colors, and image/logo references
+- Players and available profile attributes
+- Player-team-season roster registrations
+- Games, dates, venues, status, round/phase, home/away teams, and scores
+- Team game box scores and derived season aggregates already approved by the data pipeline
+- Player game box scores and derived season aggregates already approved by the data pipeline
+- Official standings records and available tie-break fields
+- Play-in, playoff, and Final Four matchup relationships/results
+- Data-quality annotations or correction flags that are safe and useful to show in the UI
+
+Data rules:
+
+- Every season-dependent query must be scoped by season code.
+- Keep scheduled, live/unknown, postponed/cancelled when supplied, and completed games distinct.
+- Treat `NULL` as unavailable; never silently convert missing statistics to zero.
+- Preserve stable source identifiers and use them for joins and URLs where appropriate.
+- Prefer trusted Gold/application-facing tables or views. Do not query Bronze/raw ingestion tables from public endpoints.
+- Aggregations must have a single documented owner: either the database/data pipeline or the API, not duplicated independently in the frontend.
+- Do not store authentication or personal-user data in Phase 1.
+
+## 5. Tech - What stack are we using?
+
+### Frontend
+
+- React with Vite
+- React Router for page routing
+- Existing Zustand usage for small client-side UI state where it is useful; server data should not be copied into a global store without a clear need
+- Tailwind CSS and DaisyUI, reusing and simplifying the existing component system
+- Chart.js and Motion where they materially improve charts or interactions
+
+### Backend
+
+- Node.js and Express
+- TypeScript with strict typing at API boundaries
+- REST API organized by domain: seasons, standings, games, teams, players, statistics, and playoffs
+- Runtime validation for route parameters, query parameters, and serialized responses
+
+### Database
+
+- PostgreSQL hosted on Neon
+- Drizzle ORM and Drizzle migrations
+- Parameterized queries, explicit selected columns, deterministic ordering, and indexes based on real access paths
+- Database access only from the backend; never expose `DATABASE_URL` or direct Neon access to the browser
+
+### Engineering approach
+
+- Reuse useful frontend behavior and visual patterns from the current repository, but do not carry over MongoDB/Mongoose, JWT/authentication, Mailtrap, or JMP Rating dependencies.
+- Share or generate TypeScript response types where practical so database, API, and UI naming cannot drift silently.
+- Keep route handlers thin: validation and HTTP concerns in routes/controllers, business queries in services/repositories, and schema definitions/migrations in the database layer.
+- Add automated tests first around data transformations, season scoping, API response contracts, and edge cases that could misrepresent statistics.
+- Add caching only after measuring a repeated expensive query; correctness and transparent invalidation matter more than adding Redis in Phase 1.
+
+## 6. Monetize - How will this make money?
+
+Phase 1 is a portfolio and fan product, not a monetized service. Do not add payments, subscriptions, ad SDKs, or gated statistics. Advertising or premium features can be evaluated later only after the product has regular usage and a clear reason for them.
+
+## 7. UI/UX - How should this look and feel?
+
+Use a modern, dark, sports-analytics style that feels recognizably connected to EuroLeague without copying its website. EuroLeague orange should be the primary accent, supported by a restrained complementary color and high-contrast neutral surfaces.
+
+The interface should be data-rich but calm:
+
+- Prioritize readable tables, strong information hierarchy, and quick scanning.
+- Use cards selectively; do not turn every value into a separate card.
+- Keep desktop tables powerful while providing deliberate mobile layouts instead of simple horizontal overflow everywhere.
+- Make season, phase, and round context visible so users always know which data they are viewing.
+- Use charts only when they communicate change or comparison better than a table.
+- Provide skeleton/loading, empty, partial-data, and error states that retain page context.
+- Label unavailable or corrected data honestly and distinguish it visually from ordinary values.
+- Avoid expensive background blur and excessive animation; the previous interface experienced performance problems from blur effects.
+- Meet practical accessibility basics: semantic structure, keyboard access, visible focus, sufficient contrast, and non-color-only status indicators.
+
+## 8. Deployment - Where and how will this ship?
+
+The application is internet-facing and uses the existing `jmpeuroleague.com` domain.
+
+Current target architecture:
+
+- React production build served as a static frontend or by the existing Render setup
+- Express TypeScript API deployed on Render
+- Neon-hosted PostgreSQL database
+- Cloudflare for domain/DNS configuration where already in use
+- A lightweight public health endpoint such as `GET /api/health`
+
+Expected environment variables (final names must match the implementation):
+
+- `DATABASE_URL`
+- `PORT`
+- `NODE_ENV`
+- `CLIENT_URL` or `CORS_ORIGIN`
+
+Deployment rules:
+
+- Derive exact install, build, migration, and start commands from the repository's `package.json` files; do not invent or rename scripts only to match this document.
+- Run schema migrations as a controlled deployment step, not implicitly on every application request.
+- Use separate development and production database connections.
+- Never commit secrets or expose server environment variables to Vite/client code.
+- Restrict CORS to the real frontend origins in production.
+- Keep the API deployable independently from the frontend.
+- The schedule and mechanism for importing/refreshing EuroLeague data are still TBD; do not add an automatic production cron until its source, ownership, retry behavior, and idempotency are defined.
+
+## 9. Usage model and constraints
+
+- Public, internet-facing, read-only analytics application
+- No authentication, profiles, roles, comments, or personal-user data in Phase 1
+- Phase 1 is EuroLeague-only and limited to `E2025` and `E2026`
+- Current-season data may be incomplete and will change as games are played
+- Historical source data contains known gaps and anomalies; correctness includes exposing uncertainty rather than hiding it
+- Expected initial traffic and data volume are modest, but list endpoints should still use bounded responses, filters, and pagination where result sets can grow
+- API input must be treated as untrusted even though the UI is read-only
+- Rate limiting, response compression, structured logging, and safe error responses should protect the public API without introducing enterprise-level complexity
+- Performance target: common navigation and filtered data views should feel immediate after initial load; avoid unbounded queries and oversized payloads
+- Availability, formal compliance, audit logging, multi-tenancy, and enterprise SLAs are not Phase 1 requirements
+
+## Explicit exclusions for Phase 1
+
+- JMP Rating calculations
+- Win-probability predictions and the Predictor page
+- Automated playoff simulations
+- Seasons earlier than `E2025`
+- EuroCup, ABA League, NBA, or other competitions
+- User authentication and account recovery
+- Favorites, notifications, social features, and user-generated content
+- Payments, subscriptions, and advertising integrations

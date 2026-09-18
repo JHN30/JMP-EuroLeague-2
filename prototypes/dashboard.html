@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Season dashboard - JMP Euroleague prototype</title>
+  <link rel="stylesheet" href="theme.css">
+  <script>
+    const requestedTheme = new URLSearchParams(location.search).get("theme");
+    if (requestedTheme === "light" || requestedTheme === "dark") document.documentElement.dataset.theme = requestedTheme;
+    else try { document.documentElement.dataset.theme = localStorage.getItem("jmp-prototype-theme") || "dark"; } catch {}
+  </script>
+</head>
+<body>
+  <div class="app">
+    <aside class="sidebar">
+      <a class="brand" href="dashboard.html"><span class="brand-mark">J</span><span>JMP Euroleague<small>Season explorer</small></span></a>
+      <nav class="nav-group" aria-label="Main navigation">
+        <span class="nav-label">Explore</span>
+        <a class="nav-link active" aria-current="page" href="dashboard.html"><span class="nav-icon">⌂</span>Overview</a>
+        <a class="nav-link" href="standings.html"><span class="nav-icon">≡</span>Standings</a>
+        <a class="nav-link" href="game.html"><span class="nav-icon">◫</span>Game center</a>
+        <span class="nav-link planned"><span class="nav-icon">◯</span>Teams</span>
+        <span class="nav-link planned"><span class="nav-icon">♙</span>Players</span>
+        <span class="nav-link planned"><span class="nav-icon">▥</span>Statistics</span>
+      </nav>
+      <div class="sidebar-foot"><strong><span class="status-dot"></span>Prototype mode</strong><p>Scores and statistics on these screens are illustrative, not official results.</p></div>
+    </aside>
+
+    <main class="main">
+      <header class="topbar">
+        <a class="brand mobile-brand" href="dashboard.html"><span class="brand-mark">J</span><span>JMP Euroleague</span></a>
+        <div class="topbar-left"><span class="topbar-title">Season overview</span><span class="topbar-subtitle">European basketball, clearly told.</span></div>
+        <div class="topbar-actions">
+          <span class="season-picker">E2025 <span class="chevron">/</span> 2025-26 <span class="chevron">▾</span></span>
+          <div class="theme-toggle" role="group" aria-label="Theme">
+            <button type="button" data-theme-choice="dark" aria-pressed="true">Dark</button>
+            <button type="button" data-theme-choice="light" aria-pressed="false">Light</button>
+          </div>
+        </div>
+      </header>
+      <nav class="mobile-nav" aria-label="Prototype pages"><a class="active" aria-current="page" href="dashboard.html">Overview</a><a href="standings.html">Standings</a><a href="game.html">Game center</a></nav>
+
+      <div class="content">
+        <section class="page-heading">
+          <div><span class="eyebrow">E2025 / Regular season</span><h1>Season overview</h1><p>The race, the results, and the next tip-offs in one place. Every number stays in the selected season.</p></div>
+          <span class="demo-note"><span class="status-dot"></span>Concept data · illustrative only</span>
+        </section>
+
+        <section class="summary-grid" aria-label="Season at a glance">
+          <div class="summary-card accent"><span class="label">Current round</span><strong class="value">34 / 38</strong><span class="detail">Regular season</span></div>
+          <div class="summary-card"><span class="label">Teams</span><strong class="value">20</strong><span class="detail">In the competition</span></div>
+          <div class="summary-card"><span class="label">Games played</span><strong class="value">334</strong><span class="detail">Illustrative total</span></div>
+          <div class="summary-card"><span class="label">Next tip-off</span><strong class="value">19:00</strong><span class="detail">Friday · local time</span></div>
+        </section>
+
+        <div class="dashboard-grid">
+          <section class="panel" aria-labelledby="standings-title">
+            <div class="panel-header"><h2 id="standings-title">Standings snapshot</h2><a href="standings.html">Full table →</a></div>
+            <div class="table-wrap">
+              <table class="data-table">
+                <thead><tr><th>Rank</th><th>Club</th><th class="numeric">P</th><th class="numeric">W-L</th><th class="numeric mobile-hide">Diff</th><th class="mobile-hide">Last 5</th></tr></thead>
+                <tbody>
+                  <tr><td class="rank">01</td><td><span class="team-cell"><span class="team-mark">OLY</span><span class="team-name">Olympiacos</span></span></td><td class="numeric">34</td><td class="numeric strong">25-9</td><td class="numeric mobile-hide">+214</td><td class="mobile-hide"><span class="form"><span class="win">W</span><span class="win">W</span><span class="loss">L</span><span class="win">W</span><span class="win">W</span></span></td></tr>
+                  <tr><td class="rank">02</td><td><span class="team-cell"><span class="team-mark">PAN</span><span class="team-name">Panathinaikos</span></span></td><td class="numeric">34</td><td class="numeric strong">24-10</td><td class="numeric mobile-hide">+182</td><td class="mobile-hide"><span class="form"><span class="win">W</span><span class="win">W</span><span class="win">W</span><span class="loss">L</span><span class="win">W</span></span></td></tr>
+                  <tr><td class="rank">03</td><td><span class="team-cell"><span class="team-mark">RMA</span><span class="team-name">Real Madrid</span></span></td><td class="numeric">34</td><td class="numeric strong">23-11</td><td class="numeric mobile-hide">+153</td><td class="mobile-hide"><span class="form"><span class="loss">L</span><span class="win">W</span><span class="win">W</span><span class="win">W</span><span class="win">W</span></span></td></tr>
+                  <tr><td class="rank">04</td><td><span class="team-cell"><span class="team-mark">FEN</span><span class="team-name">Fenerbahçe</span></span></td><td class="numeric">34</td><td class="numeric strong">22-12</td><td class="numeric mobile-hide">+108</td><td class="mobile-hide"><span class="form"><span class="win">W</span><span class="loss">L</span><span class="win">W</span><span class="win">W</span><span class="loss">L</span></span></td></tr>
+                  <tr><td class="rank">05</td><td><span class="team-cell"><span class="team-mark">MON</span><span class="team-name">AS Monaco</span></span></td><td class="numeric">34</td><td class="numeric strong">21-13</td><td class="numeric mobile-hide">+92</td><td class="mobile-hide"><span class="form"><span class="win">W</span><span class="loss">L</span><span class="win">W</span><span class="loss">L</span><span class="win">W</span></span></td></tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="panel-footer">Official order and tie-break context will come from the curated source.</div>
+          </section>
+
+          <div class="panel-stack">
+            <section class="panel" aria-labelledby="upcoming-title">
+              <div class="panel-header"><h2 id="upcoming-title">Coming up</h2><span class="eyebrow">Round 35</span></div>
+              <div class="panel-body">
+                <div class="list-row"><div><strong>Olympiacos vs Real Madrid</strong><small>Friday · Piraeus</small></div><span class="time">19:00</span></div>
+                <div class="list-row"><div><strong>Fenerbahçe vs AS Monaco</strong><small>Friday · Istanbul</small></div><span class="time">20:15</span></div>
+                <div class="list-row"><div><strong>Panathinaikos vs Barcelona</strong><small>Saturday · Athens</small></div><span class="time">20:30</span></div>
+              </div>
+            </section>
+            <section class="panel" aria-labelledby="results-title">
+              <div class="panel-header"><h2 id="results-title">Recent results</h2><a href="game.html">Open game →</a></div>
+              <div class="panel-body">
+                <div class="list-row"><div><strong>Panathinaikos · Real Madrid</strong><small>Round 34 · Final</small></div><span class="score">86 <span>:</span> 79</span></div>
+                <div class="list-row"><div><strong>Olympiacos · Monaco</strong><small>Round 34 · Final</small></div><span class="score">91 <span>:</span> 84</span></div>
+              </div>
+            </section>
+          </div>
+        </div>
+
+        <section class="section-gap" aria-labelledby="leaders-title">
+          <div class="section-title"><h2 id="leaders-title">Statistical leaders</h2><span>Per-game averages · illustrative</span></div>
+          <div class="leaders">
+            <div class="leader"><span class="metric">Points per game</span><strong class="number">22.4</strong><strong>Kendrick Nunn</strong><small>Panathinaikos</small></div>
+            <div class="leader"><span class="metric">Assists per game</span><strong class="number">7.8</strong><strong>Mike James</strong><small>AS Monaco</small></div>
+            <div class="leader"><span class="metric">Rebounds per game</span><strong class="number">9.1</strong><strong>Walter Tavares</strong><small>Real Madrid</small></div>
+          </div>
+        </section>
+      </div>
+    </main>
+  </div>
+  <script>
+    const setTheme = (value) => {
+      document.documentElement.dataset.theme = value;
+      document.querySelectorAll("[data-theme-choice]").forEach((button) => button.setAttribute("aria-pressed", String(button.dataset.themeChoice === value)));
+      try { localStorage.setItem("jmp-prototype-theme", value); } catch {}
+    };
+    setTheme(document.documentElement.dataset.theme === "light" ? "light" : "dark");
+    document.querySelectorAll("[data-theme-choice]").forEach((button) => button.addEventListener("click", () => setTheme(button.dataset.themeChoice)));
+  </script>
+</body>
+</html>

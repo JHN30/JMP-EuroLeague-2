@@ -5,9 +5,23 @@ export async function getSeasons() {
   return data;
 }
 
-export async function getSeasonGames(seasonCode, { limit } = {}) {
+export async function getSeasonGames(seasonCode, { limit, status, order } = {}) {
   const { data } = await api.get(`/seasons/${seasonCode}/games`, {
-    params: limit === undefined ? undefined : { limit },
+    params: { limit, status, order },
+  });
+  return data;
+}
+
+export async function getSeasonStandings(seasonCode, phaseCode, { round } = {}) {
+  const { data } = await api.get(`/seasons/${seasonCode}/phases/${phaseCode}/standings`, {
+    params: { round },
+  });
+  return data;
+}
+
+export async function getLeaderStats(seasonCode, { phase, mode, limit } = {}) {
+  const { data } = await api.get(`/seasons/${seasonCode}/season-stats`, {
+    params: { phase, mode, limit },
   });
   return data;
 }

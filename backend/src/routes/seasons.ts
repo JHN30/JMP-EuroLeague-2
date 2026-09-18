@@ -281,12 +281,36 @@ seasonRouter.get("/:seasonCode/players/:personKey/registrations", async (req, re
   res.json({ registrations: await getPlayerRegistrations(season.seasonCode, personKey) });
 });
 
+function requestedGameStatus(req: Request, res: Response): "played" | "scheduled" | undefined | null {
+  const value = req.query.status;
+  if (value === undefined) return undefined;
+  if (value !== "played" && value !== "scheduled") {
+    sendError(res, 400, "INVALID_STATUS", "Invalid status");
+    return null;
+  }
+  return value;
+}
+
+function requestedGameOrder(req: Request, res: Response): "asc" | "desc" | null {
+  const value = req.query.order;
+  if (value === undefined) return "asc";
+  if (value !== "asc" && value !== "desc") {
+    sendError(res, 400, "INVALID_ORDER", "Invalid order");
+    return null;
+  }
+  return value;
+}
+
 seasonRouter.get("/:seasonCode/games", async (req, res) => {
   const season = await requestedSeason(req, res);
   if (!season) return;
   const page = requestedPage(req, res);
   if (!page) return;
-  const result = await getGames(season.seasonCode, page.limit, page.offset);
+  const status = requestedGameStatus(req, res);
+  if (status === null) return;
+  const order = requestedGameOrder(req, res);
+  if (order === null) return;
+  const result = await getGames(season.seasonCode, page.limit, page.offset, status, order);
   res.json({ games: result.items, pagination: { ...page, hasMore: result.hasMore } });
 });
 

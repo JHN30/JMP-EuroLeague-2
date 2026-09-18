@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Navigate, Route, Routes } from "react-router";
-import HomePlaceholder from "./season/HomePlaceholder";
+import Dashboard from "./dashboard/Dashboard";
 import SeasonLayout from "./season/SeasonLayout";
 import { useDefaultSeasonCode } from "./season/useDefaultSeasonCode";
 
@@ -61,7 +61,7 @@ function App() {
       <Routes>
         <Route path="/" element={<DefaultSeasonRedirect />} />
         <Route path="/:seasonCode" element={<SeasonLayout />}>
-          <Route index element={<HomePlaceholder />} />
+          <Route index element={<Dashboard />} />
         </Route>
         <Route path="*" element={<Navigate replace to="/" />} />
       </Routes>

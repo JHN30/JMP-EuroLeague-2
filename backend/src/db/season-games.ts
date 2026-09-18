@@ -1,4 +1,4 @@
-import { and, asc, eq } from "drizzle-orm";
+import { and, asc, eq, isNull, or, sql } from "drizzle-orm";
 import { db } from "./client";
 import { catalogRead } from "./season-catalog";
 import { gamePeriodScores, gamePlayerStats, gameTeamStats, games } from "./season-schema";
@@ -101,12 +101,25 @@ function toGame(row: {
   };
 }
 
-export async function getGames(seasonCode: string, limit: number, offset: number) {
+export async function getGames(
+  seasonCode: string,
+  limit: number,
+  offset: number,
+  status?: "played" | "scheduled",
+  order: "asc" | "desc" = "asc",
+) {
+  const conditions = [eq(games.competitionCode, COMPETITION_CODE), eq(games.seasonCode, seasonCode)];
+  if (status === "played") conditions.push(eq(games.played, true));
+  if (status === "scheduled") conditions.push(or(eq(games.played, false), isNull(games.played))!);
+
   const rows = await catalogRead(() =>
     db.select(gameFields)
       .from(games)
-      .where(and(eq(games.competitionCode, COMPETITION_CODE), eq(games.seasonCode, seasonCode)))
-      .orderBy(asc(games.scheduledAt), asc(games.gameCode))
+      .where(and(...conditions))
+      .orderBy(
+        order === "desc" ? sql`${games.scheduledAt} DESC NULLS LAST` : asc(games.scheduledAt),
+        asc(games.gameCode),
+      )
       .limit(limit + 1)
       .offset(offset),
   );

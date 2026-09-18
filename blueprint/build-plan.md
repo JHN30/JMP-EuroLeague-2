@@ -14,7 +14,7 @@ Scaffolding, shared layout, design tokens, database connection setup, and deploy
     - [x] 1d-i. **Official standings** - Expose the official round-scoped EuroLeague standings (basic record, calendar-based record, streaks, ahead/behind splits, scoring margins, calendar streak history, and recent form) for a season and phase.
     - [x] 1d-ii. **Season statistics** - Expose available season-long player statistics (traditional, advanced, scoring, and miscellaneous views) across their accumulated/per-game modes and phase scopes.
 - [x] 2. **Season navigation** - Add a global season selector and preserve the selected season across routes, defaulting to the most relevant available season without mixing records from different seasons.
-- [ ] 3. **Home dashboard** - Present the selected season at a glance with current standings, recent results, upcoming games, and leading team and player statistics, with links into detailed pages.
+- [x] 3. **Home dashboard** - Present the selected season at a glance with current standings, recent results, upcoming games, and leading team and player statistics, with links into detailed pages.
 - [ ] 4. **Standings** - Display official season standings by phase with rank, record, scoring, streak/form when available, tie-break context, and clear indicators for known corrections or incomplete data.
 - [ ] 5. **Fixtures and results** - Browse games by round and status, distinguish scheduled from completed games, and open a game page containing score, metadata, and team/player box-score statistics when available.
 - [ ] 6. **Teams** - Browse teams and open a team page with identity, roster, schedule/results, season record, and team statistics for the selected season.

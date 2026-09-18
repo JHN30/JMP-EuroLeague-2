@@ -12,6 +12,11 @@ export async function getSeasonGames(seasonCode, { limit, status, order } = {}) 
   return data;
 }
 
+export async function getPhases(seasonCode) {
+  const { data } = await api.get(`/seasons/${seasonCode}/phases`);
+  return data;
+}
+
 export async function getSeasonStandings(seasonCode, phaseCode, { round } = {}) {
   const { data } = await api.get(`/seasons/${seasonCode}/phases/${phaseCode}/standings`, {
     params: { round },

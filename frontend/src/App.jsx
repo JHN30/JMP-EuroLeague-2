@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Navigate, Route, Routes } from "react-router";
 import Dashboard from "./dashboard/Dashboard";
 import SeasonLayout from "./season/SeasonLayout";
+import StandingsPage from "./standings/StandingsPage";
 import { useDefaultSeasonCode } from "./season/useDefaultSeasonCode";
 
 const THEME_KEY = "euroleague-theme";
@@ -62,6 +63,7 @@ function App() {
         <Route path="/" element={<DefaultSeasonRedirect />} />
         <Route path="/:seasonCode" element={<SeasonLayout />}>
           <Route index element={<Dashboard />} />
+          <Route path="standings" element={<StandingsPage />} />
         </Route>
         <Route path="*" element={<Navigate replace to="/" />} />
       </Routes>

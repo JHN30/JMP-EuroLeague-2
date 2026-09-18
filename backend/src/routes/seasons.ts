@@ -16,6 +16,7 @@ import {
   getTeamRoster,
   getTeams,
 } from "../db/season-identities";
+import { getBoxScore, getGame, getGames } from "../db/season-games";
 
 export const seasonRouter = Router();
 
@@ -52,6 +53,20 @@ function requestedPage(req: Request, res: Response): { limit: number; offset: nu
 
 function validIdentity(value: unknown): value is string {
   return typeof value === "string" && /^[A-Za-z0-9]{1,128}$/.test(value);
+}
+
+function requestedGameCode(req: Request, res: Response): number | null {
+  const value = req.params.gameCode;
+  if (typeof value !== "string" || !/^[1-9]\d*$/.test(value)) {
+    sendError(res, 400, "INVALID_GAME_CODE", "Invalid game code");
+    return null;
+  }
+  const gameCode = Number(value);
+  if (!Number.isSafeInteger(gameCode) || gameCode > 2147483647) {
+    sendError(res, 400, "INVALID_GAME_CODE", "Invalid game code");
+    return null;
+  }
+  return gameCode;
 }
 
 seasonRouter.use((req, res, next) => {
@@ -182,6 +197,40 @@ seasonRouter.get("/:seasonCode/players/:personKey/registrations", async (req, re
   res.json({ registrations: await getPlayerRegistrations(season.seasonCode, personKey) });
 });
 
+seasonRouter.get("/:seasonCode/games", async (req, res) => {
+  const season = await requestedSeason(req, res);
+  if (!season) return;
+  const page = requestedPage(req, res);
+  if (!page) return;
+  const result = await getGames(season.seasonCode, page.limit, page.offset);
+  res.json({ games: result.items, pagination: { ...page, hasMore: result.hasMore } });
+});
+
+seasonRouter.get("/:seasonCode/games/:gameCode", async (req, res) => {
+  const season = await requestedSeason(req, res);
+  if (!season) return;
+  const gameCode = requestedGameCode(req, res);
+  if (gameCode === null) return;
+  const game = await getGame(season.seasonCode, gameCode);
+  if (!game) {
+    sendError(res, 404, "GAME_NOT_FOUND", "Game not found");
+    return;
+  }
+  res.json({ game });
+});
+
+seasonRouter.get("/:seasonCode/games/:gameCode/box-score", async (req, res) => {
+  const season = await requestedSeason(req, res);
+  if (!season) return;
+  const gameCode = requestedGameCode(req, res);
+  if (gameCode === null) return;
+  if (!await getGame(season.seasonCode, gameCode)) {
+    sendError(res, 404, "GAME_NOT_FOUND", "Game not found");
+    return;
+  }
+  res.json(await getBoxScore(season.seasonCode, gameCode));
+});
+
 seasonRouter.use((_req, res) => {
   sendError(res, 404, "ROUTE_NOT_FOUND", "Season catalog route not found");
 });
@@ -197,6 +246,8 @@ seasonRouter.use((error: unknown, req: Request, res: Response, _next: NextFuncti
       sendError(res, 400, "INVALID_TEAM_CODE", "Invalid team code");
     } else if (section === "players" && hasMalformedEncoding(phaseCode)) {
       sendError(res, 400, "INVALID_PLAYER_KEY", "Invalid player key");
+    } else if (section === "games" && hasMalformedEncoding(phaseCode)) {
+      sendError(res, 400, "INVALID_GAME_CODE", "Invalid game code");
     } else {
       sendError(res, 404, "ROUTE_NOT_FOUND", "Season catalog route not found");
     }

@@ -1,8 +1,8 @@
 # JMP Euroleague - Project Overview
 
-<!-- blueprint:source-hash f475739cc8f6b133883d79c576cdcbed20cd94c25d0f18cddec8a0f7830c9d5d -->
+<!-- blueprint:source-hash 7831f73ce16f1d1eaebc97be30e578682a826258ac1611212a0b7628aa422d5b -->
 
-> A public, read-only EuroLeague explorer for the 2025-26 (`E2025`) and 2026-27 (`E2026`) seasons, backed by curated PostgreSQL data.
+> A public, read-only EuroLeague explorer for the 2025-26 (`E2025`) and 2026-27 (`E2026`) seasons, backed by already populated Neon PostgreSQL tables.
 
 ## Problem
 
@@ -26,7 +26,11 @@ Fans currently have to search scattered pages or interpret raw API data to under
 
 The headline is a two-season public explorer whose every view stays in the selected season. Build order:
 
-1. **Season data access** - validated, typed Express endpoints over curated PostgreSQL data for both seasons.
+1. **Season data access** - validated, typed Express endpoints over the existing Neon data for both seasons. Build it in four reviewable parts:
+   - **1a Season catalog** - competition, seasons, phases, and rounds.
+   - **1b Teams, players, and rosters API** - season-scoped identities and registrations.
+   - **1c Games and box scores API** - fixtures, results, details, and available game statistics.
+   - **1d Standings and season statistics API** - official standings and available season statistics.
 2. **Season navigation** - a global selector that persists across routes without mixing seasons.
 3. **Home dashboard** - standings, recent and upcoming games, and statistical leaders at a glance.
 4. **Standings** - official phase-specific ranks, records, scoring, form, and available tie-break context.
@@ -41,22 +45,22 @@ Every data-driven page needs loading, empty, unavailable, partial-data, and erro
 
 ## Data model
 
-This is the logical application-facing model, not a claim about the warehouse's current table names. Stable source identifiers must be preserved. Their concrete database types and the exact metric columns require confirmation against the curated schema.
+This is the logical application-facing model. `create_v2_v3_tables.sql` documents the existing `etl_flat_*` Neon tables and their PostgreSQL types; it is a schema reference, not a request to recreate or reload them. Confirm the live table definitions and content before locking API contracts. Preserve composite source identifiers and season scope.
 
 | Model | Core fields and types | Relationships |
 | --- | --- | --- |
-| Competition | `id` (source ID), `name` (string) | Has seasons; Phase 1 exposes EuroLeague only. |
-| Season | `code` (string: `E2025` or `E2026`), `competitionId` (source ID), `label` (string) | Has phases, rounds, games, rosters, standings, and aggregates. |
-| Phase | `id` (source ID), `seasonCode` (string), `name` (string) | Has optional groups and rounds. |
-| Group | `id` and `phaseId` (source IDs), `name` (string) | Optional subdivision of a phase. |
-| Round | `id` and `phaseId` (source IDs), optional `groupId`, `label` (string) | Groups games within a phase. |
-| Team | `id` (source ID), `name`, `code`, `country`, `colors`, `logoRef` (strings or nullable references) | Appears in rosters, games, standings, and team statistics. |
-| Player | `id` (source ID), `name` (string), available profile fields (nullable) | Joins teams through season roster registrations and appears in player statistics. |
-| Roster registration | `playerId`, `teamId` (source IDs), `seasonCode` (string) | Records player-team membership for a season. |
-| Game | `id` (source ID), `seasonCode`, `phaseId`, `roundId`, `homeTeamId`, `awayTeamId`, `date` (date/time or null), `venue` (string or null), `status` (source status), `homeScore` and `awayScore` (integer or null) | Has two teams and available box scores; can belong to a postseason matchup. |
-| Team and player game box scores | `gameId` plus `teamId` or `playerId` (source IDs), available metrics (nullable numeric fields) | Feed game detail and approved aggregates. |
-| Team and player season aggregates | `seasonCode` plus `teamId` or `playerId`, approved metrics (nullable numeric fields) | Feed pages, dashboard, comparisons, and leaderboards. |
-| Official standing | `seasonCode`, `phaseId`, optional `groupId`, `teamId`, `rank` (integer), record/scoring/form/tie-break fields (nullable) | One official placement for a team in its applicable standing context. |
+| Competition | `competition_code` (text), `competition_name` (nullable text) | Appears in each source key; Phase 1 exposes EuroLeague only. |
+| Season | `season_code` (text: `E2025` or `E2026`), `competition_code` (text), `name` (nullable text) | `etl_flat_seasons`; scopes rounds, games, rosters, standings, and statistics. |
+| Phase | `phase_code` (text), `phase_name` (nullable text) | Present in round/game/statistics rows; no separate phase table is listed in the supplied SQL. |
+| Group | `group_id`, `group_name` (nullable text) | Optional subdivision carried by game rows. |
+| Round | `round_key` (text), `phase_code` (text), `round_number` (integer), `name` (nullable text) | `etl_flat_rounds`; groups games within a phase. |
+| Team | `club_code` (text), `name`, `country_code`, `crest_url` (nullable text) | `etl_flat_clubs`, keyed with competition and season; appears in rosters, games, and standings. |
+| Player | `person_key` (text), `name` (nullable text), available profile fields (nullable) | `etl_flat_people`, keyed with competition and season; joins registrations and player statistics. |
+| Roster registration | `registration_key`, `person_key` (text), `club_code` (nullable text), `season_code` (text) | `etl_flat_registrations`; records player-team membership for a season. |
+| Game | `game_code` (integer), `season_code`, `phase_code`, `round_number`, home/away `club_code`, `scheduled_at` (nullable timestamp with time zone), `game_status` (nullable text), scores (nullable integer) | `etl_flat_games`; has two teams and available box scores. |
+| Team and player game box scores | `game_code`, `side` (text), `person_key` (player rows), available nullable numeric metrics | `etl_flat_game_team_stats` and `etl_flat_game_player_stats`; feed game detail. |
+| Player season statistics | `season_code`, `phase_code`, `mode`, `entry_ordinal`, `person_key`, available nullable numeric metrics | Four `etl_flat_season_stats_*` tables contain traditional, advanced, scoring, and miscellaneous views. No team season aggregate table is listed in the supplied SQL. |
+| Official standing | `season_code`, `phase_code`, `round_number`, `club_code`, `position` (nullable integer), available record/scoring/form fields | Seven `etl_flat_standings_*` tables provide distinct official views and form rows. |
 | Postseason matchup | `seasonCode`, stage (play-in, playoffs, or Final Four), participant team IDs (nullable), related game IDs, result (nullable) | Represents known bracket relationships without inventing future participants. |
 | Data-quality annotation | Target record ID/type, correction or anomaly flag, public note (when safe) | Explains known corrections, gaps, or incomplete data in affected views. |
 
@@ -66,7 +70,7 @@ Scope every season-dependent query by season code. Distinguish scheduled, live/u
 
 - **Frontend:** React with Vite and React Router. Tailwind CSS and DaisyUI provide the component system; Zustand is planned only for useful small client UI state. Chart.js and Motion are optional when they materially improve a view.
 - **Backend:** Node.js, Express, and strict TypeScript. REST endpoints are organized by seasons, standings, games, teams, players, statistics, and playoffs, with runtime validation at request and response boundaries.
-- **Database:** Neon-hosted PostgreSQL with Drizzle ORM and versioned Drizzle migrations. Keep database access server-side, queries parameterized, selected columns explicit, and ordering deterministic.
+- **Database:** Neon-hosted PostgreSQL with existing populated tables, mapped through Drizzle ORM. Use versioned Drizzle migrations for future owned schema changes without recreating the existing data. Keep database access server-side, queries parameterized, selected columns explicit, and ordering deterministic.
 - **Engineering:** Thin HTTP handlers, reusable query/business modules, tests around transformations, season scoping, response contracts, and misleading statistical edge cases. Add caching only after a measured need.
 
 ## Monetization
@@ -88,7 +92,7 @@ The planned screens are home, standings, fixtures/results, game detail, team dir
 
 ## Open questions
 
-> TODO: Confirm the curated Neon schema, source ID types, exact metric columns, available profile/tie-break fields, and postseason relationships before locking API response contracts.
+> TODO: Confirm the supplied SQL matches the live Neon schema and identify which `etl_flat_*` tables are approved for public API reads. The SQL has no separate phase, team season aggregate, postseason matchup, or data-quality annotation table; confirm the source and ownership of those views before their endpoints are specified.
 
 > TODO: Reconcile the planned `DATABASE_URL` and `CLIENT_URL`/`CORS_ORIGIN` names with the current backend `DB_URL` and `FRONTEND_URL` configuration.
 

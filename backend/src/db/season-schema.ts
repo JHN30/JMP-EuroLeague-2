@@ -309,3 +309,112 @@ export const standingsForm = pgTable(
   },
   (table) => [primaryKey({ columns: [table.competitionCode, table.seasonCode, table.phaseCode, table.roundNumber, table.clubCode, table.resultOrdinal] })],
 );
+
+function statsIdentityColumns() {
+  return {
+    competitionCode: text("competition_code").notNull(),
+    seasonCode: text("season_code").notNull(),
+    phaseCode: text("phase_code").notNull(),
+    mode: text("mode").notNull(),
+    entryOrdinal: integer("entry_ordinal").notNull(),
+    personKey: text("person_key").notNull(),
+    clubCode: text("club_code"),
+    playerName: text("player_name"),
+    playerAge: integer("player_age"),
+    playerImageUrl: text("player_image_url"),
+    clubName: text("club_name"),
+    clubTvCodes: text("club_tv_codes"),
+    clubImageUrl: text("club_image_url"),
+    playerRanking: integer("player_ranking"),
+  };
+}
+
+export const seasonStatsTraditional = pgTable(
+  "etl_flat_season_stats_traditional",
+  {
+    ...statsIdentityColumns(),
+    gamesPlayed: numeric("games_played"),
+    gamesStarted: numeric("games_started"),
+    minutesPlayed: numeric("minutes_played"),
+    pointsScored: numeric("points_scored"),
+    twoPointersMade: numeric("two_pointers_made"),
+    twoPointersAttempted: numeric("two_pointers_attempted"),
+    twoPointersPercentage: numeric("two_pointers_percentage"),
+    threePointersMade: numeric("three_pointers_made"),
+    threePointersAttempted: numeric("three_pointers_attempted"),
+    threePointersPercentage: numeric("three_pointers_percentage"),
+    freeThrowsMade: numeric("free_throws_made"),
+    freeThrowsAttempted: numeric("free_throws_attempted"),
+    freeThrowsPercentage: numeric("free_throws_percentage"),
+    offensiveRebounds: numeric("offensive_rebounds"),
+    defensiveRebounds: numeric("defensive_rebounds"),
+    totalRebounds: numeric("total_rebounds"),
+    assists: numeric("assists"),
+    steals: numeric("steals"),
+    turnovers: numeric("turnovers"),
+    blocks: numeric("blocks"),
+    blocksAgainst: numeric("blocks_against"),
+    foulsCommited: numeric("fouls_commited"),
+    foulsDrawn: numeric("fouls_drawn"),
+    pir: numeric("pir"),
+  },
+  (table) => [primaryKey({ columns: [table.competitionCode, table.seasonCode, table.phaseCode, table.mode, table.entryOrdinal] })],
+);
+
+export const seasonStatsAdvanced = pgTable(
+  "etl_flat_season_stats_advanced",
+  {
+    ...statsIdentityColumns(),
+    gamesPlayed: numeric("games_played"),
+    minutesPlayed: numeric("minutes_played"),
+    effectiveFieldGoalPercentage: numeric("effective_field_goal_percentage"),
+    trueShootingPercentage: numeric("true_shooting_percentage"),
+    offensiveReboundsPercentage: numeric("offensive_rebounds_percentage"),
+    defensiveReboundsPercentage: numeric("defensive_rebounds_percentage"),
+    reboundsPercentage: numeric("rebounds_percentage"),
+    assistsToTurnoversRatio: numeric("assists_to_turnovers_ratio"),
+    assistsRatio: numeric("assists_ratio"),
+    turnoversRatio: numeric("turnovers_ratio"),
+    twoPointAttemptsRatio: numeric("two_point_attempts_ratio"),
+    threePointAttemptsRatio: numeric("three_point_attempts_ratio"),
+    freeThrowsRate: numeric("free_throws_rate"),
+    possessions: numeric("possesions"),
+  },
+  (table) => [primaryKey({ columns: [table.competitionCode, table.seasonCode, table.phaseCode, table.mode, table.entryOrdinal] })],
+);
+
+export const seasonStatsScoring = pgTable(
+  "etl_flat_season_stats_scoring",
+  {
+    ...statsIdentityColumns(),
+    gamesPlayed: numeric("games_played"),
+    gamesStarted: numeric("games_started"),
+    twoPointAttemptsShare: numeric("two_point_attempts_share"),
+    threePointAttemptsShare: numeric("three_point_attempts_share"),
+    freeThrowsAttemptsShare: numeric("free_throws_attempts_share"),
+    twoPointersMadeShare: numeric("two_pointers_made_share"),
+    threePointersMadeShare: numeric("three_pointers_made_share"),
+    freeThrowsMadeShare: numeric("free_throws_made_share"),
+    twoPointRate: numeric("two_point_rate"),
+    threePointRate: numeric("three_point_rate"),
+    pointsFromTwoPointersPercentage: numeric("points_from_two_pointers_percentage"),
+    pointsFromThreePointersPercentage: numeric("points_from_three_pointers_percentage"),
+    pointsFromFreeThrowsPercentage: numeric("points_from_free_throws_percentage"),
+  },
+  (table) => [primaryKey({ columns: [table.competitionCode, table.seasonCode, table.phaseCode, table.mode, table.entryOrdinal] })],
+);
+
+export const seasonStatsMisc = pgTable(
+  "etl_flat_season_stats_misc",
+  {
+    ...statsIdentityColumns(),
+    gamesPlayed: numeric("games_played"),
+    gamesStarted: numeric("games_started"),
+    wins: numeric("wins"),
+    losses: numeric("losses"),
+    minutesPlayed: numeric("minutes_played"),
+    doubleDoubles: numeric("double_doubles"),
+    tripleDoubles: numeric("triple_doubles"),
+  },
+  (table) => [primaryKey({ columns: [table.competitionCode, table.seasonCode, table.phaseCode, table.mode, table.entryOrdinal] })],
+);

@@ -18,6 +18,7 @@ import {
 } from "../db/season-identities";
 import { getBoxScore, getGame, getGames } from "../db/season-games";
 import { getLatestStandingsRound, getStandings } from "../db/season-standings";
+import { getSeasonStats } from "../db/season-stats";
 
 export const seasonRouter = Router();
 
@@ -83,6 +84,29 @@ function requestedRound(req: Request, res: Response): { round: number | undefine
     return null;
   }
   return { round };
+}
+
+const SEASON_STATS_PHASES = ["RS", "PI", "PO", "FF", "all"];
+const SEASON_STATS_MODES = ["accumulated", "perGame"];
+
+function requestedStatsPhase(req: Request, res: Response): string | null {
+  const value = req.query.phase;
+  if (value === undefined) return "all";
+  if (typeof value !== "string" || !SEASON_STATS_PHASES.includes(value)) {
+    sendError(res, 400, "INVALID_PHASE", "Invalid phase");
+    return null;
+  }
+  return value;
+}
+
+function requestedStatsMode(req: Request, res: Response): string | null {
+  const value = req.query.mode;
+  if (value === undefined) return "accumulated";
+  if (typeof value !== "string" || !SEASON_STATS_MODES.includes(value)) {
+    sendError(res, 400, "INVALID_MODE", "Invalid mode");
+    return null;
+  }
+  return value;
 }
 
 seasonRouter.use((req, res, next) => {
@@ -163,6 +187,19 @@ seasonRouter.get("/:seasonCode/phases/:phaseCode/standings", async (req, res) =>
   }
 
   res.json({ round, standings: await getStandings(season.seasonCode, phaseCode, round) });
+});
+
+seasonRouter.get("/:seasonCode/season-stats", async (req, res) => {
+  const season = await requestedSeason(req, res);
+  if (!season) return;
+  const phase = requestedStatsPhase(req, res);
+  if (phase === null) return;
+  const mode = requestedStatsMode(req, res);
+  if (mode === null) return;
+  const page = requestedPage(req, res);
+  if (!page) return;
+  const result = await getSeasonStats(season.seasonCode, phase, mode, page.limit, page.offset);
+  res.json({ phase, mode, players: result.items, pagination: { ...page, hasMore: result.hasMore } });
 });
 
 seasonRouter.get("/:seasonCode/teams", async (req, res) => {

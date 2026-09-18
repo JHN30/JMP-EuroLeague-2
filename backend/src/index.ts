@@ -3,6 +3,7 @@ import cors from "cors";
 import { sql } from "drizzle-orm";
 import { ENV } from "./config/env";
 import { db } from "./db/client";
+import { seasonRouter } from "./routes/seasons";
 
 const app = express();
 
@@ -14,6 +15,7 @@ app.use(
 );
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+app.use("/api/seasons", seasonRouter);
 
 app.get("/", (req, res) => {
   res.send("Hello, world!");

@@ -11,6 +11,8 @@ Scaffolding, shared layout, design tokens, database connection setup, and deploy
   - [x] 1b. **Teams, players, and rosters API** - Expose season-scoped team and player identities and roster registrations from the existing Neon data.
   - [x] 1c. **Games and box scores API** - Expose season-scoped fixtures, results, game details, and available team and player game statistics.
   - [ ] 1d. **Standings and season statistics API** - Expose official standings and available season statistics without replacing missing values with zero.
+    - [x] 1d-i. **Official standings** - Expose the official round-scoped EuroLeague standings (basic record, calendar-based record, streaks, ahead/behind splits, scoring margins, calendar streak history, and recent form) for a season and phase.
+    - [ ] 1d-ii. **Season statistics** - Expose available season-long player statistics (traditional, advanced, scoring, and miscellaneous views) across their accumulated/per-game modes and phase scopes.
 - [ ] 2. **Season navigation** - Add a global season selector and preserve the selected season across routes, defaulting to the most relevant available season without mixing records from different seasons.
 - [ ] 3. **Home dashboard** - Present the selected season at a glance with current standings, recent results, upcoming games, and leading team and player statistics, with links into detailed pages.
 - [ ] 4. **Standings** - Display official season standings by phase with rank, record, scoring, streak/form when available, tie-break context, and clear indicators for known corrections or incomplete data.

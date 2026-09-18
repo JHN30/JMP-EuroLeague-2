@@ -17,6 +17,7 @@ import {
   getTeams,
 } from "../db/season-identities";
 import { getBoxScore, getGame, getGames } from "../db/season-games";
+import { getLatestStandingsRound, getStandings } from "../db/season-standings";
 
 export const seasonRouter = Router();
 
@@ -69,6 +70,21 @@ function requestedGameCode(req: Request, res: Response): number | null {
   return gameCode;
 }
 
+function requestedRound(req: Request, res: Response): { round: number | undefined } | null {
+  const value = req.query.round;
+  if (value === undefined) return { round: undefined };
+  if (typeof value !== "string" || !/^[1-9]\d*$/.test(value)) {
+    sendError(res, 400, "INVALID_ROUND", "Invalid round");
+    return null;
+  }
+  const round = Number(value);
+  if (!Number.isSafeInteger(round) || round > 2147483647) {
+    sendError(res, 400, "INVALID_ROUND", "Invalid round");
+    return null;
+  }
+  return { round };
+}
+
 seasonRouter.use((req, res, next) => {
   if (hasMalformedEncoding(req.path.split("/")[1])) {
     sendError(res, 400, "INVALID_SEASON", "Unsupported season");
@@ -116,6 +132,37 @@ seasonRouter.get("/:seasonCode/phases/:phaseCode/rounds", async (req, res) => {
     return;
   }
   res.json({ rounds: await getRounds(season.seasonCode, phaseCode) });
+});
+
+seasonRouter.get("/:seasonCode/phases/:phaseCode/standings", async (req, res) => {
+  const season = await requestedSeason(req, res);
+  if (!season) return;
+  const phases = await getPhases(season.seasonCode);
+  const phaseCode = req.params.phaseCode;
+  if (typeof phaseCode !== "string" || !phases.some((phase) => phase.code === phaseCode)) {
+    sendError(res, 404, "PHASE_NOT_FOUND", "Phase not found");
+    return;
+  }
+  const requested = requestedRound(req, res);
+  if (!requested) return;
+
+  let round = requested.round;
+  if (round === undefined) {
+    const latest = await getLatestStandingsRound(season.seasonCode, phaseCode);
+    if (latest === null) {
+      res.json({ round: null, standings: [] });
+      return;
+    }
+    round = latest;
+  } else {
+    const rounds = await getRounds(season.seasonCode, phaseCode);
+    if (!rounds.some((r) => r.number === round)) {
+      sendError(res, 404, "ROUND_NOT_FOUND", "Round not found");
+      return;
+    }
+  }
+
+  res.json({ round, standings: await getStandings(season.seasonCode, phaseCode, round) });
 });
 
 seasonRouter.get("/:seasonCode/teams", async (req, res) => {
@@ -240,7 +287,7 @@ seasonRouter.use((error: unknown, req: Request, res: Response, _next: NextFuncti
     const [, seasonCode, section, phaseCode, action] = req.path.split("/");
     if (hasMalformedEncoding(seasonCode)) {
       sendError(res, 400, "INVALID_SEASON", "Unsupported season");
-    } else if (section === "phases" && action === "rounds" && hasMalformedEncoding(phaseCode)) {
+    } else if (section === "phases" && (action === "rounds" || action === "standings") && hasMalformedEncoding(phaseCode)) {
       sendError(res, 404, "PHASE_NOT_FOUND", "Phase not found");
     } else if (section === "teams" && hasMalformedEncoding(phaseCode)) {
       sendError(res, 400, "INVALID_TEAM_CODE", "Invalid team code");

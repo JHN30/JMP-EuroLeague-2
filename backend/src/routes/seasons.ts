@@ -310,7 +310,39 @@ seasonRouter.get("/:seasonCode/games", async (req, res) => {
   if (status === null) return;
   const order = requestedGameOrder(req, res);
   if (order === null) return;
-  const result = await getGames(season.seasonCode, page.limit, page.offset, status, order);
+
+  const phaseValue = req.query.phase;
+  if (phaseValue !== undefined && typeof phaseValue !== "string") {
+    sendError(res, 400, "INVALID_PHASE", "Invalid phase");
+    return;
+  }
+  const requestedRoundResult = requestedRound(req, res);
+  if (!requestedRoundResult) return;
+  const round = requestedRoundResult.round;
+
+  if (round !== undefined && phaseValue === undefined) {
+    sendError(res, 400, "INVALID_ROUND", "Round requires a phase");
+    return;
+  }
+
+  let phaseCode: string | undefined;
+  if (phaseValue !== undefined) {
+    const phases = await getPhases(season.seasonCode);
+    if (!phases.some((phase) => phase.code === phaseValue)) {
+      sendError(res, 404, "PHASE_NOT_FOUND", "Phase not found");
+      return;
+    }
+    phaseCode = phaseValue;
+    if (round !== undefined) {
+      const rounds = await getRounds(season.seasonCode, phaseCode);
+      if (!rounds.some((r) => r.number === round)) {
+        sendError(res, 404, "ROUND_NOT_FOUND", "Round not found");
+        return;
+      }
+    }
+  }
+
+  const result = await getGames(season.seasonCode, page.limit, page.offset, status, order, phaseCode, round);
   res.json({ games: result.items, pagination: { ...page, hasMore: result.hasMore } });
 });
 

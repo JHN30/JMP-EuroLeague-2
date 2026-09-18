@@ -107,10 +107,14 @@ export async function getGames(
   offset: number,
   status?: "played" | "scheduled",
   order: "asc" | "desc" = "asc",
+  phaseCode?: string,
+  round?: number,
 ) {
   const conditions = [eq(games.competitionCode, COMPETITION_CODE), eq(games.seasonCode, seasonCode)];
   if (status === "played") conditions.push(eq(games.played, true));
   if (status === "scheduled") conditions.push(or(eq(games.played, false), isNull(games.played))!);
+  if (phaseCode !== undefined) conditions.push(eq(games.phaseCode, phaseCode));
+  if (round !== undefined) conditions.push(eq(games.roundNumber, round));
 
   const rows = await catalogRead(() =>
     db.select(gameFields)

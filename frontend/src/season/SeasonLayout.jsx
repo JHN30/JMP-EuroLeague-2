@@ -3,6 +3,7 @@ import { Navigate, Outlet, useLocation, useParams } from "react-router";
 import { getSeasons } from "../lib/api";
 import { useDefaultSeasonCode } from "./useDefaultSeasonCode";
 import SeasonSelector from "./SeasonSelector";
+import NavBar from "./NavBar";
 
 function CenteredSpinner() {
   return (
@@ -73,9 +74,12 @@ export default function SeasonLayout() {
 
   return (
     <div className="min-h-screen">
-      <header className="flex items-center justify-between gap-4 border-b border-base-300 px-6 py-4">
-        <span className="eyebrow">EuroLeague</span>
-        <SeasonSelector />
+      <header className="flex flex-col gap-4 border-b border-base-300 px-6 py-4">
+        <div className="flex items-center justify-between gap-4">
+          <span className="eyebrow">EuroLeague</span>
+          <SeasonSelector />
+        </div>
+        <NavBar />
       </header>
       <main className="p-6">
         <Outlet />

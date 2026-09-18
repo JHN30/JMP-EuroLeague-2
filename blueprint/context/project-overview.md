@@ -1,6 +1,6 @@
 # JMP Euroleague - Project Overview
 
-<!-- blueprint:source-hash c90d3e646d76319231055a48cb290369bf91be856eaec0a80b7f8238d1e9d724 -->
+<!-- blueprint:source-hash 5dee8ad88623c47a739e994b775e4c5320568cbe2bf2b2fb41c1cd36a92d6f50 -->
 
 > A public, read-only EuroLeague explorer for the 2025-26 (`E2025`) and 2026-27 (`E2026`) seasons, backed by already populated Neon PostgreSQL tables.
 
@@ -34,12 +34,13 @@ The headline is a two-season public explorer whose every view stays in the selec
 2. **Season navigation** - a global selector that persists across routes without mixing seasons.
 3. **Home dashboard** - standings, recent and upcoming games, and statistical leaders at a glance.
 4. **Standings** - official phase-specific ranks, records, scoring, form, and available tie-break context.
-5. **Fixtures and results** - round/status browsing plus game metadata and available box scores.
-6. **Teams** - directory and selected-season identity, roster, schedule, record, and statistics pages.
-7. **Players** - search/directory and profile, team, season statistics, and game-log pages.
-8. **Statistics leaderboards** - filtered team/player rankings across available metric forms.
-9. **Comparisons and trends** - responsive charts and tables for team/player comparisons.
-10. **Playoffs** - play-in, playoff, and Final Four matchups/results when source data exists.
+5. **Navigation bar** - persistent tabs to Home, Standings, Fixtures and results, Teams, Players, Statistics leaderboards, Comparisons and trends, and Playoffs, alongside the season selector.
+6. **Fixtures and results** - round/status browsing plus game metadata and available box scores.
+7. **Teams** - directory and selected-season identity, roster, schedule, record, and statistics pages.
+8. **Players** - search/directory and profile, team, season statistics, and game-log pages.
+9. **Statistics leaderboards** - filtered team/player rankings across available metric forms.
+10. **Comparisons and trends** - responsive charts and tables for team/player comparisons.
+11. **Playoffs** - play-in, playoff, and Final Four matchups/results when source data exists.
 
 Every data-driven page needs loading, empty, unavailable, partial-data, and error states. Known corrections and anomalies must remain visible. JMP Rating, win probabilities, simulations, older seasons, other competitions, and user features are deferred.
 
@@ -81,7 +82,7 @@ None in Phase 1. This is a portfolio and fan product; payments, subscriptions, a
 
 Use a dark sports-analytics style with EuroLeague orange, restrained complementary color, and high-contrast neutral surfaces without copying the league website. Prioritize readable tables and visible season, phase, and round context. Provide deliberate mobile layouts, accessible charts when charts help more than tables, semantic structure, keyboard access, visible focus, sufficient contrast, and non-color-only status cues. Avoid expensive blur and excessive animation.
 
-The planned screens are home, standings, fixtures/results, game detail, team directory/detail, player search/detail, leaderboards, comparisons/trends, and playoffs. Exact URL paths are not specified in the plans.
+The planned screens are home, standings, fixtures/results, game detail, team directory/detail, player search/detail, leaderboards, comparisons/trends, and playoffs, reached through a persistent navigation bar alongside the season selector. Exact URL paths are not specified in the plans.
 
 ## Deployment
 

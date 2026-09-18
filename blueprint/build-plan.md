@@ -8,7 +8,7 @@ Scaffolding, shared layout, design tokens, database connection setup, and deploy
 
 - [ ] 1. **Season data access** - Expose validated `E2025` and `E2026` competition, phase, round, team, player, roster, game, standings, and statistics data through typed Express API endpoints backed by Drizzle and Neon PostgreSQL. Use `create_v2_v3_tables.sql` as a schema reference for tables already populated in Neon.
   - [x] 1a. **Season catalog** - Expose the supported EuroLeague seasons, competition details, phases, and rounds through typed, validated API endpoints. Read the already populated Neon tables with Drizzle; use `create_v2_v3_tables.sql` as the schema reference.
-  - [ ] 1b. **Teams, players, and rosters API** - Expose season-scoped team and player identities and roster registrations from the existing Neon data.
+  - [x] 1b. **Teams, players, and rosters API** - Expose season-scoped team and player identities and roster registrations from the existing Neon data.
   - [ ] 1c. **Games and box scores API** - Expose season-scoped fixtures, results, game details, and available team and player game statistics.
   - [ ] 1d. **Standings and season statistics API** - Expose official standings and available season statistics without replacing missing values with zero.
 - [ ] 2. **Season navigation** - Add a global season selector and preserve the selected season across routes, defaulting to the most relevant available season without mixing records from different seasons.

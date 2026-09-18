@@ -8,6 +8,14 @@ import {
   SUPPORTED_SEASONS,
   type Season,
 } from "../db/season-catalog";
+import {
+  getPlayer,
+  getPlayerRegistrations,
+  getPlayers,
+  getTeam,
+  getTeamRoster,
+  getTeams,
+} from "../db/season-identities";
 
 export const seasonRouter = Router();
 
@@ -23,6 +31,27 @@ function hasMalformedEncoding(segment: string | undefined): boolean {
   } catch {
     return true;
   }
+}
+
+function pageParameter(value: unknown, fallback: number, minimum: number, maximum: number): number | null {
+  if (value === undefined) return fallback;
+  if (typeof value !== "string" || !/^(0|[1-9]\d*)$/.test(value)) return null;
+  const number = Number(value);
+  return Number.isSafeInteger(number) && number >= minimum && number <= maximum ? number : null;
+}
+
+function requestedPage(req: Request, res: Response): { limit: number; offset: number } | null {
+  const limit = pageParameter(req.query.limit, 50, 1, 100);
+  const offset = pageParameter(req.query.offset, 0, 0, 10000);
+  if (limit === null || offset === null) {
+    sendError(res, 400, "INVALID_QUERY", "Invalid pagination query");
+    return null;
+  }
+  return { limit, offset };
+}
+
+function validIdentity(value: unknown): value is string {
+  return typeof value === "string" && /^[A-Za-z0-9]{1,128}$/.test(value);
 }
 
 seasonRouter.use((req, res, next) => {
@@ -74,6 +103,85 @@ seasonRouter.get("/:seasonCode/phases/:phaseCode/rounds", async (req, res) => {
   res.json({ rounds: await getRounds(season.seasonCode, phaseCode) });
 });
 
+seasonRouter.get("/:seasonCode/teams", async (req, res) => {
+  const season = await requestedSeason(req, res);
+  if (season) res.json({ teams: await getTeams(season.seasonCode) });
+});
+
+seasonRouter.get("/:seasonCode/teams/:clubCode", async (req, res) => {
+  const season = await requestedSeason(req, res);
+  if (!season) return;
+  const clubCode = req.params.clubCode;
+  if (!validIdentity(clubCode)) {
+    sendError(res, 400, "INVALID_TEAM_CODE", "Invalid team code");
+    return;
+  }
+  const team = await getTeam(season.seasonCode, clubCode);
+  if (!team) {
+    sendError(res, 404, "TEAM_NOT_FOUND", "Team not found");
+    return;
+  }
+  res.json({ team });
+});
+
+seasonRouter.get("/:seasonCode/teams/:clubCode/roster", async (req, res) => {
+  const season = await requestedSeason(req, res);
+  if (!season) return;
+  const clubCode = req.params.clubCode;
+  if (!validIdentity(clubCode)) {
+    sendError(res, 400, "INVALID_TEAM_CODE", "Invalid team code");
+    return;
+  }
+  if (!await getTeam(season.seasonCode, clubCode)) {
+    sendError(res, 404, "TEAM_NOT_FOUND", "Team not found");
+    return;
+  }
+  const page = requestedPage(req, res);
+  if (!page) return;
+  const result = await getTeamRoster(season.seasonCode, clubCode, page.limit, page.offset);
+  res.json({ registrations: result.items, pagination: { ...page, hasMore: result.hasMore } });
+});
+
+seasonRouter.get("/:seasonCode/players", async (req, res) => {
+  const season = await requestedSeason(req, res);
+  if (!season) return;
+  const page = requestedPage(req, res);
+  if (!page) return;
+  const result = await getPlayers(season.seasonCode, page.limit, page.offset);
+  res.json({ players: result.items, pagination: { ...page, hasMore: result.hasMore } });
+});
+
+seasonRouter.get("/:seasonCode/players/:personKey", async (req, res) => {
+  const season = await requestedSeason(req, res);
+  if (!season) return;
+  const personKey = req.params.personKey;
+  if (!validIdentity(personKey)) {
+    sendError(res, 400, "INVALID_PLAYER_KEY", "Invalid player key");
+    return;
+  }
+  const player = await getPlayer(season.seasonCode, personKey);
+  if (!player) {
+    sendError(res, 404, "PLAYER_NOT_FOUND", "Player not found");
+    return;
+  }
+  res.json({ player });
+});
+
+seasonRouter.get("/:seasonCode/players/:personKey/registrations", async (req, res) => {
+  const season = await requestedSeason(req, res);
+  if (!season) return;
+  const personKey = req.params.personKey;
+  if (!validIdentity(personKey)) {
+    sendError(res, 400, "INVALID_PLAYER_KEY", "Invalid player key");
+    return;
+  }
+  if (!await getPlayer(season.seasonCode, personKey)) {
+    sendError(res, 404, "PLAYER_NOT_FOUND", "Player not found");
+    return;
+  }
+  res.json({ registrations: await getPlayerRegistrations(season.seasonCode, personKey) });
+});
+
 seasonRouter.use((_req, res) => {
   sendError(res, 404, "ROUTE_NOT_FOUND", "Season catalog route not found");
 });
@@ -85,6 +193,10 @@ seasonRouter.use((error: unknown, req: Request, res: Response, _next: NextFuncti
       sendError(res, 400, "INVALID_SEASON", "Unsupported season");
     } else if (section === "phases" && action === "rounds" && hasMalformedEncoding(phaseCode)) {
       sendError(res, 404, "PHASE_NOT_FOUND", "Phase not found");
+    } else if (section === "teams" && hasMalformedEncoding(phaseCode)) {
+      sendError(res, 400, "INVALID_TEAM_CODE", "Invalid team code");
+    } else if (section === "players" && hasMalformedEncoding(phaseCode)) {
+      sendError(res, 400, "INVALID_PLAYER_KEY", "Invalid player key");
     } else {
       sendError(res, 404, "ROUTE_NOT_FOUND", "Season catalog route not found");
     }

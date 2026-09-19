@@ -11,6 +11,7 @@ import PlayersPage from "./players/PlayersPage";
 import PlayerPage from "./players/PlayerPage";
 import StatisticsPage from "./statistics/StatisticsPage";
 import ComparisonsPage from "./comparisons/ComparisonsPage";
+import PlayoffsPage from "./playoffs/PlayoffsPage";
 import RouteErrorBoundary from "./ErrorBoundary";
 import { useDefaultSeasonCode } from "./season/useDefaultSeasonCode";
 
@@ -82,6 +83,7 @@ function App() {
             <Route path="players/:personKey" element={<PlayerPage />} />
             <Route path="statistics" element={<StatisticsPage />} />
             <Route path="comparisons" element={<ComparisonsPage />} />
+            <Route path="playoffs" element={<PlayoffsPage />} />
           </Route>
           <Route path="*" element={<Navigate replace to="/" />} />
         </Routes>

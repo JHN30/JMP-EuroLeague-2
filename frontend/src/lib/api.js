@@ -39,9 +39,9 @@ export async function getSeasonStandings(seasonCode, phaseCode, { round } = {}) 
   return data;
 }
 
-export async function getLeaderStats(seasonCode, { phase, mode, limit } = {}) {
+export async function getLeaderStats(seasonCode, { phase, mode, limit, offset, sort, order } = {}) {
   const { data } = await api.get(`/seasons/${seasonCode}/season-stats`, {
-    params: { phase, mode, limit },
+    params: { phase, mode, limit, offset, sort, order },
   });
   return data;
 }

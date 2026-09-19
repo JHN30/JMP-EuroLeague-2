@@ -18,7 +18,7 @@ import {
 } from "../db/season-identities";
 import { getBoxScore, getGame, getGames, getPlayerGameLog, getTeamGames } from "../db/season-games";
 import { getLatestStandingsRound, getStandings } from "../db/season-standings";
-import { getSeasonStats } from "../db/season-stats";
+import { getSeasonStats, SORTABLE_STATS_FIELDS, type SortableStatsField } from "../db/season-stats";
 
 export const seasonRouter = Router();
 
@@ -125,6 +125,26 @@ function requestedStatsMode(req: Request, res: Response): string | null {
   return value;
 }
 
+function requestedStatsSort(req: Request, res: Response): string | undefined | null {
+  const value = req.query.sort;
+  if (value === undefined) return undefined;
+  if (typeof value !== "string" || !SORTABLE_STATS_FIELDS.includes(value)) {
+    sendError(res, 400, "INVALID_QUERY", "Invalid sort field");
+    return null;
+  }
+  return value;
+}
+
+function requestedStatsOrder(req: Request, res: Response): "asc" | "desc" | null {
+  const value = req.query.order;
+  if (value === undefined) return "asc";
+  if (value !== "asc" && value !== "desc") {
+    sendError(res, 400, "INVALID_QUERY", "Invalid order");
+    return null;
+  }
+  return value;
+}
+
 seasonRouter.use((req, res, next) => {
   if (hasMalformedEncoding(req.path.split("/")[1])) {
     sendError(res, 400, "INVALID_SEASON", "Unsupported season");
@@ -226,7 +246,20 @@ seasonRouter.get("/:seasonCode/season-stats", async (req, res) => {
   if (!page) return;
   const personKey = requestedPersonKeyFilter(req, res);
   if (personKey === null) return;
-  const result = await getSeasonStats(season.seasonCode, phase, mode, page.limit, page.offset, personKey);
+  const sort = requestedStatsSort(req, res);
+  if (sort === null) return;
+  const order = requestedStatsOrder(req, res);
+  if (order === null) return;
+  const result = await getSeasonStats(
+    season.seasonCode,
+    phase,
+    mode,
+    page.limit,
+    page.offset,
+    personKey,
+    sort as SortableStatsField | undefined,
+    order,
+  );
   res.json({ phase, mode, players: result.items, pagination: { ...page, hasMore: result.hasMore } });
 });
 

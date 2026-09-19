@@ -1,4 +1,4 @@
-import { and, asc, eq } from "drizzle-orm";
+import { and, asc, eq, sql } from "drizzle-orm";
 import { db } from "./client";
 import { catalogRead } from "./season-catalog";
 import {
@@ -195,6 +195,35 @@ function joinOn(
   );
 }
 
+const SORTABLE_FIELDS = {
+  gamesPlayed: seasonStatsTraditional.gamesPlayed,
+  minutesPlayed: seasonStatsTraditional.minutesPlayed,
+  pointsScored: seasonStatsTraditional.pointsScored,
+  totalRebounds: seasonStatsTraditional.totalRebounds,
+  assists: seasonStatsTraditional.assists,
+  steals: seasonStatsTraditional.steals,
+  turnovers: seasonStatsTraditional.turnovers,
+  blocks: seasonStatsTraditional.blocks,
+  pir: seasonStatsTraditional.pir,
+  effectiveFieldGoalPercentage: seasonStatsAdvanced.effectiveFieldGoalPercentage,
+  trueShootingPercentage: seasonStatsAdvanced.trueShootingPercentage,
+  reboundsPercentage: seasonStatsAdvanced.reboundsPercentage,
+  assistsToTurnoversRatio: seasonStatsAdvanced.assistsToTurnoversRatio,
+  possessions: seasonStatsAdvanced.possessions,
+  twoPointRate: seasonStatsScoring.twoPointRate,
+  threePointRate: seasonStatsScoring.threePointRate,
+  pointsFromTwoPointersPercentage: seasonStatsScoring.pointsFromTwoPointersPercentage,
+  pointsFromThreePointersPercentage: seasonStatsScoring.pointsFromThreePointersPercentage,
+  pointsFromFreeThrowsPercentage: seasonStatsScoring.pointsFromFreeThrowsPercentage,
+  wins: seasonStatsMisc.wins,
+  losses: seasonStatsMisc.losses,
+  doubleDoubles: seasonStatsMisc.doubleDoubles,
+  tripleDoubles: seasonStatsMisc.tripleDoubles,
+} as const;
+
+export const SORTABLE_STATS_FIELDS = Object.keys(SORTABLE_FIELDS);
+export type SortableStatsField = keyof typeof SORTABLE_FIELDS;
+
 export async function getSeasonStats(
   seasonCode: string,
   phaseCode: string,
@@ -202,6 +231,8 @@ export async function getSeasonStats(
   limit: number,
   offset: number,
   personKey?: string,
+  sort?: SortableStatsField,
+  order: "asc" | "desc" = "asc",
 ): Promise<Page<StatsEntry>> {
   const conditions = [
     eq(seasonStatsTraditional.competitionCode, COMPETITION_CODE),
@@ -210,6 +241,14 @@ export async function getSeasonStats(
     eq(seasonStatsTraditional.mode, mode),
   ];
   if (personKey !== undefined) conditions.push(eq(seasonStatsTraditional.personKey, personKey));
+
+  const sortColumn = sort !== undefined ? SORTABLE_FIELDS[sort] : undefined;
+  const orderBy = sortColumn
+    ? [
+        order === "desc" ? sql`${sortColumn} DESC NULLS LAST` : asc(sortColumn),
+        asc(seasonStatsTraditional.entryOrdinal),
+      ]
+    : [asc(seasonStatsTraditional.entryOrdinal), asc(seasonStatsTraditional.personKey)];
 
   const rows = await catalogRead(() =>
     db.select({
@@ -231,7 +270,7 @@ export async function getSeasonStats(
       .leftJoin(seasonStatsScoring, joinOn(seasonStatsScoring))
       .leftJoin(seasonStatsMisc, joinOn(seasonStatsMisc))
       .where(and(...conditions))
-      .orderBy(asc(seasonStatsTraditional.entryOrdinal), asc(seasonStatsTraditional.personKey))
+      .orderBy(...orderBy)
       .limit(limit + 1)
       .offset(offset),
   );

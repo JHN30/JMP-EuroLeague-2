@@ -9,6 +9,7 @@ import TeamsPage from "./teams/TeamsPage";
 import TeamPage from "./teams/TeamPage";
 import PlayersPage from "./players/PlayersPage";
 import PlayerPage from "./players/PlayerPage";
+import StatisticsPage from "./statistics/StatisticsPage";
 import RouteErrorBoundary from "./ErrorBoundary";
 import { useDefaultSeasonCode } from "./season/useDefaultSeasonCode";
 
@@ -78,6 +79,7 @@ function App() {
             <Route path="teams/:clubCode" element={<TeamPage />} />
             <Route path="players" element={<PlayersPage />} />
             <Route path="players/:personKey" element={<PlayerPage />} />
+            <Route path="statistics" element={<StatisticsPage />} />
           </Route>
           <Route path="*" element={<Navigate replace to="/" />} />
         </Routes>

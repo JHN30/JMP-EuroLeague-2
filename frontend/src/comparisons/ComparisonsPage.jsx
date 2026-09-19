@@ -166,7 +166,7 @@ function TeamComparisonTable({ seasonCode, phaseCode, entityA, entityB }) {
   const b = standings.find((entry) => entry.clubCode === entityB.id);
 
   return (
-    <div className="overflow-x-auto">
+    <div className="panel overflow-x-auto p-2">
       <table className="table">
         <thead>
           <tr>
@@ -219,7 +219,7 @@ function PlayerComparisonTable({ seasonCode, phaseCode, mode, entityA, entityB }
   const b = statsBQuery.data.players?.[0];
 
   return (
-    <div className="overflow-x-auto">
+    <div className="panel overflow-x-auto p-2">
       <table className="table">
         <thead>
           <tr>
@@ -359,7 +359,7 @@ export default function ComparisonsPage() {
     <div>
       <h1 className="mb-6 text-2xl font-semibold">Comparisons and trends</h1>
 
-      <div role="tablist" className="tabs tabs-boxed mb-4 w-fit">
+      <div role="tablist" className="tabs tabs-boxed tabs-sm mb-4 w-fit">
         {[
           ["teams", "Teams"],
           ["players", "Players"],
@@ -368,7 +368,7 @@ export default function ComparisonsPage() {
             key={value}
             role="tab"
             type="button"
-            className={`tab ${view === value ? "tab-active" : ""}`}
+            className={`tab font-semibold ${view === value ? "tab-active" : ""}`}
             onClick={() => handleViewChange(value)}
           >
             {label}
@@ -376,13 +376,13 @@ export default function ComparisonsPage() {
         ))}
       </div>
 
-      <div role="tablist" className="tabs tabs-boxed mb-6 w-fit">
+      <div role="tablist" className="tabs tabs-boxed tabs-sm mb-6 w-fit">
         {phases.map((phase) => (
           <button
             key={phase.code}
             role="tab"
             type="button"
-            className={`tab ${phaseCode === phase.code ? "tab-active" : ""}`}
+            className={`tab font-semibold ${phaseCode === phase.code ? "tab-active" : ""}`}
             onClick={() => setSelectedPhase(phase.code)}
           >
             {phase.name ?? phase.code}
@@ -429,7 +429,7 @@ export default function ComparisonsPage() {
       </div>
 
       {view === "players" ? (
-        <div role="tablist" className="tabs tabs-boxed mb-4 w-fit">
+        <div role="tablist" className="tabs tabs-boxed tabs-sm mb-4 w-fit">
           {[
             ["accumulated", "Accumulated"],
             ["perGame", "Per game"],
@@ -438,7 +438,7 @@ export default function ComparisonsPage() {
               key={value}
               role="tab"
               type="button"
-              className={`tab ${mode === value ? "tab-active" : ""}`}
+              className={`tab font-semibold ${mode === value ? "tab-active" : ""}`}
               onClick={() => setMode(value)}
             >
               {label}

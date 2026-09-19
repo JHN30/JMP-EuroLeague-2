@@ -53,7 +53,7 @@ export default function TrendChart({ title, labels, series }) {
   }, [labels, series]);
 
   return (
-    <div>
+    <div className="panel p-4">
       <div className="relative h-64 w-full">
         <canvas
           ref={canvasRef}

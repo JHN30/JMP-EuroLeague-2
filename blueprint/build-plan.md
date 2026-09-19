@@ -27,7 +27,7 @@ Scaffolding, shared layout, design tokens, database connection setup, and deploy
   - [x] 12a. **Shared design system, navbar, dashboard, and standings** - Establish the shared visual primitives (theme tokens, panel/card/table/badge/stat-callout styles, compact responsive navbar with persistent season/competition selector) and apply them to the home dashboard and standings pages, per the `prototypes/` mockups.
   - [x] 12b. **Fixtures, results, and game detail** - Apply the shared design system to the fixtures/results browser and the game detail/box-score page.
   - [x] 12c. **Teams and players** - Apply the shared design system to the team directory/detail and player search/detail pages.
-  - [ ] 12d. **Statistics leaderboards and comparisons** - Apply the shared design system to the statistics leaderboards and the comparisons/trends pages, including theme-aware Chart.js styling.
+  - [x] 12d. **Statistics leaderboards and comparisons** - Apply the shared design system to the statistics leaderboards and the comparisons/trends pages, including theme-aware Chart.js styling.
   - [ ] 12e. **Playoffs** - Apply the shared design system to the playoffs matchup page.
 
 ## Deferred beyond Phase 1

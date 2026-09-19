@@ -27,7 +27,7 @@ function ErrorAlert({ message, onRetry }) {
 
 function DirectionToggle({ direction, onChange }) {
   return (
-    <div role="tablist" className="tabs tabs-boxed w-fit">
+    <div role="tablist" className="tabs tabs-boxed tabs-sm w-fit">
       {[
         ["desc", "Descending"],
         ["asc", "Ascending"],
@@ -36,7 +36,7 @@ function DirectionToggle({ direction, onChange }) {
           key={value}
           role="tab"
           type="button"
-          className={`tab ${direction === value ? "tab-active" : ""}`}
+          className={`tab font-semibold ${direction === value ? "tab-active" : ""}`}
           onClick={() => onChange(value)}
         >
           {label}
@@ -99,7 +99,7 @@ function TeamLeaderboard({ seasonCode, phaseCode }) {
         <DirectionToggle direction={direction} onChange={setDirection} />
       </div>
 
-      <div className="overflow-x-auto">
+      <div className="panel overflow-x-auto p-2">
         <table className="table">
           <thead>
             <tr>
@@ -111,13 +111,15 @@ function TeamLeaderboard({ seasonCode, phaseCode }) {
           <tbody>
             {sorted.map((entry, index) => (
               <tr key={entry.clubCode}>
-                <td>{index + 1}</td>
                 <td>
-                  <Link to={`/${seasonCode}/teams/${entry.clubCode}`} className="link link-hover">
+                  <span className={`rank ${index === 0 ? "rank-1" : ""}`}>{index + 1}</span>
+                </td>
+                <td>
+                  <Link to={`/${seasonCode}/teams/${entry.clubCode}`} className="link link-hover font-medium">
                     {entry.clubName ?? entry.clubCode}
                   </Link>
                 </td>
-                <td>{entry.basic?.[metric] ?? "-"}</td>
+                <td className="text-primary font-semibold tabular-nums">{entry.basic?.[metric] ?? "-"}</td>
               </tr>
             ))}
           </tbody>
@@ -173,7 +175,7 @@ function PlayerLeaderboard({ seasonCode, phaseCode }) {
   return (
     <div>
       <div className="mb-4 flex flex-wrap items-center gap-4">
-        <div role="tablist" className="tabs tabs-boxed w-fit">
+        <div role="tablist" className="tabs tabs-boxed tabs-sm w-fit">
           {[
             ["accumulated", "Accumulated"],
             ["perGame", "Per game"],
@@ -182,7 +184,7 @@ function PlayerLeaderboard({ seasonCode, phaseCode }) {
               key={value}
               role="tab"
               type="button"
-              className={`tab ${mode === value ? "tab-active" : ""}`}
+              className={`tab font-semibold ${mode === value ? "tab-active" : ""}`}
               onClick={() => handleModeChange(value)}
             >
               {label}
@@ -214,7 +216,7 @@ function PlayerLeaderboard({ seasonCode, phaseCode }) {
         <p className="muted">No season statistics available yet for this phase.</p>
       ) : (
         <>
-          <div className="overflow-x-auto">
+          <div className="panel overflow-x-auto p-2">
             <table className="table">
               <thead>
                 <tr>
@@ -226,13 +228,17 @@ function PlayerLeaderboard({ seasonCode, phaseCode }) {
               <tbody>
                 {players.map((player, index) => (
                   <tr key={player.personKey}>
-                    <td>{offset + index + 1}</td>
                     <td>
-                      <Link to={`/${seasonCode}/players/${player.personKey}`} className="link link-hover">
+                      <span className={`rank ${offset === 0 && index === 0 ? "rank-1" : ""}`}>
+                        {offset + index + 1}
+                      </span>
+                    </td>
+                    <td>
+                      <Link to={`/${seasonCode}/players/${player.personKey}`} className="link link-hover font-medium">
                         {player.playerName ?? player.personKey}
                       </Link>
                     </td>
-                    <td>{player[group]?.[metric] ?? "-"}</td>
+                    <td className="text-primary font-semibold tabular-nums">{player[group]?.[metric] ?? "-"}</td>
                   </tr>
                 ))}
               </tbody>
@@ -284,7 +290,7 @@ export default function StatisticsPage() {
     <div>
       <h1 className="mb-6 text-2xl font-semibold">Statistics leaderboards</h1>
 
-      <div role="tablist" className="tabs tabs-boxed mb-4 w-fit">
+      <div role="tablist" className="tabs tabs-boxed tabs-sm mb-4 w-fit">
         {[
           ["teams", "Teams"],
           ["players", "Players"],
@@ -293,7 +299,7 @@ export default function StatisticsPage() {
             key={value}
             role="tab"
             type="button"
-            className={`tab ${view === value ? "tab-active" : ""}`}
+            className={`tab font-semibold ${view === value ? "tab-active" : ""}`}
             onClick={() => setView(value)}
           >
             {label}
@@ -301,13 +307,13 @@ export default function StatisticsPage() {
         ))}
       </div>
 
-      <div role="tablist" className="tabs tabs-boxed mb-6 w-fit">
+      <div role="tablist" className="tabs tabs-boxed tabs-sm mb-6 w-fit">
         {phases.map((phase) => (
           <button
             key={phase.code}
             role="tab"
             type="button"
-            className={`tab ${phaseCode === phase.code ? "tab-active" : ""}`}
+            className={`tab font-semibold ${phaseCode === phase.code ? "tab-active" : ""}`}
             onClick={() => setSelectedPhase(phase.code)}
           >
             {phase.name ?? phase.code}

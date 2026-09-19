@@ -23,12 +23,12 @@ Scaffolding, shared layout, design tokens, database connection setup, and deploy
 - [x] 9. **Statistics leaderboards** - Rank and filter team and player metrics for the selected season, supporting the available accumulated, per-game, and rate-based views without presenting missing values as zero.
 - [x] 10. **Comparisons and trends** - Compare selected teams or players and visualize useful season/game trends with responsive, accessible charts and tables.
 - [x] 11. **Playoffs** - Show play-in, playoff, and Final Four matchups/results for the selected season, handling future or incomplete rounds without inventing participants or outcomes.
-- [ ] 12. **Visual design system pass** - Apply a consistent, theme-aware TailwindCSS/DaisyUI visual language across all existing pages (dashboard, standings, fixtures/games, teams, players, statistics, comparisons, playoffs): unify panels, cards, tables, controls, alerts, headers, and loading/error states; strengthen visual hierarchy so key numbers/results stand out instead of reading as plain text; keep charts and scrollbars theme-aware; keep the navbar and season/competition selector compact, responsive, and persistently visible.
+- [x] 12. **Visual design system pass** - Apply a consistent, theme-aware TailwindCSS/DaisyUI visual language across all existing pages (dashboard, standings, fixtures/games, teams, players, statistics, comparisons, playoffs): unify panels, cards, tables, controls, alerts, headers, and loading/error states; strengthen visual hierarchy so key numbers/results stand out instead of reading as plain text; keep charts and scrollbars theme-aware; keep the navbar and season/competition selector compact, responsive, and persistently visible.
   - [x] 12a. **Shared design system, navbar, dashboard, and standings** - Establish the shared visual primitives (theme tokens, panel/card/table/badge/stat-callout styles, compact responsive navbar with persistent season/competition selector) and apply them to the home dashboard and standings pages, per the `prototypes/` mockups.
   - [x] 12b. **Fixtures, results, and game detail** - Apply the shared design system to the fixtures/results browser and the game detail/box-score page.
   - [x] 12c. **Teams and players** - Apply the shared design system to the team directory/detail and player search/detail pages.
   - [x] 12d. **Statistics leaderboards and comparisons** - Apply the shared design system to the statistics leaderboards and the comparisons/trends pages, including theme-aware Chart.js styling.
-  - [ ] 12e. **Playoffs** - Apply the shared design system to the playoffs matchup page.
+  - [x] 12e. **Playoffs** - Apply the shared design system to the playoffs matchup page.
 
 ## Deferred beyond Phase 1
 

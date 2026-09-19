@@ -57,7 +57,17 @@ export default function StandingsTable({ standings, seasonCode }) {
                   ) : null}
                 </td>
                 <td>
-                  <Link to={`/${seasonCode}/teams/${entry.clubCode}`} className="link link-hover font-medium">
+                  <Link to={`/${seasonCode}/teams/${entry.clubCode}`} className="link link-hover flex items-center gap-2 font-medium">
+                    {entry.crestUrl ? (
+                      <img
+                        src={entry.crestUrl}
+                        alt=""
+                        className="h-6 w-6 flex-none object-contain"
+                        onError={(event) => {
+                          event.currentTarget.style.display = "none";
+                        }}
+                      />
+                    ) : null}
                     {entry.clubName ?? entry.clubCode}
                   </Link>
                 </td>

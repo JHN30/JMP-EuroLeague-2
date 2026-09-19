@@ -27,7 +27,19 @@ export default function StandingsSnapshot() {
             <span className={`rank ${entry.basic?.position === 1 ? "rank-1" : ""}`}>
               {entry.basic?.position ?? "-"}
             </span>
-            <span className="flex-1 font-medium">{entry.clubName ?? entry.clubCode}</span>
+            <span className="flex flex-1 items-center gap-2 font-medium">
+              {entry.crestUrl ? (
+                <img
+                  src={entry.crestUrl}
+                  alt=""
+                  className="h-8 w-8 flex-none object-contain"
+                  onError={(event) => {
+                    event.currentTarget.style.display = "none";
+                  }}
+                />
+              ) : null}
+              {entry.clubName ?? entry.clubCode}
+            </span>
             <span className="muted font-semibold tabular-nums">
               {entry.basic?.gamesWon ?? "-"}-{entry.basic?.gamesLost ?? "-"}
             </span>

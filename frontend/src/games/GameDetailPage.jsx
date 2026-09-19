@@ -181,10 +181,34 @@ export default function GameDetailPage() {
 
   return (
     <div>
-      <h1 className="mb-2 text-2xl font-semibold">
-        <span className={localWon ? "text-primary" : undefined}>{teamName(game.localTeam)}</span>
+      <h1 className="mb-2 flex flex-wrap items-center gap-2 text-2xl font-semibold">
+        <span className={`flex items-center gap-3 ${localWon ? "text-primary" : ""}`}>
+          {game.localTeam?.crestUrl ? (
+            <img
+              src={game.localTeam.crestUrl}
+              alt=""
+              className="h-12 w-12 flex-none object-contain"
+              onError={(event) => {
+                event.currentTarget.style.display = "none";
+              }}
+            />
+          ) : null}
+          {teamName(game.localTeam)}
+        </span>
         <span className="muted mx-2 text-lg font-normal">vs</span>
-        <span className={roadWon ? "text-primary" : undefined}>{teamName(game.roadTeam)}</span>
+        <span className={`flex items-center gap-3 ${roadWon ? "text-primary" : ""}`}>
+          {game.roadTeam?.crestUrl ? (
+            <img
+              src={game.roadTeam.crestUrl}
+              alt=""
+              className="h-12 w-12 flex-none object-contain"
+              onError={(event) => {
+                event.currentTarget.style.display = "none";
+              }}
+            />
+          ) : null}
+          {teamName(game.roadTeam)}
+        </span>
       </h1>
       <p className="muted mb-6">
         {game.roundName ?? (game.roundNumber ? `Round ${game.roundNumber}` : game.phaseName)} · {formatDateTime(game.scheduledAt)}

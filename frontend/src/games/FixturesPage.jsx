@@ -167,9 +167,33 @@ export default function FixturesPage() {
                     >
                       <div className="flex flex-col gap-1">
                         <span className="flex items-center gap-2">
-                          <span className={localWon ? "font-semibold" : undefined}>{teamLabel(game.localTeam)}</span>
+                          <span className={`flex items-center gap-2 ${localWon ? "font-semibold" : ""}`}>
+                            {game.localTeam?.crestUrl ? (
+                              <img
+                                src={game.localTeam.crestUrl}
+                                alt=""
+                                className="h-6 w-6 flex-none object-contain"
+                                onError={(event) => {
+                                  event.currentTarget.style.display = "none";
+                                }}
+                              />
+                            ) : null}
+                            {teamLabel(game.localTeam)}
+                          </span>
                           <span className="muted text-xs">vs</span>
-                          <span className={roadWon ? "font-semibold" : undefined}>{teamLabel(game.roadTeam)}</span>
+                          <span className={`flex items-center gap-2 ${roadWon ? "font-semibold" : ""}`}>
+                            {game.roadTeam?.crestUrl ? (
+                              <img
+                                src={game.roadTeam.crestUrl}
+                                alt=""
+                                className="h-6 w-6 flex-none object-contain"
+                                onError={(event) => {
+                                  event.currentTarget.style.display = "none";
+                                }}
+                              />
+                            ) : null}
+                            {teamLabel(game.roadTeam)}
+                          </span>
                         </span>
                         <span className="muted text-sm">
                           {game.roundName ?? (game.roundNumber ? `Round ${game.roundNumber}` : "")} · {formatDateTime(game.scheduledAt)}

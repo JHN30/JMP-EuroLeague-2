@@ -9,6 +9,7 @@ import {
   standingsForm,
   standingsMargins,
   standingsStreaks,
+  clubs,
 } from "./season-schema";
 
 const COMPETITION_CODE = "E";
@@ -112,6 +113,7 @@ export type StandingEntry = {
   clubCode: string;
   clubName: string | null;
   clubTvCode: string | null;
+  crestUrl: string | null;
   groupName: string | null;
   basic: StandingBasic | null;
   calendar: StandingCalendar | null;
@@ -250,6 +252,7 @@ export async function getStandings(
         clubCode: standingsBasic.clubCode,
         clubName: standingsBasic.clubName,
         clubTvCode: standingsBasic.clubTvCode,
+        crestUrl: clubs.crestUrl,
         groupName: standingsBasic.groupName,
         basic: basicFields,
         calendar: calendarFields,
@@ -258,6 +261,11 @@ export async function getStandings(
         margins: marginsFields,
       })
         .from(standingsBasic)
+        .leftJoin(clubs, and(
+          eq(clubs.competitionCode, standingsBasic.competitionCode),
+          eq(clubs.seasonCode, standingsBasic.seasonCode),
+          eq(clubs.clubCode, standingsBasic.clubCode),
+        ))
         .leftJoin(standingsCalendar, joinOn(standingsCalendar))
         .leftJoin(standingsStreaks, joinOn(standingsStreaks))
         .leftJoin(standingsAheadBehind, joinOn(standingsAheadBehind))
@@ -322,6 +330,7 @@ export async function getStandings(
     clubCode: row.clubCode,
     clubName: row.clubName,
     clubTvCode: row.clubTvCode,
+    crestUrl: row.crestUrl,
     groupName: row.groupName,
     basic: row.basic,
     calendar: row.calendar,

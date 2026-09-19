@@ -171,8 +171,8 @@ function TeamComparisonTable({ seasonCode, phaseCode, entityA, entityB }) {
         <thead>
           <tr>
             <th>Metric</th>
-            <th>{entityA.label}</th>
-            <th>{entityB.label}</th>
+            <TeamHeaderCell label={entityA.label} crestUrl={a?.crestUrl} />
+            <TeamHeaderCell label={entityB.label} crestUrl={b?.crestUrl} />
           </tr>
         </thead>
         <tbody>
@@ -186,6 +186,24 @@ function TeamComparisonTable({ seasonCode, phaseCode, entityA, entityB }) {
         </tbody>
       </table>
     </div>
+  );
+}
+
+function TeamHeaderCell({ label, crestUrl }) {
+  return (
+    <th className="text-center">
+      {crestUrl ? (
+        <img
+          src={crestUrl}
+          alt=""
+          className="mx-auto mb-1 h-12 w-12 object-contain"
+          onError={(event) => {
+            event.currentTarget.style.display = "none";
+          }}
+        />
+      ) : null}
+      <div>{label}</div>
+    </th>
   );
 }
 

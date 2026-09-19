@@ -31,7 +31,7 @@ Scaffolding, shared layout, design tokens, database connection setup, and deploy
   - [x] 12e. **Playoffs** - Apply the shared design system to the playoffs matchup page.
 - [ ] 13. **Richer stats presentation** - Use already-available player photos and team crests throughout the app, and consolidate stacked filter-tab rows into compact dropdowns on dense pages, closing the gap between our stats pages and reference sites like ESPN/NBA.com.
   - [x] 13a. **Player photos in stats views** - Show real player headshots (already returned by the season-stats and box-score APIs) in the statistics leaderboard, comparisons page, game box scores, and player game logs.
-  - [ ] 13b. **Team crests everywhere** - Join team crest URLs into the standings, fixtures, and game-detail API responses, and show them in standings, fixtures, game headers, the dashboard, and comparisons.
+  - [x] 13b. **Team crests everywhere** - Join team crest URLs into the standings, fixtures, and game-detail API responses, and show them in standings, fixtures, game headers, the dashboard, and comparisons.
   - [ ] 13c. **Compact filter controls** - Replace stacked tab-row filters on the statistics and comparisons pages with compact dropdown selects, reducing visual clutter on the most control-heavy pages.
 
 ## Deferred beyond Phase 1

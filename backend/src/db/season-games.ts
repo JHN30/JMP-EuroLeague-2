@@ -1,7 +1,8 @@
 import { and, asc, eq, isNull, or, sql } from "drizzle-orm";
+import { alias } from "drizzle-orm/pg-core";
 import { db } from "./client";
 import { catalogRead } from "./season-catalog";
-import { gamePeriodScores, gamePlayerStats, gameTeamStats, games } from "./season-schema";
+import { clubs, gamePeriodScores, gamePlayerStats, gameTeamStats, games } from "./season-schema";
 
 const COMPETITION_CODE = "E";
 
@@ -9,7 +10,11 @@ export type GameTeam = {
   clubCode: string | null;
   name: string | null;
   abbreviatedName: string | null;
+  crestUrl: string | null;
 };
+
+const localClubs = alias(clubs, "local_clubs");
+const roadClubs = alias(clubs, "road_clubs");
 
 export type Game = {
   gameCode: number;
@@ -46,17 +51,24 @@ const gameFields = {
   localClubCode: games.localClubCode,
   localClubName: games.localClubName,
   localClubAbbreviatedName: games.localClubAbbreviatedName,
+  localClubCrestUrl: localClubs.crestUrl,
   roadClubCode: games.roadClubCode,
   roadClubName: games.roadClubName,
   roadClubAbbreviatedName: games.roadClubAbbreviatedName,
+  roadClubCrestUrl: roadClubs.crestUrl,
   localScore: games.localScore,
   roadScore: games.roadScore,
 };
 
-function gameTeam(code: string | null, name: string | null, abbreviatedName: string | null): GameTeam | null {
-  return code === null && name === null && abbreviatedName === null
+function gameTeam(
+  code: string | null,
+  name: string | null,
+  abbreviatedName: string | null,
+  crestUrl: string | null,
+): GameTeam | null {
+  return code === null && name === null && abbreviatedName === null && crestUrl === null
     ? null
-    : { clubCode: code, name, abbreviatedName };
+    : { clubCode: code, name, abbreviatedName, crestUrl };
 }
 
 function toGame(row: {
@@ -75,9 +87,11 @@ function toGame(row: {
   localClubCode: string | null;
   localClubName: string | null;
   localClubAbbreviatedName: string | null;
+  localClubCrestUrl: string | null;
   roadClubCode: string | null;
   roadClubName: string | null;
   roadClubAbbreviatedName: string | null;
+  roadClubCrestUrl: string | null;
   localScore: number | null;
   roadScore: number | null;
 }): Game {
@@ -94,8 +108,8 @@ function toGame(row: {
     scheduledAt: row.scheduledAt?.toISOString() ?? null,
     played: row.played,
     gameStatus: row.gameStatus,
-    localTeam: gameTeam(row.localClubCode, row.localClubName, row.localClubAbbreviatedName),
-    roadTeam: gameTeam(row.roadClubCode, row.roadClubName, row.roadClubAbbreviatedName),
+    localTeam: gameTeam(row.localClubCode, row.localClubName, row.localClubAbbreviatedName, row.localClubCrestUrl),
+    roadTeam: gameTeam(row.roadClubCode, row.roadClubName, row.roadClubAbbreviatedName, row.roadClubCrestUrl),
     localScore: row.localScore,
     roadScore: row.roadScore,
   };
@@ -119,6 +133,16 @@ export async function getGames(
   const rows = await catalogRead(() =>
     db.select(gameFields)
       .from(games)
+      .leftJoin(localClubs, and(
+        eq(localClubs.competitionCode, games.competitionCode),
+        eq(localClubs.seasonCode, games.seasonCode),
+        eq(localClubs.clubCode, games.localClubCode),
+      ))
+      .leftJoin(roadClubs, and(
+        eq(roadClubs.competitionCode, games.competitionCode),
+        eq(roadClubs.seasonCode, games.seasonCode),
+        eq(roadClubs.clubCode, games.roadClubCode),
+      ))
       .where(and(...conditions))
       .orderBy(
         order === "desc" ? sql`${games.scheduledAt} DESC NULLS LAST` : asc(games.scheduledAt),
@@ -149,6 +173,16 @@ export async function getTeamGames(
   const rows = await catalogRead(() =>
     db.select(gameFields)
       .from(games)
+      .leftJoin(localClubs, and(
+        eq(localClubs.competitionCode, games.competitionCode),
+        eq(localClubs.seasonCode, games.seasonCode),
+        eq(localClubs.clubCode, games.localClubCode),
+      ))
+      .leftJoin(roadClubs, and(
+        eq(roadClubs.competitionCode, games.competitionCode),
+        eq(roadClubs.seasonCode, games.seasonCode),
+        eq(roadClubs.clubCode, games.roadClubCode),
+      ))
       .where(and(...conditions))
       .orderBy(
         order === "desc" ? sql`${games.scheduledAt} DESC NULLS LAST` : asc(games.scheduledAt),
@@ -179,6 +213,16 @@ export async function getPlayerGameLog(
         eq(games.seasonCode, gamePlayerStats.seasonCode),
         eq(games.gameCode, gamePlayerStats.gameCode),
       ))
+      .leftJoin(localClubs, and(
+        eq(localClubs.competitionCode, games.competitionCode),
+        eq(localClubs.seasonCode, games.seasonCode),
+        eq(localClubs.clubCode, games.localClubCode),
+      ))
+      .leftJoin(roadClubs, and(
+        eq(roadClubs.competitionCode, games.competitionCode),
+        eq(roadClubs.seasonCode, games.seasonCode),
+        eq(roadClubs.clubCode, games.roadClubCode),
+      ))
       .where(and(
         eq(gamePlayerStats.competitionCode, COMPETITION_CODE),
         eq(gamePlayerStats.seasonCode, seasonCode),
@@ -198,6 +242,16 @@ export async function getGame(seasonCode: string, gameCode: number): Promise<Gam
   const rows = await catalogRead(() =>
     db.select(gameFields)
       .from(games)
+      .leftJoin(localClubs, and(
+        eq(localClubs.competitionCode, games.competitionCode),
+        eq(localClubs.seasonCode, games.seasonCode),
+        eq(localClubs.clubCode, games.localClubCode),
+      ))
+      .leftJoin(roadClubs, and(
+        eq(roadClubs.competitionCode, games.competitionCode),
+        eq(roadClubs.seasonCode, games.seasonCode),
+        eq(roadClubs.clubCode, games.roadClubCode),
+      ))
       .where(and(
         eq(games.competitionCode, COMPETITION_CODE),
         eq(games.seasonCode, seasonCode),

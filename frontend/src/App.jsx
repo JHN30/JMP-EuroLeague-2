@@ -9,6 +9,7 @@ import TeamsPage from "./teams/TeamsPage";
 import TeamPage from "./teams/TeamPage";
 import PlayersPage from "./players/PlayersPage";
 import PlayerPage from "./players/PlayerPage";
+import RouteErrorBoundary from "./ErrorBoundary";
 import { useDefaultSeasonCode } from "./season/useDefaultSeasonCode";
 
 const THEME_KEY = "euroleague-theme";
@@ -65,20 +66,22 @@ function App() {
 
   return (
     <div className="app-shell min-h-screen">
-      <Routes>
-        <Route path="/" element={<DefaultSeasonRedirect />} />
-        <Route path="/:seasonCode" element={<SeasonLayout />}>
-          <Route index element={<Dashboard />} />
-          <Route path="standings" element={<StandingsPage />} />
-          <Route path="games" element={<FixturesPage />} />
-          <Route path="games/:gameCode" element={<GameDetailPage />} />
-          <Route path="teams" element={<TeamsPage />} />
-          <Route path="teams/:clubCode" element={<TeamPage />} />
-          <Route path="players" element={<PlayersPage />} />
-          <Route path="players/:personKey" element={<PlayerPage />} />
-        </Route>
-        <Route path="*" element={<Navigate replace to="/" />} />
-      </Routes>
+      <RouteErrorBoundary>
+        <Routes>
+          <Route path="/" element={<DefaultSeasonRedirect />} />
+          <Route path="/:seasonCode" element={<SeasonLayout />}>
+            <Route index element={<Dashboard />} />
+            <Route path="standings" element={<StandingsPage />} />
+            <Route path="games" element={<FixturesPage />} />
+            <Route path="games/:gameCode" element={<GameDetailPage />} />
+            <Route path="teams" element={<TeamsPage />} />
+            <Route path="teams/:clubCode" element={<TeamPage />} />
+            <Route path="players" element={<PlayersPage />} />
+            <Route path="players/:personKey" element={<PlayerPage />} />
+          </Route>
+          <Route path="*" element={<Navigate replace to="/" />} />
+        </Routes>
+      </RouteErrorBoundary>
     </div>
   );
 }

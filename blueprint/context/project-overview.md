@@ -1,6 +1,6 @@
 # JMP Euroleague - Project Overview
 
-<!-- blueprint:source-hash 326f21e32934382511155a0ac254aa279987652a354dc4d374e1d3ab83c4e817 -->
+<!-- blueprint:source-hash 0f5bb3506e49baefc16075f5fdd33d7430ac153edf7db2a82cf7f7c1c1d60c16 -->
 
 > A public, read-only EuroLeague explorer for the 2025-26 (`E2025`) and 2026-27 (`E2026`) seasons, backed by already populated Neon PostgreSQL tables.
 
@@ -47,6 +47,10 @@ The headline is a two-season public explorer whose every view stays in the selec
     - **12c Teams and players** - the team and player directory/detail pages.
     - **12d Statistics leaderboards and comparisons** - the leaderboards and comparisons/trends pages, including theme-aware Chart.js styling.
     - **12e Playoffs** - the playoffs matchup page.
+13. **Richer stats presentation** - use already-available player photos and team crests throughout the app, and consolidate stacked filter-tab rows into compact dropdowns on the densest pages. Build it in three reviewable parts:
+    - **13a Player photos in stats views** - real player headshots (already returned by the season-stats and box-score APIs) in the leaderboard, comparisons, box scores, and player game logs.
+    - **13b Team crests everywhere** - crest URLs joined into standings/fixtures/game-detail API responses and shown in standings, fixtures, game headers, the dashboard, and comparisons.
+    - **13c Compact filter controls** - stacked tab-row filters on the statistics and comparisons pages replaced with compact dropdown selects.
 
 Every data-driven page needs loading, empty, unavailable, partial-data, and error states. Known corrections and anomalies must remain visible. JMP Rating, win probabilities, simulations, older seasons, other competitions, and user features are deferred.
 

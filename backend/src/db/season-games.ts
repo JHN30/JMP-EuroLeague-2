@@ -170,6 +170,7 @@ export async function getPlayerGameLog(
     db.select({
       game: gameFields,
       side: gamePlayerStats.side,
+      headshotUrl: gamePlayerStats.headshotUrl,
       ...measureFields(gamePlayerStats),
     })
       .from(gamePlayerStats)

@@ -189,6 +189,24 @@ function TeamComparisonTable({ seasonCode, phaseCode, entityA, entityB }) {
   );
 }
 
+function PlayerHeaderCell({ label, imageUrl }) {
+  return (
+    <th className="text-center">
+      {imageUrl ? (
+        <img
+          src={imageUrl}
+          alt=""
+          className="mx-auto mb-1 h-12 w-12 rounded-full object-cover"
+          onError={(event) => {
+            event.currentTarget.style.display = "none";
+          }}
+        />
+      ) : null}
+      <div>{label}</div>
+    </th>
+  );
+}
+
 function PlayerComparisonTable({ seasonCode, phaseCode, mode, entityA, entityB }) {
   const statsAQuery = useQuery({
     queryKey: ["player-compare-stats", seasonCode, phaseCode, mode, entityA?.id],
@@ -224,8 +242,8 @@ function PlayerComparisonTable({ seasonCode, phaseCode, mode, entityA, entityB }
         <thead>
           <tr>
             <th>Metric</th>
-            <th>{entityA.label}</th>
-            <th>{entityB.label}</th>
+            <PlayerHeaderCell label={entityA.label} imageUrl={a?.playerImageUrl} />
+            <PlayerHeaderCell label={entityB.label} imageUrl={b?.playerImageUrl} />
           </tr>
         </thead>
         <tbody>

@@ -240,7 +240,20 @@ function PlayerLeaderboard({ seasonCode, phaseCode }) {
                       </span>
                     </td>
                     <td>
-                      <Link to={`/${seasonCode}/players/${player.personKey}`} className="link link-hover font-medium">
+                      <Link
+                        to={`/${seasonCode}/players/${player.personKey}`}
+                        className="flex items-center gap-2 link link-hover font-medium"
+                      >
+                        {player.playerImageUrl ? (
+                          <img
+                            src={player.playerImageUrl}
+                            alt=""
+                            className="h-8 w-8 flex-none rounded-full object-cover"
+                            onError={(event) => {
+                              event.currentTarget.style.display = "none";
+                            }}
+                          />
+                        ) : null}
                         {player.playerName ?? player.personKey}
                       </Link>
                     </td>

@@ -117,7 +117,21 @@ function PlayerStatsTable({ players, side, teamLabel }) {
             <tbody>
               {rows.map((player) => (
                 <tr key={player.personKey}>
-                  <td>{player.personName ?? player.personKey}</td>
+                  <td>
+                    <div className="flex items-center gap-2">
+                      {player.headshotUrl ? (
+                        <img
+                          src={player.headshotUrl}
+                          alt=""
+                          className="h-8 w-8 flex-none rounded-full object-cover"
+                          onError={(event) => {
+                            event.currentTarget.style.display = "none";
+                          }}
+                        />
+                      ) : null}
+                      {player.personName ?? player.personKey}
+                    </div>
+                  </td>
                   <td>{formatMinutes(player.timePlayed)}</td>
                   <td>{player.points ?? "-"}</td>
                   <td>{player.totalRebounds ?? "-"}</td>

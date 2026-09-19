@@ -31,6 +31,15 @@ function formatDateTime(scheduledAt) {
   });
 }
 
+function formatMinutes(timePlayed) {
+  if (timePlayed === null || timePlayed === undefined) return "-";
+  const totalSeconds = Math.round(Number(timePlayed));
+  if (!Number.isFinite(totalSeconds)) return "-";
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  return `${minutes}:${String(seconds).padStart(2, "0")}`;
+}
+
 function teamName(team) {
   return team?.name ?? team?.abbreviatedName ?? "TBD";
 }
@@ -109,7 +118,7 @@ function PlayerStatsTable({ players, side, teamLabel }) {
               {rows.map((player) => (
                 <tr key={player.personKey}>
                   <td>{player.personName ?? player.personKey}</td>
-                  <td>{player.timePlayed ?? "-"}</td>
+                  <td>{formatMinutes(player.timePlayed)}</td>
                   <td>{player.points ?? "-"}</td>
                   <td>{player.totalRebounds ?? "-"}</td>
                   <td>{player.assistances ?? "-"}</td>

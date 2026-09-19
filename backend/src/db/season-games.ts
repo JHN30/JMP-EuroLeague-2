@@ -160,6 +160,39 @@ export async function getTeamGames(
   return { items: rows.slice(0, limit).map(toGame), hasMore: rows.length > limit };
 }
 
+export async function getPlayerGameLog(
+  seasonCode: string,
+  personKey: string,
+  limit: number,
+  offset: number,
+) {
+  const rows = await catalogRead(() =>
+    db.select({
+      game: gameFields,
+      side: gamePlayerStats.side,
+      ...measureFields(gamePlayerStats),
+    })
+      .from(gamePlayerStats)
+      .innerJoin(games, and(
+        eq(games.competitionCode, gamePlayerStats.competitionCode),
+        eq(games.seasonCode, gamePlayerStats.seasonCode),
+        eq(games.gameCode, gamePlayerStats.gameCode),
+      ))
+      .where(and(
+        eq(gamePlayerStats.competitionCode, COMPETITION_CODE),
+        eq(gamePlayerStats.seasonCode, seasonCode),
+        eq(gamePlayerStats.personKey, personKey),
+      ))
+      .orderBy(asc(games.scheduledAt), asc(games.gameCode))
+      .limit(limit + 1)
+      .offset(offset),
+  );
+  return {
+    items: rows.slice(0, limit).map(({ game, ...stats }) => ({ ...toGame(game), ...stats })),
+    hasMore: rows.length > limit,
+  };
+}
+
 export async function getGame(seasonCode: string, gameCode: number): Promise<Game | null> {
   const rows = await catalogRead(() =>
     db.select(gameFields)

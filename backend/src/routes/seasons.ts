@@ -16,7 +16,7 @@ import {
   getTeamRoster,
   getTeams,
 } from "../db/season-identities";
-import { getBoxScore, getGame, getGames, getTeamGames } from "../db/season-games";
+import { getBoxScore, getGame, getGames, getPlayerGameLog, getTeamGames } from "../db/season-games";
 import { getLatestStandingsRound, getStandings } from "../db/season-standings";
 import { getSeasonStats } from "../db/season-stats";
 
@@ -55,6 +55,22 @@ function requestedPage(req: Request, res: Response): { limit: number; offset: nu
 
 function validIdentity(value: unknown): value is string {
   return typeof value === "string" && /^[A-Za-z0-9]{1,128}$/.test(value);
+}
+
+function requestedSearch(req: Request, res: Response): string | undefined | null {
+  const value = req.query.search;
+  if (value === undefined) return undefined;
+  if (typeof value !== "string") {
+    sendError(res, 400, "INVALID_QUERY", "Invalid search query");
+    return null;
+  }
+  const trimmed = value.trim();
+  if (trimmed.length === 0) return undefined;
+  if (trimmed.length > 100) {
+    sendError(res, 400, "INVALID_QUERY", "Invalid search query");
+    return null;
+  }
+  return trimmed;
 }
 
 function requestedGameCode(req: Request, res: Response): number | null {
@@ -189,6 +205,16 @@ seasonRouter.get("/:seasonCode/phases/:phaseCode/standings", async (req, res) =>
   res.json({ round, standings: await getStandings(season.seasonCode, phaseCode, round) });
 });
 
+function requestedPersonKeyFilter(req: Request, res: Response): string | undefined | null {
+  const value = req.query.personKey;
+  if (value === undefined) return undefined;
+  if (!validIdentity(value)) {
+    sendError(res, 400, "INVALID_PLAYER_KEY", "Invalid player key");
+    return null;
+  }
+  return value;
+}
+
 seasonRouter.get("/:seasonCode/season-stats", async (req, res) => {
   const season = await requestedSeason(req, res);
   if (!season) return;
@@ -198,7 +224,9 @@ seasonRouter.get("/:seasonCode/season-stats", async (req, res) => {
   if (mode === null) return;
   const page = requestedPage(req, res);
   if (!page) return;
-  const result = await getSeasonStats(season.seasonCode, phase, mode, page.limit, page.offset);
+  const personKey = requestedPersonKeyFilter(req, res);
+  if (personKey === null) return;
+  const result = await getSeasonStats(season.seasonCode, phase, mode, page.limit, page.offset, personKey);
   res.json({ phase, mode, players: result.items, pagination: { ...page, hasMore: result.hasMore } });
 });
 
@@ -268,7 +296,9 @@ seasonRouter.get("/:seasonCode/players", async (req, res) => {
   if (!season) return;
   const page = requestedPage(req, res);
   if (!page) return;
-  const result = await getPlayers(season.seasonCode, page.limit, page.offset);
+  const search = requestedSearch(req, res);
+  if (search === null) return;
+  const result = await getPlayers(season.seasonCode, page.limit, page.offset, search);
   res.json({ players: result.items, pagination: { ...page, hasMore: result.hasMore } });
 });
 
@@ -301,6 +331,24 @@ seasonRouter.get("/:seasonCode/players/:personKey/registrations", async (req, re
     return;
   }
   res.json({ registrations: await getPlayerRegistrations(season.seasonCode, personKey) });
+});
+
+seasonRouter.get("/:seasonCode/players/:personKey/games", async (req, res) => {
+  const season = await requestedSeason(req, res);
+  if (!season) return;
+  const personKey = req.params.personKey;
+  if (!validIdentity(personKey)) {
+    sendError(res, 400, "INVALID_PLAYER_KEY", "Invalid player key");
+    return;
+  }
+  if (!await getPlayer(season.seasonCode, personKey)) {
+    sendError(res, 404, "PLAYER_NOT_FOUND", "Player not found");
+    return;
+  }
+  const page = requestedPage(req, res);
+  if (!page) return;
+  const result = await getPlayerGameLog(season.seasonCode, personKey, page.limit, page.offset);
+  res.json({ games: result.items, pagination: { ...page, hasMore: result.hasMore } });
 });
 
 function requestedGameStatus(req: Request, res: Response): "played" | "scheduled" | undefined | null {

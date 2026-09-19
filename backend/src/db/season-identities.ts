@@ -1,4 +1,4 @@
-import { and, asc, eq, exists, isNull, or, sql } from "drizzle-orm";
+import { and, asc, eq, exists, ilike, isNull, or, sql } from "drizzle-orm";
 import { db } from "./client";
 import { catalogRead } from "./season-catalog";
 import { clubs, people, registrations } from "./season-schema";
@@ -109,11 +109,15 @@ export async function getPlayers(
   seasonCode: string,
   limit: number,
   offset: number,
+  search?: string,
 ): Promise<Page<Player>> {
+  const scope = search
+    ? and(playerScope(seasonCode), or(ilike(people.name, `%${search}%`), ilike(people.jerseyName, `%${search}%`))!)
+    : playerScope(seasonCode);
   const rows = await catalogRead(() =>
     db.select(playerFields)
       .from(people)
-      .where(playerScope(seasonCode))
+      .where(scope)
       .orderBy(asc(people.name), asc(people.personKey))
       .limit(limit + 1)
       .offset(offset),

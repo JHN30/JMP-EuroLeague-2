@@ -201,7 +201,16 @@ export async function getSeasonStats(
   mode: string,
   limit: number,
   offset: number,
+  personKey?: string,
 ): Promise<Page<StatsEntry>> {
+  const conditions = [
+    eq(seasonStatsTraditional.competitionCode, COMPETITION_CODE),
+    eq(seasonStatsTraditional.seasonCode, seasonCode),
+    eq(seasonStatsTraditional.phaseCode, phaseCode),
+    eq(seasonStatsTraditional.mode, mode),
+  ];
+  if (personKey !== undefined) conditions.push(eq(seasonStatsTraditional.personKey, personKey));
+
   const rows = await catalogRead(() =>
     db.select({
       personKey: seasonStatsTraditional.personKey,
@@ -221,12 +230,7 @@ export async function getSeasonStats(
       .leftJoin(seasonStatsAdvanced, joinOn(seasonStatsAdvanced))
       .leftJoin(seasonStatsScoring, joinOn(seasonStatsScoring))
       .leftJoin(seasonStatsMisc, joinOn(seasonStatsMisc))
-      .where(and(
-        eq(seasonStatsTraditional.competitionCode, COMPETITION_CODE),
-        eq(seasonStatsTraditional.seasonCode, seasonCode),
-        eq(seasonStatsTraditional.phaseCode, phaseCode),
-        eq(seasonStatsTraditional.mode, mode),
-      ))
+      .where(and(...conditions))
       .orderBy(asc(seasonStatsTraditional.entryOrdinal), asc(seasonStatsTraditional.personKey))
       .limit(limit + 1)
       .offset(offset),

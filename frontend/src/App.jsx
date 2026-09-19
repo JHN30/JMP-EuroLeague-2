@@ -7,6 +7,8 @@ import FixturesPage from "./games/FixturesPage";
 import GameDetailPage from "./games/GameDetailPage";
 import TeamsPage from "./teams/TeamsPage";
 import TeamPage from "./teams/TeamPage";
+import PlayersPage from "./players/PlayersPage";
+import PlayerPage from "./players/PlayerPage";
 import { useDefaultSeasonCode } from "./season/useDefaultSeasonCode";
 
 const THEME_KEY = "euroleague-theme";
@@ -72,6 +74,8 @@ function App() {
           <Route path="games/:gameCode" element={<GameDetailPage />} />
           <Route path="teams" element={<TeamsPage />} />
           <Route path="teams/:clubCode" element={<TeamPage />} />
+          <Route path="players" element={<PlayersPage />} />
+          <Route path="players/:personKey" element={<PlayerPage />} />
         </Route>
         <Route path="*" element={<Navigate replace to="/" />} />
       </Routes>

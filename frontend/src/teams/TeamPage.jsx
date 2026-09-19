@@ -43,7 +43,7 @@ function opponent(game, clubCode) {
 }
 
 function SeasonRecordSection({ standingsQuery, clubCode }) {
-  if (standingsQuery.isLoading) return <CenteredSpinner />;
+  if (standingsQuery.isPending) return <CenteredSpinner />;
   if (standingsQuery.isError) {
     return <ErrorAlert message="Could not load the season record." onRetry={() => standingsQuery.refetch()} />;
   }
@@ -95,7 +95,7 @@ function SeasonRecordSection({ standingsQuery, clubCode }) {
 }
 
 function TeamStatisticsSection({ standingsQuery, clubCode }) {
-  if (standingsQuery.isLoading) return <CenteredSpinner />;
+  if (standingsQuery.isPending) return <CenteredSpinner />;
   if (standingsQuery.isError) {
     return <ErrorAlert message="Could not load team statistics." onRetry={() => standingsQuery.refetch()} />;
   }
@@ -129,7 +129,7 @@ function TeamStatisticsSection({ standingsQuery, clubCode }) {
 }
 
 function RosterSection({ rosterQuery }) {
-  if (rosterQuery.isLoading) return <CenteredSpinner />;
+  if (rosterQuery.isPending) return <CenteredSpinner />;
   if (rosterQuery.isError) {
     return <ErrorAlert message="Could not load the roster." onRetry={() => rosterQuery.refetch()} />;
   }
@@ -164,7 +164,7 @@ function RosterSection({ rosterQuery }) {
 }
 
 function ScheduleSection({ gamesQuery, clubCode }) {
-  if (gamesQuery.isLoading) return <CenteredSpinner />;
+  if (gamesQuery.isPending) return <CenteredSpinner />;
   if (gamesQuery.isError) {
     return <ErrorAlert message="Could not load the schedule." onRetry={() => gamesQuery.refetch()} />;
   }

@@ -69,3 +69,34 @@ export async function getTeamGames(seasonCode, clubCode, { limit, offset, status
   });
   return data;
 }
+
+export async function getSeasonPlayers(seasonCode, { search, limit, offset } = {}) {
+  const { data } = await api.get(`/seasons/${seasonCode}/players`, {
+    params: { search, limit, offset },
+  });
+  return data;
+}
+
+export async function getPlayer(seasonCode, personKey) {
+  const { data } = await api.get(`/seasons/${seasonCode}/players/${personKey}`);
+  return data;
+}
+
+export async function getPlayerRegistrations(seasonCode, personKey) {
+  const { data } = await api.get(`/seasons/${seasonCode}/players/${personKey}/registrations`);
+  return data;
+}
+
+export async function getPlayerSeasonStats(seasonCode, personKey, { phase, mode } = {}) {
+  const { data } = await api.get(`/seasons/${seasonCode}/season-stats`, {
+    params: { phase, mode, personKey },
+  });
+  return data;
+}
+
+export async function getPlayerGames(seasonCode, personKey, { limit, offset } = {}) {
+  const { data } = await api.get(`/seasons/${seasonCode}/players/${personKey}/games`, {
+    params: { limit, offset },
+  });
+  return data;
+}

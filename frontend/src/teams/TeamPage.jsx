@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { useParams } from "react-router";
+import { Link, useParams } from "react-router";
 import { getPhases, getSeasonStandings, getTeam, getTeamGames, getTeamRoster } from "../lib/api";
 
 const ROSTER_LIMIT = 100;
@@ -128,7 +128,7 @@ function TeamStatisticsSection({ standingsQuery, clubCode }) {
   );
 }
 
-function RosterSection({ rosterQuery }) {
+function RosterSection({ rosterQuery, seasonCode }) {
   if (rosterQuery.isPending) return <CenteredSpinner />;
   if (rosterQuery.isError) {
     return <ErrorAlert message="Could not load the roster." onRetry={() => rosterQuery.refetch()} />;
@@ -152,7 +152,15 @@ function RosterSection({ rosterQuery }) {
           {registrations.map((entry) => (
             <tr key={entry.registrationKey}>
               <td>{entry.dorsal ?? "-"}</td>
-              <td className="font-medium">{entry.player?.name ?? "TBD"}</td>
+              <td className="font-medium">
+                {entry.player ? (
+                  <Link to={`/${seasonCode}/players/${entry.player.personKey}`} className="link link-hover">
+                    {entry.player.name ?? "TBD"}
+                  </Link>
+                ) : (
+                  "TBD"
+                )}
+              </td>
               <td>{entry.positionName ?? "-"}</td>
               <td>{entry.active === false ? "Inactive" : "Active"}</td>
             </tr>
@@ -295,7 +303,7 @@ export default function TeamPage() {
 
       <section className="mb-8">
         <h2 className="mb-3 text-xl font-semibold">Roster</h2>
-        <RosterSection rosterQuery={rosterQuery} />
+        <RosterSection rosterQuery={rosterQuery} seasonCode={seasonCode} />
       </section>
 
       <section className="mb-8">

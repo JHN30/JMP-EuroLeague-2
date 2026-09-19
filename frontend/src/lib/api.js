@@ -5,9 +5,9 @@ export async function getSeasons() {
   return data;
 }
 
-export async function getSeasonGames(seasonCode, { limit, status, order, phase, round } = {}) {
+export async function getSeasonGames(seasonCode, { limit, offset, status, order, phase, round } = {}) {
   const { data } = await api.get(`/seasons/${seasonCode}/games`, {
-    params: { limit, status, order, phase, round },
+    params: { limit, offset, status, order, phase, round },
   });
   return data;
 }

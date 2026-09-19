@@ -10,7 +10,7 @@ export default function StandingsSnapshot() {
     queryFn: () => getSeasonStandings(seasonCode, "RS"),
   });
 
-  const top5 = query.data?.standings.slice(0, 5) ?? [];
+  const top10 = query.data?.standings.slice(0, 10) ?? [];
 
   return (
     <WidgetPanel
@@ -18,11 +18,11 @@ export default function StandingsSnapshot() {
       isLoading={query.isLoading}
       isError={query.isError}
       onRetry={() => query.refetch()}
-      isEmpty={query.isSuccess && top5.length === 0}
+      isEmpty={query.isSuccess && top10.length === 0}
       emptyMessage="Standings not available yet."
     >
       <ol className="space-y-2">
-        {top5.map((entry) => (
+        {top10.map((entry) => (
           <li key={entry.clubCode} className="flex items-center gap-3">
             <span className={`rank ${entry.basic?.position === 1 ? "rank-1" : ""}`}>
               {entry.basic?.position ?? "-"}

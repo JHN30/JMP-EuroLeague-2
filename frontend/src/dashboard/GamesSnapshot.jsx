@@ -1,9 +1,79 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link, useParams } from "react-router";
-import { getSeasonGames } from "../lib/api";
+import { getSeasonGames, getSeasonStandings } from "../lib/api";
 import { WidgetPanel } from "./Dashboard";
 
-function GameList({ title, seasonCode, queryKey, params, emptyMessage, showScore }) {
+function roundLabel(game) {
+  return game.roundName ?? (game.roundNumber ? `Round ${game.roundNumber}` : game.phaseName);
+}
+
+function formatTime(scheduledAt) {
+  if (!scheduledAt) return "TBD";
+  return new Date(scheduledAt).toLocaleString(undefined, {
+    dateStyle: "medium",
+    timeStyle: "short",
+  });
+}
+
+function MatchCard({ game, standingByClubCode, seasonCode, showScore }) {
+  const localEntry = game.localTeam?.clubCode ? standingByClubCode.get(game.localTeam.clubCode) : null;
+  const roadEntry = game.roadTeam?.clubCode ? standingByClubCode.get(game.roadTeam.clubCode) : null;
+  const localWon = showScore && game.localScore != null && game.roadScore != null && game.localScore > game.roadScore;
+  const roadWon = showScore && game.localScore != null && game.roadScore != null && game.roadScore > game.localScore;
+
+  return (
+    <Link to={`/${seasonCode}/games/${game.gameCode}`} className="match-card">
+      <div className="match-card-head">
+        <span>{roundLabel(game)}</span>
+        <span className={`status-chip ${showScore ? "final" : "upcoming"}`}>
+          {showScore ? "Final" : formatTime(game.scheduledAt)}
+        </span>
+      </div>
+      <div className="game-teams">
+        <div className={`game-team${localWon ? " win" : ""}`}>
+          {game.localTeam?.crestUrl ? (
+            <img
+              src={game.localTeam.crestUrl}
+              alt=""
+              className="h-6 w-6 flex-none object-contain"
+              onError={(event) => {
+                event.currentTarget.style.display = "none";
+              }}
+            />
+          ) : null}
+          <span className="flex-1">{game.localTeam?.abbreviatedName ?? game.localTeam?.name ?? "TBD"}</span>
+          {localEntry?.basic ? (
+            <span className="record">
+              {localEntry.basic.gamesWon}-{localEntry.basic.gamesLost}
+            </span>
+          ) : null}
+          {showScore ? <span className="score">{game.localScore ?? "-"}</span> : null}
+        </div>
+        <div className={`game-team${roadWon ? " win" : ""}`}>
+          {game.roadTeam?.crestUrl ? (
+            <img
+              src={game.roadTeam.crestUrl}
+              alt=""
+              className="h-6 w-6 flex-none object-contain"
+              onError={(event) => {
+                event.currentTarget.style.display = "none";
+              }}
+            />
+          ) : null}
+          <span className="flex-1">{game.roadTeam?.abbreviatedName ?? game.roadTeam?.name ?? "TBD"}</span>
+          {roadEntry?.basic ? (
+            <span className="record">
+              {roadEntry.basic.gamesWon}-{roadEntry.basic.gamesLost}
+            </span>
+          ) : null}
+          {showScore ? <span className="score">{game.roadScore ?? "-"}</span> : null}
+        </div>
+      </div>
+    </Link>
+  );
+}
+
+function GameList({ title, seasonCode, queryKey, params, emptyMessage, showScore, standingByClubCode, standingsReady }) {
   const query = useQuery({
     queryKey,
     queryFn: () => getSeasonGames(seasonCode, params),
@@ -13,46 +83,36 @@ function GameList({ title, seasonCode, queryKey, params, emptyMessage, showScore
   return (
     <WidgetPanel
       title={title}
-      isLoading={query.isLoading}
+      isLoading={query.isLoading || !standingsReady}
       isError={query.isError}
       onRetry={() => query.refetch()}
       isEmpty={query.isSuccess && games.length === 0}
       emptyMessage={emptyMessage}
     >
-      <ul className="space-y-2">
-        {games.map((game) => {
-          const localWon = showScore && game.localScore != null && game.roadScore != null && game.localScore > game.roadScore;
-          const roadWon = showScore && game.localScore != null && game.roadScore != null && game.roadScore > game.localScore;
-          return (
-            <li key={game.gameCode}>
-              <Link
-                to={`/${seasonCode}/games/${game.gameCode}`}
-                className="flex items-center justify-between gap-3 rounded-field hover:text-primary"
-              >
-                <span className={localWon ? "font-semibold" : "muted"}>
-                  {game.localTeam?.abbreviatedName ?? game.localTeam?.name ?? "TBD"}
-                </span>
-                {showScore ? (
-                  <span className="stat-badge stat-badge-neutral tabular-nums">
-                    {game.localScore ?? "-"}-{game.roadScore ?? "-"}
-                  </span>
-                ) : (
-                  <span className="muted text-sm">vs</span>
-                )}
-                <span className={roadWon ? "font-semibold" : "muted"}>
-                  {game.roadTeam?.abbreviatedName ?? game.roadTeam?.name ?? "TBD"}
-                </span>
-              </Link>
-            </li>
-          );
-        })}
-      </ul>
+      <div className="games-list">
+        {games.map((game) => (
+          <MatchCard
+            key={game.gameCode}
+            game={game}
+            standingByClubCode={standingByClubCode}
+            seasonCode={seasonCode}
+            showScore={showScore}
+          />
+        ))}
+      </div>
     </WidgetPanel>
   );
 }
 
 export default function GamesSnapshot() {
   const { seasonCode } = useParams();
+  const standingsQuery = useQuery({
+    queryKey: ["standings", seasonCode, "RS"],
+    queryFn: () => getSeasonStandings(seasonCode, "RS"),
+  });
+  const standingByClubCode = new Map(
+    (standingsQuery.data?.standings ?? []).map((entry) => [entry.clubCode, entry]),
+  );
 
   return (
     <>
@@ -63,6 +123,8 @@ export default function GamesSnapshot() {
         params={{ status: "played", order: "desc", limit: 5 }}
         emptyMessage="No results yet."
         showScore
+        standingByClubCode={standingByClubCode}
+        standingsReady={standingsQuery.isSuccess || standingsQuery.isError}
       />
       <GameList
         title="Upcoming games"
@@ -70,6 +132,8 @@ export default function GamesSnapshot() {
         queryKey={["games", seasonCode, "scheduled", "asc"]}
         params={{ status: "scheduled", order: "asc", limit: 5 }}
         emptyMessage="No games scheduled yet."
+        standingByClubCode={standingByClubCode}
+        standingsReady={standingsQuery.isSuccess || standingsQuery.isError}
       />
     </>
   );

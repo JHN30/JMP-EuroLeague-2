@@ -1,5 +1,9 @@
+import FormWatch from "./FormWatch";
 import GamesSnapshot from "./GamesSnapshot";
+import KpiStrip from "./KpiStrip";
+import LeaderTrend from "./LeaderTrend";
 import LeadersPanel from "./LeadersPanel";
+import Spotlight from "./Spotlight";
 import StandingsSnapshot from "./StandingsSnapshot";
 
 export function WidgetPanel({ title, isLoading, isError, onRetry, isEmpty, emptyMessage, children }) {
@@ -32,10 +36,22 @@ export function WidgetPanel({ title, isLoading, isError, onRetry, isEmpty, empty
 
 export default function Dashboard() {
   return (
-    <div className="grid gap-6 md:grid-cols-2">
-      <StandingsSnapshot />
-      <GamesSnapshot />
-      <LeadersPanel />
+    <div className="flex flex-col gap-6">
+      <KpiStrip />
+      <Spotlight />
+      <div className="grid items-stretch gap-6 lg:grid-cols-3">
+        <div className="flex flex-col gap-6 [&>*:last-child]:flex-1">
+          <StandingsSnapshot />
+        </div>
+        <div className="flex flex-col gap-6 [&>*:last-child]:flex-1">
+          <GamesSnapshot />
+        </div>
+        <div className="flex flex-col gap-6 [&>*:last-child]:flex-1">
+          <LeadersPanel />
+          <FormWatch />
+        </div>
+      </div>
+      <LeaderTrend />
     </div>
   );
 }

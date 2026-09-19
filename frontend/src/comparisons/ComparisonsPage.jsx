@@ -395,35 +395,35 @@ export default function ComparisonsPage() {
     <div>
       <h1 className="mb-6 text-2xl font-semibold">Comparisons and trends</h1>
 
-      <div role="tablist" className="tabs tabs-boxed tabs-sm mb-4 w-fit">
-        {[
-          ["teams", "Teams"],
-          ["players", "Players"],
-        ].map(([value, label]) => (
-          <button
-            key={value}
-            role="tab"
-            type="button"
-            className={`tab font-semibold ${view === value ? "tab-active" : ""}`}
-            onClick={() => handleViewChange(value)}
+      <div className="mb-6 flex flex-wrap gap-4">
+        <label className="flex flex-col gap-1 text-sm font-medium">
+          <span>Comparison type</span>
+          <select
+            aria-label="Comparison type"
+            className="select select-bordered select-sm"
+            value={view}
+            onChange={(event) => handleViewChange(event.target.value)}
           >
-            {label}
-          </button>
-        ))}
-      </div>
+            <option value="teams">Teams</option>
+            <option value="players">Players</option>
+          </select>
+        </label>
 
-      <div role="tablist" className="tabs tabs-boxed tabs-sm mb-6 w-fit">
-        {phases.map((phase) => (
-          <button
-            key={phase.code}
-            role="tab"
-            type="button"
-            className={`tab font-semibold ${phaseCode === phase.code ? "tab-active" : ""}`}
-            onClick={() => setSelectedPhase(phase.code)}
+        <label className="flex flex-col gap-1 text-sm font-medium">
+          <span>Phase</span>
+          <select
+            aria-label="Comparison phase"
+            className="select select-bordered select-sm"
+            value={phaseCode ?? ""}
+            onChange={(event) => setSelectedPhase(event.target.value)}
           >
-            {phase.name ?? phase.code}
-          </button>
-        ))}
+            {phases.map((phase) => (
+              <option key={phase.code} value={phase.code}>
+                {phase.name ?? phase.code}
+              </option>
+            ))}
+          </select>
+        </label>
       </div>
 
       <div className="mb-6 grid gap-4 sm:grid-cols-2">
@@ -465,22 +465,18 @@ export default function ComparisonsPage() {
       </div>
 
       {view === "players" ? (
-        <div role="tablist" className="tabs tabs-boxed tabs-sm mb-4 w-fit">
-          {[
-            ["accumulated", "Accumulated"],
-            ["perGame", "Per game"],
-          ].map(([value, label]) => (
-            <button
-              key={value}
-              role="tab"
-              type="button"
-              className={`tab font-semibold ${mode === value ? "tab-active" : ""}`}
-              onClick={() => setMode(value)}
-            >
-              {label}
-            </button>
-          ))}
-        </div>
+        <label className="mb-4 flex flex-col gap-1 text-sm font-medium">
+          <span>Player statistics</span>
+          <select
+            aria-label="Player comparison mode"
+            className="select select-bordered select-sm w-fit"
+            value={mode}
+            onChange={(event) => setMode(event.target.value)}
+          >
+            <option value="accumulated">Accumulated</option>
+            <option value="perGame">Per game</option>
+          </select>
+        </label>
       ) : null}
 
       <section className="mb-8">

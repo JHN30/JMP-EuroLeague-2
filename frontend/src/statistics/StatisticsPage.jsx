@@ -31,24 +31,20 @@ function ErrorAlert({ message, onRetry }) {
   );
 }
 
-function DirectionToggle({ direction, onChange }) {
+function DirectionSelect({ direction, label, onChange }) {
   return (
-    <div role="tablist" className="tabs tabs-boxed tabs-sm w-fit">
-      {[
-        ["desc", "Descending"],
-        ["asc", "Ascending"],
-      ].map(([value, label]) => (
-        <button
-          key={value}
-          role="tab"
-          type="button"
-          className={`tab font-semibold ${direction === value ? "tab-active" : ""}`}
-          onClick={() => onChange(value)}
-        >
-          {label}
-        </button>
-      ))}
-    </div>
+    <label className="flex flex-col gap-1 text-sm font-medium">
+      <span>{label}</span>
+      <select
+        aria-label={label}
+        className="select select-bordered select-sm"
+        value={direction}
+        onChange={(event) => onChange(event.target.value)}
+      >
+        <option value="desc">Descending</option>
+        <option value="asc">Ascending</option>
+      </select>
+    </label>
   );
 }
 
@@ -102,7 +98,7 @@ function TeamLeaderboard({ seasonCode, phaseCode }) {
             </option>
           ))}
         </select>
-        <DirectionToggle direction={direction} onChange={setDirection} />
+        <DirectionSelect direction={direction} label="Team sort direction" onChange={setDirection} />
       </div>
 
       <div className="panel overflow-x-auto p-2">
@@ -181,22 +177,18 @@ function PlayerLeaderboard({ seasonCode, phaseCode }) {
   return (
     <div>
       <div className="mb-4 flex flex-wrap items-center gap-4">
-        <div role="tablist" className="tabs tabs-boxed tabs-sm w-fit">
-          {[
-            ["accumulated", "Accumulated"],
-            ["perGame", "Per game"],
-          ].map(([value, label]) => (
-            <button
-              key={value}
-              role="tab"
-              type="button"
-              className={`tab font-semibold ${mode === value ? "tab-active" : ""}`}
-              onClick={() => handleModeChange(value)}
-            >
-              {label}
-            </button>
-          ))}
-        </div>
+        <label className="flex flex-col gap-1 text-sm font-medium">
+          <span>Player statistics</span>
+          <select
+            aria-label="Player statistics mode"
+            className="select select-bordered select-sm"
+            value={mode}
+            onChange={(event) => handleModeChange(event.target.value)}
+          >
+            <option value="accumulated">Accumulated</option>
+            <option value="perGame">Per game</option>
+          </select>
+        </label>
 
         <select
           aria-label="Player metric"
@@ -215,7 +207,7 @@ function PlayerLeaderboard({ seasonCode, phaseCode }) {
           ))}
         </select>
 
-        <DirectionToggle direction={direction} onChange={handleDirectionChange} />
+        <DirectionSelect direction={direction} label="Player sort direction" onChange={handleDirectionChange} />
       </div>
 
       {players.length === 0 ? (
@@ -311,35 +303,35 @@ export default function StatisticsPage() {
     <div>
       <h1 className="mb-6 text-2xl font-semibold">Statistics leaderboards</h1>
 
-      <div role="tablist" className="tabs tabs-boxed tabs-sm mb-4 w-fit">
-        {[
-          ["teams", "Teams"],
-          ["players", "Players"],
-        ].map(([value, label]) => (
-          <button
-            key={value}
-            role="tab"
-            type="button"
-            className={`tab font-semibold ${view === value ? "tab-active" : ""}`}
-            onClick={() => setView(value)}
+      <div className="mb-6 flex flex-wrap gap-4">
+        <label className="flex flex-col gap-1 text-sm font-medium">
+          <span>Leaderboard</span>
+          <select
+            aria-label="Leaderboard type"
+            className="select select-bordered select-sm"
+            value={view}
+            onChange={(event) => setView(event.target.value)}
           >
-            {label}
-          </button>
-        ))}
-      </div>
+            <option value="teams">Teams</option>
+            <option value="players">Players</option>
+          </select>
+        </label>
 
-      <div role="tablist" className="tabs tabs-boxed tabs-sm mb-6 w-fit">
-        {phases.map((phase) => (
-          <button
-            key={phase.code}
-            role="tab"
-            type="button"
-            className={`tab font-semibold ${phaseCode === phase.code ? "tab-active" : ""}`}
-            onClick={() => setSelectedPhase(phase.code)}
+        <label className="flex flex-col gap-1 text-sm font-medium">
+          <span>Phase</span>
+          <select
+            aria-label="Statistics phase"
+            className="select select-bordered select-sm"
+            value={phaseCode ?? ""}
+            onChange={(event) => setSelectedPhase(event.target.value)}
           >
-            {phase.name ?? phase.code}
-          </button>
-        ))}
+            {phases.map((phase) => (
+              <option key={phase.code} value={phase.code}>
+                {phase.name ?? phase.code}
+              </option>
+            ))}
+          </select>
+        </label>
       </div>
 
       {view === "teams" ? (

@@ -16,7 +16,7 @@ import {
   getTeamRoster,
   getTeams,
 } from "../db/season-identities";
-import { getBoxScore, getGame, getGames } from "../db/season-games";
+import { getBoxScore, getGame, getGames, getTeamGames } from "../db/season-games";
 import { getLatestStandingsRound, getStandings } from "../db/season-standings";
 import { getSeasonStats } from "../db/season-stats";
 
@@ -239,6 +239,28 @@ seasonRouter.get("/:seasonCode/teams/:clubCode/roster", async (req, res) => {
   if (!page) return;
   const result = await getTeamRoster(season.seasonCode, clubCode, page.limit, page.offset);
   res.json({ registrations: result.items, pagination: { ...page, hasMore: result.hasMore } });
+});
+
+seasonRouter.get("/:seasonCode/teams/:clubCode/games", async (req, res) => {
+  const season = await requestedSeason(req, res);
+  if (!season) return;
+  const clubCode = req.params.clubCode;
+  if (!validIdentity(clubCode)) {
+    sendError(res, 400, "INVALID_TEAM_CODE", "Invalid team code");
+    return;
+  }
+  if (!await getTeam(season.seasonCode, clubCode)) {
+    sendError(res, 404, "TEAM_NOT_FOUND", "Team not found");
+    return;
+  }
+  const page = requestedPage(req, res);
+  if (!page) return;
+  const status = requestedGameStatus(req, res);
+  if (status === null) return;
+  const order = requestedGameOrder(req, res);
+  if (order === null) return;
+  const result = await getTeamGames(season.seasonCode, clubCode, page.limit, page.offset, status, order);
+  res.json({ games: result.items, pagination: { ...page, hasMore: result.hasMore } });
 });
 
 seasonRouter.get("/:seasonCode/players", async (req, res) => {

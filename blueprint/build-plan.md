@@ -18,7 +18,7 @@ Scaffolding, shared layout, design tokens, database connection setup, and deploy
 - [x] 4. **Standings** - Display official season standings by phase with rank, record, scoring, streak/form when available, tie-break context, and clear indicators for known corrections or incomplete data.
 - [x] 5. **Navigation bar** - Add a persistent navigation bar with tabs to Home, Standings, Fixtures and results, Teams, Players, Statistics leaderboards, Comparisons and trends, and Playoffs, alongside the existing season selector.
 - [x] 6. **Fixtures and results** - Browse games by round and status, distinguish scheduled from completed games, and open a game page containing score, metadata, and team/player box-score statistics when available.
-- [ ] 7. **Teams** - Browse teams and open a team page with identity, roster, schedule/results, season record, and team statistics for the selected season.
+- [x] 7. **Teams** - Browse teams and open a team page with identity, roster, schedule/results, season record, and team statistics for the selected season.
 - [ ] 8. **Players** - Search and browse players and open a player page with profile information, current team, season totals/per-game statistics, and game-by-game performance.
 - [ ] 9. **Statistics leaderboards** - Rank and filter team and player metrics for the selected season, supporting the available accumulated, per-game, and rate-based views without presenting missing values as zero.
 - [ ] 10. **Comparisons and trends** - Compare selected teams or players and visualize useful season/game trends with responsive, accessible charts and tables.

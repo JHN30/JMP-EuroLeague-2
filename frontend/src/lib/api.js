@@ -45,3 +45,27 @@ export async function getLeaderStats(seasonCode, { phase, mode, limit } = {}) {
   });
   return data;
 }
+
+export async function getSeasonTeams(seasonCode) {
+  const { data } = await api.get(`/seasons/${seasonCode}/teams`);
+  return data;
+}
+
+export async function getTeam(seasonCode, clubCode) {
+  const { data } = await api.get(`/seasons/${seasonCode}/teams/${clubCode}`);
+  return data;
+}
+
+export async function getTeamRoster(seasonCode, clubCode, { limit, offset } = {}) {
+  const { data } = await api.get(`/seasons/${seasonCode}/teams/${clubCode}/roster`, {
+    params: { limit, offset },
+  });
+  return data;
+}
+
+export async function getTeamGames(seasonCode, clubCode, { limit, offset, status, order } = {}) {
+  const { data } = await api.get(`/seasons/${seasonCode}/teams/${clubCode}/games`, {
+    params: { limit, offset, status, order },
+  });
+  return data;
+}

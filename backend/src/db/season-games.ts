@@ -130,6 +130,36 @@ export async function getGames(
   return { items: rows.slice(0, limit).map(toGame), hasMore: rows.length > limit };
 }
 
+export async function getTeamGames(
+  seasonCode: string,
+  clubCode: string,
+  limit: number,
+  offset: number,
+  status?: "played" | "scheduled",
+  order: "asc" | "desc" = "asc",
+) {
+  const conditions = [
+    eq(games.competitionCode, COMPETITION_CODE),
+    eq(games.seasonCode, seasonCode),
+    or(eq(games.localClubCode, clubCode), eq(games.roadClubCode, clubCode))!,
+  ];
+  if (status === "played") conditions.push(eq(games.played, true));
+  if (status === "scheduled") conditions.push(or(eq(games.played, false), isNull(games.played))!);
+
+  const rows = await catalogRead(() =>
+    db.select(gameFields)
+      .from(games)
+      .where(and(...conditions))
+      .orderBy(
+        order === "desc" ? sql`${games.scheduledAt} DESC NULLS LAST` : asc(games.scheduledAt),
+        asc(games.gameCode),
+      )
+      .limit(limit + 1)
+      .offset(offset),
+  );
+  return { items: rows.slice(0, limit).map(toGame), hasMore: rows.length > limit };
+}
+
 export async function getGame(seasonCode: string, gameCode: number): Promise<Game | null> {
   const rows = await catalogRead(() =>
     db.select(gameFields)

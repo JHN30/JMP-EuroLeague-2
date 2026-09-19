@@ -138,7 +138,7 @@ function RosterSection({ rosterQuery }) {
     return <p className="muted">Roster not available yet.</p>;
   }
   return (
-    <div className="overflow-x-auto">
+    <div className="panel overflow-x-auto p-2">
       <table className="table">
         <thead>
           <tr>
@@ -152,7 +152,7 @@ function RosterSection({ rosterQuery }) {
           {registrations.map((entry) => (
             <tr key={entry.registrationKey}>
               <td>{entry.dorsal ?? "-"}</td>
-              <td>{entry.player?.name ?? "TBD"}</td>
+              <td className="font-medium">{entry.player?.name ?? "TBD"}</td>
               <td>{entry.positionName ?? "-"}</td>
               <td>{entry.active === false ? "Inactive" : "Active"}</td>
             </tr>
@@ -173,27 +173,38 @@ function ScheduleSection({ gamesQuery, clubCode }) {
     return <p className="muted">No games scheduled yet.</p>;
   }
   return (
-    <ul className="space-y-2">
-      {games.map((game) => {
-        const { team, home } = opponent(game, clubCode);
-        return (
-          <li key={game.gameCode} className="flex items-center justify-between gap-4 border-b border-base-300 py-2">
-            <div className="flex flex-col">
-              <span>
-                {home ? "vs" : "@"} {teamLabel(team)}
-              </span>
-              <span className="muted text-sm">
-                {game.roundName ?? (game.roundNumber ? `Round ${game.roundNumber}` : game.phaseName)} ·{" "}
-                {formatDateTime(game.scheduledAt)}
-              </span>
-            </div>
-            <span className="muted">
-              {game.played ? `${game.localScore ?? "-"}-${game.roadScore ?? "-"}` : "Not yet played"}
-            </span>
-          </li>
-        );
-      })}
-    </ul>
+    <div className="panel p-4">
+      <ul>
+        {games.map((game) => {
+          const { team, home } = opponent(game, clubCode);
+          const hasScores = game.localScore != null && game.roadScore != null;
+          const teamWon = game.played && hasScores && (home ? game.localScore > game.roadScore : game.roadScore > game.localScore);
+          const teamLost = game.played && hasScores && (home ? game.roadScore > game.localScore : game.localScore > game.roadScore);
+          return (
+            <li key={game.gameCode} className="flex items-center justify-between gap-4 border-b border-base-300 py-2 last:border-0">
+              <div className="flex flex-col">
+                <span>
+                  {home ? "vs" : "@"} {teamLabel(team)}
+                </span>
+                <span className="muted text-sm">
+                  {game.roundName ?? (game.roundNumber ? `Round ${game.roundNumber}` : game.phaseName)} ·{" "}
+                  {formatDateTime(game.scheduledAt)}
+                </span>
+              </div>
+              {game.played ? (
+                <span
+                  className={`stat-badge tabular-nums ${teamWon ? "stat-badge-positive" : teamLost ? "stat-badge-negative" : "stat-badge-neutral"}`}
+                >
+                  {game.localScore ?? "-"}-{game.roadScore ?? "-"}
+                </span>
+              ) : (
+                <span className="muted text-sm">Not yet played</span>
+              )}
+            </li>
+          );
+        })}
+      </ul>
+    </div>
   );
 }
 
@@ -258,13 +269,13 @@ export default function TeamPage() {
         </div>
       </div>
 
-      <div role="tablist" className="tabs tabs-boxed mb-6 w-fit">
+      <div role="tablist" className="tabs tabs-boxed tabs-sm mb-6 w-fit">
         {phases.map((phase) => (
           <button
             key={phase.code}
             role="tab"
             type="button"
-            className={`tab ${phaseCode === phase.code ? "tab-active" : ""}`}
+            className={`tab font-semibold ${phaseCode === phase.code ? "tab-active" : ""}`}
             onClick={() => setSelectedPhase(phase.code)}
           >
             {phase.name ?? phase.code}

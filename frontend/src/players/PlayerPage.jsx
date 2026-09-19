@@ -181,7 +181,7 @@ function GameLogSection({ gamesQuery }) {
     return <p className="muted">No game log available yet.</p>;
   }
   return (
-    <div className="overflow-x-auto">
+    <div className="panel overflow-x-auto p-2">
       <table className="table">
         <thead>
           <tr>
@@ -200,7 +200,7 @@ function GameLogSection({ gamesQuery }) {
         <tbody>
           {games.map((game) => (
             <tr key={game.gameCode}>
-              <td>{teamLabel(opponent(game, game.side))}</td>
+              <td className="font-medium">{teamLabel(opponent(game, game.side))}</td>
               <td>{game.roundName ?? (game.roundNumber ? `Round ${game.roundNumber}` : game.phaseName)}</td>
               <td>{formatDateTime(game.scheduledAt)}</td>
               <td>{formatMinutes(game.timePlayed)}</td>
@@ -284,26 +284,26 @@ export default function PlayerPage() {
       <section className="mb-8">
         <h2 className="mb-3 text-xl font-semibold">Season statistics</h2>
         <div className="mb-4 flex flex-wrap items-center gap-4">
-          <div role="tablist" className="tabs tabs-boxed w-fit">
+          <div role="tablist" className="tabs tabs-boxed tabs-sm w-fit">
             {phases.map((phase) => (
               <button
                 key={phase.code}
                 role="tab"
                 type="button"
-                className={`tab ${phaseCode === phase.code ? "tab-active" : ""}`}
+                className={`tab font-semibold ${phaseCode === phase.code ? "tab-active" : ""}`}
                 onClick={() => setSelectedPhase(phase.code)}
               >
                 {phase.name ?? phase.code}
               </button>
             ))}
           </div>
-          <div role="tablist" className="tabs tabs-boxed w-fit">
+          <div role="tablist" className="tabs tabs-boxed tabs-sm w-fit">
             {STATS_MODES.map((option) => (
               <button
                 key={option.value}
                 role="tab"
                 type="button"
-                className={`tab ${mode === option.value ? "tab-active" : ""}`}
+                className={`tab font-semibold ${mode === option.value ? "tab-active" : ""}`}
                 onClick={() => setMode(option.value)}
               >
                 {option.label}

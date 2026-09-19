@@ -64,16 +64,18 @@ export default function PlayersPage() {
         <p className="muted">{search ? "No players match your search." : "No players available for this season."}</p>
       ) : (
         <>
-          <ul className="space-y-2">
-            {players.map((player) => (
-              <li key={player.personKey} className="flex items-center justify-between gap-4 border-b border-base-300 py-2">
-                <Link to={`/${seasonCode}/players/${player.personKey}`} className="link link-hover">
-                  {player.name ?? player.jerseyName ?? player.personKey}
-                </Link>
-                <span className="muted text-sm">{player.countryCode ?? "-"}</span>
-              </li>
-            ))}
-          </ul>
+          <div className="panel p-4">
+            <ul>
+              {players.map((player) => (
+                <li key={player.personKey} className="flex items-center justify-between gap-4 border-b border-base-300 py-2 last:border-0">
+                  <Link to={`/${seasonCode}/players/${player.personKey}`} className="link link-hover font-medium">
+                    {player.name ?? player.jerseyName ?? player.personKey}
+                  </Link>
+                  <span className="muted text-sm">{player.countryCode ?? "-"}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
 
           <div className="mt-4 flex justify-center gap-2">
             <button

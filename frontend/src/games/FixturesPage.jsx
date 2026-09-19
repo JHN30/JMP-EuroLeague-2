@@ -101,13 +101,13 @@ export default function FixturesPage() {
     <div>
       <h1 className="mb-6 text-2xl font-semibold">Fixtures and results</h1>
 
-      <div role="tablist" className="tabs tabs-boxed mb-4 w-fit">
+      <div role="tablist" className="tabs tabs-boxed tabs-sm mb-4 w-fit">
         {phases.map((phase) => (
           <button
             key={phase.code}
             role="tab"
             type="button"
-            className={`tab ${phaseCode === phase.code ? "tab-active" : ""}`}
+            className={`tab font-semibold ${phaseCode === phase.code ? "tab-active" : ""}`}
             onClick={() => handlePhaseChange(phase.code)}
           >
             {phase.name ?? phase.code}
@@ -131,13 +131,13 @@ export default function FixturesPage() {
           ))}
         </select>
 
-        <div role="tablist" className="tabs tabs-boxed w-fit">
+        <div role="tablist" className="tabs tabs-boxed tabs-sm w-fit">
           {STATUS_FILTERS.map((filter) => (
             <button
               key={filter.label}
               role="tab"
               type="button"
-              className={`tab ${status === filter.value ? "tab-active" : ""}`}
+              className={`tab font-semibold ${status === filter.value ? "tab-active" : ""}`}
               onClick={() => handleStatusChange(filter.value)}
             >
               {filter.label}
@@ -154,23 +154,40 @@ export default function FixturesPage() {
         <p className="muted">No games match these filters.</p>
       ) : (
         <>
-          <ul className="space-y-2">
-            {games.map((game) => (
-              <li key={game.gameCode} className="flex items-center justify-between gap-4 border-b border-base-300 py-2">
-                <div className="flex flex-col">
-                  <Link to={`/${seasonCode}/games/${game.gameCode}`} className="link link-hover">
-                    {teamLabel(game.localTeam)} vs {teamLabel(game.roadTeam)}
-                  </Link>
-                  <span className="muted text-sm">
-                    {game.roundName ?? (game.roundNumber ? `Round ${game.roundNumber}` : "")} · {formatDateTime(game.scheduledAt)}
-                  </span>
-                </div>
-                <span className="muted">
-                  {game.played ? `${game.localScore ?? "-"}-${game.roadScore ?? "-"}` : "Not yet played"}
-                </span>
-              </li>
-            ))}
-          </ul>
+          <div className="panel p-4">
+            <ul>
+              {games.map((game) => {
+                const localWon = game.played && game.localScore != null && game.roadScore != null && game.localScore > game.roadScore;
+                const roadWon = game.played && game.localScore != null && game.roadScore != null && game.roadScore > game.localScore;
+                return (
+                  <li key={game.gameCode} className="border-b border-base-300 py-2 last:border-0">
+                    <Link
+                      to={`/${seasonCode}/games/${game.gameCode}`}
+                      className="flex items-center justify-between gap-4 rounded-field hover:text-primary"
+                    >
+                      <div className="flex flex-col gap-1">
+                        <span className="flex items-center gap-2">
+                          <span className={localWon ? "font-semibold" : undefined}>{teamLabel(game.localTeam)}</span>
+                          <span className="muted text-xs">vs</span>
+                          <span className={roadWon ? "font-semibold" : undefined}>{teamLabel(game.roadTeam)}</span>
+                        </span>
+                        <span className="muted text-sm">
+                          {game.roundName ?? (game.roundNumber ? `Round ${game.roundNumber}` : "")} · {formatDateTime(game.scheduledAt)}
+                        </span>
+                      </div>
+                      {game.played ? (
+                        <span className="stat-badge stat-badge-neutral tabular-nums">
+                          {game.localScore ?? "-"}-{game.roadScore ?? "-"}
+                        </span>
+                      ) : (
+                        <span className="muted text-sm">Not yet played</span>
+                      )}
+                    </Link>
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
 
           {!selectedRound ? (
             <div className="mt-4 flex justify-center gap-2">

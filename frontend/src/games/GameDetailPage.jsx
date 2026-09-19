@@ -66,7 +66,7 @@ function TeamStatsTable({ teamStats, localTeam, roadTeam }) {
   ];
 
   return (
-    <div className="overflow-x-auto">
+    <div className="panel overflow-x-auto p-2">
       <table className="table">
         <thead>
           <tr>
@@ -79,7 +79,7 @@ function TeamStatsTable({ teamStats, localTeam, roadTeam }) {
         <tbody>
           {totals.map((row) => (
             <tr key={row.side}>
-              <td>{row.side === "local" ? teamName(localTeam) : teamName(roadTeam)}</td>
+              <td className="font-medium">{row.side === "local" ? teamName(localTeam) : teamName(roadTeam)}</td>
               {columns.map(([field, label]) => (
                 <td key={label}>{row[field] ?? "-"}</td>
               ))}
@@ -100,7 +100,7 @@ function PlayerStatsTable({ players, side, teamLabel }) {
       {rows.length === 0 ? (
         <p className="muted">Box score not available yet.</p>
       ) : (
-        <div className="overflow-x-auto">
+        <div className="panel overflow-x-auto p-2">
           <table className="table">
             <thead>
               <tr>
@@ -162,20 +162,32 @@ export default function GameDetailPage() {
   }
 
   const game = gameQuery.data.game;
+  const localWon = game.played && game.localScore != null && game.roadScore != null && game.localScore > game.roadScore;
+  const roadWon = game.played && game.localScore != null && game.roadScore != null && game.roadScore > game.localScore;
 
   return (
     <div>
       <h1 className="mb-2 text-2xl font-semibold">
-        {teamName(game.localTeam)} vs {teamName(game.roadTeam)}
+        <span className={localWon ? "text-primary" : undefined}>{teamName(game.localTeam)}</span>
+        <span className="muted mx-2 text-lg font-normal">vs</span>
+        <span className={roadWon ? "text-primary" : undefined}>{teamName(game.roadTeam)}</span>
       </h1>
-      <p className="muted mb-1">
+      <p className="muted mb-6">
         {game.roundName ?? (game.roundNumber ? `Round ${game.roundNumber}` : game.phaseName)} · {formatDateTime(game.scheduledAt)}
       </p>
-      <p className="muted mb-6">{game.gameStatus ?? (game.played ? "Played" : "Scheduled")}</p>
 
-      <p className="mb-6 text-3xl font-bold">
-        {game.played ? `${game.localScore ?? "-"} - ${game.roadScore ?? "-"}` : "Not yet played"}
-      </p>
+      {game.played ? (
+        <div className="stat-callout mb-6">
+          <span className="value">
+            {game.localScore ?? "-"} - {game.roadScore ?? "-"}
+          </span>
+          <span className="label">Final</span>
+        </div>
+      ) : (
+        <span className="stat-badge stat-badge-neutral mb-6 inline-flex">
+          {game.gameStatus ?? "Scheduled"}
+        </span>
+      )}
 
       <h2 className="mb-3 text-xl font-semibold">Team stats</h2>
       {boxScoreQuery.isLoading ? (

@@ -21,7 +21,7 @@ Scaffolding, shared layout, design tokens, database connection setup, and deploy
 - [x] 7. **Teams** - Browse teams and open a team page with identity, roster, schedule/results, season record, and team statistics for the selected season.
 - [x] 8. **Players** - Search and browse players and open a player page with profile information, current team, season totals/per-game statistics, and game-by-game performance.
 - [x] 9. **Statistics leaderboards** - Rank and filter team and player metrics for the selected season, supporting the available accumulated, per-game, and rate-based views without presenting missing values as zero.
-- [ ] 10. **Comparisons and trends** - Compare selected teams or players and visualize useful season/game trends with responsive, accessible charts and tables.
+- [x] 10. **Comparisons and trends** - Compare selected teams or players and visualize useful season/game trends with responsive, accessible charts and tables.
 - [ ] 11. **Playoffs** - Show play-in, playoff, and Final Four matchups/results for the selected season, handling future or incomplete rounds without inventing participants or outcomes.
 
 ## Deferred beyond Phase 1

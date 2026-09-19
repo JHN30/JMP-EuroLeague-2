@@ -69,3 +69,12 @@ export function metricLabelFor(metricKey) {
   }
   return metricKey;
 }
+
+export function formatStatValue(key, value) {
+  if (value === null || value === undefined) return "-";
+  if (key === "minutesPlayed") {
+    const num = Number(value);
+    return Number.isFinite(num) ? num.toFixed(1) : value;
+  }
+  return value;
+}

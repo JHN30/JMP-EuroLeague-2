@@ -11,7 +11,7 @@ import {
   getSeasonTeams,
   getTeamGames,
 } from "../lib/api";
-import { PLAYER_METRIC_GROUPS, TEAM_METRICS } from "../lib/statsFields";
+import { PLAYER_METRIC_GROUPS, TEAM_METRICS, formatStatValue } from "../lib/statsFields";
 import TrendChart from "./TrendChart";
 
 const PLAYER_COMPARISON_ROWS = PLAYER_METRIC_GROUPS.flatMap((group) => [
@@ -239,8 +239,8 @@ function PlayerComparisonTable({ seasonCode, phaseCode, mode, entityA, entityB }
             ) : (
               <tr key={row.key}>
                 <td>{row.label}</td>
-                <td>{a?.[row.group]?.[row.metricKey] ?? "-"}</td>
-                <td>{b?.[row.group]?.[row.metricKey] ?? "-"}</td>
+                <td>{formatStatValue(row.metricKey, a?.[row.group]?.[row.metricKey])}</td>
+                <td>{formatStatValue(row.metricKey, b?.[row.group]?.[row.metricKey])}</td>
               </tr>
             ),
           )}

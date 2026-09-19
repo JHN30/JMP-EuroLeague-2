@@ -8,6 +8,7 @@ import {
   getPlayerRegistrations,
   getPlayerSeasonStats,
 } from "../lib/api";
+import { formatStatValue } from "../lib/statsFields";
 
 const GAMES_LIMIT = 100;
 
@@ -109,7 +110,7 @@ function StatGrid({ title, fields, stats }) {
         {fields.map(([key, label]) => (
           <div key={key}>
             <dt className="muted text-sm">{label}</dt>
-            <dd className="font-semibold">{stats[key] ?? "-"}</dd>
+            <dd className="font-semibold">{formatStatValue(key, stats[key])}</dd>
           </div>
         ))}
       </dl>

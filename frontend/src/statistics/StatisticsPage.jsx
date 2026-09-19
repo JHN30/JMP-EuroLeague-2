@@ -2,7 +2,13 @@ import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link, useParams } from "react-router";
 import { getLeaderStats, getPhases, getSeasonStandings } from "../lib/api";
-import { PLAYER_METRIC_GROUPS, TEAM_METRICS, metricGroupFor, metricLabelFor } from "../lib/statsFields";
+import {
+  PLAYER_METRIC_GROUPS,
+  TEAM_METRICS,
+  formatStatValue,
+  metricGroupFor,
+  metricLabelFor,
+} from "../lib/statsFields";
 
 const PAGE_SIZE = 20;
 
@@ -238,7 +244,9 @@ function PlayerLeaderboard({ seasonCode, phaseCode }) {
                         {player.playerName ?? player.personKey}
                       </Link>
                     </td>
-                    <td className="text-primary font-semibold tabular-nums">{player[group]?.[metric] ?? "-"}</td>
+                    <td className="text-primary font-semibold tabular-nums">
+                      {formatStatValue(metric, player[group]?.[metric])}
+                    </td>
                   </tr>
                 ))}
               </tbody>

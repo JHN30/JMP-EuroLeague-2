@@ -11,7 +11,7 @@ function formBadge(result, key) {
 
 export default function StandingsTable({ standings, seasonCode }) {
   return (
-    <div className="overflow-x-auto">
+    <div className="panel overflow-x-auto p-2">
       <table className="table">
         <thead>
           <tr>
@@ -38,11 +38,15 @@ export default function StandingsTable({ standings, seasonCode }) {
             const tieBreak =
               entry.basic && entry.calendar && entry.basic.position !== entry.calendar.position;
             const form = [...entry.form].sort((a, b) => a.resultOrdinal - b.resultOrdinal);
+            const position = entry.basic?.position;
 
             return (
-              <tr key={entry.clubCode} className={qualifiedDivider ? "border-t-2 border-primary/40" : undefined}>
+              <tr
+                key={entry.clubCode}
+                className={qualifiedDivider ? "border-t-2 border-dashed border-primary/50" : undefined}
+              >
                 <td>
-                  {entry.basic?.position ?? "-"}
+                  <span className={`rank ${position === 1 ? "rank-1" : ""}`}>{position ?? "-"}</span>
                   {tieBreak ? (
                     <span
                       className="tooltip ml-1"
@@ -53,7 +57,7 @@ export default function StandingsTable({ standings, seasonCode }) {
                   ) : null}
                 </td>
                 <td>
-                  <Link to={`/${seasonCode}/teams/${entry.clubCode}`} className="link link-hover">
+                  <Link to={`/${seasonCode}/teams/${entry.clubCode}`} className="link link-hover font-medium">
                     {entry.clubName ?? entry.clubCode}
                   </Link>
                 </td>
@@ -63,7 +67,7 @@ export default function StandingsTable({ standings, seasonCode }) {
                 <td>{entry.basic?.winPercentage ?? "-"}</td>
                 <td>{entry.basic?.pointsFor ?? "-"}</td>
                 <td>{entry.basic?.pointsAgainst ?? "-"}</td>
-                <td>{entry.basic?.pointsDifference ?? "-"}</td>
+                <td className="font-semibold">{entry.basic?.pointsDifference ?? "-"}</td>
                 <td>{entry.basic?.homeRecord ?? "-"}</td>
                 <td>{entry.basic?.awayRecord ?? "-"}</td>
                 <td>{entry.basic?.lastTenRecord ?? "-"}</td>

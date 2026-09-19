@@ -23,19 +23,19 @@ export default function StandingsSnapshot() {
     >
       <ol className="space-y-2">
         {top5.map((entry) => (
-          <li key={entry.clubCode} className="flex items-center justify-between">
-            <span>
-              <span className="muted mr-2">{entry.basic?.position ?? "-"}</span>
-              {entry.clubName ?? entry.clubCode}
+          <li key={entry.clubCode} className="flex items-center gap-3">
+            <span className={`rank ${entry.basic?.position === 1 ? "rank-1" : ""}`}>
+              {entry.basic?.position ?? "-"}
             </span>
-            <span className="muted">
+            <span className="flex-1 font-medium">{entry.clubName ?? entry.clubCode}</span>
+            <span className="muted font-semibold tabular-nums">
               {entry.basic?.gamesWon ?? "-"}-{entry.basic?.gamesLost ?? "-"}
             </span>
           </li>
         ))}
       </ol>
-      <Link to={`/${seasonCode}/standings`} className="btn btn-sm btn-ghost mt-4">
-        View full standings
+      <Link to={`/${seasonCode}/standings`} className="panel-link mt-4 inline-block">
+        View full standings &rarr;
       </Link>
     </WidgetPanel>
   );

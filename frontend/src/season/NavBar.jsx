@@ -15,15 +15,15 @@ export default function NavBar() {
   const { seasonCode } = useParams();
 
   return (
-    <nav aria-label="Sections" className="overflow-x-auto">
-      <div role="tablist" className="tabs tabs-boxed w-max">
+    <nav aria-label="Sections" className="overflow-x-auto border-t border-base-300 px-4 sm:px-6">
+      <div role="tablist" className="tabs tabs-sm w-max">
         {TABS.map((tab) => (
           <NavLink
             key={tab.label}
             role="tab"
             end={tab.end}
             to={tab.path ? `/${seasonCode}/${tab.path}` : `/${seasonCode}`}
-            className={({ isActive }) => `tab ${isActive ? "tab-active" : ""}`}
+            className={({ isActive }) => `tab font-semibold ${isActive ? "tab-active text-primary" : ""}`}
           >
             {tab.label}
           </NavLink>

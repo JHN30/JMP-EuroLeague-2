@@ -74,9 +74,12 @@ export default function SeasonLayout() {
 
   return (
     <div className="min-h-screen">
-      <header className="flex flex-col gap-4 border-b border-base-300 px-6 py-4">
-        <div className="flex items-center justify-between gap-4">
-          <span className="eyebrow">EuroLeague</span>
+      <header className="app-nav">
+        <div className="flex items-center justify-between gap-4 px-4 py-2 sm:px-6">
+          <div className="flex items-center gap-2">
+            <span className="brand-mark" aria-hidden="true">EL</span>
+            <span className="eyebrow">EuroLeague</span>
+          </div>
           <SeasonSelector />
         </div>
         <NavBar />

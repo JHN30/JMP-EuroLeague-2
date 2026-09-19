@@ -3,12 +3,6 @@ import { Link, useParams } from "react-router";
 import { getSeasonGames } from "../lib/api";
 import { WidgetPanel } from "./Dashboard";
 
-function formatGame(game) {
-  const local = game.localTeam?.abbreviatedName ?? game.localTeam?.name ?? "TBD";
-  const road = game.roadTeam?.abbreviatedName ?? game.roadTeam?.name ?? "TBD";
-  return `${local} vs ${road}`;
-}
-
 function GameList({ title, seasonCode, queryKey, params, emptyMessage, showScore }) {
   const query = useQuery({
     queryKey,
@@ -26,18 +20,32 @@ function GameList({ title, seasonCode, queryKey, params, emptyMessage, showScore
       emptyMessage={emptyMessage}
     >
       <ul className="space-y-2">
-        {games.map((game) => (
-          <li key={game.gameCode} className="flex items-center justify-between">
-            <Link to={`/${seasonCode}/games/${game.gameCode}`} className="link link-hover">
-              {formatGame(game)}
-            </Link>
-            {showScore ? (
-              <span className="muted">
-                {game.localScore ?? "-"}-{game.roadScore ?? "-"}
-              </span>
-            ) : null}
-          </li>
-        ))}
+        {games.map((game) => {
+          const localWon = showScore && game.localScore != null && game.roadScore != null && game.localScore > game.roadScore;
+          const roadWon = showScore && game.localScore != null && game.roadScore != null && game.roadScore > game.localScore;
+          return (
+            <li key={game.gameCode}>
+              <Link
+                to={`/${seasonCode}/games/${game.gameCode}`}
+                className="flex items-center justify-between gap-3 rounded-field hover:text-primary"
+              >
+                <span className={localWon ? "font-semibold" : "muted"}>
+                  {game.localTeam?.abbreviatedName ?? game.localTeam?.name ?? "TBD"}
+                </span>
+                {showScore ? (
+                  <span className="stat-badge stat-badge-neutral tabular-nums">
+                    {game.localScore ?? "-"}-{game.roadScore ?? "-"}
+                  </span>
+                ) : (
+                  <span className="muted text-sm">vs</span>
+                )}
+                <span className={roadWon ? "font-semibold" : "muted"}>
+                  {game.roadTeam?.abbreviatedName ?? game.roadTeam?.name ?? "TBD"}
+                </span>
+              </Link>
+            </li>
+          );
+        })}
       </ul>
     </WidgetPanel>
   );

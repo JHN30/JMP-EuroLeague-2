@@ -1,6 +1,6 @@
 # JMP Euroleague - Project Overview
 
-<!-- blueprint:source-hash 5dee8ad88623c47a739e994b775e4c5320568cbe2bf2b2fb41c1cd36a92d6f50 -->
+<!-- blueprint:source-hash 326f21e32934382511155a0ac254aa279987652a354dc4d374e1d3ab83c4e817 -->
 
 > A public, read-only EuroLeague explorer for the 2025-26 (`E2025`) and 2026-27 (`E2026`) seasons, backed by already populated Neon PostgreSQL tables.
 
@@ -41,6 +41,12 @@ The headline is a two-season public explorer whose every view stays in the selec
 9. **Statistics leaderboards** - filtered team/player rankings across available metric forms.
 10. **Comparisons and trends** - responsive charts and tables for team/player comparisons.
 11. **Playoffs** - play-in, playoff, and Final Four matchups/results when source data exists.
+12. **Visual design system pass** - a consistent, theme-aware DaisyUI visual language across every existing page. Build it in five reviewable parts:
+    - **12a Shared design system, navbar, dashboard, and standings** - shared panel/card/table/badge/stat-callout primitives, compact responsive navbar with persistent season/competition selector, applied to the home dashboard and standings pages.
+    - **12b Fixtures, results, and game detail** - the fixtures/results browser and game detail/box-score page.
+    - **12c Teams and players** - the team and player directory/detail pages.
+    - **12d Statistics leaderboards and comparisons** - the leaderboards and comparisons/trends pages, including theme-aware Chart.js styling.
+    - **12e Playoffs** - the playoffs matchup page.
 
 Every data-driven page needs loading, empty, unavailable, partial-data, and error states. Known corrections and anomalies must remain visible. JMP Rating, win probabilities, simulations, older seasons, other competitions, and user features are deferred.
 

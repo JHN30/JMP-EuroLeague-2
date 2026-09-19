@@ -5,7 +5,9 @@ import StandingsSnapshot from "./StandingsSnapshot";
 export function WidgetPanel({ title, isLoading, isError, onRetry, isEmpty, emptyMessage, children }) {
   return (
     <section className="panel p-6">
-      <h2 className="mb-4 text-lg font-semibold">{title}</h2>
+      <div className="panel-header">
+        <h2 className="panel-title">{title}</h2>
+      </div>
       {isLoading ? (
         <div className="flex justify-center py-6">
           <span className="loading loading-spinner text-primary" />

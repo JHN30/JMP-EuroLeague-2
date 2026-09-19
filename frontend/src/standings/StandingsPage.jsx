@@ -49,13 +49,13 @@ export default function StandingsPage() {
   return (
     <div>
       <h1 className="mb-6 text-2xl font-semibold">Standings</h1>
-      <div role="tablist" className="tabs tabs-boxed mb-6 w-fit">
+      <div role="tablist" className="tabs tabs-boxed tabs-sm mb-6 w-fit">
         {phases.map((phase) => (
           <button
             key={phase.code}
             role="tab"
             type="button"
-            className={`tab ${phaseCode === phase.code ? "tab-active" : ""}`}
+            className={`tab font-semibold ${phaseCode === phase.code ? "tab-active" : ""}`}
             onClick={() => setSelectedPhase(phase.code)}
           >
             {phase.name ?? phase.code}

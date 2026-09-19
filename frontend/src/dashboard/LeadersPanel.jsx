@@ -32,26 +32,32 @@ function TeamLeaders({ seasonCode }) {
       isEmpty={query.isSuccess && !offense && !defense}
       emptyMessage="Not available yet."
     >
-      <ul className="space-y-2">
+      <div className="grid grid-cols-2 gap-4">
         {offense ? (
-          <li>
-            <span className="muted mr-2">Best offense</span>
-            <Link to={`/${seasonCode}/teams/${offense.entry.clubCode}`} className="link link-hover">
+          <div className="rounded-field border border-base-300 p-3">
+            <span className="muted text-xs font-semibold uppercase tracking-wide">Best offense</span>
+            <div className="stat-callout">
+              <span className="value">{offense.value}</span>
+              <span className="label">Points for</span>
+            </div>
+            <Link to={`/${seasonCode}/teams/${offense.entry.clubCode}`} className="link link-hover text-sm font-medium">
               {offense.entry.clubName ?? offense.entry.clubCode}
             </Link>
-            <span className="muted ml-2">{offense.value} pts for</span>
-          </li>
+          </div>
         ) : null}
         {defense ? (
-          <li>
-            <span className="muted mr-2">Best defense</span>
-            <Link to={`/${seasonCode}/teams/${defense.entry.clubCode}`} className="link link-hover">
+          <div className="rounded-field border border-base-300 p-3">
+            <span className="muted text-xs font-semibold uppercase tracking-wide">Best defense</span>
+            <div className="stat-callout">
+              <span className="value">{defense.value}</span>
+              <span className="label">Points against</span>
+            </div>
+            <Link to={`/${seasonCode}/teams/${defense.entry.clubCode}`} className="link link-hover text-sm font-medium">
               {defense.entry.clubName ?? defense.entry.clubCode}
             </Link>
-            <span className="muted ml-2">{defense.value} pts against</span>
-          </li>
+          </div>
         ) : null}
-      </ul>
+      </div>
     </WidgetPanel>
   );
 }
@@ -73,12 +79,14 @@ function PlayerLeaders({ seasonCode }) {
       emptyMessage="Not available yet."
     >
       <ol className="space-y-2">
-        {players.map((player) => (
-          <li key={player.personKey} className="flex items-center justify-between">
-            <Link to={`/${seasonCode}/players/${player.personKey}`} className="link link-hover">
+        {players.map((player, index) => (
+          <li key={player.personKey} className="flex items-center gap-3">
+            <span className={`rank ${index === 0 ? "rank-1" : ""}`}>{index + 1}</span>
+            <Link to={`/${seasonCode}/players/${player.personKey}`} className="link link-hover flex-1 font-medium">
               {player.playerName ?? player.personKey}
             </Link>
-            <span className="muted">{player.traditional.pointsScored ?? "-"} pts</span>
+            {index === 0 ? <span className="stat-badge stat-badge-leader">Leader</span> : null}
+            <span className="font-semibold tabular-nums">{player.traditional.pointsScored ?? "-"} pts</span>
           </li>
         ))}
       </ol>

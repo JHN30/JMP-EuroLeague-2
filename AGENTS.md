@@ -302,7 +302,9 @@ Run each command from the repository root. Each app has its own
 - Frontend lint: `cd frontend && npm run lint`
 - Backend dev server: `cd backend && npm run dev`
 - Backend build and TypeScript check: `cd backend && npm run build`
+- Browser tests: `cd frontend && npm run test:browser` (Playwright; starts the
+  backend and frontend dev servers itself when they aren't already running)
 
-There is no test command or required test gate yet. Use `/tests` or `$tests`
-to set one up explicitly. Browser tests are also opt-in through
-`/tests browser` or `$tests browser`.
+There is no unit test command or required test gate yet. Use `/tests` or
+`$tests` to set one up explicitly. Browser tests are opt-in evidence, not part
+of Verify or CI unless separately requested.

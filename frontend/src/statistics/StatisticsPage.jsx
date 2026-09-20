@@ -9,6 +9,9 @@ import {
   metricGroupFor,
   metricLabelFor,
 } from "../lib/statsFields";
+import LeaderboardKpiStrip from "./LeaderboardKpiStrip";
+import StatBarCell from "./StatBarCell";
+import { barWidthScale } from "./statBarScale";
 
 const PAGE_SIZE = 20;
 
@@ -48,6 +51,13 @@ function DirectionSelect({ direction, label, onChange }) {
   );
 }
 
+function teamMetricValue(entry, metric) {
+  const raw = entry.basic?.[metric];
+  if (raw === null || raw === undefined) return null;
+  const num = metric === "winPercentage" ? Number(raw) : raw;
+  return typeof num === "number" && !Number.isNaN(num) ? num : null;
+}
+
 function TeamLeaderboard({ seasonCode, phaseCode }) {
   const [metric, setMetric] = useState("pointsFor");
   const [direction, setDirection] = useState("desc");
@@ -60,20 +70,21 @@ function TeamLeaderboard({ seasonCode, phaseCode }) {
 
   const sorted = useMemo(() => {
     const standings = standingsQuery.data?.standings ?? [];
-    const value = (entry) => {
-      const raw = entry.basic?.[metric];
-      if (raw === null || raw === undefined) return null;
-      return metric === "winPercentage" ? Number(raw) : raw;
-    };
     return [...standings].sort((a, b) => {
-      const av = value(a);
-      const bv = value(b);
+      const av = teamMetricValue(a, metric);
+      const bv = teamMetricValue(b, metric);
       if (av === null && bv === null) return 0;
       if (av === null) return 1;
       if (bv === null) return -1;
       return direction === "desc" ? bv - av : av - bv;
     });
   }, [standingsQuery.data, metric, direction]);
+
+  const metricLabel = TEAM_METRICS.find((option) => option.key === metric)?.label ?? metric;
+  const barScale = useMemo(
+    () => barWidthScale(sorted.map((entry) => teamMetricValue(entry, metric))),
+    [sorted, metric],
+  );
 
   if (standingsQuery.isPending) return <CenteredSpinner />;
   if (standingsQuery.isError) {
@@ -85,6 +96,14 @@ function TeamLeaderboard({ seasonCode, phaseCode }) {
 
   return (
     <div>
+      <LeaderboardKpiStrip
+        entries={sorted}
+        offset={0}
+        valueOf={(entry) => teamMetricValue(entry, metric)}
+        nameOf={(entry) => entry.clubName ?? entry.clubCode}
+        metricLabel={metricLabel}
+      />
+
       <div className="mb-4 flex flex-wrap items-center gap-4">
         <select
           aria-label="Team metric"
@@ -107,7 +126,7 @@ function TeamLeaderboard({ seasonCode, phaseCode }) {
             <tr>
               <th>#</th>
               <th>Team</th>
-              <th>{TEAM_METRICS.find((option) => option.key === metric)?.label}</th>
+              <th>{metricLabel}</th>
             </tr>
           </thead>
           <tbody>
@@ -121,7 +140,11 @@ function TeamLeaderboard({ seasonCode, phaseCode }) {
                     {entry.clubName ?? entry.clubCode}
                   </Link>
                 </td>
-                <td className="text-primary font-semibold tabular-nums">{entry.basic?.[metric] ?? "-"}</td>
+                <StatBarCell widthPct={barScale(teamMetricValue(entry, metric))}>
+                  <span className="text-primary font-semibold tabular-nums">
+                    {entry.basic?.[metric] ?? "-"}
+                  </span>
+                </StatBarCell>
               </tr>
             ))}
           </tbody>
@@ -131,11 +154,26 @@ function TeamLeaderboard({ seasonCode, phaseCode }) {
   );
 }
 
+function playerMetricValue(player, group, metric) {
+  const raw = player[group]?.[metric];
+  if (raw === null || raw === undefined) return null;
+  const num = Number(raw);
+  return Number.isNaN(num) ? null : num;
+}
+
 function PlayerLeaderboard({ seasonCode, phaseCode }) {
+  const [category, setCategory] = useState(PLAYER_METRIC_GROUPS[0].group);
   const [mode, setMode] = useState("perGame");
-  const [metric, setMetric] = useState("pointsScored");
+  const [metric, setMetric] = useState(PLAYER_METRIC_GROUPS[0].options[0][0]);
   const [direction, setDirection] = useState("desc");
   const [offset, setOffset] = useState(0);
+
+  function handleCategoryChange(nextGroup) {
+    setCategory(nextGroup);
+    const groupDef = PLAYER_METRIC_GROUPS.find((g) => g.group === nextGroup);
+    setMetric(groupDef.options[0][0]);
+    setOffset(0);
+  }
 
   function handleModeChange(value) {
     setMode(value);
@@ -166,8 +204,14 @@ function PlayerLeaderboard({ seasonCode, phaseCode }) {
     enabled: Boolean(phaseCode),
   });
 
-  const players = statsQuery.data?.players ?? [];
+  const players = useMemo(() => statsQuery.data?.players ?? [], [statsQuery.data]);
   const group = metricGroupFor(metric);
+  const metricLabel = metricLabelFor(metric);
+  const barScale = useMemo(
+    () => barWidthScale(players.map((player) => playerMetricValue(player, group, metric))),
+    [players, group, metric],
+  );
+  const currentCategory = PLAYER_METRIC_GROUPS.find((g) => g.group === category) ?? PLAYER_METRIC_GROUPS[0];
 
   if (statsQuery.isPending) return <CenteredSpinner />;
   if (statsQuery.isError) {
@@ -176,6 +220,29 @@ function PlayerLeaderboard({ seasonCode, phaseCode }) {
 
   return (
     <div>
+      <div role="tablist" className="tabs tabs-boxed tabs-sm mb-4 w-fit">
+        {PLAYER_METRIC_GROUPS.map((groupDef) => (
+          <button
+            key={groupDef.group}
+            role="tab"
+            type="button"
+            className={`tab font-semibold ${category === groupDef.group ? "tab-active" : ""}`}
+            onClick={() => handleCategoryChange(groupDef.group)}
+          >
+            {groupDef.label}
+          </button>
+        ))}
+      </div>
+
+      <LeaderboardKpiStrip
+        entries={players}
+        offset={offset}
+        valueOf={(player) => playerMetricValue(player, group, metric)}
+        nameOf={(player) => player.playerName ?? player.personKey}
+        subtitleOf={(player) => player.clubName ?? player.clubCode}
+        metricLabel={metricLabel}
+      />
+
       <div className="mb-4 flex flex-wrap items-center gap-4">
         <label className="flex flex-col gap-1 text-sm font-medium">
           <span>Player statistics</span>
@@ -196,14 +263,10 @@ function PlayerLeaderboard({ seasonCode, phaseCode }) {
           value={metric}
           onChange={(event) => handleMetricChange(event.target.value)}
         >
-          {PLAYER_METRIC_GROUPS.map((metricGroup) => (
-            <optgroup key={metricGroup.group} label={metricGroup.label}>
-              {metricGroup.options.map(([key, label]) => (
-                <option key={key} value={key}>
-                  {label}
-                </option>
-              ))}
-            </optgroup>
+          {currentCategory.options.map(([key, label]) => (
+            <option key={key} value={key}>
+              {label}
+            </option>
           ))}
         </select>
 
@@ -220,7 +283,7 @@ function PlayerLeaderboard({ seasonCode, phaseCode }) {
                 <tr>
                   <th>#</th>
                   <th>Player</th>
-                  <th>{metricLabelFor(metric)}</th>
+                  <th>{metricLabel}</th>
                 </tr>
               </thead>
               <tbody>
@@ -249,9 +312,11 @@ function PlayerLeaderboard({ seasonCode, phaseCode }) {
                         {player.playerName ?? player.personKey}
                       </Link>
                     </td>
-                    <td className="text-primary font-semibold tabular-nums">
-                      {formatStatValue(metric, player[group]?.[metric])}
-                    </td>
+                    <StatBarCell widthPct={barScale(playerMetricValue(player, group, metric))}>
+                      <span className="text-primary font-semibold tabular-nums">
+                        {formatStatValue(metric, player[group]?.[metric])}
+                      </span>
+                    </StatBarCell>
                   </tr>
                 ))}
               </tbody>
@@ -303,19 +368,25 @@ export default function StatisticsPage() {
     <div>
       <h1 className="mb-6 text-2xl font-semibold">Statistics leaderboards</h1>
 
-      <div className="mb-6 flex flex-wrap gap-4">
-        <label className="flex flex-col gap-1 text-sm font-medium">
-          <span>Leaderboard</span>
-          <select
-            aria-label="Leaderboard type"
-            className="select select-bordered select-sm"
-            value={view}
-            onChange={(event) => setView(event.target.value)}
+      <div className="mb-6 flex flex-wrap items-center gap-4">
+        <div className="scope-toggle" role="group" aria-label="Leaderboard scope">
+          <button
+            type="button"
+            className={view === "players" ? "active" : ""}
+            aria-pressed={view === "players"}
+            onClick={() => setView("players")}
           >
-            <option value="teams">Teams</option>
-            <option value="players">Players</option>
-          </select>
-        </label>
+            Players
+          </button>
+          <button
+            type="button"
+            className={view === "teams" ? "active" : ""}
+            aria-pressed={view === "teams"}
+            onClick={() => setView("teams")}
+          >
+            Teams
+          </button>
+        </div>
 
         <label className="flex flex-col gap-1 text-sm font-medium">
           <span>Phase</span>

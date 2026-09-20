@@ -638,6 +638,61 @@ button {
   white-space: normal;
 }
 
+/* scope toggle - two-way segmented control (statistics leaderboards) */
+.scope-toggle {
+  display: inline-flex;
+  background: var(--color-base-100);
+  border: 1px solid var(--color-base-300);
+  border-radius: var(--radius-field);
+  padding: 2px;
+  gap: 2px;
+}
+.scope-toggle button {
+  border: none;
+  background: transparent;
+  color: var(--color-base-content);
+  opacity: 0.7;
+  font-size: 0.8rem;
+  font-weight: 700;
+  font-family: inherit;
+  padding: 0.4rem 0.85rem;
+  border-radius: calc(var(--radius-field) - 2px);
+  cursor: pointer;
+}
+.scope-toggle button.active {
+  background: var(--color-primary);
+  color: var(--color-primary-content);
+  opacity: 1;
+}
+
+/* in-row stat bar visualization (statistics leaderboards) */
+.stat-bar-cell {
+  position: relative;
+  min-width: 5.5rem;
+}
+.stat-bar-cell .bar {
+  position: absolute;
+  left: 0.3rem;
+  right: 0.3rem;
+  top: 50%;
+  transform: translateY(-50%);
+  height: 65%;
+  background: color-mix(in srgb, var(--color-primary) 12%, transparent);
+  border-radius: 0.25rem;
+  z-index: 0;
+}
+.stat-bar-cell .bar-fill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  height: 100%;
+  background: color-mix(in srgb, var(--color-primary) 55%, transparent);
+  border-radius: 0.25rem;
+}
+.stat-bar-cell .num-val {
+  position: relative;
+  z-index: 1;
+}
+
 @media (prefers-reduced-motion: no-preference) {
   .app-shell,
   .panel,

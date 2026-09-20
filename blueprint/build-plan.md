@@ -37,7 +37,7 @@ Scaffolding, shared layout, design tokens, database connection setup, and deploy
   - [x] 14a. **Home dashboard** - Add a KPI strip, a featured/spotlight matchup card, a three-column working layout (standings snapshot, fixtures, stat leaders plus a form-watch panel), and a league scoring trend chart.
   - [x] 14b. **Standings** - Add a KPI strip, secondary view tabs (Overall/Home/Away/Last 10), tiered grouping (direct playoffs / play-in / out of contention), and a per-team trend sparkline column.
   - [x] 14c. **Statistics leaderboards** - Add a KPI strip, stat-category tabs, a Players/Teams segmented scope toggle, rank-delta indicators, and in-row bar visualization for the sorted stat.
-  - [ ] 14d. **Team profile** - Add a next-game indicator, section sub-tabs, an enlarged point-differential trend chart, roster bar visualization, a recent-form match list, and compare shortcuts into the comparisons page.
+  - [x] 14d. **Team profile** - Add a next-game indicator, section sub-tabs, an enlarged point-differential trend chart, roster bar visualization, a recent-form match list, and compare shortcuts into the comparisons page.
   - [ ] 14e. **Comparisons and trends** - Add a verdict KPI strip, a season-series panel, and non-color-only winner markers on stat comparison rows.
 
 ## Deferred beyond Phase 1

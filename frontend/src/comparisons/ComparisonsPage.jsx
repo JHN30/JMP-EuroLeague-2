@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { useParams } from "react-router";
+import { useParams, useSearchParams } from "react-router";
 import {
   getLeaderStats,
   getPhases,
@@ -44,12 +44,8 @@ function ErrorAlert({ message, onRetry }) {
   );
 }
 
-function TeamPicker({ seasonCode, label, selected, excludeId, onSelect }) {
-  const teamsQuery = useQuery({
-    queryKey: ["teams", seasonCode],
-    queryFn: () => getSeasonTeams(seasonCode),
-  });
-  const teams = (teamsQuery.data?.teams ?? []).filter((team) => team.clubCode !== excludeId);
+function TeamPicker({ label, allTeams, teamsPending, selected, excludeId, onSelect }) {
+  const teams = allTeams.filter((team) => team.clubCode !== excludeId);
 
   return (
     <div>
@@ -60,7 +56,7 @@ function TeamPicker({ seasonCode, label, selected, excludeId, onSelect }) {
         id={`team-picker-${label}`}
         className="select select-bordered select-sm w-full"
         value={selected?.id ?? ""}
-        disabled={teamsQuery.isPending}
+        disabled={teamsPending}
         onChange={(event) => {
           const team = teams.find((candidate) => candidate.clubCode === event.target.value);
           onSelect(team ? { id: team.clubCode, label: team.name ?? team.clubCode } : null);
@@ -365,30 +361,22 @@ function TrendSection({ seasonCode, phaseCode, view, entityA, entityB }) {
   );
 }
 
-export default function ComparisonsPage() {
-  const { seasonCode } = useParams();
+function ComparisonsBody({ seasonCode, phases, phaseCode, setSelectedPhase, allTeams, initialTeamA, initialTeamB }) {
   const [view, setView] = useState("teams");
-  const [selectedPhase, setSelectedPhase] = useState(null);
   const [mode, setMode] = useState("perGame");
-  const [entityA, setEntityA] = useState(null);
-  const [entityB, setEntityB] = useState(null);
-
-  const phasesQuery = useQuery({
-    queryKey: ["phases", seasonCode],
-    queryFn: () => getPhases(seasonCode),
+  const [entityA, setEntityA] = useState(() => {
+    const team = allTeams.find((candidate) => candidate.clubCode === initialTeamA);
+    return team ? { id: team.clubCode, label: team.name ?? team.clubCode } : null;
   });
-  const phases = phasesQuery.data?.phases ?? [];
-  const phaseCode = selectedPhase ?? phases.find((phase) => phase.code === "RS")?.code ?? phases[0]?.code;
+  const [entityB, setEntityB] = useState(() => {
+    const team = allTeams.find((candidate) => candidate.clubCode === initialTeamB);
+    return team ? { id: team.clubCode, label: team.name ?? team.clubCode } : null;
+  });
 
   function handleViewChange(value) {
     setView(value);
     setEntityA(null);
     setEntityB(null);
-  }
-
-  if (phasesQuery.isLoading) return <CenteredSpinner />;
-  if (phasesQuery.isError) {
-    return <ErrorAlert message="Could not load phases." onRetry={() => phasesQuery.refetch()} />;
   }
 
   return (
@@ -430,15 +418,17 @@ export default function ComparisonsPage() {
         {view === "teams" ? (
           <>
             <TeamPicker
-              seasonCode={seasonCode}
               label="Team A"
+              allTeams={allTeams}
+              teamsPending={false}
               selected={entityA}
               excludeId={entityB?.id}
               onSelect={setEntityA}
             />
             <TeamPicker
-              seasonCode={seasonCode}
               label="Team B"
+              allTeams={allTeams}
+              teamsPending={false}
               selected={entityB}
               excludeId={entityA?.id}
               onSelect={setEntityB}
@@ -501,5 +491,43 @@ export default function ComparisonsPage() {
         </section>
       ) : null}
     </div>
+  );
+}
+
+export default function ComparisonsPage() {
+  const { seasonCode } = useParams();
+  const [searchParams] = useSearchParams();
+  const [selectedPhase, setSelectedPhase] = useState(null);
+
+  const phasesQuery = useQuery({
+    queryKey: ["phases", seasonCode],
+    queryFn: () => getPhases(seasonCode),
+  });
+  const phases = phasesQuery.data?.phases ?? [];
+  const phaseCode = selectedPhase ?? phases.find((phase) => phase.code === "RS")?.code ?? phases[0]?.code;
+
+  const teamsQuery = useQuery({
+    queryKey: ["teams", seasonCode],
+    queryFn: () => getSeasonTeams(seasonCode),
+  });
+
+  if (phasesQuery.isLoading || teamsQuery.isLoading) return <CenteredSpinner />;
+  if (phasesQuery.isError) {
+    return <ErrorAlert message="Could not load phases." onRetry={() => phasesQuery.refetch()} />;
+  }
+  if (teamsQuery.isError) {
+    return <ErrorAlert message="Could not load teams." onRetry={() => teamsQuery.refetch()} />;
+  }
+
+  return (
+    <ComparisonsBody
+      seasonCode={seasonCode}
+      phases={phases}
+      phaseCode={phaseCode}
+      setSelectedPhase={setSelectedPhase}
+      allTeams={teamsQuery.data.teams ?? []}
+      initialTeamA={searchParams.get("teamA")}
+      initialTeamB={searchParams.get("teamB")}
+    />
   );
 }

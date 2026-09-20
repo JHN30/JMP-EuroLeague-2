@@ -1,10 +1,16 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link, useParams } from "react-router";
-import { getPhases, getSeasonStandings, getTeam, getTeamGames, getTeamRoster } from "../lib/api";
+import { getLeaderStats, getPhases, getSeasonStandings, getTeam, getTeamGames, getTeamRoster } from "../lib/api";
+import { formatStatValue } from "../lib/statsFields";
+import StatBarCell from "../statistics/StatBarCell";
+import { barWidthScale } from "../statistics/statBarScale";
+import TeamTrendChart from "./TeamTrendChart";
 
 const ROSTER_LIMIT = 100;
 const GAMES_LIMIT = 100;
+const ROSTER_STATS_PAGE_LIMIT = 100;
+const ROSTER_STATS_MAX_PAGES = 5;
 
 function CenteredSpinner() {
   return (
@@ -40,6 +46,186 @@ function teamLabel(team) {
 function opponent(game, clubCode) {
   const home = game.localTeam?.clubCode === clubCode;
   return { team: home ? game.roadTeam : game.localTeam, home };
+}
+
+async function fetchTeamRosterStats(seasonCode, phaseCode, clubCode) {
+  const byPersonKey = new Map();
+  let offset = 0;
+  for (let page = 0; page < ROSTER_STATS_MAX_PAGES; page += 1) {
+    const data = await getLeaderStats(seasonCode, {
+      phase: phaseCode,
+      mode: "perGame",
+      limit: ROSTER_STATS_PAGE_LIMIT,
+      offset,
+    });
+    for (const player of data.players) {
+      if (player.clubCode === clubCode) byPersonKey.set(player.personKey, player);
+    }
+    if (!data.pagination.hasMore) break;
+    offset += ROSTER_STATS_PAGE_LIMIT;
+  }
+  return byPersonKey;
+}
+
+function statNumber(raw) {
+  if (raw === null || raw === undefined) return null;
+  const num = Number(raw);
+  return Number.isNaN(num) ? null : num;
+}
+
+function NextGameChip({ nextGame, clubCode }) {
+  if (!nextGame) return null;
+  const { team, home } = opponent(nextGame, clubCode);
+  return (
+    <div className="next-chip ml-auto text-right">
+      <span className="tag text-primary block text-xs font-bold uppercase tracking-wide">Next game</span>
+      <span className="val block font-semibold">
+        {home ? "vs" : "@"} {teamLabel(team)}
+      </span>
+      <span className="sub muted block text-sm">{formatDateTime(nextGame.scheduledAt)}</span>
+    </div>
+  );
+}
+
+function OverviewKpiStrip({ standingsQuery, clubCode }) {
+  if (standingsQuery.isPending) return <CenteredSpinner />;
+  if (standingsQuery.isError) {
+    return <ErrorAlert message="Could not load team KPIs." onRetry={() => standingsQuery.refetch()} />;
+  }
+  const entry = standingsQuery.data.standings.find((row) => row.clubCode === clubCode);
+  const basic = entry?.basic;
+  if (!basic || !basic.gamesPlayed) {
+    return <p className="muted">Team KPIs not available yet for this phase.</p>;
+  }
+  const gp = basic.gamesPlayed;
+  const perGame = (total) => (total != null ? (total / gp).toFixed(1) : "-");
+
+  return (
+    <div className="kpi-strip">
+      <div className="kpi-chip">
+        <span className="value">{perGame(basic.pointsFor)}</span>
+        <span className="label">Points for/game</span>
+      </div>
+      <div className="kpi-chip">
+        <span className="value">{perGame(basic.pointsAgainst)}</span>
+        <span className="label">Points against/game</span>
+      </div>
+      <div className="kpi-chip">
+        <span className="value">{perGame(basic.pointsDifference)}</span>
+        <span className="label">Point diff/game</span>
+      </div>
+      <div className="kpi-chip">
+        <span className="value">{basic.winPercentage ?? "-"}</span>
+        <span className="label">Win %</span>
+      </div>
+      <div className="kpi-chip">
+        <span className="value">{gp}</span>
+        <span className="label">Games played</span>
+      </div>
+    </div>
+  );
+}
+
+function RecentFormList({ games, clubCode }) {
+  const recent = games
+    .filter((game) => game.played)
+    .slice()
+    .reverse()
+    .slice(0, 5);
+
+  return (
+    <section className="panel p-4">
+      <h2 className="panel-title mb-3">Recent form</h2>
+      {recent.length === 0 ? (
+        <p className="muted">No played games yet.</p>
+      ) : (
+        <ul className="flex flex-col gap-2">
+          {recent.map((game) => {
+            const { team, home } = opponent(game, clubCode);
+            const hasScores = game.localScore != null && game.roadScore != null;
+            const won = hasScores && (home ? game.localScore > game.roadScore : game.roadScore > game.localScore);
+            return (
+              <li key={game.gameCode} className="rounded-field border border-base-300 bg-base-200 p-3">
+                <div className="mb-1 flex items-center justify-between text-xs font-bold uppercase tracking-wide">
+                  <span className="muted">
+                    {game.roundName ?? (game.roundNumber ? `Round ${game.roundNumber}` : game.phaseName)}
+                  </span>
+                  <span className={won ? "text-success" : "text-error"}>{won ? "Win" : "Loss"}</span>
+                </div>
+                <div className="flex items-center justify-between text-sm font-semibold">
+                  <span>
+                    {home ? "vs" : "@"} {teamLabel(team)}
+                  </span>
+                  <span className="tabular-nums">
+                    {game.localScore ?? "-"}-{game.roadScore ?? "-"}
+                  </span>
+                </div>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </section>
+  );
+}
+
+function CompareShortcuts({ seasonCode, clubCode, nextGame, standingsQuery }) {
+  const standings = standingsQuery.data?.standings ?? [];
+  const nextOpponent = nextGame ? opponent(nextGame, clubCode).team : null;
+
+  const leaderEntry = standings.find((row) => row.basic?.position === 1);
+  const leaderIsSelf = leaderEntry?.clubCode === clubCode;
+  const leaderTarget = leaderIsSelf ? standings.find((row) => row.basic?.position === 2) : leaderEntry;
+
+  const links = [];
+  if (nextOpponent?.clubCode) {
+    links.push({ clubCode: nextOpponent.clubCode, label: `vs ${teamLabel(nextOpponent)}` });
+  }
+  if (leaderTarget && leaderTarget.clubCode !== clubCode && leaderTarget.clubCode !== nextOpponent?.clubCode) {
+    links.push({
+      clubCode: leaderTarget.clubCode,
+      label: `vs ${leaderTarget.clubName ?? leaderTarget.clubCode} (league leader)`,
+    });
+  }
+
+  if (links.length === 0) return null;
+
+  return (
+    <section className="panel p-4">
+      <h2 className="panel-title mb-3">Compare</h2>
+      <div className="flex flex-col gap-2">
+        {links.map((link) => (
+          <Link
+            key={link.clubCode}
+            to={`/${seasonCode}/comparisons?teamA=${encodeURIComponent(clubCode)}&teamB=${encodeURIComponent(link.clubCode)}`}
+            className="link link-hover rounded-field border border-base-300 bg-base-200 p-3 text-sm font-semibold"
+          >
+            {link.label}
+          </Link>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function OverviewSection({ seasonCode, clubCode, standingsQuery, games }) {
+  const nextGame = games.find((game) => !game.played) ?? null;
+
+  return (
+    <div className="flex flex-col gap-6">
+      <OverviewKpiStrip standingsQuery={standingsQuery} clubCode={clubCode} />
+      <TeamTrendChart games={games} clubCode={clubCode} />
+      <div className="grid gap-6 sm:grid-cols-2">
+        <RecentFormList games={games} clubCode={clubCode} />
+        <CompareShortcuts
+          seasonCode={seasonCode}
+          clubCode={clubCode}
+          nextGame={nextGame}
+          standingsQuery={standingsQuery}
+        />
+      </div>
+    </div>
+  );
 }
 
 function SeasonRecordSection({ standingsQuery, clubCode }) {
@@ -128,7 +314,22 @@ function TeamStatisticsSection({ standingsQuery, clubCode }) {
   );
 }
 
-function RosterSection({ rosterQuery, seasonCode }) {
+function StatsSection({ standingsQuery, clubCode }) {
+  return (
+    <div className="flex flex-col gap-8">
+      <section>
+        <h2 className="mb-3 text-xl font-semibold">Season record</h2>
+        <SeasonRecordSection standingsQuery={standingsQuery} clubCode={clubCode} />
+      </section>
+      <section>
+        <h2 className="mb-3 text-xl font-semibold">Team statistics</h2>
+        <TeamStatisticsSection standingsQuery={standingsQuery} clubCode={clubCode} />
+      </section>
+    </div>
+  );
+}
+
+function RosterSection({ rosterQuery, rosterStatsQuery, seasonCode }) {
   if (rosterQuery.isPending) return <CenteredSpinner />;
   if (rosterQuery.isError) {
     return <ErrorAlert message="Could not load the roster." onRetry={() => rosterQuery.refetch()} />;
@@ -137,6 +338,18 @@ function RosterSection({ rosterQuery, seasonCode }) {
   if (registrations.length === 0) {
     return <p className="muted">Roster not available yet.</p>;
   }
+  if (rosterStatsQuery.isPending) return <CenteredSpinner />;
+  if (rosterStatsQuery.isError) {
+    return <ErrorAlert message="Could not load roster statistics." onRetry={() => rosterStatsQuery.refetch()} />;
+  }
+
+  const statsByPersonKey = rosterStatsQuery.data ?? new Map();
+  const barScale = barWidthScale(
+    registrations.map((entry) =>
+      statNumber(statsByPersonKey.get(entry.player?.personKey)?.traditional?.pointsScored),
+    ),
+  );
+
   return (
     <div className="panel overflow-x-auto p-2">
       <table className="table">
@@ -146,25 +359,46 @@ function RosterSection({ rosterQuery, seasonCode }) {
             <th>Player</th>
             <th>Position</th>
             <th>Status</th>
+            <th>GP</th>
+            <th>MIN</th>
+            <th>PTS</th>
+            <th>REB</th>
+            <th>AST</th>
+            <th>PIR</th>
           </tr>
         </thead>
         <tbody>
-          {registrations.map((entry) => (
-            <tr key={entry.registrationKey}>
-              <td>{entry.dorsal ?? "-"}</td>
-              <td className="font-medium">
-                {entry.player ? (
-                  <Link to={`/${seasonCode}/players/${entry.player.personKey}`} className="link link-hover">
-                    {entry.player.name ?? "TBD"}
-                  </Link>
-                ) : (
-                  "TBD"
-                )}
-              </td>
-              <td>{entry.positionName ?? "-"}</td>
-              <td>{entry.active === false ? "Inactive" : "Active"}</td>
-            </tr>
-          ))}
+          {registrations.map((entry) => {
+            const stats = entry.player ? statsByPersonKey.get(entry.player.personKey) : undefined;
+            const traditional = stats?.traditional;
+            const pts = statNumber(traditional?.pointsScored);
+            return (
+              <tr key={entry.registrationKey}>
+                <td>{entry.dorsal ?? "-"}</td>
+                <td className="font-medium">
+                  {entry.player ? (
+                    <Link to={`/${seasonCode}/players/${entry.player.personKey}`} className="link link-hover">
+                      {entry.player.name ?? "TBD"}
+                    </Link>
+                  ) : (
+                    "TBD"
+                  )}
+                </td>
+                <td>{entry.positionName ?? "-"}</td>
+                <td>{entry.active === false ? "Inactive" : "Active"}</td>
+                <td>{traditional?.gamesPlayed ?? "-"}</td>
+                <td>{formatStatValue("minutesPlayed", traditional?.minutesPlayed)}</td>
+                <StatBarCell widthPct={barScale(pts)}>
+                  <span className="text-primary font-semibold tabular-nums">
+                    {formatStatValue("pointsScored", traditional?.pointsScored)}
+                  </span>
+                </StatBarCell>
+                <td>{traditional?.totalRebounds ?? "-"}</td>
+                <td>{traditional?.assists ?? "-"}</td>
+                <td>{traditional?.pir ?? "-"}</td>
+              </tr>
+            );
+          })}
         </tbody>
       </table>
     </div>
@@ -216,9 +450,17 @@ function ScheduleSection({ gamesQuery, clubCode }) {
   );
 }
 
+const SECTIONS = [
+  { key: "overview", label: "Overview" },
+  { key: "roster", label: "Roster" },
+  { key: "schedule", label: "Schedule" },
+  { key: "stats", label: "Stats" },
+];
+
 export default function TeamPage() {
   const { seasonCode, clubCode } = useParams();
   const [selectedPhase, setSelectedPhase] = useState(null);
+  const [section, setSection] = useState("overview");
 
   const teamQuery = useQuery({
     queryKey: ["team", seasonCode, clubCode],
@@ -246,6 +488,12 @@ export default function TeamPage() {
     enabled: teamQuery.isSuccess,
   });
 
+  const rosterStatsQuery = useQuery({
+    queryKey: ["team-roster-stats", seasonCode, phaseCode, clubCode],
+    queryFn: () => fetchTeamRosterStats(seasonCode, phaseCode, clubCode),
+    enabled: teamQuery.isSuccess && Boolean(phaseCode) && section === "roster",
+  });
+
   const gamesQuery = useQuery({
     queryKey: ["team-games", seasonCode, clubCode],
     queryFn: () => getTeamGames(seasonCode, clubCode, { limit: GAMES_LIMIT, order: "asc" }),
@@ -264,6 +512,8 @@ export default function TeamPage() {
   }
 
   const team = teamQuery.data.team;
+  const games = gamesQuery.data?.games ?? [];
+  const nextGame = games.find((game) => !game.played) ?? null;
 
   return (
     <div>
@@ -275,9 +525,10 @@ export default function TeamPage() {
             {team.abbreviatedName ?? team.clubCode} · {team.countryCode ?? "-"}
           </p>
         </div>
+        {gamesQuery.isSuccess ? <NextGameChip nextGame={nextGame} clubCode={clubCode} /> : null}
       </div>
 
-      <div role="tablist" className="tabs tabs-boxed tabs-sm mb-6 w-fit">
+      <div role="tablist" className="tabs tabs-boxed tabs-sm mb-4 w-fit">
         {phases.map((phase) => (
           <button
             key={phase.code}
@@ -291,25 +542,35 @@ export default function TeamPage() {
         ))}
       </div>
 
-      <section className="mb-8">
-        <h2 className="mb-3 text-xl font-semibold">Season record</h2>
-        <SeasonRecordSection standingsQuery={standingsQuery} clubCode={clubCode} />
-      </section>
+      <div role="tablist" className="tabs tabs-boxed tabs-sm mb-6 w-fit">
+        {SECTIONS.map((s) => (
+          <button
+            key={s.key}
+            role="tab"
+            type="button"
+            className={`tab font-semibold ${section === s.key ? "tab-active" : ""}`}
+            onClick={() => setSection(s.key)}
+          >
+            {s.label}
+          </button>
+        ))}
+      </div>
 
-      <section className="mb-8">
-        <h2 className="mb-3 text-xl font-semibold">Team statistics</h2>
-        <TeamStatisticsSection standingsQuery={standingsQuery} clubCode={clubCode} />
-      </section>
-
-      <section className="mb-8">
-        <h2 className="mb-3 text-xl font-semibold">Roster</h2>
-        <RosterSection rosterQuery={rosterQuery} seasonCode={seasonCode} />
-      </section>
-
-      <section className="mb-8">
-        <h2 className="mb-3 text-xl font-semibold">Schedule and results</h2>
+      {section === "overview" ? (
+        gamesQuery.isPending ? (
+          <CenteredSpinner />
+        ) : gamesQuery.isError ? (
+          <ErrorAlert message="Could not load this team's games." onRetry={() => gamesQuery.refetch()} />
+        ) : (
+          <OverviewSection seasonCode={seasonCode} clubCode={clubCode} standingsQuery={standingsQuery} games={games} />
+        )
+      ) : section === "roster" ? (
+        <RosterSection rosterQuery={rosterQuery} rosterStatsQuery={rosterStatsQuery} seasonCode={seasonCode} />
+      ) : section === "schedule" ? (
         <ScheduleSection gamesQuery={gamesQuery} clubCode={clubCode} />
-      </section>
+      ) : (
+        <StatsSection standingsQuery={standingsQuery} clubCode={clubCode} />
+      )}
     </div>
   );
 }

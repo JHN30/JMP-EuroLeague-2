@@ -2,9 +2,9 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useParams, useSearchParams } from "react-router";
 import {
-  getLeaderStats,
   getPhases,
   getPlayerGames,
+  getPlayerSeasonStats,
   getRounds,
   getSeasonPlayers,
   getSeasonStandings,
@@ -25,6 +25,59 @@ const PLAYER_COMPARISON_ROWS = PLAYER_METRIC_GROUPS.flatMap((group) => [
   })),
 ]);
 
+const TEAM_METRIC_DIRECTIONS = {
+  gamesPlayed: "neutral",
+  gamesWon: "higher",
+  gamesLost: "lower",
+  winPercentage: "higher",
+  pointsFor: "higher",
+  pointsAgainst: "lower",
+  pointsDifference: "higher",
+};
+
+const PLAYER_METRIC_DIRECTIONS = {
+  pointsScored: "higher",
+  totalRebounds: "higher",
+  assists: "higher",
+  steals: "higher",
+  turnovers: "lower",
+  blocks: "higher",
+  pir: "higher",
+  minutesPlayed: "neutral",
+  gamesPlayed: "neutral",
+  effectiveFieldGoalPercentage: "higher",
+  trueShootingPercentage: "higher",
+  reboundsPercentage: "higher",
+  assistsToTurnoversRatio: "higher",
+  possessions: "neutral",
+  twoPointRate: "neutral",
+  threePointRate: "neutral",
+  pointsFromTwoPointersPercentage: "neutral",
+  pointsFromThreePointersPercentage: "neutral",
+  pointsFromFreeThrowsPercentage: "neutral",
+  wins: "higher",
+  losses: "lower",
+  doubleDoubles: "higher",
+  tripleDoubles: "higher",
+};
+
+function winnerSide(rawA, rawB, direction) {
+  if (direction === "neutral" || !direction) return null;
+  const a = Number(rawA);
+  const b = Number(rawB);
+  if (!Number.isFinite(a) || !Number.isFinite(b) || a === b) return null;
+  if (direction === "higher") return a > b ? "a" : "b";
+  return a < b ? "a" : "b";
+}
+
+function WinnerMark({ label }) {
+  return (
+    <span className="winner-mark" title={`${label} leads`}>
+      &#9650;
+    </span>
+  );
+}
+
 function CenteredSpinner() {
   return (
     <div className="flex justify-center py-12">
@@ -42,6 +95,14 @@ function ErrorAlert({ message, onRetry }) {
       </button>
     </div>
   );
+}
+
+function formatDateTime(scheduledAt) {
+  if (!scheduledAt) return "TBD";
+  return new Date(scheduledAt).toLocaleString(undefined, {
+    dateStyle: "medium",
+    timeStyle: "short",
+  });
 }
 
 function TeamPicker({ label, allTeams, teamsPending, selected, excludeId, onSelect }) {
@@ -172,13 +233,26 @@ function TeamComparisonTable({ seasonCode, phaseCode, entityA, entityB }) {
           </tr>
         </thead>
         <tbody>
-          {TEAM_METRICS.map((metric) => (
-            <tr key={metric.key}>
-              <td>{metric.label}</td>
-              <td>{a?.basic?.[metric.key] ?? "-"}</td>
-              <td>{b?.basic?.[metric.key] ?? "-"}</td>
-            </tr>
-          ))}
+          {TEAM_METRICS.map((metric) => {
+            const winner = winnerSide(
+              a?.basic?.[metric.key],
+              b?.basic?.[metric.key],
+              TEAM_METRIC_DIRECTIONS[metric.key],
+            );
+            return (
+              <tr key={metric.key}>
+                <td>{metric.label}</td>
+                <td>
+                  {a?.basic?.[metric.key] ?? "-"}
+                  {winner === "a" ? <WinnerMark label={entityA.label} /> : null}
+                </td>
+                <td>
+                  {b?.basic?.[metric.key] ?? "-"}
+                  {winner === "b" ? <WinnerMark label={entityB.label} /> : null}
+                </td>
+              </tr>
+            );
+          })}
         </tbody>
       </table>
     </div>
@@ -224,12 +298,12 @@ function PlayerHeaderCell({ label, imageUrl }) {
 function PlayerComparisonTable({ seasonCode, phaseCode, mode, entityA, entityB }) {
   const statsAQuery = useQuery({
     queryKey: ["player-compare-stats", seasonCode, phaseCode, mode, entityA?.id],
-    queryFn: () => getLeaderStats(seasonCode, { phase: phaseCode, mode, personKey: entityA.id }),
+    queryFn: () => getPlayerSeasonStats(seasonCode, entityA.id, { phase: phaseCode, mode }),
     enabled: Boolean(phaseCode) && Boolean(entityA),
   });
   const statsBQuery = useQuery({
     queryKey: ["player-compare-stats", seasonCode, phaseCode, mode, entityB?.id],
-    queryFn: () => getLeaderStats(seasonCode, { phase: phaseCode, mode, personKey: entityB.id }),
+    queryFn: () => getPlayerSeasonStats(seasonCode, entityB.id, { phase: phaseCode, mode }),
     enabled: Boolean(phaseCode) && Boolean(entityB),
   });
 
@@ -261,23 +335,218 @@ function PlayerComparisonTable({ seasonCode, phaseCode, mode, entityA, entityB }
           </tr>
         </thead>
         <tbody>
-          {PLAYER_COMPARISON_ROWS.map((row) =>
-            row.type === "header" ? (
-              <tr key={row.key}>
-                <th colSpan={3} className="bg-base-200">
-                  {row.label}
-                </th>
-              </tr>
-            ) : (
+          {PLAYER_COMPARISON_ROWS.map((row) => {
+            if (row.type === "header") {
+              return (
+                <tr key={row.key}>
+                  <th colSpan={3} className="bg-base-200">
+                    {row.label}
+                  </th>
+                </tr>
+              );
+            }
+            const winner = winnerSide(
+              a?.[row.group]?.[row.metricKey],
+              b?.[row.group]?.[row.metricKey],
+              PLAYER_METRIC_DIRECTIONS[row.metricKey],
+            );
+            return (
               <tr key={row.key}>
                 <td>{row.label}</td>
-                <td>{formatStatValue(row.metricKey, a?.[row.group]?.[row.metricKey])}</td>
-                <td>{formatStatValue(row.metricKey, b?.[row.group]?.[row.metricKey])}</td>
+                <td>
+                  {formatStatValue(row.metricKey, a?.[row.group]?.[row.metricKey])}
+                  {winner === "a" ? <WinnerMark label={entityA.label} /> : null}
+                </td>
+                <td>
+                  {formatStatValue(row.metricKey, b?.[row.group]?.[row.metricKey])}
+                  {winner === "b" ? <WinnerMark label={entityB.label} /> : null}
+                </td>
               </tr>
-            ),
-          )}
+            );
+          })}
         </tbody>
       </table>
+    </div>
+  );
+}
+
+function headToHeadGames(games, phaseCode, opponentId) {
+  return games
+    .filter(
+      (game) =>
+        game.phaseCode === phaseCode &&
+        (game.localTeam?.clubCode === opponentId || game.roadTeam?.clubCode === opponentId),
+    )
+    .slice()
+    .sort((x, y) => (x.roundNumber ?? 0) - (y.roundNumber ?? 0));
+}
+
+function seriesRecord(matchups, aId) {
+  let winsA = 0;
+  let winsB = 0;
+  for (const game of matchups) {
+    if (!game.played || game.localScore == null || game.roadScore == null) continue;
+    const homeIsA = game.localTeam?.clubCode === aId;
+    const scoreA = homeIsA ? game.localScore : game.roadScore;
+    const scoreB = homeIsA ? game.roadScore : game.localScore;
+    if (scoreA > scoreB) winsA += 1;
+    else if (scoreB > scoreA) winsB += 1;
+  }
+  return { winsA, winsB };
+}
+
+function last10Form(games, clubCode) {
+  const played = games
+    .filter((game) => game.played && game.localScore != null && game.roadScore != null)
+    .slice(-10);
+  let wins = 0;
+  let diffSum = 0;
+  for (const game of played) {
+    const isHome = game.localTeam?.clubCode === clubCode;
+    const own = isHome ? game.localScore : game.roadScore;
+    const opp = isHome ? game.roadScore : game.localScore;
+    if (own > opp) wins += 1;
+    diffSum += own - opp;
+  }
+  return { played: played.length, wins, avgDiff: played.length ? diffSum / played.length : 0 };
+}
+
+function categoriesWon(standingsA, standingsB) {
+  let countA = 0;
+  let countB = 0;
+  for (const metric of TEAM_METRICS) {
+    const winner = winnerSide(standingsA?.basic?.[metric.key], standingsB?.basic?.[metric.key], TEAM_METRIC_DIRECTIONS[metric.key]);
+    if (winner === "a") countA += 1;
+    else if (winner === "b") countB += 1;
+  }
+  return { countA, countB };
+}
+
+function TeamSeriesSection({ seasonCode, phaseCode, entityA, entityB }) {
+  const gamesAQuery = useQuery({
+    queryKey: ["trend-games", seasonCode, "teams", entityA.id],
+    queryFn: () => getTeamGames(seasonCode, entityA.id, { limit: 100 }),
+  });
+
+  if (gamesAQuery.isPending) return <CenteredSpinner />;
+  if (gamesAQuery.isError) {
+    return <ErrorAlert message="Could not load the season series." onRetry={() => gamesAQuery.refetch()} />;
+  }
+
+  const matchups = headToHeadGames(gamesAQuery.data.games ?? [], phaseCode, entityB.id);
+
+  return (
+    <section className="panel p-4">
+      <h2 className="panel-title mb-3">Season series</h2>
+      {matchups.length === 0 ? (
+        <p className="muted">No matchups this phase yet.</p>
+      ) : (
+        <ul className="flex flex-col gap-2">
+          {matchups.map((game) => {
+            const homeIsA = game.localTeam?.clubCode === entityA.id;
+            const scoreA = homeIsA ? game.localScore : game.roadScore;
+            const scoreB = homeIsA ? game.roadScore : game.localScore;
+            const aWon = game.played && scoreA != null && scoreB != null && scoreA > scoreB;
+            const bWon = game.played && scoreA != null && scoreB != null && scoreB > scoreA;
+            return (
+              <li
+                key={game.gameCode}
+                className="flex items-center justify-between gap-4 border-b border-base-300 py-2 last:border-0"
+              >
+                <span className="muted text-sm">
+                  {game.roundName ?? (game.roundNumber ? `Round ${game.roundNumber}` : "")}
+                </span>
+                {game.played ? (
+                  <span className="flex items-center gap-2 text-sm font-semibold">
+                    <span className={aWon ? "font-bold underline" : ""}>{entityA.label}</span>
+                    <span className="tabular-nums">
+                      {scoreA ?? "-"}-{scoreB ?? "-"}
+                    </span>
+                    <span className={bWon ? "font-bold underline" : ""}>{entityB.label}</span>
+                  </span>
+                ) : (
+                  <span className="muted text-sm">{formatDateTime(game.scheduledAt)}</span>
+                )}
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </section>
+  );
+}
+
+function TeamVerdictStrip({ seasonCode, phaseCode, entityA, entityB, allTeams }) {
+  const standingsQuery = useQuery({
+    queryKey: ["standings", seasonCode, phaseCode],
+    queryFn: () => getSeasonStandings(seasonCode, phaseCode),
+    enabled: Boolean(phaseCode),
+  });
+  const gamesAQuery = useQuery({
+    queryKey: ["trend-games", seasonCode, "teams", entityA.id],
+    queryFn: () => getTeamGames(seasonCode, entityA.id, { limit: 100 }),
+  });
+  const gamesBQuery = useQuery({
+    queryKey: ["trend-games", seasonCode, "teams", entityB.id],
+    queryFn: () => getTeamGames(seasonCode, entityB.id, { limit: 100 }),
+  });
+
+  if (standingsQuery.isPending || gamesAQuery.isPending || gamesBQuery.isPending) return <CenteredSpinner />;
+  if (standingsQuery.isError || gamesAQuery.isError || gamesBQuery.isError) {
+    return (
+      <ErrorAlert
+        message="Could not load the verdict summary."
+        onRetry={() => {
+          standingsQuery.refetch();
+          gamesAQuery.refetch();
+          gamesBQuery.refetch();
+        }}
+      />
+    );
+  }
+
+  const standings = standingsQuery.data.standings ?? [];
+  const standingsA = standings.find((entry) => entry.clubCode === entityA.id);
+  const standingsB = standings.find((entry) => entry.clubCode === entityB.id);
+  const shortA = allTeams.find((team) => team.clubCode === entityA.id)?.abbreviatedName ?? entityA.label;
+  const shortB = allTeams.find((team) => team.clubCode === entityB.id)?.abbreviatedName ?? entityB.label;
+
+  const gamesA = gamesAQuery.data.games ?? [];
+  const gamesB = gamesBQuery.data.games ?? [];
+
+  const matchups = headToHeadGames(gamesA, phaseCode, entityB.id);
+  const { winsA, winsB } = seriesRecord(matchups, entityA.id);
+  const seriesValue =
+    winsA === winsB ? `${winsA}-${winsB}` : winsA > winsB ? `${shortA} ${winsA}-${winsB}` : `${shortB} ${winsB}-${winsA}`;
+
+  const { countA, countB } = categoriesWon(standingsA, standingsB);
+  const categoriesLabel =
+    countA === countB ? "Categories won · Even" : `Categories won · ${countA > countB ? shortA : shortB}`;
+
+  const formA = last10Form(gamesA, entityA.id);
+  const formB = last10Form(gamesB, entityB.id);
+  let formValue = "Even";
+  if (formA.played > 0 || formB.played > 0) {
+    if (formA.wins !== formB.wins) formValue = formA.wins > formB.wins ? shortA : shortB;
+    else if (formA.avgDiff !== formB.avgDiff) formValue = formA.avgDiff > formB.avgDiff ? shortA : shortB;
+  }
+
+  return (
+    <div className="kpi-strip mb-6">
+      <div className="kpi-chip">
+        <span className="value">{seriesValue}</span>
+        <span className="label">Season series</span>
+      </div>
+      <div className="kpi-chip">
+        <span className="value">
+          {countA}-{countB}
+        </span>
+        <span className="label">{categoriesLabel}</span>
+      </div>
+      <div className="kpi-chip">
+        <span className="value">{formValue}</span>
+        <span className="label">Better recent form &middot; L10</span>
+      </div>
     </div>
   );
 }
@@ -467,6 +736,21 @@ function ComparisonsBody({ seasonCode, phases, phaseCode, setSelectedPhase, allT
             <option value="perGame">Per game</option>
           </select>
         </label>
+      ) : null}
+
+      {view === "teams" && entityA && entityB ? (
+        <>
+          <TeamVerdictStrip
+            seasonCode={seasonCode}
+            phaseCode={phaseCode}
+            entityA={entityA}
+            entityB={entityB}
+            allTeams={allTeams}
+          />
+          <section className="mb-8">
+            <TeamSeriesSection seasonCode={seasonCode} phaseCode={phaseCode} entityA={entityA} entityB={entityB} />
+          </section>
+        </>
       ) : null}
 
       <section className="mb-8">

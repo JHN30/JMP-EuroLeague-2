@@ -638,6 +638,15 @@ button {
   white-space: normal;
 }
 
+/* winner marker - non-color-only leader indicator (comparisons stat rows) */
+.winner-mark {
+  display: inline-block;
+  margin-left: 0.3rem;
+  font-size: 0.6rem;
+  color: var(--color-primary);
+  vertical-align: middle;
+}
+
 /* scope toggle - two-way segmented control (statistics leaderboards) */
 .scope-toggle {
   display: inline-flex;

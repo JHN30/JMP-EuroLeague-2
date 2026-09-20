@@ -281,6 +281,32 @@ button {
   color: var(--color-error);
 }
 
+/* standings tier group headers */
+.tier-row td {
+  background: color-mix(in srgb, var(--color-base-200) 60%, transparent);
+  font-size: 0.66rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  padding: 0.45rem 0.7rem;
+}
+.tier-row-postseason td {
+  color: var(--color-success);
+}
+.tier-row-playin td {
+  color: var(--color-warning);
+}
+.tier-row-out td {
+  color: var(--color-base-content);
+  opacity: 0.6;
+}
+
+.trend-cell svg {
+  width: 3.25rem;
+  height: 1.15rem;
+  display: block;
+}
+
 .app-nav {
   position: sticky;
   top: 0;
@@ -609,6 +635,7 @@ button {
   letter-spacing: 0.05em;
   margin-top: 0.4rem;
   display: block;
+  white-space: normal;
 }
 
 @media (prefers-reduced-motion: no-preference) {

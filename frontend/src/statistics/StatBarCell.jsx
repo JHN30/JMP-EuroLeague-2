@@ -2,7 +2,7 @@ export default function StatBarCell({ widthPct, children }) {
   return (
     <td className="stat-bar-cell">
       {widthPct !== null ? (
-        <span className="bar">
+        <span className="bar" aria-hidden="true">
           <span className="bar-fill" style={{ width: `${widthPct}%` }} />
         </span>
       ) : null}

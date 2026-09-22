@@ -30,6 +30,11 @@ function buildTrend(diffs) {
   return { pointsAttr, areaAttr, points, zeroY: Math.max(0, Math.min(HEIGHT, zeroY)) };
 }
 
+function pointLabel(diff, index) {
+  const value = diff > 0 ? `+${formatPerGame(diff)}` : formatPerGame(diff);
+  return `Game ${index + 1}: point differential ${value}`;
+}
+
 export default function LeaderTrend() {
   const { seasonCode } = useParams();
 
@@ -75,16 +80,23 @@ export default function LeaderTrend() {
             <span className="value">{average}</span>
             <span className="label">Avg point diff, last {diffs.length}</span>
           </div>
-          <svg
-            viewBox={`0 0 ${WIDTH} ${HEIGHT}`}
-            preserveAspectRatio="none"
-            role="img"
-            aria-label={`Point differential per game over the last ${diffs.length} played games`}
-          >
-            <line x1="0" y1={trend.zeroY} x2={WIDTH} y2={trend.zeroY} className="leader-trend-baseline" />
-            <polygon points={trend.areaAttr} className="leader-trend-area" />
-            <polyline points={trend.pointsAttr} className="leader-trend-line" />
-          </svg>
+          <div className="chart-well">
+            <svg
+              viewBox={`0 0 ${WIDTH} ${HEIGHT}`}
+              preserveAspectRatio="none"
+              role="img"
+              aria-label={`Point differential per game over the last ${diffs.length} played games`}
+            >
+              <line x1="0" y1={trend.zeroY} x2={WIDTH} y2={trend.zeroY} className="leader-trend-baseline" vectorEffect="non-scaling-stroke" />
+              <polygon points={trend.areaAttr} className="leader-trend-area" />
+              <polyline points={trend.pointsAttr} className="leader-trend-line" vectorEffect="non-scaling-stroke" />
+              {trend.points.map((point, index) => (
+                <circle key={index} cx={point.x} cy={point.y} r="3" className="leader-trend-point">
+                  <title>{pointLabel(diffs[index], index)}</title>
+                </circle>
+              ))}
+            </svg>
+          </div>
         </div>
       ) : null}
     </WidgetPanel>

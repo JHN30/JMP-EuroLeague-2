@@ -88,14 +88,14 @@ function buildPositionTrend(positions) {
   const points = values.map((value, index) => {
     const x = TREND_PAD + step * index;
     const y = TREND_PAD + usableHeight - ((value - min) / range) * usableHeight;
-    return `${x},${y}`;
+    return { x, y };
   });
 
   const first = positions[0];
   const last = positions[positions.length - 1];
   const direction = last < first ? "up" : last > first ? "down" : "flat";
 
-  return { pointsAttr: points.join(" "), direction };
+  return { points, pointsAttr: points.map((point) => `${point.x},${point.y}`).join(" "), direction };
 }
 
 const TREND_COLOR = {
@@ -121,7 +121,13 @@ function TrendCell({ positions }) {
         strokeWidth="1.6"
         strokeLinecap="round"
         strokeLinejoin="round"
+        vectorEffect="non-scaling-stroke"
       />
+      {trend.points.map((point, index) => (
+        <circle key={index} cx={point.x} cy={point.y} r="1.6" fill={TREND_COLOR[trend.direction]}>
+          <title>{`Round ${index + 1}: position ${positions[index]}`}</title>
+        </circle>
+      ))}
     </svg>
   );
 }

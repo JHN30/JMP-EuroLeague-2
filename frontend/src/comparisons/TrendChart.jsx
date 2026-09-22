@@ -1,10 +1,10 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Chart } from "chart.js/auto";
+import { thinAxisLabels } from "../lib/chartHelpers";
 import Panel from "../lib/Panel";
 
-function themeColor(el, variable, fallback) {
-  const value = getComputedStyle(el).getPropertyValue(variable).trim();
-  return value || fallback;
+function themeColor(el, variable) {
+  return getComputedStyle(el).getPropertyValue(variable).trim();
 }
 
 // The active theme lives on <html data-theme>, set outside this component
@@ -27,21 +27,22 @@ export default function TrendChart({ title, labels, series }) {
   const canvasRef = useRef(null);
   const chartRef = useRef(null);
   const theme = useActiveTheme();
+  const axisLabels = useMemo(() => thinAxisLabels(labels, 6), [labels]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return undefined;
 
-    const primary = themeColor(canvas, "--color-primary", "#ff7926");
-    const accent = themeColor(canvas, "--color-accent", "#bba7d9");
-    const textColor = themeColor(canvas, "--color-base-content", "#888888");
+    const primary = themeColor(canvas, "--color-primary");
+    const accent = themeColor(canvas, "--color-accent");
+    const textColor = themeColor(canvas, "--color-base-content");
     const gridColor = `color-mix(in srgb, ${textColor} 20%, transparent)`;
     const colors = [primary, accent];
 
     chartRef.current = new Chart(canvas, {
       type: "line",
       data: {
-        labels,
+        labels: axisLabels,
         datasets: series.map((entry, index) => ({
           label: entry.label,
           data: entry.points,
@@ -61,7 +62,9 @@ export default function TrendChart({ title, labels, series }) {
         },
         plugins: {
           legend: { labels: { color: textColor } },
+          tooltip: { mode: "nearest", intersect: true },
         },
+        interaction: { mode: "nearest", intersect: true },
       },
     });
 
@@ -69,16 +72,18 @@ export default function TrendChart({ title, labels, series }) {
       chartRef.current?.destroy();
       chartRef.current = null;
     };
-  }, [labels, series, theme]);
+  }, [axisLabels, series, theme]);
 
   return (
     <Panel className="p-4">
-      <div className="relative h-64 w-full">
+      <div className="rounded-field border border-base-300 bg-base-100/60 p-2 sm:p-3">
+        <div className="relative h-64 w-full">
         <canvas
           ref={canvasRef}
           role="img"
           aria-label={`${title}: ${series.map((entry) => entry.label).join(" vs ")} across rounds`}
         />
+        </div>
       </div>
       <div className="mt-4 overflow-x-auto overscroll-x-contain">
         <table className="table">

@@ -388,6 +388,9 @@ button {
   width: 3.25rem;
   height: 1.15rem;
   display: block;
+  border: 1px solid var(--color-base-300);
+  border-radius: var(--radius-field);
+  background: color-mix(in srgb, var(--color-base-100) 60%, transparent);
 }
 
 .skip-link {
@@ -672,12 +675,21 @@ button {
   display: block;
 }
 .leader-trend svg {
+  min-width: 0;
+  height: auto;
+  width: 100%;
+}
+.chart-well {
   flex: 1;
   min-width: 0;
-  height: 90px;
+  border: 1px solid var(--color-base-300);
+  border-radius: var(--radius-field);
+  background: color-mix(in srgb, var(--color-base-100) 60%, transparent);
+  padding: 0.5rem;
 }
 .leader-trend-baseline {
-  stroke: var(--color-base-300);
+  stroke: currentColor;
+  opacity: 0.2;
   stroke-width: 1;
   stroke-dasharray: 3 3;
 }
@@ -690,6 +702,11 @@ button {
   stroke-width: 2.5;
   stroke-linecap: round;
   stroke-linejoin: round;
+}
+.leader-trend-point {
+  fill: var(--color-primary);
+  stroke: var(--color-base-100);
+  stroke-width: 1.5;
 }
 @media (max-width: 639px) {
   .leader-trend {

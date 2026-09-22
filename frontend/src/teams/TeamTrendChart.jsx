@@ -28,6 +28,12 @@ function buildTrend(diffs) {
   return { pointsAttr, areaAttr, points, zeroY: Math.max(0, Math.min(HEIGHT, zeroY)) };
 }
 
+function pointLabel(diff, game, index) {
+  const value = diff > 0 ? `+${formatPerGame(diff)}` : formatPerGame(diff);
+  const round = game.roundName ?? (game.roundNumber ? `Round ${game.roundNumber}` : `Game ${index + 1}`);
+  return `${round}: point differential ${value}`;
+}
+
 export default function TeamTrendChart({ games, clubCode }) {
   const played = games
     .filter((game) => game.played && game.localScore != null && game.roadScore != null)
@@ -62,17 +68,24 @@ export default function TeamTrendChart({ games, clubCode }) {
           </div>
         }
       />
-      <svg
-        viewBox={`0 0 ${WIDTH} ${HEIGHT}`}
-        preserveAspectRatio="none"
-        role="img"
-        aria-label={`Point differential per game over the last ${diffs.length} played games`}
-        className="w-full"
-      >
-        <line x1="0" y1={trend.zeroY} x2={WIDTH} y2={trend.zeroY} className="leader-trend-baseline" />
-        <polygon points={trend.areaAttr} className="leader-trend-area" />
-        <polyline points={trend.pointsAttr} className="leader-trend-line" />
-      </svg>
+      <div className="chart-well">
+        <svg
+          viewBox={`0 0 ${WIDTH} ${HEIGHT}`}
+          preserveAspectRatio="none"
+          role="img"
+          aria-label={`Point differential per game over the last ${diffs.length} played games`}
+          className="block h-auto w-full"
+        >
+          <line x1="0" y1={trend.zeroY} x2={WIDTH} y2={trend.zeroY} className="leader-trend-baseline" vectorEffect="non-scaling-stroke" />
+          <polygon points={trend.areaAttr} className="leader-trend-area" />
+          <polyline points={trend.pointsAttr} className="leader-trend-line" vectorEffect="non-scaling-stroke" />
+          {trend.points.map((point, index) => (
+            <circle key={index} cx={point.x} cy={point.y} r="4" className="leader-trend-point">
+              <title>{pointLabel(diffs[index], played[index], index)}</title>
+            </circle>
+          ))}
+        </svg>
+      </div>
     </Panel>
   );
 }

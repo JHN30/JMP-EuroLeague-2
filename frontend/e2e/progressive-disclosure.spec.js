@@ -51,7 +51,14 @@ test("defers a player game log and requests player pages in blocks of 36", async
     }
     if (pathname === `/api/seasons/${SEASON}/phases/RS/rounds`) {
       roundRequests += 1;
-      await route.fulfill({ json: { rounds: [] } });
+      await route.fulfill({
+        json: {
+          rounds: [
+            { number: 1, name: "Round 1" },
+            { number: 2, name: "Round 2" },
+          ],
+        },
+      });
       return;
     }
     if (pathname === `/api/seasons/${SEASON}/teams`) {
@@ -77,7 +84,33 @@ test("defers a player game log and requests player pages in blocks of 36", async
       return;
     }
     if (pathname.startsWith(`/api/seasons/${SEASON}/teams/`) && pathname.endsWith("/games")) {
-      await route.fulfill({ json: { games: [], pagination: { total: 0, hasMore: false } } });
+      await route.fulfill({
+        json: {
+          games: [
+            {
+              gameCode: "game-1",
+              phaseCode: "RS",
+              roundNumber: 1,
+              played: true,
+              localTeam: { clubCode: "A" },
+              roadTeam: { clubCode: "B" },
+              localScore: 80,
+              roadScore: 70,
+            },
+            {
+              gameCode: "game-2",
+              phaseCode: "RS",
+              roundNumber: 2,
+              played: true,
+              localTeam: { clubCode: "B" },
+              roadTeam: { clubCode: "A" },
+              localScore: 70,
+              roadScore: 85,
+            },
+          ],
+          pagination: { total: 2, hasMore: false },
+        },
+      });
       return;
     }
     if (pathname === `/api/seasons/${SEASON}/season-stats`) {
@@ -143,6 +176,6 @@ test("defers a player game log and requests player pages in blocks of 36", async
   expect(roundRequests).toBe(0);
 
   await page.getByRole("tab", { name: "Trends", exact: true }).click();
-  await expect(page.getByText("Not enough played games to chart a trend yet.")).toBeVisible();
+  await expect(page.getByRole("img", { name: "Points scored per round: Team A vs Team B across rounds" })).toBeVisible();
   expect(roundRequests).toBe(1);
 });

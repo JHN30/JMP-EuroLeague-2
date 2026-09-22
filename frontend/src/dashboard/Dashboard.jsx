@@ -2,6 +2,7 @@ import AsyncState from "../lib/AsyncState";
 import Panel from "../lib/Panel";
 import PageHeader from "../lib/PageHeader";
 import PanelHeader from "../lib/PanelHeader";
+import { useDocumentTitle } from "../lib/useDocumentTitle";
 import FormWatch from "./FormWatch";
 import GamesSnapshot from "./GamesSnapshot";
 import KpiStrip from "./KpiStrip";
@@ -29,6 +30,7 @@ export function WidgetPanel({ kicker, title, isLoading, isError, onRetry, isEmpt
 }
 
 export default function Dashboard() {
+  useDocumentTitle("Home");
   return (
     <div className="flex flex-col gap-6">
       <PageHeader kicker="OVERVIEW" title="Home" />

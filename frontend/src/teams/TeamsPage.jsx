@@ -4,8 +4,10 @@ import { getSeasonTeams } from "../lib/api";
 import AsyncState from "../lib/AsyncState";
 import EmptyText from "../lib/EmptyText";
 import PageHeader from "../lib/PageHeader";
+import { useDocumentTitle } from "../lib/useDocumentTitle";
 
 export default function TeamsPage() {
+  useDocumentTitle("Teams");
   const { seasonCode } = useParams();
 
   const teamsQuery = useQuery({

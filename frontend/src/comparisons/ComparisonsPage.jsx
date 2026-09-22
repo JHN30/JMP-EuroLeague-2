@@ -10,6 +10,7 @@ import LabelledSelect from "../lib/LabelledSelect";
 import Panel from "../lib/Panel";
 import PanelHeader from "../lib/PanelHeader";
 import PageHeader from "../lib/PageHeader";
+import { useDocumentTitle } from "../lib/useDocumentTitle";
 import {
   getPhases,
   getPlayerGames,
@@ -760,6 +761,7 @@ function ComparisonsBody({ seasonCode, phases, phaseCode, setSelectedPhase, allT
 }
 
 export default function ComparisonsPage() {
+  useDocumentTitle("Comparisons and trends");
   const { seasonCode } = useParams();
   const [searchParams] = useSearchParams();
   const [selectedPhase, setSelectedPhase] = useState(null);

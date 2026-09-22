@@ -1,7 +1,9 @@
+import { Suspense } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Navigate, Outlet, useLocation, useParams } from "react-router";
 import { getSeasons } from "../lib/api";
 import AsyncState from "../lib/AsyncState";
+import RouteErrorBoundary from "../ErrorBoundary";
 import { THEMES } from "../lib/useThemePreference";
 import { useDefaultSeasonCode } from "./useDefaultSeasonCode";
 import SeasonSelector from "./SeasonSelector";
@@ -105,7 +107,11 @@ export default function SeasonLayout({ themePreference }) {
         <NavBar />
       </header>
       <main id="main-content" tabIndex={-1} className="p-6 outline-none">
-        <Outlet />
+        <RouteErrorBoundary>
+          <Suspense fallback={<AsyncState status="loading" />}>
+            <Outlet />
+          </Suspense>
+        </RouteErrorBoundary>
       </main>
     </div>
   );

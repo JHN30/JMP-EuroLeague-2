@@ -18,6 +18,7 @@ import PageHeader from "../lib/PageHeader";
 import { formatStatValue } from "../lib/statsFields";
 import SummaryGrid from "../lib/SummaryGrid";
 import { TabPanel, TabStrip } from "../lib/TabStrip";
+import { useDocumentTitle } from "../lib/useDocumentTitle";
 
 const GAMES_LIMIT = 100;
 
@@ -205,6 +206,8 @@ export default function PlayerPage() {
     queryFn: () => getPlayer(seasonCode, personKey),
     retry: false,
   });
+  const player = playerQuery.data?.player;
+  useDocumentTitle(player ? (player.name ?? player.jerseyName ?? player.personKey) : "Players");
 
   const registrationsQuery = useQuery({
     queryKey: ["player-registrations", seasonCode, personKey],
@@ -243,7 +246,6 @@ export default function PlayerPage() {
     );
   }
 
-  const player = playerQuery.data.player;
   const headshotUrl = gamesQuery.data?.games[0]?.headshotUrl;
 
   return (

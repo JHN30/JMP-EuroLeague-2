@@ -6,6 +6,7 @@ import EmptyText from "../lib/EmptyText";
 import { formatDateTime as formatDateTimeShared, formatMinutes } from "../lib/format";
 import Panel from "../lib/Panel";
 import PageHeader from "../lib/PageHeader";
+import { useDocumentTitle } from "../lib/useDocumentTitle";
 
 function formatDateTime(scheduledAt) {
   return formatDateTimeShared(scheduledAt, { dateStyle: "full" });
@@ -137,6 +138,8 @@ export default function GameDetailPage() {
     queryFn: () => getGame(seasonCode, gameCode),
     retry: false,
   });
+  const game = gameQuery.data?.game;
+  useDocumentTitle(game ? `${teamName(game.localTeam)} vs ${teamName(game.roadTeam)}` : "Fixtures and results");
 
   const boxScoreQuery = useQuery({
     queryKey: ["box-score", seasonCode, gameCode],
@@ -155,7 +158,6 @@ export default function GameDetailPage() {
     );
   }
 
-  const game = gameQuery.data.game;
   const localWon = game.played && game.localScore != null && game.roadScore != null && game.localScore > game.roadScore;
   const roadWon = game.played && game.localScore != null && game.roadScore != null && game.roadScore > game.localScore;
 

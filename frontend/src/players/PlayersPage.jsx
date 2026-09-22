@@ -6,11 +6,13 @@ import AsyncState from "../lib/AsyncState";
 import EmptyText from "../lib/EmptyText";
 import Panel from "../lib/Panel";
 import PageHeader from "../lib/PageHeader";
+import { useDocumentTitle } from "../lib/useDocumentTitle";
 import SearchField from "../lib/SearchField";
 
 const PAGE_SIZE = 20;
 
 export default function PlayersPage() {
+  useDocumentTitle("Players");
   const { seasonCode } = useParams();
   const [search, setSearch] = useState("");
   const [offset, setOffset] = useState(0);

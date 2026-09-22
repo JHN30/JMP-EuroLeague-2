@@ -15,8 +15,8 @@ export default function NavBar() {
   const { seasonCode } = useParams();
 
   return (
-    <nav aria-label="Sections" className="overflow-x-auto border-t border-base-300 px-4 sm:px-6">
-      <div className="tabs tabs-sm w-max">
+    <nav aria-label="Sections" className="border-t border-base-300 px-4 sm:px-6">
+      <div className="tabs tabs-sm flex-wrap">
         {TABS.map((tab) => (
           <NavLink
             key={tab.label}

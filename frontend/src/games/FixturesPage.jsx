@@ -8,6 +8,7 @@ import EmptyText from "../lib/EmptyText";
 import { formatDateTime } from "../lib/format";
 import Panel from "../lib/Panel";
 import PageHeader from "../lib/PageHeader";
+import { useDocumentTitle } from "../lib/useDocumentTitle";
 import { TabPanel, TabStrip } from "../lib/TabStrip";
 
 const PAGE_SIZE = 20;
@@ -24,6 +25,7 @@ function teamLabel(team) {
 }
 
 export default function FixturesPage() {
+  useDocumentTitle("Fixtures and results");
   const { seasonCode } = useParams();
   const [selectedPhase, setSelectedPhase] = useState(null);
   const [selectedRound, setSelectedRound] = useState(null);

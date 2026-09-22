@@ -8,6 +8,7 @@ import EmptyText from "../lib/EmptyText";
 import LabelledSelect from "../lib/LabelledSelect";
 import Panel from "../lib/Panel";
 import PageHeader from "../lib/PageHeader";
+import { useDocumentTitle } from "../lib/useDocumentTitle";
 import { TabPanel, TabStrip } from "../lib/TabStrip";
 import {
   PLAYER_METRIC_GROUPS,
@@ -326,6 +327,7 @@ function PlayerLeaderboard({ seasonCode, phaseCode }) {
 }
 
 export default function StatisticsPage() {
+  useDocumentTitle("Statistics leaderboards");
   const { seasonCode } = useParams();
   const [view, setView] = useState("teams");
   const [selectedPhase, setSelectedPhase] = useState(null);

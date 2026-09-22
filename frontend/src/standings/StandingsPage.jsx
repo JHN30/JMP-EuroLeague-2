@@ -5,6 +5,7 @@ import { getPhases, getSeasonStandings } from "../lib/api";
 import AsyncState from "../lib/AsyncState";
 import EmptyText from "../lib/EmptyText";
 import PageHeader from "../lib/PageHeader";
+import { useDocumentTitle } from "../lib/useDocumentTitle";
 import { TabPanel, TabStrip } from "../lib/TabStrip";
 import StandingsKpiStrip from "./StandingsKpiStrip";
 import StandingsTable from "./StandingsTable";
@@ -19,6 +20,7 @@ const VIEW_TABS = [
 const TREND_ROUNDS_BACK = 5;
 
 export default function StandingsPage() {
+  useDocumentTitle("Standings");
   const { seasonCode } = useParams();
   const [selectedPhase, setSelectedPhase] = useState(null);
   const [view, setView] = useState("overall");

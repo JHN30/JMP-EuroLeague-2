@@ -8,6 +8,7 @@ import { formatDateTime } from "../lib/format";
 import Panel from "../lib/Panel";
 import PanelHeader from "../lib/PanelHeader";
 import PageHeader from "../lib/PageHeader";
+import { useDocumentTitle } from "../lib/useDocumentTitle";
 import { TabPanel, TabStrip } from "../lib/TabStrip";
 
 function teamLabel(team) {
@@ -84,6 +85,7 @@ function MatchupGroups({ seasonCode, games }) {
 }
 
 export default function PlayoffsPage() {
+  useDocumentTitle("Playoffs");
   const { seasonCode } = useParams();
   const [selectedPhase, setSelectedPhase] = useState(null);
 

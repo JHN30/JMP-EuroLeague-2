@@ -12,6 +12,7 @@ import PageHeader from "../lib/PageHeader";
 import PanelHeader from "../lib/PanelHeader";
 import { formatStatValue } from "../lib/statsFields";
 import { TabPanel, TabStrip } from "../lib/TabStrip";
+import { useDocumentTitle } from "../lib/useDocumentTitle";
 import StatBarCell from "../statistics/StatBarCell";
 import { barWidthScale } from "../statistics/statBarScale";
 import TeamTrendChart from "./TeamTrendChart";
@@ -443,6 +444,8 @@ export default function TeamPage() {
     queryFn: () => getTeam(seasonCode, clubCode),
     retry: false,
   });
+  const team = teamQuery.data?.team;
+  useDocumentTitle(team ? (team.name ?? team.abbreviatedName ?? team.clubCode) : "Teams");
 
   const phasesQuery = useQuery({
     queryKey: ["phases", seasonCode],
@@ -487,7 +490,6 @@ export default function TeamPage() {
     );
   }
 
-  const team = teamQuery.data.team;
   const games = gamesQuery.data?.games ?? [];
   const nextGame = games.find((game) => !game.played) ?? null;
 

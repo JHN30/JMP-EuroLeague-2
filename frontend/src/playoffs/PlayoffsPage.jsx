@@ -39,7 +39,7 @@ function MatchupCard({ seasonCode, groupName, games }) {
 
   return (
     <div className="panel p-4">
-      <h3 className="panel-title mb-3">{groupName}</h3>
+      <h2 className="panel-title mb-3">{groupName}</h2>
       <ul>
         {sorted.map((game) => {
           const localWon = game.played && game.localScore != null && game.roadScore != null && game.localScore > game.roadScore;

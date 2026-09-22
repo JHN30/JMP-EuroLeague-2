@@ -37,6 +37,7 @@ export function WidgetPanel({ title, isLoading, isError, onRetry, isEmpty, empty
 export default function Dashboard() {
   return (
     <div className="flex flex-col gap-6">
+      <h1 className="mb-6 text-2xl font-semibold">Home</h1>
       <KpiStrip />
       <Spotlight />
       <div className="grid items-stretch gap-6 lg:grid-cols-3">

@@ -22,7 +22,7 @@ export default function TeamsPage() {
       <PageHeader kicker="CLUBS" title="Teams" />
 
       {teamsQuery.isLoading ? (
-        <AsyncState status="loading" />
+        <AsyncState status="loading" label="Loading teams" />
       ) : teamsQuery.isError ? (
         <AsyncState status="error" message="Could not load teams." onRetry={() => teamsQuery.refetch()} />
       ) : teams.length === 0 ? (

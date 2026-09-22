@@ -3,6 +3,7 @@ import EmptyText from "./EmptyText";
 export default function AsyncState({
   status,
   message,
+  label = "Loading",
   onRetry,
   inline = false,
   fullScreen = false,
@@ -14,7 +15,7 @@ export default function AsyncState({
 
   if (inline) {
     if (status === "loading") {
-      return <span role="status" aria-label="Loading" className="loading loading-spinner loading-sm text-primary" />;
+      return <span role="status" aria-label={label} className="loading loading-spinner loading-sm text-primary" />;
     }
     if (status === "error") {
       return <span role="alert" className="muted text-sm">{message}</span>;
@@ -29,7 +30,7 @@ export default function AsyncState({
         ? "flex justify-center py-6"
         : "flex justify-center py-12";
     return (
-      <div role="status" aria-label="Loading" className={wrapperClass}>
+      <div role="status" aria-label={label} className={wrapperClass}>
         <span className={`loading loading-spinner ${compact ? "" : "loading-lg"} text-primary`} />
       </div>
     );

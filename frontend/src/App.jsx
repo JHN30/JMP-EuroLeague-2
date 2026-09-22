@@ -22,7 +22,7 @@ function DefaultSeasonRedirect() {
   const defaultSeasonQuery = useDefaultSeasonCode();
 
   if (defaultSeasonQuery.isLoading) {
-    return <AsyncState status="loading" fullScreen />;
+    return <AsyncState status="loading" label="Loading seasons" fullScreen />;
   }
 
   if (defaultSeasonQuery.isError || !defaultSeasonQuery.data) {

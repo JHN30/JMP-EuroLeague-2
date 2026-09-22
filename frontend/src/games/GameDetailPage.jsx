@@ -147,7 +147,7 @@ export default function GameDetailPage() {
     enabled: gameQuery.isSuccess,
   });
 
-  if (gameQuery.isLoading) return <AsyncState status="loading" />;
+  if (gameQuery.isLoading) return <AsyncState status="loading" label="Loading the game" />;
 
   if (gameQuery.isError) {
     const notFound = gameQuery.error?.response?.status === 404;
@@ -218,7 +218,7 @@ export default function GameDetailPage() {
 
       <h2 className="mb-3 text-xl font-semibold">Team stats</h2>
       {boxScoreQuery.isLoading ? (
-        <AsyncState status="loading" />
+        <AsyncState status="loading" label="Loading the box score" />
       ) : boxScoreQuery.isError ? (
         <AsyncState status="error" message="Could not load box score." onRetry={() => boxScoreQuery.refetch()} />
       ) : (

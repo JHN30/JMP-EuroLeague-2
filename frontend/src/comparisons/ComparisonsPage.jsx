@@ -197,7 +197,7 @@ function TeamComparisonTable({ seasonCode, phaseCode, entityA, entityB }) {
   });
 
   if (!entityA || !entityB) return <p className="muted">Select two teams to compare.</p>;
-  if (standingsQuery.isPending) return <AsyncState status="loading" />;
+  if (standingsQuery.isPending) return <AsyncState status="loading" label="Loading the comparison" />;
   if (standingsQuery.isError) {
     return <AsyncState status="error" message="Could not load the comparison." onRetry={() => standingsQuery.refetch()} />;
   }
@@ -292,7 +292,7 @@ function PlayerComparisonTable({ seasonCode, phaseCode, mode, entityA, entityB }
   });
 
   if (!entityA || !entityB) return <p className="muted">Select two players to compare.</p>;
-  if (statsAQuery.isPending || statsBQuery.isPending) return <AsyncState status="loading" />;
+  if (statsAQuery.isPending || statsBQuery.isPending) return <AsyncState status="loading" label="Loading the comparison" />;
   if (statsAQuery.isError || statsBQuery.isError) {
     return (
       <AsyncState status="error"
@@ -412,7 +412,7 @@ function TeamSeriesSection({ seasonCode, phaseCode, entityA, entityB }) {
     queryFn: () => getTeamGames(seasonCode, entityA.id, { limit: 100 }),
   });
 
-  if (gamesAQuery.isPending) return <AsyncState status="loading" />;
+  if (gamesAQuery.isPending) return <AsyncState status="loading" label="Loading the season series" />;
   if (gamesAQuery.isError) {
     return <AsyncState status="error" message="Could not load the season series." onRetry={() => gamesAQuery.refetch()} />;
   }
@@ -475,7 +475,7 @@ function TeamVerdictStrip({ seasonCode, phaseCode, entityA, entityB, allTeams })
     queryFn: () => getTeamGames(seasonCode, entityB.id, { limit: 100 }),
   });
 
-  if (standingsQuery.isPending || gamesAQuery.isPending || gamesBQuery.isPending) return <AsyncState status="loading" />;
+  if (standingsQuery.isPending || gamesAQuery.isPending || gamesBQuery.isPending) return <AsyncState status="loading" label="Loading the comparison" />;
   if (standingsQuery.isError || gamesAQuery.isError || gamesBQuery.isError) {
     return (
       <AsyncState status="error"
@@ -600,7 +600,7 @@ function TrendSection({ seasonCode, phaseCode, view, entityA, entityB }) {
     entityB.label,
   ]);
 
-  if (roundsQuery.isPending || gamesAQuery.isPending || gamesBQuery.isPending) return <AsyncState status="loading" />;
+  if (roundsQuery.isPending || gamesAQuery.isPending || gamesBQuery.isPending) return <AsyncState status="loading" label="Loading the trend" />;
   if (roundsQuery.isError || gamesAQuery.isError || gamesBQuery.isError) {
     return (
       <AsyncState status="error"
@@ -785,7 +785,7 @@ export default function ComparisonsPage() {
     queryFn: () => getSeasonTeams(seasonCode),
   });
 
-  if (phasesQuery.isLoading || teamsQuery.isLoading) return <AsyncState status="loading" />;
+  if (phasesQuery.isLoading || teamsQuery.isLoading) return <AsyncState status="loading" label="Loading phases" />;
   if (phasesQuery.isError) {
     return <AsyncState status="error" message="Could not load phases." onRetry={() => phasesQuery.refetch()} />;
   }

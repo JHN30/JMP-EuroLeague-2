@@ -43,11 +43,11 @@ export default function PlayersPage() {
       </div>
 
       {playersQuery.isLoading ? (
-        <AsyncState status="loading" />
+        <AsyncState status="loading" label="Loading players" />
       ) : playersQuery.isError ? (
         <AsyncState status="error" message="Could not load players." onRetry={() => playersQuery.refetch()} />
       ) : players.length === 0 ? (
-        <EmptyText>{search ? "No players match your search." : "No players available for this season."}</EmptyText>
+        <EmptyText>{search ? "No players match your search. Try a different name." : "No players available for this season."}</EmptyText>
       ) : (
         <>
           <p className="muted mb-2 text-sm">

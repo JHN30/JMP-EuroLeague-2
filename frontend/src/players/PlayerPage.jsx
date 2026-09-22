@@ -37,7 +37,7 @@ function opponent(game, side) {
 }
 
 function RegistrationsSection({ registrationsQuery, seasonCode }) {
-  if (registrationsQuery.isPending) return <AsyncState status="loading" />;
+  if (registrationsQuery.isPending) return <AsyncState status="loading" label="Loading team registration" />;
   if (registrationsQuery.isError) {
     return <AsyncState status="error" message="Could not load team registration." onRetry={() => registrationsQuery.refetch()} />;
   }
@@ -64,7 +64,7 @@ function RegistrationsSection({ registrationsQuery, seasonCode }) {
               )}
             secondary={<>{entry.positionName ?? "-"} · #{entry.dorsal ?? "-"}</>}
             trailing={
-              <span className={`badge badge-sm ${entry.active === false ? "badge-ghost" : "badge-success"}`}>
+              <span className={`badge badge-sm ${entry.active === false ? "badge-ghost" : "badge-primary"}`}>
                 {entry.active === false ? "Inactive" : "Active"}
               </span>
             }
@@ -125,7 +125,7 @@ const MISC_FIELDS = [
 ];
 
 function SeasonStatsSection({ statsQuery }) {
-  if (statsQuery.isPending) return <AsyncState status="loading" />;
+  if (statsQuery.isPending) return <AsyncState status="loading" label="Loading season statistics" />;
   if (statsQuery.isError) {
     return <AsyncState status="error" message="Could not load season statistics." onRetry={() => statsQuery.refetch()} />;
   }
@@ -144,7 +144,7 @@ function SeasonStatsSection({ statsQuery }) {
 }
 
 function GameLogSection({ gamesQuery }) {
-  if (gamesQuery.isPending) return <AsyncState status="loading" />;
+  if (gamesQuery.isPending) return <AsyncState status="loading" label="Loading the game log" />;
   if (gamesQuery.isError) {
     return <AsyncState status="error" message="Could not load the game log." onRetry={() => gamesQuery.refetch()} />;
   }
@@ -241,7 +241,7 @@ export default function PlayerPage() {
     enabled: playerQuery.isSuccess,
   });
 
-  if (playerQuery.isLoading) return <AsyncState status="loading" />;
+  if (playerQuery.isLoading) return <AsyncState status="loading" label="Loading the player" />;
 
   if (playerQuery.isError) {
     const notFound = playerQuery.error?.response?.status === 404;

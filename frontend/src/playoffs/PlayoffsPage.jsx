@@ -101,7 +101,7 @@ export default function PlayoffsPage() {
     enabled: Boolean(phaseCode),
   });
 
-  if (phasesQuery.isLoading) return <AsyncState status="loading" />;
+  if (phasesQuery.isLoading) return <AsyncState status="loading" label="Loading phases" />;
   if (phasesQuery.isError) {
     return <AsyncState status="error" message="Could not load phases." onRetry={() => phasesQuery.refetch()} />;
   }
@@ -125,7 +125,7 @@ export default function PlayoffsPage() {
 
           <TabPanel id="playoffs-panel" focusKey={phaseCode}>
             {gamesQuery.isPending ? (
-              <AsyncState status="loading" />
+              <AsyncState status="loading" label="Loading playoff games" />
             ) : gamesQuery.isError ? (
               <AsyncState status="error" message="Could not load games." onRetry={() => gamesQuery.refetch()} />
             ) : (

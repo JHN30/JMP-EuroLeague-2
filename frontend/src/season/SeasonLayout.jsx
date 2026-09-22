@@ -51,7 +51,7 @@ export default function SeasonLayout({ themePreference }) {
   const isSupported = seasonsQuery.data?.seasons.some((season) => season.seasonCode === seasonCode) ?? false;
   const defaultSeasonQuery = useDefaultSeasonCode(seasonsQuery.isSuccess && !isSupported);
 
-  if (seasonsQuery.isLoading) return <AsyncState status="loading" fullScreen />;
+  if (seasonsQuery.isLoading) return <AsyncState status="loading" label="Loading seasons" fullScreen />;
 
   if (seasonsQuery.isError) {
     return (
@@ -63,7 +63,7 @@ export default function SeasonLayout({ themePreference }) {
   }
 
   if (!isSupported) {
-    if (defaultSeasonQuery.isLoading) return <AsyncState status="loading" fullScreen />;
+    if (defaultSeasonQuery.isLoading) return <AsyncState status="loading" label="Loading seasons" fullScreen />;
 
     if (defaultSeasonQuery.isError) {
       return (
@@ -108,7 +108,7 @@ export default function SeasonLayout({ themePreference }) {
       </header>
       <main id="main-content" tabIndex={-1} className="p-6 outline-none">
         <RouteErrorBoundary>
-          <Suspense fallback={<AsyncState status="loading" />}>
+          <Suspense fallback={<AsyncState status="loading" label="Loading page" />}>
             {/* Keyed by season so each page's local view-level filters reset
                 when the archive-level season selection changes. */}
             <Outlet key={seasonCode} />

@@ -68,7 +68,7 @@ function TeamLeaderboard({ seasonCode, phaseCode }) {
     [sorted, metric],
   );
 
-  if (standingsQuery.isPending) return <AsyncState status="loading" />;
+  if (standingsQuery.isPending) return <AsyncState status="loading" label="Loading the team leaderboard" />;
   if (standingsQuery.isError) {
     return <AsyncState status="error" message="Could not load the team leaderboard." onRetry={() => standingsQuery.refetch()} />;
   }
@@ -211,7 +211,7 @@ function PlayerLeaderboard({ seasonCode, phaseCode }) {
   );
   const currentCategory = PLAYER_METRIC_GROUPS.find((g) => g.group === category) ?? PLAYER_METRIC_GROUPS[0];
 
-  if (statsQuery.isPending) return <AsyncState status="loading" />;
+  if (statsQuery.isPending) return <AsyncState status="loading" label="Loading the player leaderboard" />;
   if (statsQuery.isError) {
     return <AsyncState status="error" message="Could not load the player leaderboard." onRetry={() => statsQuery.refetch()} />;
   }
@@ -370,7 +370,7 @@ export default function StatisticsPage() {
     });
   }
 
-  if (phasesQuery.isLoading) return <AsyncState status="loading" />;
+  if (phasesQuery.isLoading) return <AsyncState status="loading" label="Loading phases" />;
   if (phasesQuery.isError) {
     return <AsyncState status="error" message="Could not load phases." onRetry={() => phasesQuery.refetch()} />;
   }

@@ -72,7 +72,7 @@ function NextGameChip({ nextGame, clubCode }) {
 }
 
 function OverviewKpiStrip({ standingsQuery, clubCode }) {
-  if (standingsQuery.isPending) return <AsyncState status="loading" />;
+  if (standingsQuery.isPending) return <AsyncState status="loading" label="Loading team KPIs" />;
   if (standingsQuery.isError) {
     return <AsyncState status="error" message="Could not load team KPIs." onRetry={() => standingsQuery.refetch()} />;
   }
@@ -203,7 +203,7 @@ function OverviewSection({ seasonCode, clubCode, standingsQuery, games }) {
 }
 
 function SeasonRecordSection({ standingsQuery, clubCode }) {
-  if (standingsQuery.isPending) return <AsyncState status="loading" />;
+  if (standingsQuery.isPending) return <AsyncState status="loading" label="Loading the season record" />;
   if (standingsQuery.isError) {
     return <AsyncState status="error" message="Could not load the season record." onRetry={() => standingsQuery.refetch()} />;
   }
@@ -255,7 +255,7 @@ function SeasonRecordSection({ standingsQuery, clubCode }) {
 }
 
 function TeamStatisticsSection({ standingsQuery, clubCode }) {
-  if (standingsQuery.isPending) return <AsyncState status="loading" />;
+  if (standingsQuery.isPending) return <AsyncState status="loading" label="Loading team statistics" />;
   if (standingsQuery.isError) {
     return <AsyncState status="error" message="Could not load team statistics." onRetry={() => standingsQuery.refetch()} />;
   }
@@ -304,7 +304,7 @@ function StatsSection({ standingsQuery, clubCode }) {
 }
 
 function RosterSection({ rosterQuery, rosterStatsQuery, seasonCode }) {
-  if (rosterQuery.isPending) return <AsyncState status="loading" />;
+  if (rosterQuery.isPending) return <AsyncState status="loading" label="Loading the roster" />;
   if (rosterQuery.isError) {
     return <AsyncState status="error" message="Could not load the roster." onRetry={() => rosterQuery.refetch()} />;
   }
@@ -312,7 +312,7 @@ function RosterSection({ rosterQuery, rosterStatsQuery, seasonCode }) {
   if (registrations.length === 0) {
     return <EmptyText>Roster not available yet.</EmptyText>;
   }
-  if (rosterStatsQuery.isPending) return <AsyncState status="loading" />;
+  if (rosterStatsQuery.isPending) return <AsyncState status="loading" label="Loading roster statistics" />;
   if (rosterStatsQuery.isError) {
     return <AsyncState status="error" message="Could not load roster statistics." onRetry={() => rosterStatsQuery.refetch()} />;
   }
@@ -384,7 +384,7 @@ function RosterSection({ rosterQuery, rosterStatsQuery, seasonCode }) {
 }
 
 function ScheduleSection({ gamesQuery, clubCode }) {
-  if (gamesQuery.isPending) return <AsyncState status="loading" />;
+  if (gamesQuery.isPending) return <AsyncState status="loading" label="Loading the schedule" />;
   if (gamesQuery.isError) {
     return <AsyncState status="error" message="Could not load the schedule." onRetry={() => gamesQuery.refetch()} />;
   }
@@ -479,7 +479,7 @@ export default function TeamPage() {
     enabled: teamQuery.isSuccess,
   });
 
-  if (teamQuery.isLoading) return <AsyncState status="loading" />;
+  if (teamQuery.isLoading) return <AsyncState status="loading" label="Loading the team" />;
 
   if (teamQuery.isError) {
     const notFound = teamQuery.error?.response?.status === 404;
@@ -529,7 +529,7 @@ export default function TeamPage() {
       <TabPanel id="team-panel" focusKey={`${phaseCode}-${section}`}>
         {section === "overview" ? (
           gamesQuery.isPending ? (
-            <AsyncState status="loading" />
+            <AsyncState status="loading" label="Loading this team's games" />
           ) : gamesQuery.isError ? (
             <AsyncState status="error" message="Could not load this team's games." onRetry={() => gamesQuery.refetch()} />
           ) : (

@@ -87,7 +87,7 @@ export default function FixturesPage() {
 
   const games = gamesQuery.data?.games ?? [];
 
-  if (phasesQuery.isLoading) return <AsyncState status="loading" />;
+  if (phasesQuery.isLoading) return <AsyncState status="loading" label="Loading phases" />;
   if (phasesQuery.isError) {
     return <AsyncState status="error" message="Could not load phases." onRetry={() => phasesQuery.refetch()} />;
   }
@@ -132,11 +132,11 @@ export default function FixturesPage() {
 
       <TabPanel id="fixtures-panel" focusKey={`${phaseCode}-${status}-${selectedRound}`}>
       {gamesQuery.isLoading ? (
-        <AsyncState status="loading" />
+        <AsyncState status="loading" label="Loading games" />
       ) : gamesQuery.isError ? (
         <AsyncState status="error" message="Could not load games." onRetry={() => gamesQuery.refetch()} />
       ) : games.length === 0 ? (
-        <EmptyText>No games match these filters.</EmptyText>
+        <EmptyText>No games match these filters. Try a different round or status.</EmptyText>
       ) : (
         <>
           <p className="muted mb-2 text-sm">

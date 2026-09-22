@@ -76,7 +76,7 @@ export default function StandingsPage() {
     }
   }
 
-  if (phasesQuery.isLoading) return <AsyncState status="loading" />;
+  if (phasesQuery.isLoading) return <AsyncState status="loading" label="Loading phases" />;
   if (phasesQuery.isError) {
     return <AsyncState status="error" message="Could not load phases." onRetry={() => phasesQuery.refetch()} />;
   }
@@ -95,7 +95,7 @@ export default function StandingsPage() {
 
       <TabPanel id="standings-panel" focusKey={`${phaseCode}-${view}`}>
         {standingsQuery.isLoading ? (
-          <AsyncState status="loading" />
+          <AsyncState status="loading" label="Loading standings" />
         ) : standingsQuery.isError ? (
           <AsyncState status="error" message="Could not load standings." onRetry={() => standingsQuery.refetch()} />
         ) : standings.length === 0 ? (

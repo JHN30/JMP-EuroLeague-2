@@ -8,6 +8,7 @@ import GamesSnapshot from "./GamesSnapshot";
 import KpiStrip from "./KpiStrip";
 import LeaderTrend from "./LeaderTrend";
 import LeadersPanel from "./LeadersPanel";
+import SeasonCoverage from "./SeasonCoverage";
 import Spotlight from "./Spotlight";
 import StandingsSnapshot from "./StandingsSnapshot";
 
@@ -49,6 +50,7 @@ export default function Dashboard() {
         </div>
       </div>
       <LeaderTrend />
+      <SeasonCoverage />
     </div>
   );
 }

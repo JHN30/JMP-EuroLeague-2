@@ -1,7 +1,8 @@
 import { useQuery } from "@tanstack/react-query";
 import { useParams } from "react-router";
-import { getBoxScore, getGame } from "../lib/api";
+import { getBoxScore, getCoverage, getGame } from "../lib/api";
 import AsyncState from "../lib/AsyncState";
+import DataCoveragePanel from "../lib/DataCoveragePanel";
 import EmptyText from "../lib/EmptyText";
 import { formatDateTime as formatDateTimeShared, formatMinutes } from "../lib/format";
 import Panel from "../lib/Panel";
@@ -147,6 +148,12 @@ export default function GameDetailPage() {
     enabled: gameQuery.isSuccess,
   });
 
+  const coverageQuery = useQuery({
+    queryKey: ["coverage", seasonCode, gameCode],
+    queryFn: () => getCoverage(seasonCode, { gameCode }),
+    enabled: gameQuery.isSuccess,
+  });
+
   if (gameQuery.isLoading) return <AsyncState status="loading" label="Loading the game" />;
 
   if (gameQuery.isError) {
@@ -215,6 +222,16 @@ export default function GameDetailPage() {
           {game.gameStatus ?? "Scheduled"}
         </span>
       )}
+
+      <div className="mb-6">
+        {coverageQuery.isLoading ? (
+          <AsyncState status="loading" label="Loading game data coverage" compact />
+        ) : coverageQuery.isError ? (
+          <AsyncState status="error" inline message="Could not load this game's data coverage." />
+        ) : (
+          <DataCoveragePanel coverage={coverageQuery.data} />
+        )}
+      </div>
 
       <h2 className="mb-3 text-xl font-semibold">Team stats</h2>
       {boxScoreQuery.isLoading ? (

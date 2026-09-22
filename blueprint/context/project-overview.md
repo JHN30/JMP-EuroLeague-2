@@ -1,6 +1,6 @@
 # JMP Euroleague - Project Overview
 
-<!-- blueprint:source-hash a23f3dec50b3ca93487d32db5df7d6bace9ba835c4c8a5aa49abd1f14eb38acc -->
+<!-- blueprint:source-hash 94e29588f3c177e9e7be1bacf2b20ebb778a4e32f7c2b7ae8945325df5469bcc -->
 
 > A public, read-only EuroLeague explorer for the 2025-26 (`E2025`) and 2026-27 (`E2026`) seasons, backed by already populated Neon PostgreSQL tables.
 
@@ -51,6 +51,13 @@ The headline is a two-season public explorer whose every view stays in the selec
     - **13a Player photos in stats views** - real player headshots (already returned by the season-stats and box-score APIs) in the leaderboard, comparisons, box scores, and player game logs.
     - **13b Team crests everywhere** - crest URLs joined into standings/fixtures/game-detail API responses and shown in standings, fixtures, game headers, the dashboard, and comparisons.
     - **13c Compact filter controls** - stacked tab-row filters on the statistics and comparisons pages replaced with compact dropdown selects.
+14. **Analytics-forward visual refresh** - KPI strips, charts, standings tiers, category navigation, and deliberate mobile layouts across the dashboard, standings, leaderboards, team profile, and comparisons.
+15. **UI/UX guideline foundations** - shared themes, typography, accessibility, UI primitives, routing, async/filter/content conventions, and chart rules from `UI-UX.md`.
+16. **Data coverage and honest placeholders** - show the current selection's real data availability instead of fabricating unavailable surfaces. Build it in three reviewable parts:
+    - **16a Coverage foundation and game panel** - API-derived available, partial, incomplete, unavailable, and not-yet-applicable inventory plus a compact Game Detail panel for box scores, period scores, standings, rosters, photos, statistics, shots, and play-by-play.
+    - **16b Honest game-detail placeholders** - unavailable Shooting and Play-by-play states that link to box-score shooting totals or period-level flow and label derived data.
+    - **16c Season and profile coverage integration** - reusable season-scoped coverage presentation and archive-scoped player history, without prebuilding feature 17 tabs.
+17. **Guideline page depth** - season overview, standings, game detail, team detail, player detail, leaderboards, comparisons, records, and season-format depth scoped to available data.
 
 Every data-driven page needs loading, empty, unavailable, partial-data, and error states. Known corrections and anomalies must remain visible. JMP Rating, win probabilities, simulations, older seasons, other competitions, and user features are deferred.
 

@@ -17,6 +17,7 @@ import {
   getTeams,
 } from "../db/season-identities";
 import { getBoxScore, getGame, getGames, getPlayerGameLog, getTeamGames } from "../db/season-games";
+import { getCoverage } from "../db/season-coverage";
 import { getLatestStandingsRound, getStandings } from "../db/season-standings";
 import { getSeasonStats, SORTABLE_STATS_FIELDS, type SortableStatsField } from "../db/season-stats";
 
@@ -73,8 +74,7 @@ function requestedSearch(req: Request, res: Response): string | undefined | null
   return trimmed;
 }
 
-function requestedGameCode(req: Request, res: Response): number | null {
-  const value = req.params.gameCode;
+function requestedGameCode(value: unknown, res: Response): number | null {
   if (typeof value !== "string" || !/^[1-9]\d*$/.test(value)) {
     sendError(res, 400, "INVALID_GAME_CODE", "Invalid game code");
     return null;
@@ -452,7 +452,7 @@ seasonRouter.get("/:seasonCode/games", async (req, res) => {
 seasonRouter.get("/:seasonCode/games/:gameCode", async (req, res) => {
   const season = await requestedSeason(req, res);
   if (!season) return;
-  const gameCode = requestedGameCode(req, res);
+  const gameCode = requestedGameCode(req.params.gameCode, res);
   if (gameCode === null) return;
   const game = await getGame(season.seasonCode, gameCode);
   if (!game) {
@@ -465,13 +465,34 @@ seasonRouter.get("/:seasonCode/games/:gameCode", async (req, res) => {
 seasonRouter.get("/:seasonCode/games/:gameCode/box-score", async (req, res) => {
   const season = await requestedSeason(req, res);
   if (!season) return;
-  const gameCode = requestedGameCode(req, res);
+  const gameCode = requestedGameCode(req.params.gameCode, res);
   if (gameCode === null) return;
   if (!await getGame(season.seasonCode, gameCode)) {
     sendError(res, 404, "GAME_NOT_FOUND", "Game not found");
     return;
   }
   res.json(await getBoxScore(season.seasonCode, gameCode));
+});
+
+seasonRouter.get("/:seasonCode/coverage", async (req, res) => {
+  const season = await requestedSeason(req, res);
+  if (!season) return;
+  const gameCodeValue = req.query.gameCode;
+  if (gameCodeValue === undefined) {
+    res.json(await getCoverage(season.seasonCode));
+    return;
+  }
+  if (typeof gameCodeValue !== "string") {
+    sendError(res, 400, "INVALID_GAME_CODE", "Invalid game code");
+    return;
+  }
+  const gameCode = requestedGameCode(gameCodeValue, res);
+  if (gameCode === null) return;
+  if (!await getGame(season.seasonCode, gameCode)) {
+    sendError(res, 404, "GAME_NOT_FOUND", "Game not found");
+    return;
+  }
+  res.json(await getCoverage(season.seasonCode, gameCode));
 });
 
 seasonRouter.use((_req, res) => {

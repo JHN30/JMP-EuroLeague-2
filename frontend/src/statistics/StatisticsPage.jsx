@@ -22,7 +22,7 @@ import LeaderboardKpiStrip from "./LeaderboardKpiStrip";
 import StatBarCell from "./StatBarCell";
 import { barWidthScale } from "./statBarScale";
 
-const PAGE_SIZE = 20;
+const PAGE_SIZE = 25;
 
 function DirectionSelect({ direction, label, onChange }) {
   return (

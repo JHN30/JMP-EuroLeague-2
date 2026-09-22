@@ -9,7 +9,7 @@ import PageHeader from "../lib/PageHeader";
 import { useDocumentTitle } from "../lib/useDocumentTitle";
 import SearchField from "../lib/SearchField";
 
-const PAGE_SIZE = 20;
+const PAGE_SIZE = 36;
 
 export default function PlayersPage() {
   useDocumentTitle("Players");

@@ -199,6 +199,7 @@ function GameLogSection({ gamesQuery }) {
 
 export default function PlayerPage() {
   const { seasonCode, personKey } = useParams();
+  const [section, setSection] = useState("statistics");
   const [mode, setMode] = useState("accumulated");
 
   const playerQuery = useQuery({
@@ -238,7 +239,7 @@ export default function PlayerPage() {
   const gamesQuery = useQuery({
     queryKey: ["player-games", seasonCode, personKey],
     queryFn: () => getPlayerGames(seasonCode, personKey, { limit: GAMES_LIMIT }),
-    enabled: playerQuery.isSuccess,
+    enabled: playerQuery.isSuccess && section === "games",
   });
 
   if (playerQuery.isLoading) return <AsyncState status="loading" label="Loading the player" />;
@@ -283,33 +284,50 @@ export default function PlayerPage() {
       </section>
 
       <section className="mb-8">
-        <h2 className="mb-3 text-xl font-semibold">Season statistics</h2>
-        <div className="mb-4 flex flex-wrap items-center gap-4">
-          <TabStrip
-            ariaLabel="Phase"
-            panelId="player-stats-panel"
-            activeKey={phaseCode}
-            onChange={handlePhaseChange}
-            className="w-fit"
-            tabs={phases.map((phase) => ({ key: phase.code, label: phase.name ?? phase.code }))}
-          />
-          <TabStrip
-            ariaLabel="Stats mode"
-            panelId="player-stats-panel"
-            activeKey={mode}
-            onChange={setMode}
-            className="w-fit"
-            tabs={STATS_MODES.map((option) => ({ key: option.value, label: option.label }))}
-          />
-        </div>
-        <TabPanel id="player-stats-panel" focusKey={`${phaseCode}-${mode}`}>
-          <SeasonStatsSection statsQuery={statsQuery} />
+        <TabStrip
+          ariaLabel="Player detail section"
+          panelId="player-detail-panel"
+          activeKey={section}
+          onChange={setSection}
+          className="mb-4 w-fit"
+          tabs={[
+            { key: "statistics", label: "Statistics" },
+            { key: "games", label: "Games" },
+          ]}
+        />
+        <TabPanel id="player-detail-panel" focusKey={section}>
+          {section === "statistics" ? (
+            <>
+              <h2 className="mb-3 text-xl font-semibold">Season statistics</h2>
+              <div className="mb-4 flex flex-wrap items-center gap-4">
+                <TabStrip
+                  ariaLabel="Phase"
+                  panelId="player-stats-panel"
+                  activeKey={phaseCode}
+                  onChange={handlePhaseChange}
+                  className="w-fit"
+                  tabs={phases.map((phase) => ({ key: phase.code, label: phase.name ?? phase.code }))}
+                />
+                <TabStrip
+                  ariaLabel="Stats mode"
+                  panelId="player-stats-panel"
+                  activeKey={mode}
+                  onChange={setMode}
+                  className="w-fit"
+                  tabs={STATS_MODES.map((option) => ({ key: option.value, label: option.label }))}
+                />
+              </div>
+              <TabPanel id="player-stats-panel" focusKey={`${phaseCode}-${mode}`}>
+                <SeasonStatsSection statsQuery={statsQuery} />
+              </TabPanel>
+            </>
+          ) : (
+            <>
+              <h2 className="mb-3 text-xl font-semibold">Game-by-game performance</h2>
+              <GameLogSection gamesQuery={gamesQuery} />
+            </>
+          )}
         </TabPanel>
-      </section>
-
-      <section className="mb-8">
-        <h2 className="mb-3 text-xl font-semibold">Game-by-game performance</h2>
-        <GameLogSection gamesQuery={gamesQuery} />
       </section>
     </div>
   );

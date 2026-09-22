@@ -12,6 +12,7 @@ import PanelHeader from "../lib/PanelHeader";
 import PageHeader from "../lib/PageHeader";
 import { useDocumentTitle } from "../lib/useDocumentTitle";
 import { usePhaseParam } from "../lib/usePhaseParam";
+import { TabPanel, TabStrip } from "../lib/TabStrip";
 import {
   getPhases,
   getPlayerGames,
@@ -623,6 +624,7 @@ function TrendSection({ seasonCode, phaseCode, view, entityA, entityB }) {
 
 function ComparisonsBody({ seasonCode, phases, phaseCode, setSelectedPhase, allTeams, initialTeamA, initialTeamB }) {
   const [view, setView] = useState("teams");
+  const [section, setSection] = useState("comparison");
   const [mode, setMode] = useState("perGame");
   const [entityA, setEntityA] = useState(() => {
     const team = allTeams.find((candidate) => candidate.clubCode === initialTeamA);
@@ -635,6 +637,7 @@ function ComparisonsBody({ seasonCode, phases, phaseCode, setSelectedPhase, allT
 
   function handleViewChange(value) {
     setView(value);
+    setSection("comparison");
     setEntityA(null);
     setEntityB(null);
   }
@@ -728,40 +731,56 @@ function ComparisonsBody({ seasonCode, phases, phaseCode, setSelectedPhase, allT
         </LabelledSelect>
       ) : null}
 
-      {view === "teams" && entityA && entityB ? (
-        <>
-          <TeamVerdictStrip
-            seasonCode={seasonCode}
-            phaseCode={phaseCode}
-            entityA={entityA}
-            entityB={entityB}
-            allTeams={allTeams}
-          />
-          <section className="mb-8">
-            <TeamSeriesSection seasonCode={seasonCode} phaseCode={phaseCode} entityA={entityA} entityB={entityB} />
-          </section>
-        </>
-      ) : null}
-
-      <section className="mb-8">
-        <h2 className="mb-3 text-xl font-semibold">Comparison</h2>
-        {view === "teams" ? (
-          <TeamComparisonTable seasonCode={seasonCode} phaseCode={phaseCode} entityA={entityA} entityB={entityB} />
-        ) : (
-          <PlayerComparisonTable
-            seasonCode={seasonCode}
-            phaseCode={phaseCode}
-            mode={mode}
-            entityA={entityA}
-            entityB={entityB}
-          />
-        )}
-      </section>
-
       {entityA && entityB ? (
         <section className="mb-8">
-          <h2 className="mb-3 text-xl font-semibold">Points scored trend</h2>
-          <TrendSection seasonCode={seasonCode} phaseCode={phaseCode} view={view} entityA={entityA} entityB={entityB} />
+          <TabStrip
+            ariaLabel="Comparison section"
+            panelId="comparison-section-panel"
+            activeKey={section}
+            onChange={setSection}
+            className="mb-4 w-fit"
+            tabs={[
+              { key: "comparison", label: "Comparison" },
+              { key: "trends", label: "Trends" },
+            ]}
+          />
+          <TabPanel id="comparison-section-panel" focusKey={section}>
+            {section === "comparison" ? (
+              <>
+                {view === "teams" ? (
+                  <>
+                    <TeamVerdictStrip
+                      seasonCode={seasonCode}
+                      phaseCode={phaseCode}
+                      entityA={entityA}
+                      entityB={entityB}
+                      allTeams={allTeams}
+                    />
+                    <section className="mb-8">
+                      <TeamSeriesSection seasonCode={seasonCode} phaseCode={phaseCode} entityA={entityA} entityB={entityB} />
+                    </section>
+                  </>
+                ) : null}
+                <h2 className="mb-3 text-xl font-semibold">Comparison</h2>
+                {view === "teams" ? (
+                  <TeamComparisonTable seasonCode={seasonCode} phaseCode={phaseCode} entityA={entityA} entityB={entityB} />
+                ) : (
+                  <PlayerComparisonTable
+                    seasonCode={seasonCode}
+                    phaseCode={phaseCode}
+                    mode={mode}
+                    entityA={entityA}
+                    entityB={entityB}
+                  />
+                )}
+              </>
+            ) : (
+              <>
+                <h2 className="mb-3 text-xl font-semibold">Points scored trend</h2>
+                <TrendSection seasonCode={seasonCode} phaseCode={phaseCode} view={view} entityA={entityA} entityB={entityB} />
+              </>
+            )}
+          </TabPanel>
         </section>
       ) : null}
     </div>

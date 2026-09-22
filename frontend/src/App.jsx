@@ -7,6 +7,7 @@ import { useDefaultSeasonCode } from "./season/useDefaultSeasonCode";
 import { useThemePreference } from "./lib/useThemePreference";
 
 const Dashboard = lazy(() => import("./dashboard/Dashboard"));
+const SeasonOverviewPage = lazy(() => import("./season/SeasonOverviewPage"));
 const StandingsPage = lazy(() => import("./standings/StandingsPage"));
 const FixturesPage = lazy(() => import("./games/FixturesPage"));
 const GameDetailPage = lazy(() => import("./games/GameDetailPage"));
@@ -48,6 +49,7 @@ function App() {
         <Route path="/" element={<DefaultSeasonRedirect />} />
         <Route path="/:seasonCode" element={<SeasonLayout themePreference={themePreference} />}>
           <Route index element={<Dashboard />} />
+          <Route path="overview" element={<SeasonOverviewPage />} />
           <Route path="standings" element={<StandingsPage />} />
           <Route path="games" element={<FixturesPage />} />
           <Route path="games/:gameCode" element={<GameDetailPage />} />

@@ -2,6 +2,7 @@ import { NavLink, useParams } from "react-router";
 
 const TABS = [
   { label: "Home", path: "", end: true },
+  { label: "Season overview", path: "overview" },
   { label: "Standings", path: "standings" },
   { label: "Fixtures and results", path: "games" },
   { label: "Teams", path: "teams" },

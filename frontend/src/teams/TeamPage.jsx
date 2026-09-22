@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link, useParams } from "react-router";
 import { getLeaderStats, getPhases, getSeasonStandings, getTeam, getTeamGames, getTeamRoster } from "../lib/api";
+import { formatDateTime, formatPerGame } from "../lib/format";
 import { formatStatValue } from "../lib/statsFields";
 import { TabPanel, TabStrip } from "../lib/TabStrip";
 import StatBarCell from "../statistics/StatBarCell";
@@ -30,14 +31,6 @@ function ErrorAlert({ message, onRetry }) {
       </button>
     </div>
   );
-}
-
-function formatDateTime(scheduledAt) {
-  if (!scheduledAt) return "TBD";
-  return new Date(scheduledAt).toLocaleString(undefined, {
-    dateStyle: "medium",
-    timeStyle: "short",
-  });
 }
 
 function teamLabel(team) {
@@ -99,7 +92,12 @@ function OverviewKpiStrip({ standingsQuery, clubCode }) {
     return <p role="status" className="muted">Team KPIs not available yet for this phase.</p>;
   }
   const gp = basic.gamesPlayed;
-  const perGame = (total) => (total != null ? (total / gp).toFixed(1) : "-");
+  const perGame = (total) => formatPerGame(total != null ? total / gp : null);
+  const perGameSigned = (total) => {
+    if (total == null) return formatPerGame(null);
+    const value = total / gp;
+    return value > 0 ? `+${formatPerGame(value)}` : formatPerGame(value);
+  };
 
   return (
     <div className="kpi-strip">
@@ -112,7 +110,7 @@ function OverviewKpiStrip({ standingsQuery, clubCode }) {
         <span className="label">Points against/game</span>
       </div>
       <div className="kpi-chip">
-        <span className="value">{perGame(basic.pointsDifference)}</span>
+        <span className="value">{perGameSigned(basic.pointsDifference)}</span>
         <span className="label">Point diff/game</span>
       </div>
       <div className="kpi-chip">

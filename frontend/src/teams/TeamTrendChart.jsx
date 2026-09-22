@@ -1,3 +1,5 @@
+import { formatPerGame } from "../lib/format";
+
 const WIDTH = 900;
 const HEIGHT = 140;
 const PAD_X = 12;
@@ -43,14 +45,15 @@ export default function TeamTrendChart({ games, clubCode }) {
   }
 
   const trend = buildTrend(diffs);
-  const average = (diffs.reduce((sum, d) => sum + d, 0) / diffs.length).toFixed(1);
+  const rawAverage = diffs.reduce((sum, d) => sum + d, 0) / diffs.length;
+  const average = rawAverage > 0 ? `+${formatPerGame(rawAverage)}` : formatPerGame(rawAverage);
 
   return (
     <section className="panel p-6">
       <div className="leader-trend-head mb-3 flex items-end justify-between">
         <h2 className="panel-title">Point differential &middot; last {diffs.length} games</h2>
         <div className="leader-trend-stat text-right">
-          <span className="value">{average > 0 ? `+${average}` : average}</span>
+          <span className="value">{average}</span>
           <span className="label">Avg diff</span>
         </div>
       </div>

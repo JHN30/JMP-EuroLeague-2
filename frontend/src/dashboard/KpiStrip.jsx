@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { useParams } from "react-router";
 import { getLeaderStats, getRounds, getSeasonStandings } from "../lib/api";
+import { formatPerGame } from "../lib/format";
 
 function KpiChip({ isLoading, isError, value, label }) {
   return (
@@ -47,13 +48,12 @@ export default function KpiStrip() {
   const gamesWithPoints = standings.filter(
     (entry) => entry.basic?.pointsFor != null && entry.basic?.gamesPlayed,
   );
-  const leagueAvgPpg =
+  const leagueAvgPpg = formatPerGame(
     gamesWithPoints.length > 0
-      ? (
-          gamesWithPoints.reduce((sum, entry) => sum + entry.basic.pointsFor / entry.basic.gamesPlayed, 0) /
+      ? gamesWithPoints.reduce((sum, entry) => sum + entry.basic.pointsFor / entry.basic.gamesPlayed, 0) /
           gamesWithPoints.length
-        ).toFixed(1)
-      : null;
+      : null,
+  );
 
   let biggestMover = null;
   if (previousRoundQuery.data?.standings.length) {
@@ -95,7 +95,7 @@ export default function KpiStrip() {
       <KpiChip
         isLoading={standingsQuery.isLoading}
         isError={standingsQuery.isError}
-        value={leagueAvgPpg ?? "–"}
+        value={leagueAvgPpg}
         label="League avg PPG"
       />
       {round && round > 1 ? (

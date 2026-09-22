@@ -8,6 +8,7 @@ import {
   getPlayerRegistrations,
   getPlayerSeasonStats,
 } from "../lib/api";
+import { formatDateTime, formatMinutes } from "../lib/format";
 import { formatStatValue } from "../lib/statsFields";
 import { TabPanel, TabStrip } from "../lib/TabStrip";
 
@@ -37,25 +38,8 @@ function ErrorAlert({ message, onRetry }) {
   );
 }
 
-function formatDateTime(scheduledAt) {
-  if (!scheduledAt) return "TBD";
-  return new Date(scheduledAt).toLocaleString(undefined, {
-    dateStyle: "medium",
-    timeStyle: "short",
-  });
-}
-
 function teamLabel(team) {
   return team?.abbreviatedName ?? team?.name ?? "TBD";
-}
-
-function formatMinutes(timePlayed) {
-  if (timePlayed === null || timePlayed === undefined) return "-";
-  const totalSeconds = Math.round(Number(timePlayed));
-  if (!Number.isFinite(totalSeconds)) return "-";
-  const minutes = Math.floor(totalSeconds / 60);
-  const seconds = totalSeconds % 60;
-  return `${minutes}:${String(seconds).padStart(2, "0")}`;
 }
 
 function opponent(game, side) {

@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { useParams } from "react-router";
 import { getBoxScore, getGame } from "../lib/api";
+import { formatDateTime as formatDateTimeShared, formatMinutes } from "../lib/format";
 
 function CenteredSpinner() {
   return (
@@ -24,20 +25,7 @@ function ErrorAlert({ message, onRetry }) {
 }
 
 function formatDateTime(scheduledAt) {
-  if (!scheduledAt) return "TBD";
-  return new Date(scheduledAt).toLocaleString(undefined, {
-    dateStyle: "full",
-    timeStyle: "short",
-  });
-}
-
-function formatMinutes(timePlayed) {
-  if (timePlayed === null || timePlayed === undefined) return "-";
-  const totalSeconds = Math.round(Number(timePlayed));
-  if (!Number.isFinite(totalSeconds)) return "-";
-  const minutes = Math.floor(totalSeconds / 60);
-  const seconds = totalSeconds % 60;
-  return `${minutes}:${String(seconds).padStart(2, "0")}`;
+  return formatDateTimeShared(scheduledAt, { dateStyle: "full" });
 }
 
 function teamName(team) {

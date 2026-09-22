@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useParams, useSearchParams } from "react-router";
+import { formatDateTime } from "../lib/format";
 import {
   getPhases,
   getPlayerGames,
@@ -95,14 +96,6 @@ function ErrorAlert({ message, onRetry }) {
       </button>
     </div>
   );
-}
-
-function formatDateTime(scheduledAt) {
-  if (!scheduledAt) return "TBD";
-  return new Date(scheduledAt).toLocaleString(undefined, {
-    dateStyle: "medium",
-    timeStyle: "short",
-  });
 }
 
 function TeamPicker({ label, allTeams, teamsPending, selected, excludeId, onSelect }) {

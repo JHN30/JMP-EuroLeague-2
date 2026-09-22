@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link, useParams } from "react-router";
 import { getPhases, getRounds, getSeasonGames } from "../lib/api";
+import { formatDateTime } from "../lib/format";
 import { TabPanel, TabStrip } from "../lib/TabStrip";
 
 const PAGE_SIZE = 20;
@@ -30,14 +31,6 @@ function ErrorAlert({ message, onRetry }) {
       </button>
     </div>
   );
-}
-
-function formatDateTime(scheduledAt) {
-  if (!scheduledAt) return "TBD";
-  return new Date(scheduledAt).toLocaleString(undefined, {
-    dateStyle: "medium",
-    timeStyle: "short",
-  });
 }
 
 function teamLabel(team) {

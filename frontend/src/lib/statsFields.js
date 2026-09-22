@@ -1,3 +1,5 @@
+import { formatMissing, formatPerGame, formatPercentage } from "./format";
+
 export const TEAM_METRICS = [
   { key: "gamesPlayed", label: "GP" },
   { key: "gamesWon", label: "W" },
@@ -70,11 +72,15 @@ export function metricLabelFor(metricKey) {
   return metricKey;
 }
 
+const PERCENTAGE_KEYS = new Set(
+  PLAYER_METRIC_GROUPS.flatMap((group) => group.options)
+    .filter(([, label]) => label.endsWith("%"))
+    .map(([key]) => key),
+);
+
 export function formatStatValue(key, value) {
-  if (value === null || value === undefined) return "-";
-  if (key === "minutesPlayed") {
-    const num = Number(value);
-    return Number.isFinite(num) ? num.toFixed(1) : value;
-  }
+  if (value === null || value === undefined) return formatMissing(value);
+  if (key === "minutesPlayed") return formatPerGame(value);
+  if (PERCENTAGE_KEYS.has(key)) return formatPercentage(value);
   return value;
 }

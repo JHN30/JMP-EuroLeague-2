@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { useParams } from "react-router";
 import { getSeasonStandings, getTeamGames } from "../lib/api";
+import { formatPerGame } from "../lib/format";
 import { WidgetPanel } from "./Dashboard";
 
 const WIDTH = 320;
@@ -55,7 +56,8 @@ export default function LeaderTrend() {
     });
 
   const trend = diffs.length > 1 ? buildTrend(diffs) : null;
-  const average = diffs.length > 0 ? (diffs.reduce((sum, d) => sum + d, 0) / diffs.length).toFixed(1) : null;
+  const rawAverage = diffs.length > 0 ? diffs.reduce((sum, d) => sum + d, 0) / diffs.length : null;
+  const average = rawAverage != null ? (rawAverage > 0 ? `+${formatPerGame(rawAverage)}` : formatPerGame(rawAverage)) : null;
 
   return (
     <WidgetPanel
@@ -69,7 +71,7 @@ export default function LeaderTrend() {
       {trend ? (
         <div className="leader-trend">
           <div className="leader-trend-stat">
-            <span className="value">{average > 0 ? `+${average}` : average}</span>
+            <span className="value">{average}</span>
             <span className="label">Avg point diff, last {diffs.length}</span>
           </div>
           <svg

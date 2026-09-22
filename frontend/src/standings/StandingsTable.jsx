@@ -1,5 +1,6 @@
 import { Fragment } from "react";
 import { Link } from "react-router";
+import { formatCount, formatSignedDiff } from "../lib/format";
 
 const TREND_WIDTH = 52;
 const TREND_HEIGHT = 18;
@@ -200,9 +201,9 @@ export default function StandingsTable({ standings, seasonCode, view = "overall"
                   <td>{entry.basic?.gamesWon ?? "-"}</td>
                   <td>{entry.basic?.gamesLost ?? "-"}</td>
                   <td>{entry.basic?.winPercentage ?? "-"}</td>
-                  <td>{entry.basic?.pointsFor ?? "-"}</td>
-                  <td>{entry.basic?.pointsAgainst ?? "-"}</td>
-                  <td className="font-semibold">{entry.basic?.pointsDifference ?? "-"}</td>
+                  <td>{formatCount(entry.basic?.pointsFor)}</td>
+                  <td>{formatCount(entry.basic?.pointsAgainst)}</td>
+                  <td className="font-semibold">{formatSignedDiff(entry.basic?.pointsDifference)}</td>
                   <td>{entry.basic?.homeRecord ?? "-"}</td>
                   <td>{entry.basic?.awayRecord ?? "-"}</td>
                   <td>{entry.basic?.lastTenRecord ?? "-"}</td>

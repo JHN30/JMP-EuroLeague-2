@@ -1,15 +1,8 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link, useParams } from "react-router";
 import { getSeasonGames, getSeasonStandings } from "../lib/api";
+import { formatDateTime } from "../lib/format";
 import { WidgetPanel } from "./Dashboard";
-
-function formatDateTime(scheduledAt) {
-  if (!scheduledAt) return "TBD";
-  return new Date(scheduledAt).toLocaleString(undefined, {
-    dateStyle: "medium",
-    timeStyle: "short",
-  });
-}
 
 function teamLabel(team) {
   return team?.name ?? team?.abbreviatedName ?? "TBD";

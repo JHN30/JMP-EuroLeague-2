@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { getSeasonStandings } from "../lib/api";
+import { formatPerGame } from "../lib/format";
 
 function KpiChip({ isLoading, isError, value, label }) {
   return (
@@ -46,13 +47,12 @@ export default function StandingsKpiStrip({ seasonCode, phaseCode, round, standi
   const marginEntries = standings.filter(
     (entry) => entry.basic?.pointsDifference != null && entry.basic?.gamesPlayed,
   );
-  const avgMargin =
+  const avgMargin = formatPerGame(
     marginEntries.length > 0
-      ? (
-          marginEntries.reduce((sum, entry) => sum + Math.abs(entry.basic.pointsDifference) / entry.basic.gamesPlayed, 0) /
+      ? marginEntries.reduce((sum, entry) => sum + Math.abs(entry.basic.pointsDifference) / entry.basic.gamesPlayed, 0) /
           marginEntries.length
-        ).toFixed(1)
-      : null;
+      : null,
+  );
 
   return (
     <div className="kpi-strip">
@@ -82,7 +82,7 @@ export default function StandingsKpiStrip({ seasonCode, phaseCode, round, standi
           label={biggestFaller ? `Biggest faller · ${biggestFaller.entry.clubName ?? biggestFaller.entry.clubCode}` : "Biggest faller"}
         />
       ) : null}
-      <KpiChip value={avgMargin ?? "–"} label="Avg margin of victory" />
+      <KpiChip value={avgMargin} label="Avg margin of victory" />
     </div>
   );
 }

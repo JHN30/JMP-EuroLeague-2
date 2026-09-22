@@ -1,18 +1,11 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link, useParams } from "react-router";
 import { getSeasonGames, getSeasonStandings } from "../lib/api";
+import { formatDateTime as formatTime } from "../lib/format";
 import { WidgetPanel } from "./Dashboard";
 
 function roundLabel(game) {
   return game.roundName ?? (game.roundNumber ? `Round ${game.roundNumber}` : game.phaseName);
-}
-
-function formatTime(scheduledAt) {
-  if (!scheduledAt) return "TBD";
-  return new Date(scheduledAt).toLocaleString(undefined, {
-    dateStyle: "medium",
-    timeStyle: "short",
-  });
 }
 
 function MatchCard({ game, standingByClubCode, seasonCode, showScore }) {

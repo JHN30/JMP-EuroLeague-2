@@ -7,7 +7,7 @@ import StandingsTable from "./StandingsTable";
 
 function CenteredSpinner() {
   return (
-    <div className="flex justify-center py-12">
+    <div role="status" aria-label="Loading" className="flex justify-center py-12">
       <span className="loading loading-spinner loading-lg text-primary" />
     </div>
   );
@@ -116,7 +116,7 @@ export default function StandingsPage() {
       ) : standingsQuery.isError ? (
         <ErrorAlert message="Could not load standings." onRetry={() => standingsQuery.refetch()} />
       ) : standings.length === 0 ? (
-        <p className="muted">Standings not available yet for this phase.</p>
+        <p role="status" className="muted">Standings not available yet for this phase.</p>
       ) : (
         <div className="flex flex-col gap-4">
           <StandingsKpiStrip

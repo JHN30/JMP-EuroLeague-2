@@ -4,7 +4,7 @@ import { getBoxScore, getGame } from "../lib/api";
 
 function CenteredSpinner() {
   return (
-    <div className="flex justify-center py-12">
+    <div role="status" aria-label="Loading" className="flex justify-center py-12">
       <span className="loading loading-spinner loading-lg text-primary" />
     </div>
   );
@@ -48,7 +48,7 @@ function TeamStatsTable({ teamStats, localTeam, roadTeam }) {
   const totals = teamStats.filter((row) => row.statsKind === "total");
 
   if (totals.length === 0) {
-    return <p className="muted">Box score not available yet.</p>;
+    return <p role="status" className="muted">Box score not available yet.</p>;
   }
 
   const columns = [
@@ -105,7 +105,7 @@ function PlayerStatsTable({ players, side, teamLabel }) {
     <div>
       <h3 className="mb-2 font-semibold">{teamLabel}</h3>
       {rows.length === 0 ? (
-        <p className="muted">Box score not available yet.</p>
+        <p role="status" className="muted">Box score not available yet.</p>
       ) : (
         <div className="panel overflow-x-auto overscroll-x-contain p-2">
           <table className="table">
@@ -178,7 +178,7 @@ export default function GameDetailPage() {
   if (gameQuery.isError) {
     const notFound = gameQuery.error?.response?.status === 404;
     return notFound ? (
-      <p className="muted">Game not found.</p>
+      <p role="status" className="muted">Game not found.</p>
     ) : (
       <ErrorAlert message="Could not load this game." onRetry={() => gameQuery.refetch()} />
     );

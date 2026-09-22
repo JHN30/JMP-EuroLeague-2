@@ -5,7 +5,7 @@ import { getPhases, getSeasonGames } from "../lib/api";
 
 function CenteredSpinner() {
   return (
-    <div className="flex justify-center py-12">
+    <div role="status" aria-label="Loading" className="flex justify-center py-12">
       <span className="loading loading-spinner loading-lg text-primary" />
     </div>
   );
@@ -78,7 +78,7 @@ function MatchupCard({ seasonCode, groupName, games }) {
 
 function MatchupGroups({ seasonCode, games }) {
   if (games.length === 0) {
-    return <p className="muted">No games scheduled yet for this phase.</p>;
+    return <p role="status" className="muted">No games scheduled yet for this phase.</p>;
   }
 
   const groups = new Map();

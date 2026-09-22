@@ -31,7 +31,7 @@ function ThemeToggle({ themePreference }) {
   return (
     <button
       type="button"
-      className="btn btn-square btn-ghost btn-sm"
+      className="btn btn-square btn-ghost btn-sm touch-target"
       onClick={toggleTheme}
       aria-label={`Switch to ${THEMES[nextTheme].title}`}
       title={`Current: ${THEMES[theme].title}. Switch to ${THEMES[nextTheme].title}.`}
@@ -43,7 +43,7 @@ function ThemeToggle({ themePreference }) {
 
 function CenteredSpinner() {
   return (
-    <div className="flex min-h-screen items-center justify-center">
+    <div role="status" aria-label="Loading" className="flex min-h-screen items-center justify-center">
       <span className="loading loading-spinner loading-lg text-primary" />
     </div>
   );
@@ -110,6 +110,9 @@ export default function SeasonLayout({ themePreference }) {
 
   return (
     <div className="min-h-screen">
+      <a href="#main-content" className="skip-link">
+        Skip to main content
+      </a>
       <header className="app-nav">
         <div className="flex items-center justify-between gap-4 px-4 py-2 sm:px-6">
           <div className="flex items-center gap-2">
@@ -123,7 +126,7 @@ export default function SeasonLayout({ themePreference }) {
         </div>
         <NavBar />
       </header>
-      <main className="p-6">
+      <main id="main-content" tabIndex={-1} className="p-6 outline-none">
         <Outlet />
       </main>
     </div>

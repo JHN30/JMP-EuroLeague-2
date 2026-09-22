@@ -14,7 +14,7 @@ const STATUS_FILTERS = [
 
 function CenteredSpinner() {
   return (
-    <div className="flex justify-center py-12">
+    <div role="status" aria-label="Loading" className="flex justify-center py-12">
       <span className="loading loading-spinner loading-lg text-primary" />
     </div>
   );
@@ -151,7 +151,7 @@ export default function FixturesPage() {
       ) : gamesQuery.isError ? (
         <ErrorAlert message="Could not load games." onRetry={() => gamesQuery.refetch()} />
       ) : games.length === 0 ? (
-        <p className="muted">No games match these filters.</p>
+        <p role="status" className="muted">No games match these filters.</p>
       ) : (
         <>
           <div className="panel p-4">

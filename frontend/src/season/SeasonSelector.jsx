@@ -20,7 +20,7 @@ export default function SeasonSelector() {
   return (
     <select
       aria-label="Selected season"
-      className="select select-bordered select-sm"
+      className="select select-bordered select-sm touch-target"
       value={seasonCode}
       onChange={handleChange}
     >

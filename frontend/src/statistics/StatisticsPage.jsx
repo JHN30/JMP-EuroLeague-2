@@ -17,7 +17,7 @@ const PAGE_SIZE = 20;
 
 function CenteredSpinner() {
   return (
-    <div className="flex justify-center py-12">
+    <div role="status" aria-label="Loading" className="flex justify-center py-12">
       <span className="loading loading-spinner loading-lg text-primary" />
     </div>
   );
@@ -91,7 +91,7 @@ function TeamLeaderboard({ seasonCode, phaseCode }) {
     return <ErrorAlert message="Could not load the team leaderboard." onRetry={() => standingsQuery.refetch()} />;
   }
   if (sorted.length === 0) {
-    return <p className="muted">No standings available yet for this phase.</p>;
+    return <p role="status" className="muted">No standings available yet for this phase.</p>;
   }
 
   return (
@@ -278,7 +278,7 @@ function PlayerLeaderboard({ seasonCode, phaseCode }) {
       </div>
 
       {players.length === 0 ? (
-        <p className="muted">No season statistics available yet for this phase.</p>
+        <p role="status" className="muted">No season statistics available yet for this phase.</p>
       ) : (
         <>
           <div className="panel overflow-x-auto overscroll-x-contain p-2">

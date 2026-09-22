@@ -14,7 +14,7 @@ const ROSTER_STATS_MAX_PAGES = 5;
 
 function CenteredSpinner() {
   return (
-    <div className="flex justify-center py-12">
+    <div role="status" aria-label="Loading" className="flex justify-center py-12">
       <span className="loading loading-spinner loading-lg text-primary" />
     </div>
   );
@@ -95,7 +95,7 @@ function OverviewKpiStrip({ standingsQuery, clubCode }) {
   const entry = standingsQuery.data.standings.find((row) => row.clubCode === clubCode);
   const basic = entry?.basic;
   if (!basic || !basic.gamesPlayed) {
-    return <p className="muted">Team KPIs not available yet for this phase.</p>;
+    return <p role="status" className="muted">Team KPIs not available yet for this phase.</p>;
   }
   const gp = basic.gamesPlayed;
   const perGame = (total) => (total != null ? (total / gp).toFixed(1) : "-");
@@ -137,7 +137,7 @@ function RecentFormList({ games, clubCode }) {
     <section className="panel p-4">
       <h2 className="panel-title mb-3">Recent form</h2>
       {recent.length === 0 ? (
-        <p className="muted">No played games yet.</p>
+        <p role="status" className="muted">No played games yet.</p>
       ) : (
         <ul className="flex flex-col gap-2">
           {recent.map((game) => {
@@ -235,7 +235,7 @@ function SeasonRecordSection({ standingsQuery, clubCode }) {
   }
   const entry = standingsQuery.data.standings.find((row) => row.clubCode === clubCode);
   if (!entry || !entry.basic) {
-    return <p className="muted">Standings not available yet for this phase.</p>;
+    return <p role="status" className="muted">Standings not available yet for this phase.</p>;
   }
   const basic = entry.basic;
   return (
@@ -288,7 +288,7 @@ function TeamStatisticsSection({ standingsQuery, clubCode }) {
   const entry = standingsQuery.data.standings.find((row) => row.clubCode === clubCode);
   const margins = entry?.margins;
   if (!margins) {
-    return <p className="muted">Team statistics not available yet for this phase.</p>;
+    return <p role="status" className="muted">Team statistics not available yet for this phase.</p>;
   }
   const rows = [
     ["Decided by 1-5 pts", margins.pointDifference1To5],
@@ -336,7 +336,7 @@ function RosterSection({ rosterQuery, rosterStatsQuery, seasonCode }) {
   }
   const registrations = rosterQuery.data.registrations ?? [];
   if (registrations.length === 0) {
-    return <p className="muted">Roster not available yet.</p>;
+    return <p role="status" className="muted">Roster not available yet.</p>;
   }
   if (rosterStatsQuery.isPending) return <CenteredSpinner />;
   if (rosterStatsQuery.isError) {
@@ -416,7 +416,7 @@ function ScheduleSection({ gamesQuery, clubCode }) {
   }
   const games = gamesQuery.data.games ?? [];
   if (games.length === 0) {
-    return <p className="muted">No games scheduled yet.</p>;
+    return <p role="status" className="muted">No games scheduled yet.</p>;
   }
   return (
     <div className="panel p-4">
@@ -509,7 +509,7 @@ export default function TeamPage() {
   if (teamQuery.isError) {
     const notFound = teamQuery.error?.response?.status === 404;
     return notFound ? (
-      <p className="muted">Team not found.</p>
+      <p role="status" className="muted">Team not found.</p>
     ) : (
       <ErrorAlert message="Could not load this team." onRetry={() => teamQuery.refetch()} />
     );

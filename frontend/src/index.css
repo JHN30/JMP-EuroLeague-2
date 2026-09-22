@@ -390,6 +390,29 @@ button {
   display: block;
 }
 
+.skip-link {
+  position: fixed;
+  top: -3rem;
+  left: 0.5rem;
+  z-index: 50;
+  padding: 0.5rem 1rem;
+  background: var(--color-primary);
+  color: var(--color-primary-content);
+  font-weight: 700;
+  border-radius: var(--radius-field);
+  transition: top 120ms ease;
+}
+.skip-link:focus {
+  top: 0.5rem;
+}
+
+@media (pointer: coarse) {
+  .touch-target {
+    min-width: 44px;
+    min-height: 44px;
+  }
+}
+
 .app-nav {
   position: sticky;
   top: 0;
@@ -789,5 +812,20 @@ button {
   .app-shell,
   .panel {
     transition: background-color 180ms ease, color 180ms ease, border-color 180ms ease;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+  .loading {
+    animation-duration: revert !important;
+    animation-iteration-count: revert !important;
   }
 }

@@ -19,7 +19,7 @@ const STATS_MODES = [
 
 function CenteredSpinner() {
   return (
-    <div className="flex justify-center py-12">
+    <div role="status" aria-label="Loading" className="flex justify-center py-12">
       <span className="loading loading-spinner loading-lg text-primary" />
     </div>
   );
@@ -68,7 +68,7 @@ function RegistrationsSection({ registrationsQuery, seasonCode }) {
   }
   const registrations = registrationsQuery.data.registrations ?? [];
   if (registrations.length === 0) {
-    return <p className="muted">No team registration found for this season.</p>;
+    return <p role="status" className="muted">No team registration found for this season.</p>;
   }
   const activeCount = registrations.filter((entry) => entry.active !== false).length;
   const heading = activeCount === 1 && registrations.length === 1 ? "Current team" : "Teams this season";
@@ -160,7 +160,7 @@ function SeasonStatsSection({ statsQuery }) {
   }
   const entry = statsQuery.data.players?.[0];
   if (!entry) {
-    return <p className="muted">Season statistics not available yet for this phase.</p>;
+    return <p role="status" className="muted">Season statistics not available yet for this phase.</p>;
   }
   return (
     <div>
@@ -179,7 +179,7 @@ function GameLogSection({ gamesQuery }) {
   }
   const games = gamesQuery.data.games ?? [];
   if (games.length === 0) {
-    return <p className="muted">No game log available yet.</p>;
+    return <p role="status" className="muted">No game log available yet.</p>;
   }
   return (
     <div className="panel overflow-x-auto overscroll-x-contain p-2">
@@ -268,7 +268,7 @@ export default function PlayerPage() {
   if (playerQuery.isError) {
     const notFound = playerQuery.error?.response?.status === 404;
     return notFound ? (
-      <p className="muted">Player not found.</p>
+      <p role="status" className="muted">Player not found.</p>
     ) : (
       <ErrorAlert message="Could not load this player." onRetry={() => playerQuery.refetch()} />
     );

@@ -20,11 +20,11 @@ function StatLeaderCard({ seasonCode, category }) {
     <div className="leader-card">
       <span className="cat">{category.label}</span>
       {query.isLoading ? (
-        <span className="loading loading-spinner loading-sm text-primary" />
+        <span role="status" aria-label="Loading" className="loading loading-spinner loading-sm text-primary" />
       ) : query.isError ? (
-        <span className="muted text-sm">Could not load.</span>
+        <span role="alert" className="muted text-sm">Could not load.</span>
       ) : !leader ? (
-        <span className="muted text-sm">Not available yet.</span>
+        <span role="status" className="muted text-sm">Not available yet.</span>
       ) : (
         <div className="leader-top">
           {leader.playerImageUrl ? (

@@ -13,7 +13,7 @@ export function WidgetPanel({ title, isLoading, isError, onRetry, isEmpty, empty
         <h2 className="panel-title">{title}</h2>
       </div>
       {isLoading ? (
-        <div className="flex justify-center py-6">
+        <div role="status" aria-label="Loading" className="flex justify-center py-6">
           <span className="loading loading-spinner text-primary" />
         </div>
       ) : isError ? (
@@ -26,7 +26,7 @@ export function WidgetPanel({ title, isLoading, isError, onRetry, isEmpty, empty
           ) : null}
         </div>
       ) : isEmpty ? (
-        <p className="muted">{emptyMessage}</p>
+        <p role="status" className="muted">{emptyMessage}</p>
       ) : (
         children
       )}

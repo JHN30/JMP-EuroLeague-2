@@ -1,6 +1,6 @@
 # JMP Euroleague - Project Overview
 
-<!-- blueprint:source-hash a906efd1a9f0aab9ae5b1a6c312ce093679fb7da704eee17357015e8ece23cd7 -->
+<!-- blueprint:source-hash 461772c5eb150684d647d5aa8cfbca583f286c53741669bb93b61db4c1863108 -->
 
 > A public, read-only EuroLeague explorer for the 2025-26 (`E2025`) and 2026-27 (`E2026`) seasons, backed by already populated Neon PostgreSQL tables.
 

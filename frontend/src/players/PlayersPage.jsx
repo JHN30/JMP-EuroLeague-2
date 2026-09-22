@@ -7,7 +7,7 @@ const PAGE_SIZE = 20;
 
 function CenteredSpinner() {
   return (
-    <div className="flex justify-center py-12">
+    <div role="status" aria-label="Loading" className="flex justify-center py-12">
       <span className="loading loading-spinner loading-lg text-primary" />
     </div>
   );
@@ -61,7 +61,7 @@ export default function PlayersPage() {
       ) : playersQuery.isError ? (
         <ErrorAlert message="Could not load players." onRetry={() => playersQuery.refetch()} />
       ) : players.length === 0 ? (
-        <p className="muted">{search ? "No players match your search." : "No players available for this season."}</p>
+        <p role="status" className="muted">{search ? "No players match your search." : "No players available for this season."}</p>
       ) : (
         <>
           <div className="panel p-4">

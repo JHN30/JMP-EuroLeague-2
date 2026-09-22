@@ -80,7 +80,7 @@ function WinnerMark({ label }) {
 
 function CenteredSpinner() {
   return (
-    <div className="flex justify-center py-12">
+    <div role="status" aria-label="Loading" className="flex justify-center py-12">
       <span className="loading loading-spinner loading-lg text-primary" />
     </div>
   );
@@ -439,7 +439,7 @@ function TeamSeriesSection({ seasonCode, phaseCode, entityA, entityB }) {
     <section className="panel p-4">
       <h2 className="panel-title mb-3">Season series</h2>
       {matchups.length === 0 ? (
-        <p className="muted">No matchups this phase yet.</p>
+        <p role="status" className="muted">No matchups this phase yet.</p>
       ) : (
         <ul className="flex flex-col gap-2">
           {matchups.map((game) => {

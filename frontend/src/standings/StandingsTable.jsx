@@ -130,7 +130,7 @@ export default function StandingsTable({ standings, seasonCode, view = "overall"
   const tiers = tiersActive ? sorted.map((entry) => tierForPosition(entry.basic?.position)) : [];
 
   return (
-    <div className="panel overflow-x-auto p-2">
+    <div className="panel overflow-x-auto overscroll-x-contain p-2">
       <table className="table">
         <thead>
           <tr>
@@ -180,7 +180,7 @@ export default function StandingsTable({ standings, seasonCode, view = "overall"
                     ) : null}
                   </td>
                   <td>
-                    <Link to={`/${seasonCode}/teams/${entry.clubCode}`} className="link link-hover flex items-center gap-2 font-medium">
+                    <Link to={`/${seasonCode}/teams/${entry.clubCode}`} className="link link-hover flex min-w-0 items-center gap-2 font-medium">
                       {entry.crestUrl ? (
                         <img
                           src={entry.crestUrl}
@@ -191,7 +191,9 @@ export default function StandingsTable({ standings, seasonCode, view = "overall"
                           }}
                         />
                       ) : null}
-                      {entry.clubName ?? entry.clubCode}
+                      <span className="max-w-40 truncate sm:max-w-56" title={entry.clubName ?? entry.clubCode}>
+                        {entry.clubName ?? entry.clubCode}
+                      </span>
                     </Link>
                   </td>
                   <td>{entry.basic?.gamesPlayed ?? "-"}</td>

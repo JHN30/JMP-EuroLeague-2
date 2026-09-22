@@ -351,7 +351,7 @@ function RosterSection({ rosterQuery, rosterStatsQuery, seasonCode }) {
   );
 
   return (
-    <div className="panel overflow-x-auto p-2">
+    <div className="panel overflow-x-auto overscroll-x-contain p-2">
       <table className="table">
         <thead>
           <tr>
@@ -377,7 +377,11 @@ function RosterSection({ rosterQuery, rosterStatsQuery, seasonCode }) {
                 <td>{entry.dorsal ?? "-"}</td>
                 <td className="font-medium">
                   {entry.player ? (
-                    <Link to={`/${seasonCode}/players/${entry.player.personKey}`} className="link link-hover">
+                    <Link
+                      to={`/${seasonCode}/players/${entry.player.personKey}`}
+                      className="link link-hover block max-w-40 truncate sm:max-w-56"
+                      title={entry.player.name ?? "TBD"}
+                    >
                       {entry.player.name ?? "TBD"}
                     </Link>
                   ) : (

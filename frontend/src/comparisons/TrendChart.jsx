@@ -79,7 +79,7 @@ export default function TrendChart({ title, labels, series }) {
           aria-label={`${title}: ${series.map((entry) => entry.label).join(" vs ")} across rounds`}
         />
       </div>
-      <div className="mt-4 overflow-x-auto">
+      <div className="mt-4 overflow-x-auto overscroll-x-contain">
         <table className="table">
           <thead>
             <tr>

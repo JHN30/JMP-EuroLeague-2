@@ -153,6 +153,24 @@ button {
   outline-offset: 2px;
 }
 
+/* Freezes a table's first column during horizontal scroll. Only for tables
+   where the identity column (team/opponent name) is already the literal
+   first column - see build-plan 15b-iv's Out of scope for tables where a
+   rank/jersey/index column precedes the name instead. No zebra striping or
+   tinted header exists anywhere in this app today, so the sticky cell just
+   matches the plain panel fill every other cell already has. */
+.data-table-sticky th:first-child,
+.data-table-sticky td:first-child {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  background-color: var(--color-base-100);
+  box-shadow: 1px 0 0 var(--color-base-300);
+}
+.data-table-sticky thead th:first-child {
+  z-index: 2;
+}
+
 .eyebrow {
   color: var(--color-primary);
   font-size: 0.75rem;

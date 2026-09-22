@@ -120,7 +120,7 @@ function TeamLeaderboard({ seasonCode, phaseCode }) {
         <DirectionSelect direction={direction} label="Team sort direction" onChange={setDirection} />
       </div>
 
-      <div className="panel overflow-x-auto p-2">
+      <div className="panel overflow-x-auto overscroll-x-contain p-2">
         <table className="table">
           <thead>
             <tr>
@@ -136,7 +136,11 @@ function TeamLeaderboard({ seasonCode, phaseCode }) {
                   <span className={`rank ${index === 0 ? "rank-1" : ""}`}>{index + 1}</span>
                 </td>
                 <td>
-                  <Link to={`/${seasonCode}/teams/${entry.clubCode}`} className="link link-hover font-medium">
+                  <Link
+                    to={`/${seasonCode}/teams/${entry.clubCode}`}
+                    className="link link-hover block max-w-40 truncate font-medium sm:max-w-56"
+                    title={entry.clubName ?? entry.clubCode}
+                  >
                     {entry.clubName ?? entry.clubCode}
                   </Link>
                 </td>
@@ -277,7 +281,7 @@ function PlayerLeaderboard({ seasonCode, phaseCode }) {
         <p className="muted">No season statistics available yet for this phase.</p>
       ) : (
         <>
-          <div className="panel overflow-x-auto p-2">
+          <div className="panel overflow-x-auto overscroll-x-contain p-2">
             <table className="table">
               <thead>
                 <tr>
@@ -297,7 +301,7 @@ function PlayerLeaderboard({ seasonCode, phaseCode }) {
                     <td>
                       <Link
                         to={`/${seasonCode}/players/${player.personKey}`}
-                        className="flex items-center gap-2 link link-hover font-medium"
+                        className="link link-hover flex min-w-0 items-center gap-2 font-medium"
                       >
                         {player.playerImageUrl ? (
                           <img
@@ -309,7 +313,9 @@ function PlayerLeaderboard({ seasonCode, phaseCode }) {
                             }}
                           />
                         ) : null}
-                        {player.playerName ?? player.personKey}
+                        <span className="max-w-40 truncate sm:max-w-56" title={player.playerName ?? player.personKey}>
+                          {player.playerName ?? player.personKey}
+                        </span>
                       </Link>
                     </td>
                     <StatBarCell widthPct={barScale(playerMetricValue(player, group, metric))}>

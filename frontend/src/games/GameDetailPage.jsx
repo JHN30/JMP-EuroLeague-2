@@ -66,8 +66,8 @@ function TeamStatsTable({ teamStats, localTeam, roadTeam }) {
   ];
 
   return (
-    <div className="panel overflow-x-auto p-2">
-      <table className="table">
+    <div className="panel overflow-x-auto overscroll-x-contain p-2">
+      <table className="data-table-sticky table">
         <thead>
           <tr>
             <th>Team</th>
@@ -77,14 +77,21 @@ function TeamStatsTable({ teamStats, localTeam, roadTeam }) {
           </tr>
         </thead>
         <tbody>
-          {totals.map((row) => (
-            <tr key={row.side}>
-              <td className="font-medium">{row.side === "local" ? teamName(localTeam) : teamName(roadTeam)}</td>
-              {columns.map(([field, label]) => (
-                <td key={label}>{row[field] ?? "-"}</td>
-              ))}
-            </tr>
-          ))}
+          {totals.map((row) => {
+            const name = row.side === "local" ? teamName(localTeam) : teamName(roadTeam);
+            return (
+              <tr key={row.side}>
+                <td className="font-medium">
+                  <span className="block max-w-40 truncate sm:max-w-56" title={name}>
+                    {name}
+                  </span>
+                </td>
+                {columns.map(([field, label]) => (
+                  <td key={label}>{row[field] ?? "-"}</td>
+                ))}
+              </tr>
+            );
+          })}
         </tbody>
       </table>
     </div>
@@ -100,7 +107,7 @@ function PlayerStatsTable({ players, side, teamLabel }) {
       {rows.length === 0 ? (
         <p className="muted">Box score not available yet.</p>
       ) : (
-        <div className="panel overflow-x-auto p-2">
+        <div className="panel overflow-x-auto overscroll-x-contain p-2">
           <table className="table">
             <thead>
               <tr>
@@ -118,7 +125,7 @@ function PlayerStatsTable({ players, side, teamLabel }) {
               {rows.map((player) => (
                 <tr key={player.personKey}>
                   <td>
-                    <div className="flex items-center gap-2">
+                    <div className="flex min-w-0 items-center gap-2">
                       {player.headshotUrl ? (
                         <img
                           src={player.headshotUrl}
@@ -129,7 +136,9 @@ function PlayerStatsTable({ players, side, teamLabel }) {
                           }}
                         />
                       ) : null}
-                      {player.personName ?? player.personKey}
+                      <span className="max-w-40 truncate sm:max-w-56" title={player.personName ?? player.personKey}>
+                        {player.personName ?? player.personKey}
+                      </span>
                     </div>
                   </td>
                   <td>{formatMinutes(player.timePlayed)}</td>

@@ -223,7 +223,7 @@ function TeamComparisonTable({ seasonCode, phaseCode, entityA, entityB }) {
   const b = standings.find((entry) => entry.clubCode === entityB.id);
 
   return (
-    <div className="panel overflow-x-auto p-2">
+    <div className="panel overflow-x-auto overscroll-x-contain p-2">
       <table className="table">
         <thead>
           <tr>
@@ -325,7 +325,7 @@ function PlayerComparisonTable({ seasonCode, phaseCode, mode, entityA, entityB }
   const b = statsBQuery.data.players?.[0];
 
   return (
-    <div className="panel overflow-x-auto p-2">
+    <div className="panel overflow-x-auto overscroll-x-contain p-2">
       <table className="table">
         <thead>
           <tr>

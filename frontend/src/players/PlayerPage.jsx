@@ -182,8 +182,8 @@ function GameLogSection({ gamesQuery }) {
     return <p className="muted">No game log available yet.</p>;
   }
   return (
-    <div className="panel overflow-x-auto p-2">
-      <table className="table">
+    <div className="panel overflow-x-auto overscroll-x-contain p-2">
+      <table className="data-table-sticky table">
         <thead>
           <tr>
             <th>Opponent</th>
@@ -199,20 +199,27 @@ function GameLogSection({ gamesQuery }) {
           </tr>
         </thead>
         <tbody>
-          {games.map((game) => (
-            <tr key={game.gameCode}>
-              <td className="font-medium">{teamLabel(opponent(game, game.side))}</td>
-              <td>{game.roundName ?? (game.roundNumber ? `Round ${game.roundNumber}` : game.phaseName)}</td>
-              <td>{formatDateTime(game.scheduledAt)}</td>
-              <td>{formatMinutes(game.timePlayed)}</td>
-              <td>{game.points ?? "-"}</td>
-              <td>{game.totalRebounds ?? "-"}</td>
-              <td>{game.assistances ?? "-"}</td>
-              <td>{game.steals ?? "-"}</td>
-              <td>{game.turnovers ?? "-"}</td>
-              <td>{game.valuation ?? "-"}</td>
-            </tr>
-          ))}
+          {games.map((game) => {
+            const opponentLabel = teamLabel(opponent(game, game.side));
+            return (
+              <tr key={game.gameCode}>
+                <td className="font-medium">
+                  <span className="block max-w-40 truncate sm:max-w-56" title={opponentLabel}>
+                    {opponentLabel}
+                  </span>
+                </td>
+                <td>{game.roundName ?? (game.roundNumber ? `Round ${game.roundNumber}` : game.phaseName)}</td>
+                <td>{formatDateTime(game.scheduledAt)}</td>
+                <td>{formatMinutes(game.timePlayed)}</td>
+                <td>{game.points ?? "-"}</td>
+                <td>{game.totalRebounds ?? "-"}</td>
+                <td>{game.assistances ?? "-"}</td>
+                <td>{game.steals ?? "-"}</td>
+                <td>{game.turnovers ?? "-"}</td>
+                <td>{game.valuation ?? "-"}</td>
+              </tr>
+            );
+          })}
         </tbody>
       </table>
     </div>

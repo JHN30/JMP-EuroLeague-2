@@ -1,12 +1,15 @@
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useQueries, useQuery } from "@tanstack/react-query";
-import { useParams } from "react-router";
-import { getCoverage, getPhases, getSeasonGames, getSeasonTeams } from "../lib/api";
+import { Chart } from "chart.js/auto";
+import { Link, useParams } from "react-router";
+import { getCoverage, getLeaderStats, getPhases, getSeasonGames, getSeasonStandings, getSeasonTeams } from "../lib/api";
 import AsyncState from "../lib/AsyncState";
 import DataCoveragePanel from "../lib/DataCoveragePanel";
 import Panel from "../lib/Panel";
 import PanelHeader from "../lib/PanelHeader";
 import PageHeader from "../lib/PageHeader";
 import { useDocumentTitle } from "../lib/useDocumentTitle";
+import { thinAxisLabels } from "../lib/chartHelpers";
 import {
   formatCount,
   formatDateTime,
@@ -184,6 +187,309 @@ function PhaseStory({ phases, phaseSummaries }) {
   );
 }
 
+function teamName(team) {
+  return team?.name ?? team?.abbreviatedName ?? "TBD";
+}
+
+function DefiningGames({ seasonCode, playedGames }) {
+  const closest = playedGames
+    .filter((game) => game.localScore != null && game.roadScore != null)
+    .map((game) => ({ game, margin: Math.abs(game.localScore - game.roadScore) }))
+    .sort((a, b) => a.margin - b.margin)
+    .slice(0, 3);
+
+  return (
+    <Panel className="p-4">
+      <PanelHeader kicker="HIGHLIGHTS" title="Defining games" />
+      {closest.length === 0 ? (
+        <p className="muted text-sm">No played games yet this season.</p>
+      ) : (
+        <div className="flex flex-col gap-3">
+          {closest.map(({ game, margin }) => (
+            <Link
+              key={game.gameCode}
+              to={`/${seasonCode}/games/${game.gameCode}`}
+              className="card card-border bg-base-100 p-3 transition-colors hover:border-primary"
+            >
+              <p className="eyebrow mb-1">
+                {game.roundName ?? (game.roundNumber ? `Round ${game.roundNumber}` : "")}
+              </p>
+              <div className="flex items-center justify-between gap-2">
+                <span className="flex min-w-0 items-center gap-2 font-medium">
+                  {game.localTeam?.crestUrl ? (
+                    <img
+                      src={game.localTeam.crestUrl}
+                      alt=""
+                      className="h-6 w-6 flex-none object-contain"
+                      onError={(event) => {
+                        event.currentTarget.style.display = "none";
+                      }}
+                    />
+                  ) : null}
+                  <span className="truncate">{teamName(game.localTeam)}</span>
+                </span>
+                <span className="stat-badge stat-badge-neutral tabular-nums">
+                  {game.localScore}-{game.roadScore}
+                </span>
+                <span className="flex min-w-0 items-center gap-2 font-medium">
+                  <span className="truncate">{teamName(game.roadTeam)}</span>
+                  {game.roadTeam?.crestUrl ? (
+                    <img
+                      src={game.roadTeam.crestUrl}
+                      alt=""
+                      className="h-6 w-6 flex-none object-contain"
+                      onError={(event) => {
+                        event.currentTarget.style.display = "none";
+                      }}
+                    />
+                  ) : null}
+                </span>
+              </div>
+              <p className="muted mt-1 text-xs">
+                Decided by {margin} · {formatDateTime(game.scheduledAt)}
+              </p>
+            </Link>
+          ))}
+        </div>
+      )}
+    </Panel>
+  );
+}
+
+function useActiveTheme() {
+  const [theme, setTheme] = useState(() => document.documentElement.dataset.theme);
+
+  useEffect(() => {
+    const observer = new MutationObserver(() => setTheme(document.documentElement.dataset.theme));
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
+    return () => observer.disconnect();
+  }, []);
+
+  return theme;
+}
+
+function themeColor(el, variable) {
+  return getComputedStyle(el).getPropertyValue(variable).trim();
+}
+
+function monthlyScoringSeries(playedGames) {
+  const byMonth = new Map();
+  for (const game of playedGames) {
+    if (game.localScore == null || game.roadScore == null || !game.scheduledAt) continue;
+    const date = new Date(game.scheduledAt);
+    const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
+    if (!byMonth.has(key)) byMonth.set(key, { total: 0, count: 0, date });
+    const entry = byMonth.get(key);
+    entry.total += game.localScore + game.roadScore;
+    entry.count += 1;
+  }
+  const months = [...byMonth.entries()].sort(([a], [b]) => (a < b ? -1 : 1));
+  return {
+    labels: months.map(([, entry]) => entry.date.toLocaleDateString(undefined, { month: "short", year: "2-digit" })),
+    values: months.map(([, entry]) => entry.total / entry.count),
+  };
+}
+
+function ScoringTrendChart({ playedGames }) {
+  const canvasRef = useRef(null);
+  const chartRef = useRef(null);
+  const theme = useActiveTheme();
+  const { labels, values } = useMemo(() => monthlyScoringSeries(playedGames), [playedGames]);
+  const axisLabels = useMemo(() => thinAxisLabels(labels, 6), [labels]);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas || labels.length < 2) return undefined;
+
+    const primary = themeColor(canvas, "--color-primary");
+    const textColor = themeColor(canvas, "--color-base-content");
+    const gridColor = `color-mix(in srgb, ${textColor} 20%, transparent)`;
+    const fillColor = `color-mix(in srgb, ${primary} 15%, transparent)`;
+
+    chartRef.current = new Chart(canvas, {
+      type: "line",
+      data: {
+        labels: axisLabels,
+        datasets: [
+          {
+            label: "Average combined score",
+            data: values,
+            borderColor: primary,
+            backgroundColor: fillColor,
+            fill: true,
+            borderWidth: 4,
+            pointRadius: 5,
+            pointBackgroundColor: primary,
+            tension: 0.3,
+          },
+        ],
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: {
+          x: { ticks: { color: textColor }, grid: { color: gridColor } },
+          y: { ticks: { color: textColor }, grid: { color: gridColor } },
+        },
+        plugins: {
+          legend: { display: false },
+          tooltip: { mode: "nearest", intersect: true },
+        },
+        interaction: { mode: "nearest", intersect: true },
+      },
+    });
+
+    return () => {
+      chartRef.current?.destroy();
+      chartRef.current = null;
+    };
+  }, [axisLabels, values, labels.length, theme]);
+
+  return (
+    <Panel className="p-4">
+      <PanelHeader kicker="TRENDS" title="Scoring through the season" />
+      {labels.length < 2 ? (
+        <p className="muted text-sm">Not enough played games yet to chart a trend.</p>
+      ) : (
+        <div className="rounded-field border border-base-300 bg-base-100/60 p-2 sm:p-3">
+          <div className="relative h-64 w-full">
+            <canvas
+              ref={canvasRef}
+              role="img"
+              aria-label={`Average combined score per month across the season, from ${Math.round(Math.min(...values))} to ${Math.round(Math.max(...values))} points`}
+            />
+          </div>
+        </div>
+      )}
+    </Panel>
+  );
+}
+
+const LEADER_CATEGORIES = [
+  { key: "pointsScored", label: "Points per game" },
+  { key: "totalRebounds", label: "Rebounds per game" },
+  { key: "assists", label: "Assists per game" },
+  { key: "pir", label: "PIR per game" },
+];
+
+function LeaderCard({ seasonCode, category }) {
+  const query = useQuery({
+    queryKey: ["leader-stats", seasonCode, "all", "perGame", category.key],
+    queryFn: () =>
+      getLeaderStats(seasonCode, { phase: "all", mode: "perGame", sort: category.key, order: "desc", limit: 1 }),
+  });
+  const leader = query.data?.players[0] ?? null;
+
+  return (
+    <div className="leader-card">
+      <span className="cat">{category.label}</span>
+      <AsyncState
+        inline
+        status={query.isLoading ? "loading" : query.isError ? "error" : !leader ? "empty" : "ready"}
+        message={query.isError ? "Could not load." : "Not available yet."}
+      >
+        {leader ? (
+          <Link to={`/${seasonCode}/players/${leader.personKey}`} className="leader-top">
+            {leader.playerImageUrl ? (
+              <img
+                src={leader.playerImageUrl}
+                alt=""
+                className="h-14 w-14 flex-none rounded-full object-cover"
+                onError={(event) => {
+                  event.currentTarget.style.display = "none";
+                }}
+              />
+            ) : null}
+            <div className="min-w-0 flex-1">
+              <span className="link link-hover block truncate font-medium">
+                {leader.playerName ?? leader.personKey}
+              </span>
+              <span className="muted block truncate text-sm">{leader.clubName ?? leader.clubCode}</span>
+            </div>
+            <span className="leader-value">{leader.traditional[category.key] ?? "-"}</span>
+          </Link>
+        ) : null}
+      </AsyncState>
+    </div>
+  );
+}
+
+function SeasonLeaders({ seasonCode }) {
+  return (
+    <Panel className="p-4">
+      <PanelHeader
+        kicker="LEADERS"
+        title="Statistical leaders"
+        trailing={
+          <Link to={`/${seasonCode}/statistics`} className="panel-link">
+            Full leaderboards →
+          </Link>
+        }
+      />
+      <div className="grid gap-4 sm:grid-cols-2">
+        {LEADER_CATEGORIES.map((category) => (
+          <LeaderCard key={category.key} seasonCode={seasonCode} category={category} />
+        ))}
+      </div>
+    </Panel>
+  );
+}
+
+function SeasonStandingsSnapshot({ seasonCode }) {
+  const standingsQuery = useQuery({
+    queryKey: ["standings", seasonCode, "RS"],
+    queryFn: () => getSeasonStandings(seasonCode, "RS"),
+  });
+  const top = standingsQuery.data?.standings.slice(0, 8) ?? [];
+
+  return (
+    <Panel className="p-4">
+      <PanelHeader kicker="STANDINGS" title="Standings snapshot" />
+      {standingsQuery.isLoading ? (
+        <AsyncState status="loading" label="Loading standings" compact />
+      ) : standingsQuery.isError ? (
+        <AsyncState status="error" inline message="Could not load standings." />
+      ) : top.length === 0 ? (
+        <p className="muted text-sm">Standings not available yet.</p>
+      ) : (
+        <>
+          <ol className="space-y-2">
+            {top.map((entry) => (
+              <li key={entry.clubCode} className="flex items-center gap-3">
+                <span className={`rank ${entry.basic?.position === 1 ? "rank-1" : ""}`}>
+                  {entry.basic?.position ?? "-"}
+                </span>
+                <Link
+                  to={`/${seasonCode}/teams/${entry.clubCode}`}
+                  className="link link-hover flex flex-1 items-center gap-2 font-medium"
+                >
+                  {entry.crestUrl ? (
+                    <img
+                      src={entry.crestUrl}
+                      alt=""
+                      className="h-8 w-8 flex-none object-contain"
+                      onError={(event) => {
+                        event.currentTarget.style.display = "none";
+                      }}
+                    />
+                  ) : null}
+                  <span className="truncate">{entry.clubName ?? entry.clubCode}</span>
+                </Link>
+                <span className="muted font-semibold tabular-nums">
+                  {entry.basic?.gamesWon ?? "-"}-{entry.basic?.gamesLost ?? "-"}
+                </span>
+              </li>
+            ))}
+          </ol>
+          <Link to={`/${seasonCode}/standings`} className="panel-link mt-4 inline-block">
+            Full standings →
+          </Link>
+        </>
+      )}
+    </Panel>
+  );
+}
+
 export default function SeasonOverviewPage() {
   const { seasonCode } = useParams();
   useDocumentTitle(`${formatSeasonLabel(seasonCode)} season overview`);
@@ -326,8 +632,17 @@ export default function SeasonOverviewPage() {
             currentPhaseCode={activePhase?.code}
           />
           <PhaseStory phases={phases} phaseSummaries={phaseSummaries} />
+          <div className="grid gap-6 xl:grid-cols-[minmax(0,1.4fr)_minmax(19rem,0.6fr)]">
+            <ScoringTrendChart playedGames={playedGames} />
+            <DefiningGames seasonCode={seasonCode} playedGames={playedGames} />
+          </div>
         </>
       )}
+
+      <div className="grid gap-6 xl:grid-cols-2">
+        <SeasonLeaders seasonCode={seasonCode} />
+        <SeasonStandingsSnapshot seasonCode={seasonCode} />
+      </div>
 
       {coverageQuery.isLoading ? (
         <AsyncState status="loading" label="Loading season data coverage" compact />

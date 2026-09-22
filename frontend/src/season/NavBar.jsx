@@ -16,11 +16,10 @@ export default function NavBar() {
 
   return (
     <nav aria-label="Sections" className="overflow-x-auto border-t border-base-300 px-4 sm:px-6">
-      <div role="tablist" className="tabs tabs-sm w-max">
+      <div className="tabs tabs-sm w-max">
         {TABS.map((tab) => (
           <NavLink
             key={tab.label}
-            role="tab"
             end={tab.end}
             to={tab.path ? `/${seasonCode}/${tab.path}` : `/${seasonCode}`}
             className={({ isActive }) => `tab font-semibold ${isActive ? "tab-active text-primary" : ""}`}

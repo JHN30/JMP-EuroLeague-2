@@ -9,6 +9,7 @@ import {
   getPlayerSeasonStats,
 } from "../lib/api";
 import { formatStatValue } from "../lib/statsFields";
+import { TabPanel, TabStrip } from "../lib/TabStrip";
 
 const GAMES_LIMIT = 100;
 
@@ -305,34 +306,26 @@ export default function PlayerPage() {
       <section className="mb-8">
         <h2 className="mb-3 text-xl font-semibold">Season statistics</h2>
         <div className="mb-4 flex flex-wrap items-center gap-4">
-          <div role="tablist" className="tabs tabs-boxed tabs-sm w-fit">
-            {phases.map((phase) => (
-              <button
-                key={phase.code}
-                role="tab"
-                type="button"
-                className={`tab font-semibold ${phaseCode === phase.code ? "tab-active" : ""}`}
-                onClick={() => setSelectedPhase(phase.code)}
-              >
-                {phase.name ?? phase.code}
-              </button>
-            ))}
-          </div>
-          <div role="tablist" className="tabs tabs-boxed tabs-sm w-fit">
-            {STATS_MODES.map((option) => (
-              <button
-                key={option.value}
-                role="tab"
-                type="button"
-                className={`tab font-semibold ${mode === option.value ? "tab-active" : ""}`}
-                onClick={() => setMode(option.value)}
-              >
-                {option.label}
-              </button>
-            ))}
-          </div>
+          <TabStrip
+            ariaLabel="Phase"
+            panelId="player-stats-panel"
+            activeKey={phaseCode}
+            onChange={setSelectedPhase}
+            className="w-fit"
+            tabs={phases.map((phase) => ({ key: phase.code, label: phase.name ?? phase.code }))}
+          />
+          <TabStrip
+            ariaLabel="Stats mode"
+            panelId="player-stats-panel"
+            activeKey={mode}
+            onChange={setMode}
+            className="w-fit"
+            tabs={STATS_MODES.map((option) => ({ key: option.value, label: option.label }))}
+          />
         </div>
-        <SeasonStatsSection statsQuery={statsQuery} />
+        <TabPanel id="player-stats-panel" focusKey={`${phaseCode}-${mode}`}>
+          <SeasonStatsSection statsQuery={statsQuery} />
+        </TabPanel>
       </section>
 
       <section className="mb-8">

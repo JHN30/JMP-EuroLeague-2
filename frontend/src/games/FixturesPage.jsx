@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link, useParams } from "react-router";
 import { getPhases, getRounds, getSeasonGames } from "../lib/api";
+import { TabPanel, TabStrip } from "../lib/TabStrip";
 
 const PAGE_SIZE = 20;
 const ALL_ROUND_LIMIT = 100;
@@ -101,19 +102,14 @@ export default function FixturesPage() {
     <div>
       <h1 className="mb-6 text-2xl font-semibold">Fixtures and results</h1>
 
-      <div role="tablist" className="tabs tabs-boxed tabs-sm mb-4 w-fit">
-        {phases.map((phase) => (
-          <button
-            key={phase.code}
-            role="tab"
-            type="button"
-            className={`tab font-semibold ${phaseCode === phase.code ? "tab-active" : ""}`}
-            onClick={() => handlePhaseChange(phase.code)}
-          >
-            {phase.name ?? phase.code}
-          </button>
-        ))}
-      </div>
+      <TabStrip
+        ariaLabel="Phase"
+        panelId="fixtures-panel"
+        activeKey={phaseCode}
+        onChange={handlePhaseChange}
+        className="mb-4 w-fit"
+        tabs={phases.map((phase) => ({ key: phase.code, label: phase.name ?? phase.code }))}
+      />
 
       <div className="mb-6 flex flex-wrap items-center gap-4">
         <select
@@ -131,21 +127,17 @@ export default function FixturesPage() {
           ))}
         </select>
 
-        <div role="tablist" className="tabs tabs-boxed tabs-sm w-fit">
-          {STATUS_FILTERS.map((filter) => (
-            <button
-              key={filter.label}
-              role="tab"
-              type="button"
-              className={`tab font-semibold ${status === filter.value ? "tab-active" : ""}`}
-              onClick={() => handleStatusChange(filter.value)}
-            >
-              {filter.label}
-            </button>
-          ))}
-        </div>
+        <TabStrip
+          ariaLabel="Status"
+          panelId="fixtures-panel"
+          activeKey={status ?? "all"}
+          onChange={(key) => handleStatusChange(key === "all" ? undefined : key)}
+          className="w-fit"
+          tabs={STATUS_FILTERS.map((filter) => ({ key: filter.value ?? "all", label: filter.label }))}
+        />
       </div>
 
+      <TabPanel id="fixtures-panel" focusKey={`${phaseCode}-${status}-${selectedRound}`}>
       {gamesQuery.isLoading ? (
         <CenteredSpinner />
       ) : gamesQuery.isError ? (
@@ -235,6 +227,7 @@ export default function FixturesPage() {
           ) : null}
         </>
       )}
+      </TabPanel>
     </div>
   );
 }

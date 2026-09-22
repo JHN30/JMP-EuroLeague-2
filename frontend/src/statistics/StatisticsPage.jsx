@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link, useParams } from "react-router";
 import { getLeaderStats, getPhases, getSeasonStandings } from "../lib/api";
+import { TabPanel, TabStrip } from "../lib/TabStrip";
 import {
   PLAYER_METRIC_GROUPS,
   TEAM_METRICS,
@@ -224,20 +225,16 @@ function PlayerLeaderboard({ seasonCode, phaseCode }) {
 
   return (
     <div>
-      <div role="tablist" className="tabs tabs-boxed tabs-sm mb-4 w-fit">
-        {PLAYER_METRIC_GROUPS.map((groupDef) => (
-          <button
-            key={groupDef.group}
-            role="tab"
-            type="button"
-            className={`tab font-semibold ${category === groupDef.group ? "tab-active" : ""}`}
-            onClick={() => handleCategoryChange(groupDef.group)}
-          >
-            {groupDef.label}
-          </button>
-        ))}
-      </div>
+      <TabStrip
+        ariaLabel="Metric category"
+        panelId="player-leaderboard-panel"
+        activeKey={category}
+        onChange={handleCategoryChange}
+        className="mb-4 w-fit"
+        tabs={PLAYER_METRIC_GROUPS.map((groupDef) => ({ key: groupDef.group, label: groupDef.label }))}
+      />
 
+      <TabPanel id="player-leaderboard-panel" focusKey={category}>
       <LeaderboardKpiStrip
         entries={players}
         offset={offset}
@@ -349,6 +346,7 @@ function PlayerLeaderboard({ seasonCode, phaseCode }) {
           </div>
         </>
       )}
+      </TabPanel>
     </div>
   );
 }

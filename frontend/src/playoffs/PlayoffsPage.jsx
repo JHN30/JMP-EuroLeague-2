@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link, useParams } from "react-router";
 import { getPhases, getSeasonGames } from "../lib/api";
+import { TabPanel, TabStrip } from "../lib/TabStrip";
 
 function CenteredSpinner() {
   return (
@@ -133,27 +134,24 @@ export default function PlayoffsPage() {
         <p className="muted">The postseason has not started yet for this season.</p>
       ) : (
         <>
-          <div role="tablist" className="tabs tabs-boxed tabs-sm mb-6 w-fit">
-            {postseasonPhases.map((phase) => (
-              <button
-                key={phase.code}
-                role="tab"
-                type="button"
-                className={`tab font-semibold ${phaseCode === phase.code ? "tab-active" : ""}`}
-                onClick={() => setSelectedPhase(phase.code)}
-              >
-                {phase.name ?? phase.code}
-              </button>
-            ))}
-          </div>
+          <TabStrip
+            ariaLabel="Postseason phase"
+            panelId="playoffs-panel"
+            activeKey={phaseCode}
+            onChange={setSelectedPhase}
+            className="mb-6 w-fit"
+            tabs={postseasonPhases.map((phase) => ({ key: phase.code, label: phase.name ?? phase.code }))}
+          />
 
-          {gamesQuery.isPending ? (
-            <CenteredSpinner />
-          ) : gamesQuery.isError ? (
-            <ErrorAlert message="Could not load games." onRetry={() => gamesQuery.refetch()} />
-          ) : (
-            <MatchupGroups seasonCode={seasonCode} games={gamesQuery.data.games} />
-          )}
+          <TabPanel id="playoffs-panel" focusKey={phaseCode}>
+            {gamesQuery.isPending ? (
+              <CenteredSpinner />
+            ) : gamesQuery.isError ? (
+              <ErrorAlert message="Could not load games." onRetry={() => gamesQuery.refetch()} />
+            ) : (
+              <MatchupGroups seasonCode={seasonCode} games={gamesQuery.data.games} />
+            )}
+          </TabPanel>
         </>
       )}
     </div>

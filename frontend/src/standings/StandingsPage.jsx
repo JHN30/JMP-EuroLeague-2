@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useQueries, useQuery } from "@tanstack/react-query";
 import { useParams } from "react-router";
 import { getPhases, getSeasonStandings } from "../lib/api";
+import { TabPanel, TabStrip } from "../lib/TabStrip";
 import StandingsKpiStrip from "./StandingsKpiStrip";
 import StandingsTable from "./StandingsTable";
 
@@ -97,58 +98,50 @@ export default function StandingsPage() {
   return (
     <div>
       <h1 className="mb-6 text-2xl font-semibold">Standings</h1>
-      <div role="tablist" className="tabs tabs-boxed tabs-sm mb-4 w-fit">
-        {phases.map((phase) => (
-          <button
-            key={phase.code}
-            role="tab"
-            type="button"
-            className={`tab font-semibold ${phaseCode === phase.code ? "tab-active" : ""}`}
-            onClick={() => setSelectedPhase(phase.code)}
-          >
-            {phase.name ?? phase.code}
-          </button>
-        ))}
-      </div>
+      <TabStrip
+        ariaLabel="Phase"
+        panelId="standings-panel"
+        activeKey={phaseCode}
+        onChange={setSelectedPhase}
+        className="mb-4 w-fit"
+        tabs={phases.map((phase) => ({ key: phase.code, label: phase.name ?? phase.code }))}
+      />
 
-      {standingsQuery.isLoading ? (
-        <CenteredSpinner />
-      ) : standingsQuery.isError ? (
-        <ErrorAlert message="Could not load standings." onRetry={() => standingsQuery.refetch()} />
-      ) : standings.length === 0 ? (
-        <p role="status" className="muted">Standings not available yet for this phase.</p>
-      ) : (
-        <div className="flex flex-col gap-4">
-          <StandingsKpiStrip
-            seasonCode={seasonCode}
-            phaseCode={phaseCode}
-            round={round}
-            standings={standings}
-          />
+      <TabPanel id="standings-panel" focusKey={`${phaseCode}-${view}`}>
+        {standingsQuery.isLoading ? (
+          <CenteredSpinner />
+        ) : standingsQuery.isError ? (
+          <ErrorAlert message="Could not load standings." onRetry={() => standingsQuery.refetch()} />
+        ) : standings.length === 0 ? (
+          <p role="status" className="muted">Standings not available yet for this phase.</p>
+        ) : (
+          <div className="flex flex-col gap-4">
+            <StandingsKpiStrip
+              seasonCode={seasonCode}
+              phaseCode={phaseCode}
+              round={round}
+              standings={standings}
+            />
 
-          <div role="tablist" className="tabs tabs-boxed tabs-sm w-fit">
-            {VIEW_TABS.map((tab) => (
-              <button
-                key={tab.key}
-                role="tab"
-                type="button"
-                className={`tab font-semibold ${view === tab.key ? "tab-active" : ""}`}
-                onClick={() => setView(tab.key)}
-              >
-                {tab.label}
-              </button>
-            ))}
+            <TabStrip
+              ariaLabel="Standings view"
+              panelId="standings-panel"
+              activeKey={view}
+              onChange={setView}
+              className="w-fit"
+              tabs={VIEW_TABS}
+            />
+
+            <StandingsTable
+              standings={standings}
+              seasonCode={seasonCode}
+              view={view}
+              showTiers={phaseCode === "RS"}
+              trendByClub={trendByClub}
+            />
           </div>
-
-          <StandingsTable
-            standings={standings}
-            seasonCode={seasonCode}
-            view={view}
-            showTiers={phaseCode === "RS"}
-            trendByClub={trendByClub}
-          />
-        </div>
-      )}
+        )}
+      </TabPanel>
     </div>
   );
 }

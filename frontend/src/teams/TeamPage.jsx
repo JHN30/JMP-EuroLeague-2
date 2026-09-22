@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Link, useParams } from "react-router";
 import { getLeaderStats, getPhases, getSeasonStandings, getTeam, getTeamGames, getTeamRoster } from "../lib/api";
 import { formatStatValue } from "../lib/statsFields";
+import { TabPanel, TabStrip } from "../lib/TabStrip";
 import StatBarCell from "../statistics/StatBarCell";
 import { barWidthScale } from "../statistics/statBarScale";
 import TeamTrendChart from "./TeamTrendChart";
@@ -532,49 +533,41 @@ export default function TeamPage() {
         {gamesQuery.isSuccess ? <NextGameChip nextGame={nextGame} clubCode={clubCode} /> : null}
       </div>
 
-      <div role="tablist" className="tabs tabs-boxed tabs-sm mb-4 w-fit">
-        {phases.map((phase) => (
-          <button
-            key={phase.code}
-            role="tab"
-            type="button"
-            className={`tab font-semibold ${phaseCode === phase.code ? "tab-active" : ""}`}
-            onClick={() => setSelectedPhase(phase.code)}
-          >
-            {phase.name ?? phase.code}
-          </button>
-        ))}
-      </div>
+      <TabStrip
+        ariaLabel="Phase"
+        panelId="team-panel"
+        activeKey={phaseCode}
+        onChange={setSelectedPhase}
+        className="mb-4 w-fit"
+        tabs={phases.map((phase) => ({ key: phase.code, label: phase.name ?? phase.code }))}
+      />
 
-      <div role="tablist" className="tabs tabs-boxed tabs-sm mb-6 w-fit">
-        {SECTIONS.map((s) => (
-          <button
-            key={s.key}
-            role="tab"
-            type="button"
-            className={`tab font-semibold ${section === s.key ? "tab-active" : ""}`}
-            onClick={() => setSection(s.key)}
-          >
-            {s.label}
-          </button>
-        ))}
-      </div>
+      <TabStrip
+        ariaLabel="Section"
+        panelId="team-panel"
+        activeKey={section}
+        onChange={setSection}
+        className="mb-6 w-fit"
+        tabs={SECTIONS}
+      />
 
-      {section === "overview" ? (
-        gamesQuery.isPending ? (
-          <CenteredSpinner />
-        ) : gamesQuery.isError ? (
-          <ErrorAlert message="Could not load this team's games." onRetry={() => gamesQuery.refetch()} />
+      <TabPanel id="team-panel" focusKey={`${phaseCode}-${section}`}>
+        {section === "overview" ? (
+          gamesQuery.isPending ? (
+            <CenteredSpinner />
+          ) : gamesQuery.isError ? (
+            <ErrorAlert message="Could not load this team's games." onRetry={() => gamesQuery.refetch()} />
+          ) : (
+            <OverviewSection seasonCode={seasonCode} clubCode={clubCode} standingsQuery={standingsQuery} games={games} />
+          )
+        ) : section === "roster" ? (
+          <RosterSection rosterQuery={rosterQuery} rosterStatsQuery={rosterStatsQuery} seasonCode={seasonCode} />
+        ) : section === "schedule" ? (
+          <ScheduleSection gamesQuery={gamesQuery} clubCode={clubCode} />
         ) : (
-          <OverviewSection seasonCode={seasonCode} clubCode={clubCode} standingsQuery={standingsQuery} games={games} />
-        )
-      ) : section === "roster" ? (
-        <RosterSection rosterQuery={rosterQuery} rosterStatsQuery={rosterStatsQuery} seasonCode={seasonCode} />
-      ) : section === "schedule" ? (
-        <ScheduleSection gamesQuery={gamesQuery} clubCode={clubCode} />
-      ) : (
-        <StatsSection standingsQuery={standingsQuery} clubCode={clubCode} />
-      )}
+          <StatsSection standingsQuery={standingsQuery} clubCode={clubCode} />
+        )}
+      </TabPanel>
     </div>
   );
 }

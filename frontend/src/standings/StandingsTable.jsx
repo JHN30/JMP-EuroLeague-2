@@ -1,6 +1,7 @@
 import { Fragment } from "react";
 import { Link } from "react-router";
 import { formatCount, formatSignedDiff } from "../lib/format";
+import Panel from "../lib/Panel";
 
 const TREND_WIDTH = 52;
 const TREND_HEIGHT = 18;
@@ -131,7 +132,7 @@ export default function StandingsTable({ standings, seasonCode, view = "overall"
   const tiers = tiersActive ? sorted.map((entry) => tierForPosition(entry.basic?.position)) : [];
 
   return (
-    <div className="panel overflow-x-auto overscroll-x-contain p-2">
+    <Panel className="overflow-x-auto overscroll-x-contain p-2">
       <table className="table">
         <thead>
           <tr>
@@ -219,6 +220,6 @@ export default function StandingsTable({ standings, seasonCode, view = "overall"
           })}
         </tbody>
       </table>
-    </div>
+    </Panel>
   );
 }

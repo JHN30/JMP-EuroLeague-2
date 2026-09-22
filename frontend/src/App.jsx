@@ -12,6 +12,7 @@ import StatisticsPage from "./statistics/StatisticsPage";
 import ComparisonsPage from "./comparisons/ComparisonsPage";
 import PlayoffsPage from "./playoffs/PlayoffsPage";
 import RouteErrorBoundary from "./ErrorBoundary";
+import AsyncState from "./lib/AsyncState";
 import { useDefaultSeasonCode } from "./season/useDefaultSeasonCode";
 import { useThemePreference } from "./lib/useThemePreference";
 
@@ -19,23 +20,17 @@ function DefaultSeasonRedirect() {
   const defaultSeasonQuery = useDefaultSeasonCode();
 
   if (defaultSeasonQuery.isLoading) {
-    return (
-      <div role="status" aria-label="Loading" className="flex min-h-screen items-center justify-center">
-        <span className="loading loading-spinner loading-lg text-primary" />
-      </div>
-    );
+    return <AsyncState status="loading" fullScreen />;
   }
 
   if (defaultSeasonQuery.isError || !defaultSeasonQuery.data) {
     return (
-      <div className="flex min-h-screen items-center justify-center p-6">
-        <div role="alert" className="alert alert-error max-w-md">
-          <span>Could not load seasons. Check your connection and try again.</span>
-          <button type="button" className="btn btn-sm" onClick={() => defaultSeasonQuery.refetch()}>
-            Retry
-          </button>
-        </div>
-      </div>
+      <AsyncState
+        status="error"
+        fullScreen
+        message="Could not load seasons. Check your connection and try again."
+        onRetry={() => defaultSeasonQuery.refetch()}
+      />
     );
   }
 

@@ -1,28 +1,10 @@
 import { useQuery } from "@tanstack/react-query";
 import { useParams } from "react-router";
 import { getBoxScore, getGame } from "../lib/api";
+import AsyncState from "../lib/AsyncState";
+import EmptyText from "../lib/EmptyText";
 import { formatDateTime as formatDateTimeShared, formatMinutes } from "../lib/format";
-
-function CenteredSpinner() {
-  return (
-    <div role="status" aria-label="Loading" className="flex justify-center py-12">
-      <span className="loading loading-spinner loading-lg text-primary" />
-    </div>
-  );
-}
-
-function ErrorAlert({ message, onRetry }) {
-  return (
-    <div role="alert" className="alert alert-error max-w-md">
-      <span>{message}</span>
-      {onRetry ? (
-        <button type="button" className="btn btn-sm" onClick={onRetry}>
-          Retry
-        </button>
-      ) : null}
-    </div>
-  );
-}
+import Panel from "../lib/Panel";
 
 function formatDateTime(scheduledAt) {
   return formatDateTimeShared(scheduledAt, { dateStyle: "full" });
@@ -36,7 +18,7 @@ function TeamStatsTable({ teamStats, localTeam, roadTeam }) {
   const totals = teamStats.filter((row) => row.statsKind === "total");
 
   if (totals.length === 0) {
-    return <p role="status" className="muted">Box score not available yet.</p>;
+    return <EmptyText>Box score not available yet.</EmptyText>;
   }
 
   const columns = [
@@ -54,7 +36,7 @@ function TeamStatsTable({ teamStats, localTeam, roadTeam }) {
   ];
 
   return (
-    <div className="panel overflow-x-auto overscroll-x-contain p-2">
+    <Panel className="overflow-x-auto overscroll-x-contain p-2">
       <table className="data-table-sticky table">
         <thead>
           <tr>
@@ -82,7 +64,7 @@ function TeamStatsTable({ teamStats, localTeam, roadTeam }) {
           })}
         </tbody>
       </table>
-    </div>
+    </Panel>
   );
 }
 
@@ -93,9 +75,9 @@ function PlayerStatsTable({ players, side, teamLabel }) {
     <div>
       <h3 className="mb-2 font-semibold">{teamLabel}</h3>
       {rows.length === 0 ? (
-        <p role="status" className="muted">Box score not available yet.</p>
+        <EmptyText>Box score not available yet.</EmptyText>
       ) : (
-        <div className="panel overflow-x-auto overscroll-x-contain p-2">
+        <Panel className="overflow-x-auto overscroll-x-contain p-2">
           <table className="table">
             <thead>
               <tr>
@@ -140,7 +122,7 @@ function PlayerStatsTable({ players, side, teamLabel }) {
               ))}
             </tbody>
           </table>
-        </div>
+        </Panel>
       )}
     </div>
   );
@@ -161,14 +143,14 @@ export default function GameDetailPage() {
     enabled: gameQuery.isSuccess,
   });
 
-  if (gameQuery.isLoading) return <CenteredSpinner />;
+  if (gameQuery.isLoading) return <AsyncState status="loading" />;
 
   if (gameQuery.isError) {
     const notFound = gameQuery.error?.response?.status === 404;
     return notFound ? (
-      <p role="status" className="muted">Game not found.</p>
+      <EmptyText>Game not found.</EmptyText>
     ) : (
-      <ErrorAlert message="Could not load this game." onRetry={() => gameQuery.refetch()} />
+      <AsyncState status="error" message="Could not load this game." onRetry={() => gameQuery.refetch()} />
     );
   }
 
@@ -226,9 +208,9 @@ export default function GameDetailPage() {
 
       <h2 className="mb-3 text-xl font-semibold">Team stats</h2>
       {boxScoreQuery.isLoading ? (
-        <CenteredSpinner />
+        <AsyncState status="loading" />
       ) : boxScoreQuery.isError ? (
-        <ErrorAlert message="Could not load box score." onRetry={() => boxScoreQuery.refetch()} />
+        <AsyncState status="error" message="Could not load box score." onRetry={() => boxScoreQuery.refetch()} />
       ) : (
         <TeamStatsTable
           teamStats={boxScoreQuery.data.teamStats}

@@ -1,18 +1,9 @@
 import { useQuery } from "@tanstack/react-query";
 import { useParams } from "react-router";
 import { getLeaderStats, getRounds, getSeasonStandings } from "../lib/api";
+import CompactMetric from "../lib/CompactMetric";
 import { formatPerGame } from "../lib/format";
-
-function KpiChip({ isLoading, isError, value, label }) {
-  return (
-    <div className="kpi-chip">
-      <span className="value" title={isError ? "Could not load this value." : undefined}>
-        {isLoading ? "–" : isError ? "–" : value}
-      </span>
-      <span className="label">{label}</span>
-    </div>
-  );
-}
+import HeaderStats from "../lib/HeaderStats";
 
 export default function KpiStrip() {
   const { seasonCode } = useParams();
@@ -73,33 +64,33 @@ export default function KpiStrip() {
   }
 
   return (
-    <div className="kpi-strip">
-      <KpiChip
+    <HeaderStats>
+      <CompactMetric
         isLoading={standingsQuery.isLoading || roundsQuery.isLoading}
         isError={standingsQuery.isError || roundsQuery.isError}
         value={round != null && totalRounds != null ? `${round} / ${totalRounds}` : "–"}
         label="Round in progress"
       />
-      <KpiChip
+      <CompactMetric
         isLoading={standingsQuery.isLoading}
         isError={standingsQuery.isError}
         value={leader ? `${leader.basic.gamesWon}-${leader.basic.gamesLost}` : "–"}
         label={leader ? `Leader · ${leader.clubName ?? leader.clubCode}` : "Leader"}
       />
-      <KpiChip
+      <CompactMetric
         isLoading={topScorerQuery.isLoading}
         isError={topScorerQuery.isError}
         value={topScorer?.traditional.pointsScored ?? "–"}
         label={topScorer ? `Top scorer · ${topScorer.playerName ?? topScorer.personKey}` : "Top scorer"}
       />
-      <KpiChip
+      <CompactMetric
         isLoading={standingsQuery.isLoading}
         isError={standingsQuery.isError}
         value={leagueAvgPpg}
         label="League avg PPG"
       />
       {round && round > 1 ? (
-        <KpiChip
+        <CompactMetric
           isLoading={previousRoundQuery.isLoading}
           isError={previousRoundQuery.isError}
           value={biggestMover ? `${biggestMover.delta > 0 ? "▲" : "▼"} ${Math.abs(biggestMover.delta)}` : "–"}
@@ -110,6 +101,6 @@ export default function KpiStrip() {
           }
         />
       ) : null}
-    </div>
+    </HeaderStats>
   );
 }

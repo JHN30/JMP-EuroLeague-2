@@ -1,4 +1,5 @@
 import { formatPerGame } from "../lib/format";
+import Panel from "../lib/Panel";
 
 const WIDTH = 900;
 const HEIGHT = 140;
@@ -37,10 +38,10 @@ export default function TeamTrendChart({ games, clubCode }) {
 
   if (diffs.length < 2) {
     return (
-      <section className="panel p-6">
+      <Panel as="section" className="p-6">
         <h2 className="panel-title mb-3">Point differential &middot; last {diffs.length || ""} games</h2>
         <p className="muted">Not enough played games yet for a trend.</p>
-      </section>
+      </Panel>
     );
   }
 
@@ -49,7 +50,7 @@ export default function TeamTrendChart({ games, clubCode }) {
   const average = rawAverage > 0 ? `+${formatPerGame(rawAverage)}` : formatPerGame(rawAverage);
 
   return (
-    <section className="panel p-6">
+    <Panel as="section" className="p-6">
       <div className="leader-trend-head mb-3 flex items-end justify-between">
         <h2 className="panel-title">Point differential &middot; last {diffs.length} games</h2>
         <div className="leader-trend-stat text-right">
@@ -68,6 +69,6 @@ export default function TeamTrendChart({ games, clubCode }) {
         <polygon points={trend.areaAttr} className="leader-trend-area" />
         <polyline points={trend.pointsAttr} className="leader-trend-line" />
       </svg>
-    </section>
+    </Panel>
   );
 }

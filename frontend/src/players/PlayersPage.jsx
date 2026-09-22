@@ -2,27 +2,12 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link, useParams } from "react-router";
 import { getSeasonPlayers } from "../lib/api";
+import AsyncState from "../lib/AsyncState";
+import EmptyText from "../lib/EmptyText";
+import Panel from "../lib/Panel";
+import SearchField from "../lib/SearchField";
 
 const PAGE_SIZE = 20;
-
-function CenteredSpinner() {
-  return (
-    <div role="status" aria-label="Loading" className="flex justify-center py-12">
-      <span className="loading loading-spinner loading-lg text-primary" />
-    </div>
-  );
-}
-
-function ErrorAlert({ message, onRetry }) {
-  return (
-    <div role="alert" className="alert alert-error max-w-md">
-      <span>{message}</span>
-      <button type="button" className="btn btn-sm" onClick={onRetry}>
-        Retry
-      </button>
-    </div>
-  );
-}
 
 export default function PlayersPage() {
   const { seasonCode } = useParams();
@@ -46,25 +31,23 @@ export default function PlayersPage() {
       <h1 className="mb-6 text-2xl font-semibold">Players</h1>
 
       <div className="mb-6">
-        <input
-          type="search"
-          aria-label="Search players"
+        <SearchField
+          label="Search players"
           placeholder="Search by name"
-          className="input input-bordered input-sm w-full max-w-xs"
           value={search}
           onChange={handleSearchChange}
         />
       </div>
 
       {playersQuery.isLoading ? (
-        <CenteredSpinner />
+        <AsyncState status="loading" />
       ) : playersQuery.isError ? (
-        <ErrorAlert message="Could not load players." onRetry={() => playersQuery.refetch()} />
+        <AsyncState status="error" message="Could not load players." onRetry={() => playersQuery.refetch()} />
       ) : players.length === 0 ? (
-        <p role="status" className="muted">{search ? "No players match your search." : "No players available for this season."}</p>
+        <EmptyText>{search ? "No players match your search." : "No players available for this season."}</EmptyText>
       ) : (
         <>
-          <div className="panel p-4">
+          <Panel className="p-4">
             <ul>
               {players.map((player) => (
                 <li key={player.personKey} className="flex items-center justify-between gap-4 border-b border-base-300 py-2 last:border-0">
@@ -75,7 +58,7 @@ export default function PlayersPage() {
                 </li>
               ))}
             </ul>
-          </div>
+          </Panel>
 
           <div className="mt-4 flex justify-center gap-2">
             <button

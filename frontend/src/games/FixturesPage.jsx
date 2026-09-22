@@ -2,7 +2,11 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link, useParams } from "react-router";
 import { getPhases, getRounds, getSeasonGames } from "../lib/api";
+import AsyncState from "../lib/AsyncState";
+import CompactFilterSelect from "../lib/CompactFilterSelect";
+import EmptyText from "../lib/EmptyText";
 import { formatDateTime } from "../lib/format";
+import Panel from "../lib/Panel";
 import { TabPanel, TabStrip } from "../lib/TabStrip";
 
 const PAGE_SIZE = 20;
@@ -13,25 +17,6 @@ const STATUS_FILTERS = [
   { label: "Played", value: "played" },
   { label: "Scheduled", value: "scheduled" },
 ];
-
-function CenteredSpinner() {
-  return (
-    <div role="status" aria-label="Loading" className="flex justify-center py-12">
-      <span className="loading loading-spinner loading-lg text-primary" />
-    </div>
-  );
-}
-
-function ErrorAlert({ message, onRetry }) {
-  return (
-    <div role="alert" className="alert alert-error max-w-md">
-      <span>{message}</span>
-      <button type="button" className="btn btn-sm" onClick={onRetry}>
-        Retry
-      </button>
-    </div>
-  );
-}
 
 function teamLabel(team) {
   return team?.abbreviatedName ?? team?.name ?? "TBD";
@@ -86,9 +71,9 @@ export default function FixturesPage() {
 
   const games = gamesQuery.data?.games ?? [];
 
-  if (phasesQuery.isLoading) return <CenteredSpinner />;
+  if (phasesQuery.isLoading) return <AsyncState status="loading" />;
   if (phasesQuery.isError) {
-    return <ErrorAlert message="Could not load phases." onRetry={() => phasesQuery.refetch()} />;
+    return <AsyncState status="error" message="Could not load phases." onRetry={() => phasesQuery.refetch()} />;
   }
 
   return (
@@ -105,9 +90,8 @@ export default function FixturesPage() {
       />
 
       <div className="mb-6 flex flex-wrap items-center gap-4">
-        <select
-          aria-label="Round"
-          className="select select-bordered select-sm"
+        <CompactFilterSelect
+          label="Round"
           value={selectedRound ?? ""}
           onChange={handleRoundChange}
           disabled={roundsQuery.isLoading}
@@ -118,7 +102,7 @@ export default function FixturesPage() {
               {round.name ?? `Round ${round.number}`}
             </option>
           ))}
-        </select>
+        </CompactFilterSelect>
 
         <TabStrip
           ariaLabel="Status"
@@ -132,14 +116,14 @@ export default function FixturesPage() {
 
       <TabPanel id="fixtures-panel" focusKey={`${phaseCode}-${status}-${selectedRound}`}>
       {gamesQuery.isLoading ? (
-        <CenteredSpinner />
+        <AsyncState status="loading" />
       ) : gamesQuery.isError ? (
-        <ErrorAlert message="Could not load games." onRetry={() => gamesQuery.refetch()} />
+        <AsyncState status="error" message="Could not load games." onRetry={() => gamesQuery.refetch()} />
       ) : games.length === 0 ? (
-        <p role="status" className="muted">No games match these filters.</p>
+        <EmptyText>No games match these filters.</EmptyText>
       ) : (
         <>
-          <div className="panel p-4">
+          <Panel className="p-4">
             <ul>
               {games.map((game) => {
                 const localWon = game.played && game.localScore != null && game.roadScore != null && game.localScore > game.roadScore;
@@ -196,7 +180,7 @@ export default function FixturesPage() {
                 );
               })}
             </ul>
-          </div>
+          </Panel>
 
           {!selectedRound ? (
             <div className="mt-4 flex justify-center gap-2">

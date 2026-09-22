@@ -2,6 +2,11 @@ import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link, useParams } from "react-router";
 import { getLeaderStats, getPhases, getSeasonStandings } from "../lib/api";
+import AsyncState from "../lib/AsyncState";
+import CompactFilterSelect from "../lib/CompactFilterSelect";
+import EmptyText from "../lib/EmptyText";
+import LabelledSelect from "../lib/LabelledSelect";
+import Panel from "../lib/Panel";
 import { TabPanel, TabStrip } from "../lib/TabStrip";
 import {
   PLAYER_METRIC_GROUPS,
@@ -16,39 +21,12 @@ import { barWidthScale } from "./statBarScale";
 
 const PAGE_SIZE = 20;
 
-function CenteredSpinner() {
-  return (
-    <div role="status" aria-label="Loading" className="flex justify-center py-12">
-      <span className="loading loading-spinner loading-lg text-primary" />
-    </div>
-  );
-}
-
-function ErrorAlert({ message, onRetry }) {
-  return (
-    <div role="alert" className="alert alert-error max-w-md">
-      <span>{message}</span>
-      <button type="button" className="btn btn-sm" onClick={onRetry}>
-        Retry
-      </button>
-    </div>
-  );
-}
-
 function DirectionSelect({ direction, label, onChange }) {
   return (
-    <label className="flex flex-col gap-1 text-sm font-medium">
-      <span>{label}</span>
-      <select
-        aria-label={label}
-        className="select select-bordered select-sm"
-        value={direction}
-        onChange={(event) => onChange(event.target.value)}
-      >
+    <LabelledSelect label={label} value={direction} onChange={(event) => onChange(event.target.value)}>
         <option value="desc">Descending</option>
         <option value="asc">Ascending</option>
-      </select>
-    </label>
+    </LabelledSelect>
   );
 }
 
@@ -87,12 +65,12 @@ function TeamLeaderboard({ seasonCode, phaseCode }) {
     [sorted, metric],
   );
 
-  if (standingsQuery.isPending) return <CenteredSpinner />;
+  if (standingsQuery.isPending) return <AsyncState status="loading" />;
   if (standingsQuery.isError) {
-    return <ErrorAlert message="Could not load the team leaderboard." onRetry={() => standingsQuery.refetch()} />;
+    return <AsyncState status="error" message="Could not load the team leaderboard." onRetry={() => standingsQuery.refetch()} />;
   }
   if (sorted.length === 0) {
-    return <p role="status" className="muted">No standings available yet for this phase.</p>;
+    return <EmptyText>No standings available yet for this phase.</EmptyText>;
   }
 
   return (
@@ -106,9 +84,8 @@ function TeamLeaderboard({ seasonCode, phaseCode }) {
       />
 
       <div className="mb-4 flex flex-wrap items-center gap-4">
-        <select
-          aria-label="Team metric"
-          className="select select-bordered select-sm"
+        <CompactFilterSelect
+          label="Team metric"
           value={metric}
           onChange={(event) => setMetric(event.target.value)}
         >
@@ -117,11 +94,11 @@ function TeamLeaderboard({ seasonCode, phaseCode }) {
               {option.label}
             </option>
           ))}
-        </select>
+        </CompactFilterSelect>
         <DirectionSelect direction={direction} label="Team sort direction" onChange={setDirection} />
       </div>
 
-      <div className="panel overflow-x-auto overscroll-x-contain p-2">
+      <Panel className="overflow-x-auto overscroll-x-contain p-2">
         <table className="table">
           <thead>
             <tr>
@@ -154,7 +131,7 @@ function TeamLeaderboard({ seasonCode, phaseCode }) {
             ))}
           </tbody>
         </table>
-      </div>
+      </Panel>
     </div>
   );
 }
@@ -218,9 +195,9 @@ function PlayerLeaderboard({ seasonCode, phaseCode }) {
   );
   const currentCategory = PLAYER_METRIC_GROUPS.find((g) => g.group === category) ?? PLAYER_METRIC_GROUPS[0];
 
-  if (statsQuery.isPending) return <CenteredSpinner />;
+  if (statsQuery.isPending) return <AsyncState status="loading" />;
   if (statsQuery.isError) {
-    return <ErrorAlert message="Could not load the player leaderboard." onRetry={() => statsQuery.refetch()} />;
+    return <AsyncState status="error" message="Could not load the player leaderboard." onRetry={() => statsQuery.refetch()} />;
   }
 
   return (
@@ -245,22 +222,18 @@ function PlayerLeaderboard({ seasonCode, phaseCode }) {
       />
 
       <div className="mb-4 flex flex-wrap items-center gap-4">
-        <label className="flex flex-col gap-1 text-sm font-medium">
-          <span>Player statistics</span>
-          <select
-            aria-label="Player statistics mode"
-            className="select select-bordered select-sm"
+        <LabelledSelect
+          label="Player statistics"
+          ariaLabel="Player statistics mode"
             value={mode}
             onChange={(event) => handleModeChange(event.target.value)}
           >
             <option value="accumulated">Accumulated</option>
             <option value="perGame">Per game</option>
-          </select>
-        </label>
+        </LabelledSelect>
 
-        <select
-          aria-label="Player metric"
-          className="select select-bordered select-sm"
+        <CompactFilterSelect
+          label="Player metric"
           value={metric}
           onChange={(event) => handleMetricChange(event.target.value)}
         >
@@ -269,16 +242,16 @@ function PlayerLeaderboard({ seasonCode, phaseCode }) {
               {label}
             </option>
           ))}
-        </select>
+        </CompactFilterSelect>
 
         <DirectionSelect direction={direction} label="Player sort direction" onChange={handleDirectionChange} />
       </div>
 
       {players.length === 0 ? (
-        <p role="status" className="muted">No season statistics available yet for this phase.</p>
+        <EmptyText>No season statistics available yet for this phase.</EmptyText>
       ) : (
         <>
-          <div className="panel overflow-x-auto overscroll-x-contain p-2">
+          <Panel className="overflow-x-auto overscroll-x-contain p-2">
             <table className="table">
               <thead>
                 <tr>
@@ -324,7 +297,7 @@ function PlayerLeaderboard({ seasonCode, phaseCode }) {
                 ))}
               </tbody>
             </table>
-          </div>
+          </Panel>
 
           <div className="mt-4 flex justify-center gap-2">
             <button
@@ -363,9 +336,9 @@ export default function StatisticsPage() {
   const phases = phasesQuery.data?.phases ?? [];
   const phaseCode = selectedPhase ?? phases.find((phase) => phase.code === "RS")?.code ?? phases[0]?.code;
 
-  if (phasesQuery.isLoading) return <CenteredSpinner />;
+  if (phasesQuery.isLoading) return <AsyncState status="loading" />;
   if (phasesQuery.isError) {
-    return <ErrorAlert message="Could not load phases." onRetry={() => phasesQuery.refetch()} />;
+    return <AsyncState status="error" message="Could not load phases." onRetry={() => phasesQuery.refetch()} />;
   }
 
   return (
@@ -392,11 +365,9 @@ export default function StatisticsPage() {
           </button>
         </div>
 
-        <label className="flex flex-col gap-1 text-sm font-medium">
-          <span>Phase</span>
-          <select
-            aria-label="Statistics phase"
-            className="select select-bordered select-sm"
+        <LabelledSelect
+          label="Phase"
+          ariaLabel="Statistics phase"
             value={phaseCode ?? ""}
             onChange={(event) => setSelectedPhase(event.target.value)}
           >
@@ -405,8 +376,7 @@ export default function StatisticsPage() {
                 {phase.name ?? phase.code}
               </option>
             ))}
-          </select>
-        </label>
+        </LabelledSelect>
       </div>
 
       {view === "teams" ? (

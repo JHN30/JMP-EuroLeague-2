@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { Navigate, Outlet, useLocation, useParams } from "react-router";
 import { getSeasons } from "../lib/api";
+import AsyncState from "../lib/AsyncState";
 import { THEMES } from "../lib/useThemePreference";
 import { useDefaultSeasonCode } from "./useDefaultSeasonCode";
 import SeasonSelector from "./SeasonSelector";
@@ -41,29 +42,6 @@ function ThemeToggle({ themePreference }) {
   );
 }
 
-function CenteredSpinner() {
-  return (
-    <div role="status" aria-label="Loading" className="flex min-h-screen items-center justify-center">
-      <span className="loading loading-spinner loading-lg text-primary" />
-    </div>
-  );
-}
-
-function ErrorAlert({ message, onRetry }) {
-  return (
-    <div className="flex min-h-screen items-center justify-center p-6">
-      <div role="alert" className="alert alert-error max-w-md">
-        <span>{message}</span>
-        {onRetry ? (
-          <button type="button" className="btn btn-sm" onClick={onRetry}>
-            Retry
-          </button>
-        ) : null}
-      </div>
-    </div>
-  );
-}
-
 export default function SeasonLayout({ themePreference }) {
   const { seasonCode } = useParams();
   const location = useLocation();
@@ -71,11 +49,11 @@ export default function SeasonLayout({ themePreference }) {
   const isSupported = seasonsQuery.data?.seasons.some((season) => season.seasonCode === seasonCode) ?? false;
   const defaultSeasonQuery = useDefaultSeasonCode(seasonsQuery.isSuccess && !isSupported);
 
-  if (seasonsQuery.isLoading) return <CenteredSpinner />;
+  if (seasonsQuery.isLoading) return <AsyncState status="loading" fullScreen />;
 
   if (seasonsQuery.isError) {
     return (
-      <ErrorAlert
+      <AsyncState status="error" fullScreen
         message="Could not load seasons. Check your connection and try again."
         onRetry={() => seasonsQuery.refetch()}
       />
@@ -83,11 +61,11 @@ export default function SeasonLayout({ themePreference }) {
   }
 
   if (!isSupported) {
-    if (defaultSeasonQuery.isLoading) return <CenteredSpinner />;
+    if (defaultSeasonQuery.isLoading) return <AsyncState status="loading" fullScreen />;
 
     if (defaultSeasonQuery.isError) {
       return (
-        <ErrorAlert
+        <AsyncState status="error" fullScreen
           message="Could not load seasons. Check your connection and try again."
           onRetry={() => defaultSeasonQuery.refetch()}
         />
@@ -95,7 +73,7 @@ export default function SeasonLayout({ themePreference }) {
     }
 
     if (!defaultSeasonQuery.data) {
-      return <ErrorAlert message="No seasons are currently available." />;
+      return <AsyncState status="error" fullScreen message="No seasons are currently available." />;
     }
 
     const segments = location.pathname.split("/");

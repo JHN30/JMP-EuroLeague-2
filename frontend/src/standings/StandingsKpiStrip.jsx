@@ -1,17 +1,8 @@
 import { useQuery } from "@tanstack/react-query";
 import { getSeasonStandings } from "../lib/api";
+import CompactMetric from "../lib/CompactMetric";
 import { formatPerGame } from "../lib/format";
-
-function KpiChip({ isLoading, isError, value, label }) {
-  return (
-    <div className="kpi-chip">
-      <span className="value" title={isError ? "Could not load this value." : undefined}>
-        {isLoading ? "–" : isError ? "–" : value}
-      </span>
-      <span className="label">{label}</span>
-    </div>
-  );
-}
+import HeaderStats from "../lib/HeaderStats";
 
 export default function StandingsKpiStrip({ seasonCode, phaseCode, round, standings }) {
   const previousRoundQuery = useQuery({
@@ -55,19 +46,19 @@ export default function StandingsKpiStrip({ seasonCode, phaseCode, round, standi
   );
 
   return (
-    <div className="kpi-strip">
-      <KpiChip
+    <HeaderStats>
+      <CompactMetric
         value={leader ? `${leader.basic.gamesWon}-${leader.basic.gamesLost}` : "–"}
         label={leader ? `Leader · ${leader.clubName ?? leader.clubCode}` : "Leader"}
       />
       {cutoff ? (
-        <KpiChip
+        <CompactMetric
           value={`${cutoff.basic.gamesWon}-${cutoff.basic.gamesLost}`}
           label={`Playoff cutoff · ${cutoff.clubName ?? cutoff.clubCode}`}
         />
       ) : null}
       {round && round > 1 ? (
-        <KpiChip
+        <CompactMetric
           isLoading={previousRoundQuery.isLoading}
           isError={previousRoundQuery.isError}
           value={biggestRiser ? `▲ ${Math.abs(biggestRiser.delta)}` : "–"}
@@ -75,14 +66,14 @@ export default function StandingsKpiStrip({ seasonCode, phaseCode, round, standi
         />
       ) : null}
       {round && round > 1 ? (
-        <KpiChip
+        <CompactMetric
           isLoading={previousRoundQuery.isLoading}
           isError={previousRoundQuery.isError}
           value={biggestFaller ? `▼ ${Math.abs(biggestFaller.delta)}` : "–"}
           label={biggestFaller ? `Biggest faller · ${biggestFaller.entry.clubName ?? biggestFaller.entry.clubCode}` : "Biggest faller"}
         />
       ) : null}
-      <KpiChip value={avgMargin} label="Avg margin of victory" />
-    </div>
+      <CompactMetric value={avgMargin} label="Avg margin of victory" />
+    </HeaderStats>
   );
 }

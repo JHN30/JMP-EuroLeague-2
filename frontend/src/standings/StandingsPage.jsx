@@ -2,28 +2,11 @@ import { useState } from "react";
 import { useQueries, useQuery } from "@tanstack/react-query";
 import { useParams } from "react-router";
 import { getPhases, getSeasonStandings } from "../lib/api";
+import AsyncState from "../lib/AsyncState";
+import EmptyText from "../lib/EmptyText";
 import { TabPanel, TabStrip } from "../lib/TabStrip";
 import StandingsKpiStrip from "./StandingsKpiStrip";
 import StandingsTable from "./StandingsTable";
-
-function CenteredSpinner() {
-  return (
-    <div role="status" aria-label="Loading" className="flex justify-center py-12">
-      <span className="loading loading-spinner loading-lg text-primary" />
-    </div>
-  );
-}
-
-function ErrorAlert({ message, onRetry }) {
-  return (
-    <div role="alert" className="alert alert-error max-w-md">
-      <span>{message}</span>
-      <button type="button" className="btn btn-sm" onClick={onRetry}>
-        Retry
-      </button>
-    </div>
-  );
-}
 
 const VIEW_TABS = [
   { key: "overall", label: "Overall" },
@@ -90,9 +73,9 @@ export default function StandingsPage() {
     }
   }
 
-  if (phasesQuery.isLoading) return <CenteredSpinner />;
+  if (phasesQuery.isLoading) return <AsyncState status="loading" />;
   if (phasesQuery.isError) {
-    return <ErrorAlert message="Could not load phases." onRetry={() => phasesQuery.refetch()} />;
+    return <AsyncState status="error" message="Could not load phases." onRetry={() => phasesQuery.refetch()} />;
   }
 
   return (
@@ -109,11 +92,11 @@ export default function StandingsPage() {
 
       <TabPanel id="standings-panel" focusKey={`${phaseCode}-${view}`}>
         {standingsQuery.isLoading ? (
-          <CenteredSpinner />
+          <AsyncState status="loading" />
         ) : standingsQuery.isError ? (
-          <ErrorAlert message="Could not load standings." onRetry={() => standingsQuery.refetch()} />
+          <AsyncState status="error" message="Could not load standings." onRetry={() => standingsQuery.refetch()} />
         ) : standings.length === 0 ? (
-          <p role="status" className="muted">Standings not available yet for this phase.</p>
+          <EmptyText>Standings not available yet for this phase.</EmptyText>
         ) : (
           <div className="flex flex-col gap-4">
             <StandingsKpiStrip

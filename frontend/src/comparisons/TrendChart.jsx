@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Chart } from "chart.js/auto";
+import Panel from "../lib/Panel";
 
 function themeColor(el, variable, fallback) {
   const value = getComputedStyle(el).getPropertyValue(variable).trim();
@@ -71,7 +72,7 @@ export default function TrendChart({ title, labels, series }) {
   }, [labels, series, theme]);
 
   return (
-    <div className="panel p-4">
+    <Panel className="p-4">
       <div className="relative h-64 w-full">
         <canvas
           ref={canvasRef}
@@ -101,6 +102,6 @@ export default function TrendChart({ title, labels, series }) {
           </tbody>
         </table>
       </div>
-    </div>
+    </Panel>
   );
 }

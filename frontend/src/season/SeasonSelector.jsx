@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { useLocation, useNavigate, useParams } from "react-router";
+import CompactFilterSelect from "../lib/CompactFilterSelect";
 import { getSeasons } from "../lib/api";
 
 export default function SeasonSelector() {
@@ -18,9 +19,9 @@ export default function SeasonSelector() {
   }
 
   return (
-    <select
-      aria-label="Selected season"
-      className="select select-bordered select-sm touch-target"
+    <CompactFilterSelect
+      label="Selected season"
+      className="touch-target"
       value={seasonCode}
       onChange={handleChange}
     >
@@ -29,6 +30,6 @@ export default function SeasonSelector() {
           {season.name ?? season.seasonCode}
         </option>
       ))}
-    </select>
+    </CompactFilterSelect>
   );
 }

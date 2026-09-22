@@ -20,28 +20,32 @@ export default function LeaderboardKpiStrip({ entries, offset, valueOf, nameOf, 
   if (!showLeader && !showGap && pageAverage === null) return null;
 
   return (
-    <div className="kpi-strip mb-4">
+    <HeaderStats className="mb-4">
       {showLeader ? (
-        <div className="kpi-chip">
-          <span className="value">{formatKpiNumber(leaderValue)}</span>
-          <span className="label">
+        <CompactMetric
+          value={formatKpiNumber(leaderValue)}
+          label={
+            <>
             Leader &middot; {nameOf(leader)}
             {subtitleOf ? ` (${subtitleOf(leader)})` : ""}
-          </span>
-        </div>
+            </>
+          }
+        />
       ) : null}
       {showGap ? (
-        <div className="kpi-chip">
-          <span className="value">{formatKpiNumber(leaderValue - runnerUpValue)}</span>
-          <span className="label">Gap to 2nd &middot; {metricLabel}</span>
-        </div>
+        <CompactMetric
+          value={formatKpiNumber(leaderValue - runnerUpValue)}
+          label={<>Gap to 2nd &middot; {metricLabel}</>}
+        />
       ) : null}
       {pageAverage !== null ? (
-        <div className="kpi-chip">
-          <span className="value">{formatKpiNumber(pageAverage)}</span>
-          <span className="label">Page average &middot; {metricLabel}</span>
-        </div>
+        <CompactMetric
+          value={formatKpiNumber(pageAverage)}
+          label={<>Page average &middot; {metricLabel}</>}
+        />
       ) : null}
-    </div>
+    </HeaderStats>
   );
 }
+import CompactMetric from "../lib/CompactMetric";
+import HeaderStats from "../lib/HeaderStats";

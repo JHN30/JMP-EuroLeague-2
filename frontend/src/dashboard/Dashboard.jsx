@@ -1,3 +1,5 @@
+import AsyncState from "../lib/AsyncState";
+import Panel from "../lib/Panel";
 import FormWatch from "./FormWatch";
 import GamesSnapshot from "./GamesSnapshot";
 import KpiStrip from "./KpiStrip";
@@ -7,30 +9,22 @@ import Spotlight from "./Spotlight";
 import StandingsSnapshot from "./StandingsSnapshot";
 
 export function WidgetPanel({ title, isLoading, isError, onRetry, isEmpty, emptyMessage, children }) {
+  const status = isLoading ? "loading" : isError ? "error" : isEmpty ? "empty" : "ready";
   return (
-    <section className="panel p-6">
+    <Panel as="section" className="p-6">
       <div className="panel-header">
         <h2 className="panel-title">{title}</h2>
       </div>
-      {isLoading ? (
-        <div role="status" aria-label="Loading" className="flex justify-center py-6">
-          <span className="loading loading-spinner text-primary" />
-        </div>
-      ) : isError ? (
-        <div role="alert" className="alert alert-error">
-          <span>Could not load this section.</span>
-          {onRetry ? (
-            <button type="button" className="btn btn-sm" onClick={onRetry}>
-              Retry
-            </button>
-          ) : null}
-        </div>
-      ) : isEmpty ? (
-        <p role="status" className="muted">{emptyMessage}</p>
-      ) : (
-        children
-      )}
-    </section>
+      <AsyncState
+        status={status}
+        message={isError ? "Could not load this section." : emptyMessage}
+        onRetry={onRetry}
+        errorClassName=""
+        compact
+      >
+        {children}
+      </AsyncState>
+    </Panel>
   );
 }
 

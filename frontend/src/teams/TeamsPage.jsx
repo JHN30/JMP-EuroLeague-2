@@ -1,25 +1,8 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link, useParams } from "react-router";
 import { getSeasonTeams } from "../lib/api";
-
-function CenteredSpinner() {
-  return (
-    <div role="status" aria-label="Loading" className="flex justify-center py-12">
-      <span className="loading loading-spinner loading-lg text-primary" />
-    </div>
-  );
-}
-
-function ErrorAlert({ message, onRetry }) {
-  return (
-    <div role="alert" className="alert alert-error max-w-md">
-      <span>{message}</span>
-      <button type="button" className="btn btn-sm" onClick={onRetry}>
-        Retry
-      </button>
-    </div>
-  );
-}
+import AsyncState from "../lib/AsyncState";
+import EmptyText from "../lib/EmptyText";
 
 export default function TeamsPage() {
   const { seasonCode } = useParams();
@@ -36,11 +19,11 @@ export default function TeamsPage() {
       <h1 className="mb-6 text-2xl font-semibold">Teams</h1>
 
       {teamsQuery.isLoading ? (
-        <CenteredSpinner />
+        <AsyncState status="loading" />
       ) : teamsQuery.isError ? (
-        <ErrorAlert message="Could not load teams." onRetry={() => teamsQuery.refetch()} />
+        <AsyncState status="error" message="Could not load teams." onRetry={() => teamsQuery.refetch()} />
       ) : teams.length === 0 ? (
-        <p role="status" className="muted">No teams available for this season.</p>
+        <EmptyText>No teams available for this season.</EmptyText>
       ) : (
         <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {teams.map((team) => (

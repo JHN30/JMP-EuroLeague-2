@@ -1,7 +1,13 @@
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useParams, useSearchParams } from "react-router";
+import AsyncState from "../lib/AsyncState";
+import CompactMetric from "../lib/CompactMetric";
+import EmptyText from "../lib/EmptyText";
 import { formatDateTime } from "../lib/format";
+import HeaderStats from "../lib/HeaderStats";
+import LabelledSelect from "../lib/LabelledSelect";
+import Panel from "../lib/Panel";
 import {
   getPhases,
   getPlayerGames,
@@ -76,25 +82,6 @@ function WinnerMark({ label }) {
     <span className="winner-mark" title={`${label} leads`}>
       &#9650;
     </span>
-  );
-}
-
-function CenteredSpinner() {
-  return (
-    <div role="status" aria-label="Loading" className="flex justify-center py-12">
-      <span className="loading loading-spinner loading-lg text-primary" />
-    </div>
-  );
-}
-
-function ErrorAlert({ message, onRetry }) {
-  return (
-    <div role="alert" className="alert alert-error max-w-md">
-      <span>{message}</span>
-      <button type="button" className="btn btn-sm" onClick={onRetry}>
-        Retry
-      </button>
-    </div>
   );
 }
 
@@ -206,9 +193,9 @@ function TeamComparisonTable({ seasonCode, phaseCode, entityA, entityB }) {
   });
 
   if (!entityA || !entityB) return <p className="muted">Select two teams to compare.</p>;
-  if (standingsQuery.isPending) return <CenteredSpinner />;
+  if (standingsQuery.isPending) return <AsyncState status="loading" />;
   if (standingsQuery.isError) {
-    return <ErrorAlert message="Could not load the comparison." onRetry={() => standingsQuery.refetch()} />;
+    return <AsyncState status="error" message="Could not load the comparison." onRetry={() => standingsQuery.refetch()} />;
   }
 
   const standings = standingsQuery.data.standings ?? [];
@@ -216,7 +203,7 @@ function TeamComparisonTable({ seasonCode, phaseCode, entityA, entityB }) {
   const b = standings.find((entry) => entry.clubCode === entityB.id);
 
   return (
-    <div className="panel overflow-x-auto overscroll-x-contain p-2">
+    <Panel className="overflow-x-auto overscroll-x-contain p-2">
       <table className="table">
         <thead>
           <tr>
@@ -248,7 +235,7 @@ function TeamComparisonTable({ seasonCode, phaseCode, entityA, entityB }) {
           })}
         </tbody>
       </table>
-    </div>
+    </Panel>
   );
 }
 
@@ -301,10 +288,10 @@ function PlayerComparisonTable({ seasonCode, phaseCode, mode, entityA, entityB }
   });
 
   if (!entityA || !entityB) return <p className="muted">Select two players to compare.</p>;
-  if (statsAQuery.isPending || statsBQuery.isPending) return <CenteredSpinner />;
+  if (statsAQuery.isPending || statsBQuery.isPending) return <AsyncState status="loading" />;
   if (statsAQuery.isError || statsBQuery.isError) {
     return (
-      <ErrorAlert
+      <AsyncState status="error"
         message="Could not load the comparison."
         onRetry={() => {
           statsAQuery.refetch();
@@ -318,7 +305,7 @@ function PlayerComparisonTable({ seasonCode, phaseCode, mode, entityA, entityB }
   const b = statsBQuery.data.players?.[0];
 
   return (
-    <div className="panel overflow-x-auto overscroll-x-contain p-2">
+    <Panel className="overflow-x-auto overscroll-x-contain p-2">
       <table className="table">
         <thead>
           <tr>
@@ -359,7 +346,7 @@ function PlayerComparisonTable({ seasonCode, phaseCode, mode, entityA, entityB }
           })}
         </tbody>
       </table>
-    </div>
+    </Panel>
   );
 }
 
@@ -421,18 +408,18 @@ function TeamSeriesSection({ seasonCode, phaseCode, entityA, entityB }) {
     queryFn: () => getTeamGames(seasonCode, entityA.id, { limit: 100 }),
   });
 
-  if (gamesAQuery.isPending) return <CenteredSpinner />;
+  if (gamesAQuery.isPending) return <AsyncState status="loading" />;
   if (gamesAQuery.isError) {
-    return <ErrorAlert message="Could not load the season series." onRetry={() => gamesAQuery.refetch()} />;
+    return <AsyncState status="error" message="Could not load the season series." onRetry={() => gamesAQuery.refetch()} />;
   }
 
   const matchups = headToHeadGames(gamesAQuery.data.games ?? [], phaseCode, entityB.id);
 
   return (
-    <section className="panel p-4">
+    <Panel as="section" className="p-4">
       <h2 className="panel-title mb-3">Season series</h2>
       {matchups.length === 0 ? (
-        <p role="status" className="muted">No matchups this phase yet.</p>
+        <EmptyText>No matchups this phase yet.</EmptyText>
       ) : (
         <ul className="flex flex-col gap-2">
           {matchups.map((game) => {
@@ -465,7 +452,7 @@ function TeamSeriesSection({ seasonCode, phaseCode, entityA, entityB }) {
           })}
         </ul>
       )}
-    </section>
+    </Panel>
   );
 }
 
@@ -484,10 +471,10 @@ function TeamVerdictStrip({ seasonCode, phaseCode, entityA, entityB, allTeams })
     queryFn: () => getTeamGames(seasonCode, entityB.id, { limit: 100 }),
   });
 
-  if (standingsQuery.isPending || gamesAQuery.isPending || gamesBQuery.isPending) return <CenteredSpinner />;
+  if (standingsQuery.isPending || gamesAQuery.isPending || gamesBQuery.isPending) return <AsyncState status="loading" />;
   if (standingsQuery.isError || gamesAQuery.isError || gamesBQuery.isError) {
     return (
-      <ErrorAlert
+      <AsyncState status="error"
         message="Could not load the verdict summary."
         onRetry={() => {
           standingsQuery.refetch();
@@ -525,22 +512,11 @@ function TeamVerdictStrip({ seasonCode, phaseCode, entityA, entityB, allTeams })
   }
 
   return (
-    <div className="kpi-strip mb-6">
-      <div className="kpi-chip">
-        <span className="value">{seriesValue}</span>
-        <span className="label">Season series</span>
-      </div>
-      <div className="kpi-chip">
-        <span className="value">
-          {countA}-{countB}
-        </span>
-        <span className="label">{categoriesLabel}</span>
-      </div>
-      <div className="kpi-chip">
-        <span className="value">{formValue}</span>
-        <span className="label">Better recent form &middot; L10</span>
-      </div>
-    </div>
+    <HeaderStats className="mb-6">
+      <CompactMetric value={seriesValue} label="Season series" />
+      <CompactMetric value={`${countA}-${countB}`} label={categoriesLabel} />
+      <CompactMetric value={formValue} label={<>Better recent form &middot; L10</>} />
+    </HeaderStats>
   );
 }
 
@@ -620,10 +596,10 @@ function TrendSection({ seasonCode, phaseCode, view, entityA, entityB }) {
     entityB.label,
   ]);
 
-  if (roundsQuery.isPending || gamesAQuery.isPending || gamesBQuery.isPending) return <CenteredSpinner />;
+  if (roundsQuery.isPending || gamesAQuery.isPending || gamesBQuery.isPending) return <AsyncState status="loading" />;
   if (roundsQuery.isError || gamesAQuery.isError || gamesBQuery.isError) {
     return (
-      <ErrorAlert
+      <AsyncState status="error"
         message="Could not load the trend."
         onRetry={() => {
           roundsQuery.refetch();
@@ -664,24 +640,18 @@ function ComparisonsBody({ seasonCode, phases, phaseCode, setSelectedPhase, allT
       <h1 className="mb-6 text-2xl font-semibold">Comparisons and trends</h1>
 
       <div className="mb-6 flex flex-wrap gap-4">
-        <label className="flex flex-col gap-1 text-sm font-medium">
-          <span>Comparison type</span>
-          <select
-            aria-label="Comparison type"
-            className="select select-bordered select-sm"
+        <LabelledSelect
+          label="Comparison type"
             value={view}
             onChange={(event) => handleViewChange(event.target.value)}
           >
             <option value="teams">Teams</option>
             <option value="players">Players</option>
-          </select>
-        </label>
+        </LabelledSelect>
 
-        <label className="flex flex-col gap-1 text-sm font-medium">
-          <span>Phase</span>
-          <select
-            aria-label="Comparison phase"
-            className="select select-bordered select-sm"
+        <LabelledSelect
+          label="Phase"
+          ariaLabel="Comparison phase"
             value={phaseCode ?? ""}
             onChange={(event) => setSelectedPhase(event.target.value)}
           >
@@ -690,8 +660,7 @@ function ComparisonsBody({ seasonCode, phases, phaseCode, setSelectedPhase, allT
                 {phase.name ?? phase.code}
               </option>
             ))}
-          </select>
-        </label>
+        </LabelledSelect>
       </div>
 
       <div className="mb-6 grid gap-4 sm:grid-cols-2">
@@ -735,18 +704,17 @@ function ComparisonsBody({ seasonCode, phases, phaseCode, setSelectedPhase, allT
       </div>
 
       {view === "players" ? (
-        <label className="mb-4 flex flex-col gap-1 text-sm font-medium">
-          <span>Player statistics</span>
-          <select
-            aria-label="Player comparison mode"
-            className="select select-bordered select-sm w-fit"
+        <LabelledSelect
+          label="Player statistics"
+          ariaLabel="Player comparison mode"
+          labelClassName="mb-4"
+          className="w-fit"
             value={mode}
             onChange={(event) => setMode(event.target.value)}
           >
             <option value="accumulated">Accumulated</option>
             <option value="perGame">Per game</option>
-          </select>
-        </label>
+        </LabelledSelect>
       ) : null}
 
       {view === "teams" && entityA && entityB ? (
@@ -806,12 +774,12 @@ export default function ComparisonsPage() {
     queryFn: () => getSeasonTeams(seasonCode),
   });
 
-  if (phasesQuery.isLoading || teamsQuery.isLoading) return <CenteredSpinner />;
+  if (phasesQuery.isLoading || teamsQuery.isLoading) return <AsyncState status="loading" />;
   if (phasesQuery.isError) {
-    return <ErrorAlert message="Could not load phases." onRetry={() => phasesQuery.refetch()} />;
+    return <AsyncState status="error" message="Could not load phases." onRetry={() => phasesQuery.refetch()} />;
   }
   if (teamsQuery.isError) {
-    return <ErrorAlert message="Could not load teams." onRetry={() => teamsQuery.refetch()} />;
+    return <AsyncState status="error" message="Could not load teams." onRetry={() => teamsQuery.refetch()} />;
   }
 
   return (

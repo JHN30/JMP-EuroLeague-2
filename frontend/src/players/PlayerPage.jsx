@@ -8,8 +8,14 @@ import {
   getPlayerRegistrations,
   getPlayerSeasonStats,
 } from "../lib/api";
+import AsyncState from "../lib/AsyncState";
+import EmptyText from "../lib/EmptyText";
 import { formatDateTime, formatMinutes } from "../lib/format";
+import InfoRow from "../lib/InfoRow";
+import InfoTile from "../lib/InfoTile";
+import Panel from "../lib/Panel";
 import { formatStatValue } from "../lib/statsFields";
+import SummaryGrid from "../lib/SummaryGrid";
 import { TabPanel, TabStrip } from "../lib/TabStrip";
 
 const GAMES_LIMIT = 100;
@@ -18,25 +24,6 @@ const STATS_MODES = [
   { label: "Accumulated", value: "accumulated" },
   { label: "Per game", value: "perGame" },
 ];
-
-function CenteredSpinner() {
-  return (
-    <div role="status" aria-label="Loading" className="flex justify-center py-12">
-      <span className="loading loading-spinner loading-lg text-primary" />
-    </div>
-  );
-}
-
-function ErrorAlert({ message, onRetry }) {
-  return (
-    <div role="alert" className="alert alert-error max-w-md">
-      <span>{message}</span>
-      <button type="button" className="btn btn-sm" onClick={onRetry}>
-        Retry
-      </button>
-    </div>
-  );
-}
 
 function teamLabel(team) {
   return team?.abbreviatedName ?? team?.name ?? "TBD";
@@ -47,13 +34,13 @@ function opponent(game, side) {
 }
 
 function RegistrationsSection({ registrationsQuery, seasonCode }) {
-  if (registrationsQuery.isPending) return <CenteredSpinner />;
+  if (registrationsQuery.isPending) return <AsyncState status="loading" />;
   if (registrationsQuery.isError) {
-    return <ErrorAlert message="Could not load team registration." onRetry={() => registrationsQuery.refetch()} />;
+    return <AsyncState status="error" message="Could not load team registration." onRetry={() => registrationsQuery.refetch()} />;
   }
   const registrations = registrationsQuery.data.registrations ?? [];
   if (registrations.length === 0) {
-    return <p role="status" className="muted">No team registration found for this season.</p>;
+    return <EmptyText>No team registration found for this season.</EmptyText>;
   }
   const activeCount = registrations.filter((entry) => entry.active !== false).length;
   const heading = activeCount === 1 && registrations.length === 1 ? "Current team" : "Teams this season";
@@ -63,42 +50,38 @@ function RegistrationsSection({ registrationsQuery, seasonCode }) {
       <h2 className="mb-3 text-xl font-semibold">{heading}</h2>
       <ul className="space-y-2">
         {registrations.map((entry) => (
-          <li key={entry.registrationKey} className="flex items-center justify-between gap-4 border-b border-base-300 py-2">
-            <div className="flex flex-col">
-              {entry.team ? (
+          <InfoRow
+            key={entry.registrationKey}
+            primary={entry.team ? (
                 <Link to={`/${seasonCode}/teams/${entry.team.clubCode}`} className="link link-hover">
                   {entry.team.name ?? entry.team.clubCode}
                 </Link>
               ) : (
                 <span>Unknown team</span>
               )}
-              <span className="muted text-sm">
-                {entry.positionName ?? "-"} · #{entry.dorsal ?? "-"}
+            secondary={<>{entry.positionName ?? "-"} · #{entry.dorsal ?? "-"}</>}
+            trailing={
+              <span className={`badge badge-sm ${entry.active === false ? "badge-ghost" : "badge-success"}`}>
+                {entry.active === false ? "Inactive" : "Active"}
               </span>
-            </div>
-            <span className={`badge badge-sm ${entry.active === false ? "badge-ghost" : "badge-success"}`}>
-              {entry.active === false ? "Inactive" : "Active"}
-            </span>
-          </li>
+            }
+          />
         ))}
       </ul>
     </div>
   );
 }
 
-function StatGrid({ title, fields, stats }) {
+function StatSection({ title, fields, stats }) {
   if (!stats) return null;
   return (
     <div className="mb-4">
       <h3 className="mb-2 font-semibold">{title}</h3>
-      <dl className="grid grid-cols-2 gap-x-6 gap-y-2 sm:grid-cols-4">
+      <SummaryGrid>
         {fields.map(([key, label]) => (
-          <div key={key}>
-            <dt className="muted text-sm">{label}</dt>
-            <dd className="font-semibold">{formatStatValue(key, stats[key])}</dd>
-          </div>
+          <InfoTile key={key} label={label} value={formatStatValue(key, stats[key])} />
         ))}
-      </dl>
+      </SummaryGrid>
     </div>
   );
 }
@@ -139,35 +122,35 @@ const MISC_FIELDS = [
 ];
 
 function SeasonStatsSection({ statsQuery }) {
-  if (statsQuery.isPending) return <CenteredSpinner />;
+  if (statsQuery.isPending) return <AsyncState status="loading" />;
   if (statsQuery.isError) {
-    return <ErrorAlert message="Could not load season statistics." onRetry={() => statsQuery.refetch()} />;
+    return <AsyncState status="error" message="Could not load season statistics." onRetry={() => statsQuery.refetch()} />;
   }
   const entry = statsQuery.data.players?.[0];
   if (!entry) {
-    return <p role="status" className="muted">Season statistics not available yet for this phase.</p>;
+    return <EmptyText>Season statistics not available yet for this phase.</EmptyText>;
   }
   return (
     <div>
-      <StatGrid title="Traditional" fields={TRADITIONAL_FIELDS} stats={entry.traditional} />
-      <StatGrid title="Advanced" fields={ADVANCED_FIELDS} stats={entry.advanced} />
-      <StatGrid title="Scoring" fields={SCORING_FIELDS} stats={entry.scoring} />
-      <StatGrid title="Misc" fields={MISC_FIELDS} stats={entry.misc} />
+      <StatSection title="Traditional" fields={TRADITIONAL_FIELDS} stats={entry.traditional} />
+      <StatSection title="Advanced" fields={ADVANCED_FIELDS} stats={entry.advanced} />
+      <StatSection title="Scoring" fields={SCORING_FIELDS} stats={entry.scoring} />
+      <StatSection title="Misc" fields={MISC_FIELDS} stats={entry.misc} />
     </div>
   );
 }
 
 function GameLogSection({ gamesQuery }) {
-  if (gamesQuery.isPending) return <CenteredSpinner />;
+  if (gamesQuery.isPending) return <AsyncState status="loading" />;
   if (gamesQuery.isError) {
-    return <ErrorAlert message="Could not load the game log." onRetry={() => gamesQuery.refetch()} />;
+    return <AsyncState status="error" message="Could not load the game log." onRetry={() => gamesQuery.refetch()} />;
   }
   const games = gamesQuery.data.games ?? [];
   if (games.length === 0) {
-    return <p role="status" className="muted">No game log available yet.</p>;
+    return <EmptyText>No game log available yet.</EmptyText>;
   }
   return (
-    <div className="panel overflow-x-auto overscroll-x-contain p-2">
+    <Panel className="overflow-x-auto overscroll-x-contain p-2">
       <table className="data-table-sticky table">
         <thead>
           <tr>
@@ -207,7 +190,7 @@ function GameLogSection({ gamesQuery }) {
           })}
         </tbody>
       </table>
-    </div>
+    </Panel>
   );
 }
 
@@ -248,14 +231,14 @@ export default function PlayerPage() {
     enabled: playerQuery.isSuccess,
   });
 
-  if (playerQuery.isLoading) return <CenteredSpinner />;
+  if (playerQuery.isLoading) return <AsyncState status="loading" />;
 
   if (playerQuery.isError) {
     const notFound = playerQuery.error?.response?.status === 404;
     return notFound ? (
-      <p role="status" className="muted">Player not found.</p>
+      <EmptyText>Player not found.</EmptyText>
     ) : (
-      <ErrorAlert message="Could not load this player." onRetry={() => playerQuery.refetch()} />
+      <AsyncState status="error" message="Could not load this player." onRetry={() => playerQuery.refetch()} />
     );
   }
 

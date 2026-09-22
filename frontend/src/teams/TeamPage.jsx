@@ -2,7 +2,12 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link, useParams } from "react-router";
 import { getLeaderStats, getPhases, getSeasonStandings, getTeam, getTeamGames, getTeamRoster } from "../lib/api";
+import AsyncState from "../lib/AsyncState";
+import CompactMetric from "../lib/CompactMetric";
+import EmptyText from "../lib/EmptyText";
 import { formatDateTime, formatPerGame } from "../lib/format";
+import HeaderStats from "../lib/HeaderStats";
+import Panel from "../lib/Panel";
 import { formatStatValue } from "../lib/statsFields";
 import { TabPanel, TabStrip } from "../lib/TabStrip";
 import StatBarCell from "../statistics/StatBarCell";
@@ -13,25 +18,6 @@ const ROSTER_LIMIT = 100;
 const GAMES_LIMIT = 100;
 const ROSTER_STATS_PAGE_LIMIT = 100;
 const ROSTER_STATS_MAX_PAGES = 5;
-
-function CenteredSpinner() {
-  return (
-    <div role="status" aria-label="Loading" className="flex justify-center py-12">
-      <span className="loading loading-spinner loading-lg text-primary" />
-    </div>
-  );
-}
-
-function ErrorAlert({ message, onRetry }) {
-  return (
-    <div role="alert" className="alert alert-error max-w-md">
-      <span>{message}</span>
-      <button type="button" className="btn btn-sm" onClick={onRetry}>
-        Retry
-      </button>
-    </div>
-  );
-}
 
 function teamLabel(team) {
   return team?.abbreviatedName ?? team?.name ?? "TBD";
@@ -82,14 +68,14 @@ function NextGameChip({ nextGame, clubCode }) {
 }
 
 function OverviewKpiStrip({ standingsQuery, clubCode }) {
-  if (standingsQuery.isPending) return <CenteredSpinner />;
+  if (standingsQuery.isPending) return <AsyncState status="loading" />;
   if (standingsQuery.isError) {
-    return <ErrorAlert message="Could not load team KPIs." onRetry={() => standingsQuery.refetch()} />;
+    return <AsyncState status="error" message="Could not load team KPIs." onRetry={() => standingsQuery.refetch()} />;
   }
   const entry = standingsQuery.data.standings.find((row) => row.clubCode === clubCode);
   const basic = entry?.basic;
   if (!basic || !basic.gamesPlayed) {
-    return <p role="status" className="muted">Team KPIs not available yet for this phase.</p>;
+    return <EmptyText>Team KPIs not available yet for this phase.</EmptyText>;
   }
   const gp = basic.gamesPlayed;
   const perGame = (total) => formatPerGame(total != null ? total / gp : null);
@@ -100,28 +86,13 @@ function OverviewKpiStrip({ standingsQuery, clubCode }) {
   };
 
   return (
-    <div className="kpi-strip">
-      <div className="kpi-chip">
-        <span className="value">{perGame(basic.pointsFor)}</span>
-        <span className="label">Points for/game</span>
-      </div>
-      <div className="kpi-chip">
-        <span className="value">{perGame(basic.pointsAgainst)}</span>
-        <span className="label">Points against/game</span>
-      </div>
-      <div className="kpi-chip">
-        <span className="value">{perGameSigned(basic.pointsDifference)}</span>
-        <span className="label">Point diff/game</span>
-      </div>
-      <div className="kpi-chip">
-        <span className="value">{basic.winPercentage ?? "-"}</span>
-        <span className="label">Win %</span>
-      </div>
-      <div className="kpi-chip">
-        <span className="value">{gp}</span>
-        <span className="label">Games played</span>
-      </div>
-    </div>
+    <HeaderStats>
+      <CompactMetric value={perGame(basic.pointsFor)} label="Points for/game" />
+      <CompactMetric value={perGame(basic.pointsAgainst)} label="Points against/game" />
+      <CompactMetric value={perGameSigned(basic.pointsDifference)} label="Point diff/game" />
+      <CompactMetric value={basic.winPercentage ?? "-"} label="Win %" />
+      <CompactMetric value={gp} label="Games played" />
+    </HeaderStats>
   );
 }
 
@@ -133,10 +104,10 @@ function RecentFormList({ games, clubCode }) {
     .slice(0, 5);
 
   return (
-    <section className="panel p-4">
+    <Panel as="section" className="p-4">
       <h2 className="panel-title mb-3">Recent form</h2>
       {recent.length === 0 ? (
-        <p role="status" className="muted">No played games yet.</p>
+        <EmptyText>No played games yet.</EmptyText>
       ) : (
         <ul className="flex flex-col gap-2">
           {recent.map((game) => {
@@ -164,7 +135,7 @@ function RecentFormList({ games, clubCode }) {
           })}
         </ul>
       )}
-    </section>
+    </Panel>
   );
 }
 
@@ -190,7 +161,7 @@ function CompareShortcuts({ seasonCode, clubCode, nextGame, standingsQuery }) {
   if (links.length === 0) return null;
 
   return (
-    <section className="panel p-4">
+    <Panel as="section" className="p-4">
       <h2 className="panel-title mb-3">Compare</h2>
       <div className="flex flex-col gap-2">
         {links.map((link) => (
@@ -203,7 +174,7 @@ function CompareShortcuts({ seasonCode, clubCode, nextGame, standingsQuery }) {
           </Link>
         ))}
       </div>
-    </section>
+    </Panel>
   );
 }
 
@@ -228,13 +199,13 @@ function OverviewSection({ seasonCode, clubCode, standingsQuery, games }) {
 }
 
 function SeasonRecordSection({ standingsQuery, clubCode }) {
-  if (standingsQuery.isPending) return <CenteredSpinner />;
+  if (standingsQuery.isPending) return <AsyncState status="loading" />;
   if (standingsQuery.isError) {
-    return <ErrorAlert message="Could not load the season record." onRetry={() => standingsQuery.refetch()} />;
+    return <AsyncState status="error" message="Could not load the season record." onRetry={() => standingsQuery.refetch()} />;
   }
   const entry = standingsQuery.data.standings.find((row) => row.clubCode === clubCode);
   if (!entry || !entry.basic) {
-    return <p role="status" className="muted">Standings not available yet for this phase.</p>;
+    return <EmptyText>Standings not available yet for this phase.</EmptyText>;
   }
   const basic = entry.basic;
   return (
@@ -280,14 +251,14 @@ function SeasonRecordSection({ standingsQuery, clubCode }) {
 }
 
 function TeamStatisticsSection({ standingsQuery, clubCode }) {
-  if (standingsQuery.isPending) return <CenteredSpinner />;
+  if (standingsQuery.isPending) return <AsyncState status="loading" />;
   if (standingsQuery.isError) {
-    return <ErrorAlert message="Could not load team statistics." onRetry={() => standingsQuery.refetch()} />;
+    return <AsyncState status="error" message="Could not load team statistics." onRetry={() => standingsQuery.refetch()} />;
   }
   const entry = standingsQuery.data.standings.find((row) => row.clubCode === clubCode);
   const margins = entry?.margins;
   if (!margins) {
-    return <p role="status" className="muted">Team statistics not available yet for this phase.</p>;
+    return <EmptyText>Team statistics not available yet for this phase.</EmptyText>;
   }
   const rows = [
     ["Decided by 1-5 pts", margins.pointDifference1To5],
@@ -329,17 +300,17 @@ function StatsSection({ standingsQuery, clubCode }) {
 }
 
 function RosterSection({ rosterQuery, rosterStatsQuery, seasonCode }) {
-  if (rosterQuery.isPending) return <CenteredSpinner />;
+  if (rosterQuery.isPending) return <AsyncState status="loading" />;
   if (rosterQuery.isError) {
-    return <ErrorAlert message="Could not load the roster." onRetry={() => rosterQuery.refetch()} />;
+    return <AsyncState status="error" message="Could not load the roster." onRetry={() => rosterQuery.refetch()} />;
   }
   const registrations = rosterQuery.data.registrations ?? [];
   if (registrations.length === 0) {
-    return <p role="status" className="muted">Roster not available yet.</p>;
+    return <EmptyText>Roster not available yet.</EmptyText>;
   }
-  if (rosterStatsQuery.isPending) return <CenteredSpinner />;
+  if (rosterStatsQuery.isPending) return <AsyncState status="loading" />;
   if (rosterStatsQuery.isError) {
-    return <ErrorAlert message="Could not load roster statistics." onRetry={() => rosterStatsQuery.refetch()} />;
+    return <AsyncState status="error" message="Could not load roster statistics." onRetry={() => rosterStatsQuery.refetch()} />;
   }
 
   const statsByPersonKey = rosterStatsQuery.data ?? new Map();
@@ -350,7 +321,7 @@ function RosterSection({ rosterQuery, rosterStatsQuery, seasonCode }) {
   );
 
   return (
-    <div className="panel overflow-x-auto overscroll-x-contain p-2">
+    <Panel className="overflow-x-auto overscroll-x-contain p-2">
       <table className="table">
         <thead>
           <tr>
@@ -404,21 +375,21 @@ function RosterSection({ rosterQuery, rosterStatsQuery, seasonCode }) {
           })}
         </tbody>
       </table>
-    </div>
+    </Panel>
   );
 }
 
 function ScheduleSection({ gamesQuery, clubCode }) {
-  if (gamesQuery.isPending) return <CenteredSpinner />;
+  if (gamesQuery.isPending) return <AsyncState status="loading" />;
   if (gamesQuery.isError) {
-    return <ErrorAlert message="Could not load the schedule." onRetry={() => gamesQuery.refetch()} />;
+    return <AsyncState status="error" message="Could not load the schedule." onRetry={() => gamesQuery.refetch()} />;
   }
   const games = gamesQuery.data.games ?? [];
   if (games.length === 0) {
-    return <p role="status" className="muted">No games scheduled yet.</p>;
+    return <EmptyText>No games scheduled yet.</EmptyText>;
   }
   return (
-    <div className="panel p-4">
+    <Panel className="p-4">
       <ul>
         {games.map((game) => {
           const { team, home } = opponent(game, clubCode);
@@ -449,7 +420,7 @@ function ScheduleSection({ gamesQuery, clubCode }) {
           );
         })}
       </ul>
-    </div>
+    </Panel>
   );
 }
 
@@ -503,14 +474,14 @@ export default function TeamPage() {
     enabled: teamQuery.isSuccess,
   });
 
-  if (teamQuery.isLoading) return <CenteredSpinner />;
+  if (teamQuery.isLoading) return <AsyncState status="loading" />;
 
   if (teamQuery.isError) {
     const notFound = teamQuery.error?.response?.status === 404;
     return notFound ? (
-      <p role="status" className="muted">Team not found.</p>
+      <EmptyText>Team not found.</EmptyText>
     ) : (
-      <ErrorAlert message="Could not load this team." onRetry={() => teamQuery.refetch()} />
+      <AsyncState status="error" message="Could not load this team." onRetry={() => teamQuery.refetch()} />
     );
   }
 
@@ -552,9 +523,9 @@ export default function TeamPage() {
       <TabPanel id="team-panel" focusKey={`${phaseCode}-${section}`}>
         {section === "overview" ? (
           gamesQuery.isPending ? (
-            <CenteredSpinner />
+            <AsyncState status="loading" />
           ) : gamesQuery.isError ? (
-            <ErrorAlert message="Could not load this team's games." onRetry={() => gamesQuery.refetch()} />
+            <AsyncState status="error" message="Could not load this team's games." onRetry={() => gamesQuery.refetch()} />
           ) : (
             <OverviewSection seasonCode={seasonCode} clubCode={clubCode} standingsQuery={standingsQuery} games={games} />
           )

@@ -2,27 +2,11 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link, useParams } from "react-router";
 import { getPhases, getSeasonGames } from "../lib/api";
+import AsyncState from "../lib/AsyncState";
+import EmptyText from "../lib/EmptyText";
 import { formatDateTime } from "../lib/format";
+import Panel from "../lib/Panel";
 import { TabPanel, TabStrip } from "../lib/TabStrip";
-
-function CenteredSpinner() {
-  return (
-    <div role="status" aria-label="Loading" className="flex justify-center py-12">
-      <span className="loading loading-spinner loading-lg text-primary" />
-    </div>
-  );
-}
-
-function ErrorAlert({ message, onRetry }) {
-  return (
-    <div role="alert" className="alert alert-error max-w-md">
-      <span>{message}</span>
-      <button type="button" className="btn btn-sm" onClick={onRetry}>
-        Retry
-      </button>
-    </div>
-  );
-}
 
 function teamLabel(team) {
   return team?.abbreviatedName ?? team?.name ?? "TBD";
@@ -32,7 +16,7 @@ function MatchupCard({ seasonCode, groupName, games }) {
   const sorted = [...games].sort((a, b) => (a.roundNumber ?? Infinity) - (b.roundNumber ?? Infinity));
 
   return (
-    <div className="panel p-4">
+    <Panel className="p-4">
       <h2 className="panel-title mb-3">{groupName}</h2>
       <ul>
         {sorted.map((game) => {
@@ -66,13 +50,13 @@ function MatchupCard({ seasonCode, groupName, games }) {
           );
         })}
       </ul>
-    </div>
+    </Panel>
   );
 }
 
 function MatchupGroups({ seasonCode, games }) {
   if (games.length === 0) {
-    return <p role="status" className="muted">No games scheduled yet for this phase.</p>;
+    return <EmptyText>No games scheduled yet for this phase.</EmptyText>;
   }
 
   const groups = new Map();
@@ -114,9 +98,9 @@ export default function PlayoffsPage() {
     enabled: Boolean(phaseCode),
   });
 
-  if (phasesQuery.isLoading) return <CenteredSpinner />;
+  if (phasesQuery.isLoading) return <AsyncState status="loading" />;
   if (phasesQuery.isError) {
-    return <ErrorAlert message="Could not load phases." onRetry={() => phasesQuery.refetch()} />;
+    return <AsyncState status="error" message="Could not load phases." onRetry={() => phasesQuery.refetch()} />;
   }
 
   return (
@@ -138,9 +122,9 @@ export default function PlayoffsPage() {
 
           <TabPanel id="playoffs-panel" focusKey={phaseCode}>
             {gamesQuery.isPending ? (
-              <CenteredSpinner />
+              <AsyncState status="loading" />
             ) : gamesQuery.isError ? (
-              <ErrorAlert message="Could not load games." onRetry={() => gamesQuery.refetch()} />
+              <AsyncState status="error" message="Could not load games." onRetry={() => gamesQuery.refetch()} />
             ) : (
               <MatchupGroups seasonCode={seasonCode} games={gamesQuery.data.games} />
             )}

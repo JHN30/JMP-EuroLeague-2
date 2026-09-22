@@ -4,7 +4,7 @@ import { getBoxScore, getCoverage, getGame } from "../lib/api";
 import AsyncState from "../lib/AsyncState";
 import DataCoveragePanel from "../lib/DataCoveragePanel";
 import EmptyText from "../lib/EmptyText";
-import { formatDateTime as formatDateTimeShared, formatMinutes } from "../lib/format";
+import { formatDateTime as formatDateTimeShared, formatMinutes, formatPercentage, formatPeriod } from "../lib/format";
 import Panel from "../lib/Panel";
 import PageHeader from "../lib/PageHeader";
 import { useDocumentTitle } from "../lib/useDocumentTitle";
@@ -127,6 +127,117 @@ function PlayerStatsTable({ players, side, teamLabel }) {
           </table>
         </Panel>
       )}
+    </div>
+  );
+}
+
+function shootingPercentage(made, attempted) {
+  const attemptedNum = Number(attempted);
+  if (!attemptedNum) return null;
+  return (Number(made) / attemptedNum) * 100;
+}
+
+function ShootingSplitsSection({ teamStats, localTeam, roadTeam }) {
+  const totals = teamStats.filter((row) => row.statsKind === "total");
+
+  if (totals.length === 0) {
+    return <EmptyText>Shooting splits aren't available until this game is played.</EmptyText>;
+  }
+
+  const splits = [
+    ["2PT", "fieldGoalsMade2", "fieldGoalsAttempted2"],
+    ["3PT", "fieldGoalsMade3", "fieldGoalsAttempted3"],
+    ["FT", "freeThrowsMade", "freeThrowsAttempted"],
+  ];
+
+  return (
+    <div>
+      <p className="muted mb-3 text-sm">
+        Shot-location data isn't tracked for this archive - these are the box-score shooting splits.
+      </p>
+      <Panel className="overflow-x-auto overscroll-x-contain p-2">
+        <table className="table">
+          <thead>
+            <tr>
+              <th>Team</th>
+              {splits.map(([label]) => (
+                <th key={label}>{label}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {totals.map((row) => {
+              const name = row.side === "local" ? teamName(localTeam) : teamName(roadTeam);
+              return (
+                <tr key={row.side}>
+                  <td className="font-medium">
+                    <span className="block max-w-40 truncate sm:max-w-56" title={name}>
+                      {name}
+                    </span>
+                  </td>
+                  {splits.map(([label, madeField, attemptedField]) => (
+                    <td key={label} className="tabular-nums">
+                      {row[madeField] ?? "-"}-{row[attemptedField] ?? "-"} (
+                      {formatPercentage(shootingPercentage(row[madeField], row[attemptedField]))})
+                    </td>
+                  ))}
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </Panel>
+    </div>
+  );
+}
+
+function PlayByPlaySection({ periodScores, localTeam, roadTeam }) {
+  if (periodScores.length === 0) {
+    return <EmptyText>Play-by-play isn't available until this game is played.</EmptyText>;
+  }
+
+  const periodNumbers = [...new Set(periodScores.map((row) => row.periodNumber))].sort((a, b) => a - b);
+
+  return (
+    <div>
+      <p className="muted mb-3 text-sm">
+        Play-by-play isn't tracked for this archive - here's the period-level scoring flow instead.
+      </p>
+      <Panel className="overflow-x-auto overscroll-x-contain p-2">
+        <table className="table">
+          <thead>
+            <tr>
+              <th>Team</th>
+              {periodNumbers.map((periodNumber) => (
+                <th key={periodNumber}>{formatPeriod(periodNumber)}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {["local", "road"].map((side) => {
+              const name = side === "local" ? teamName(localTeam) : teamName(roadTeam);
+              const bySide = periodScores.filter((row) => row.side === side);
+              return (
+                <tr key={side}>
+                  <td className="font-medium">
+                    <span className="block max-w-40 truncate sm:max-w-56" title={name}>
+                      {name}
+                    </span>
+                  </td>
+                  {periodNumbers.map((periodNumber) => {
+                    const entry = bySide.find((row) => row.periodNumber === periodNumber);
+                    return (
+                      <td key={periodNumber} className="tabular-nums">
+                        {entry?.score ?? "-"}
+                      </td>
+                    );
+                  })}
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </Panel>
     </div>
   );
 }
@@ -260,6 +371,32 @@ export default function GameDetailPage() {
           />
         </div>
       ) : null}
+
+      <h2 className="mt-8 mb-3 text-xl font-semibold">Shooting</h2>
+      {boxScoreQuery.isLoading ? (
+        <AsyncState status="loading" label="Loading shooting splits" />
+      ) : boxScoreQuery.isError ? (
+        <AsyncState status="error" message="Could not load shooting splits." onRetry={() => boxScoreQuery.refetch()} />
+      ) : (
+        <ShootingSplitsSection
+          teamStats={boxScoreQuery.data.teamStats}
+          localTeam={game.localTeam}
+          roadTeam={game.roadTeam}
+        />
+      )}
+
+      <h2 className="mt-8 mb-3 text-xl font-semibold">Play-by-play</h2>
+      {boxScoreQuery.isLoading ? (
+        <AsyncState status="loading" label="Loading play-by-play" />
+      ) : boxScoreQuery.isError ? (
+        <AsyncState status="error" message="Could not load play-by-play." onRetry={() => boxScoreQuery.refetch()} />
+      ) : (
+        <PlayByPlaySection
+          periodScores={boxScoreQuery.data.periodScores}
+          localTeam={game.localTeam}
+          roadTeam={game.roadTeam}
+        />
+      )}
     </div>
   );
 }

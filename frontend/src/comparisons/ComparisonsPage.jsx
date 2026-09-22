@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useParams, useSearchParams } from "react-router";
 import {
@@ -592,6 +592,41 @@ function TrendSection({ seasonCode, phaseCode, view, entityA, entityB }) {
         : getPlayerGames(seasonCode, entityB.id, { limit: 100 }),
   });
 
+  const dataReady = roundsQuery.isSuccess && gamesAQuery.isSuccess && gamesBQuery.isSuccess;
+
+  // buildRoundSeries and the labels/series it feeds into TrendChart are
+  // recomputed here only when the underlying query data or selection
+  // actually changes (react-query keeps `data` referentially stable across
+  // renders that don't refetch), so the chart below isn't torn down and
+  // rebuilt on every unrelated render of this page. Computed unconditionally,
+  // ahead of the loading/error returns below, because Hooks can't follow one.
+  const { labels, series, playedCountA, playedCountB } = useMemo(() => {
+    if (!dataReady) return { labels: [], series: [], playedCountA: 0, playedCountB: 0 };
+    const rounds = roundsQuery.data.rounds ?? [];
+    const seriesA = buildRoundSeries(rounds, gamesAQuery.data.games ?? [], phaseCode, view, entityA.id);
+    const seriesB = buildRoundSeries(rounds, gamesBQuery.data.games ?? [], phaseCode, view, entityB.id);
+    return {
+      labels: rounds.map((round) => round.name ?? `Round ${round.number}`),
+      series: [
+        { label: entityA.label, points: seriesA },
+        { label: entityB.label, points: seriesB },
+      ],
+      playedCountA: seriesA.filter((value) => value !== null).length,
+      playedCountB: seriesB.filter((value) => value !== null).length,
+    };
+  }, [
+    dataReady,
+    roundsQuery.data,
+    gamesAQuery.data,
+    gamesBQuery.data,
+    phaseCode,
+    view,
+    entityA.id,
+    entityA.label,
+    entityB.id,
+    entityB.label,
+  ]);
+
   if (roundsQuery.isPending || gamesAQuery.isPending || gamesBQuery.isPending) return <CenteredSpinner />;
   if (roundsQuery.isError || gamesAQuery.isError || gamesBQuery.isError) {
     return (
@@ -606,28 +641,11 @@ function TrendSection({ seasonCode, phaseCode, view, entityA, entityB }) {
     );
   }
 
-  const rounds = roundsQuery.data.rounds ?? [];
-  const seriesA = buildRoundSeries(rounds, gamesAQuery.data.games ?? [], phaseCode, view, entityA.id);
-  const seriesB = buildRoundSeries(rounds, gamesBQuery.data.games ?? [], phaseCode, view, entityB.id);
-  const playedCountA = seriesA.filter((value) => value !== null).length;
-  const playedCountB = seriesB.filter((value) => value !== null).length;
-
   if (playedCountA < 2 || playedCountB < 2) {
     return <p className="muted">Not enough played games to chart a trend yet.</p>;
   }
 
-  const labels = rounds.map((round) => round.name ?? `Round ${round.number}`);
-
-  return (
-    <TrendChart
-      title="Points scored per round"
-      labels={labels}
-      series={[
-        { label: entityA.label, points: seriesA },
-        { label: entityB.label, points: seriesB },
-      ]}
-    />
-  );
+  return <TrendChart title="Points scored per round" labels={labels} series={series} />;
 }
 
 function ComparisonsBody({ seasonCode, phases, phaseCode, setSelectedPhase, allTeams, initialTeamA, initialTeamB }) {

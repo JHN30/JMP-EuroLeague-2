@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Chart } from "chart.js/auto";
 
 function themeColor(el, variable, fallback) {
@@ -6,9 +6,26 @@ function themeColor(el, variable, fallback) {
   return value || fallback;
 }
 
+// The active theme lives on <html data-theme>, set outside this component
+// (see useThemePreference). Watching the attribute directly, rather than
+// threading the theme through props, lets the chart re-theme wherever it is
+// mounted without coupling it to the route tree above it.
+function useActiveTheme() {
+  const [theme, setTheme] = useState(() => document.documentElement.dataset.theme);
+
+  useEffect(() => {
+    const observer = new MutationObserver(() => setTheme(document.documentElement.dataset.theme));
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
+    return () => observer.disconnect();
+  }, []);
+
+  return theme;
+}
+
 export default function TrendChart({ title, labels, series }) {
   const canvasRef = useRef(null);
   const chartRef = useRef(null);
+  const theme = useActiveTheme();
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -17,6 +34,7 @@ export default function TrendChart({ title, labels, series }) {
     const primary = themeColor(canvas, "--color-primary", "#ff7926");
     const accent = themeColor(canvas, "--color-accent", "#bba7d9");
     const textColor = themeColor(canvas, "--color-base-content", "#888888");
+    const gridColor = `color-mix(in srgb, ${textColor} 20%, transparent)`;
     const colors = [primary, accent];
 
     chartRef.current = new Chart(canvas, {
@@ -37,8 +55,8 @@ export default function TrendChart({ title, labels, series }) {
         responsive: true,
         maintainAspectRatio: false,
         scales: {
-          x: { ticks: { color: textColor }, grid: { color: `${textColor}33` } },
-          y: { ticks: { color: textColor }, grid: { color: `${textColor}33` } },
+          x: { ticks: { color: textColor }, grid: { color: gridColor } },
+          y: { ticks: { color: textColor }, grid: { color: gridColor } },
         },
         plugins: {
           legend: { labels: { color: textColor } },
@@ -50,7 +68,7 @@ export default function TrendChart({ title, labels, series }) {
       chartRef.current?.destroy();
       chartRef.current = null;
     };
-  }, [labels, series]);
+  }, [labels, series, theme]);
 
   return (
     <div className="panel p-4">

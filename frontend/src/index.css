@@ -119,11 +119,6 @@ button {
   border-radius: var(--radius-box);
 }
 
-.theme-option[aria-pressed="true"] {
-  color: var(--color-primary-content);
-  background: var(--color-primary);
-}
-
 .court-lines {
   background-image:
     radial-gradient(circle at 50% 115%, transparent 0 6.5rem, color-mix(in srgb, var(--color-base-content) 11%, transparent) 6.55rem 6.62rem, transparent 6.67rem),
@@ -704,8 +699,7 @@ button {
 
 @media (prefers-reduced-motion: no-preference) {
   .app-shell,
-  .panel,
-  .theme-option {
+  .panel {
     transition: background-color 180ms ease, color 180ms ease, border-color 180ms ease;
   }
 }

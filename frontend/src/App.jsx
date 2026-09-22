@@ -1,4 +1,3 @@
-import { useEffect, useState } from "react";
 import { Navigate, Route, Routes } from "react-router";
 import Dashboard from "./dashboard/Dashboard";
 import SeasonLayout from "./season/SeasonLayout";
@@ -14,28 +13,7 @@ import ComparisonsPage from "./comparisons/ComparisonsPage";
 import PlayoffsPage from "./playoffs/PlayoffsPage";
 import RouteErrorBoundary from "./ErrorBoundary";
 import { useDefaultSeasonCode } from "./season/useDefaultSeasonCode";
-
-const THEME_KEY = "euroleague-theme";
-
-function initialTheme() {
-  const theme = document.documentElement.dataset.theme;
-  return Object.hasOwn(theme) ? theme : "dark-euroleague";
-}
-
-function useThemeSync() {
-  const [theme] = useState(initialTheme);
-
-  useEffect(() => {
-    document.documentElement.dataset.theme = theme;
-    document.querySelector('meta[name="theme-color"]').content =
-      theme === "dark-euroleague" ? "#151517" : "#f6f2ec";
-    try {
-      window.localStorage.setItem(THEME_KEY, theme);
-    } catch {
-      // The theme still works when browser storage is unavailable.
-    }
-  }, [theme]);
-}
+import { useThemePreference } from "./lib/useThemePreference";
 
 function DefaultSeasonRedirect() {
   const defaultSeasonQuery = useDefaultSeasonCode();
@@ -65,14 +43,14 @@ function DefaultSeasonRedirect() {
 }
 
 function App() {
-  useThemeSync();
+  const themePreference = useThemePreference();
 
   return (
     <div className="app-shell min-h-screen">
       <RouteErrorBoundary>
         <Routes>
           <Route path="/" element={<DefaultSeasonRedirect />} />
-          <Route path="/:seasonCode" element={<SeasonLayout />}>
+          <Route path="/:seasonCode" element={<SeasonLayout themePreference={themePreference} />}>
             <Route index element={<Dashboard />} />
             <Route path="standings" element={<StandingsPage />} />
             <Route path="games" element={<FixturesPage />} />

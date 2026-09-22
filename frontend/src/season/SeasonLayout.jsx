@@ -1,9 +1,45 @@
 import { useQuery } from "@tanstack/react-query";
 import { Navigate, Outlet, useLocation, useParams } from "react-router";
 import { getSeasons } from "../lib/api";
+import { THEMES } from "../lib/useThemePreference";
 import { useDefaultSeasonCode } from "./useDefaultSeasonCode";
 import SeasonSelector from "./SeasonSelector";
 import NavBar from "./NavBar";
+
+function SunIcon(props) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true" {...props}>
+      <circle cx="12" cy="12" r="4" />
+      <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41" />
+    </svg>
+  );
+}
+
+function MoonIcon(props) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true" {...props}>
+      <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79Z" />
+    </svg>
+  );
+}
+
+function ThemeToggle({ themePreference }) {
+  if (!themePreference) return null;
+  const { theme, nextTheme, toggleTheme } = themePreference;
+  const Icon = nextTheme === "light-euroleague" ? SunIcon : MoonIcon;
+
+  return (
+    <button
+      type="button"
+      className="btn btn-square btn-ghost btn-sm"
+      onClick={toggleTheme}
+      aria-label={`Switch to ${THEMES[nextTheme].title}`}
+      title={`Current: ${THEMES[theme].title}. Switch to ${THEMES[nextTheme].title}.`}
+    >
+      <Icon className="h-4 w-4" />
+    </button>
+  );
+}
 
 function CenteredSpinner() {
   return (
@@ -28,7 +64,7 @@ function ErrorAlert({ message, onRetry }) {
   );
 }
 
-export default function SeasonLayout() {
+export default function SeasonLayout({ themePreference }) {
   const { seasonCode } = useParams();
   const location = useLocation();
   const seasonsQuery = useQuery({ queryKey: ["seasons"], queryFn: getSeasons });
@@ -80,7 +116,10 @@ export default function SeasonLayout() {
             <span className="brand-mark" aria-hidden="true">EL</span>
             <span className="eyebrow">EuroLeague</span>
           </div>
-          <SeasonSelector />
+          <div className="flex items-center gap-2">
+            <SeasonSelector />
+            <ThemeToggle themePreference={themePreference} />
+          </div>
         </div>
         <NavBar />
       </header>

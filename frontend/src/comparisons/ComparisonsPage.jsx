@@ -11,6 +11,7 @@ import Panel from "../lib/Panel";
 import PanelHeader from "../lib/PanelHeader";
 import PageHeader from "../lib/PageHeader";
 import { useDocumentTitle } from "../lib/useDocumentTitle";
+import { usePhaseParam } from "../lib/usePhaseParam";
 import {
   getPhases,
   getPlayerGames,
@@ -638,6 +639,13 @@ function ComparisonsBody({ seasonCode, phases, phaseCode, setSelectedPhase, allT
     setEntityB(null);
   }
 
+  // Changing the archive-level phase resets the view-level per-game/totals
+  // mode, but not the selected teams/players being compared.
+  function handlePhaseChange(code) {
+    setSelectedPhase(code);
+    setMode("perGame");
+  }
+
   return (
     <div>
       <PageHeader kicker="HEAD-TO-HEAD" title="Comparisons and trends" />
@@ -656,7 +664,7 @@ function ComparisonsBody({ seasonCode, phases, phaseCode, setSelectedPhase, allT
           label="Phase"
           ariaLabel="Comparison phase"
             value={phaseCode ?? ""}
-            onChange={(event) => setSelectedPhase(event.target.value)}
+            onChange={(event) => handlePhaseChange(event.target.value)}
           >
             {phases.map((phase) => (
               <option key={phase.code} value={phase.code}>
@@ -764,14 +772,13 @@ export default function ComparisonsPage() {
   useDocumentTitle("Comparisons and trends");
   const { seasonCode } = useParams();
   const [searchParams] = useSearchParams();
-  const [selectedPhase, setSelectedPhase] = useState(null);
 
   const phasesQuery = useQuery({
     queryKey: ["phases", seasonCode],
     queryFn: () => getPhases(seasonCode),
   });
   const phases = phasesQuery.data?.phases ?? [];
-  const phaseCode = selectedPhase ?? phases.find((phase) => phase.code === "RS")?.code ?? phases[0]?.code;
+  const [phaseCode, setPhaseCode] = usePhaseParam(phases);
 
   const teamsQuery = useQuery({
     queryKey: ["teams", seasonCode],
@@ -791,7 +798,7 @@ export default function ComparisonsPage() {
       seasonCode={seasonCode}
       phases={phases}
       phaseCode={phaseCode}
-      setSelectedPhase={setSelectedPhase}
+      setSelectedPhase={setPhaseCode}
       allTeams={teamsQuery.data.teams ?? []}
       initialTeamA={searchParams.get("teamA")}
       initialTeamB={searchParams.get("teamB")}

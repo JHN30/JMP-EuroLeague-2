@@ -109,7 +109,9 @@ export default function SeasonLayout({ themePreference }) {
       <main id="main-content" tabIndex={-1} className="p-6 outline-none">
         <RouteErrorBoundary>
           <Suspense fallback={<AsyncState status="loading" />}>
-            <Outlet />
+            {/* Keyed by season so each page's local view-level filters reset
+                when the archive-level season selection changes. */}
+            <Outlet key={seasonCode} />
           </Suspense>
         </RouteErrorBoundary>
       </main>

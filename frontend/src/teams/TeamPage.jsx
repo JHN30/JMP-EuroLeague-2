@@ -13,6 +13,7 @@ import PanelHeader from "../lib/PanelHeader";
 import { formatStatValue } from "../lib/statsFields";
 import { TabPanel, TabStrip } from "../lib/TabStrip";
 import { useDocumentTitle } from "../lib/useDocumentTitle";
+import { usePhaseParam } from "../lib/usePhaseParam";
 import StatBarCell from "../statistics/StatBarCell";
 import { barWidthScale } from "../statistics/statBarScale";
 import TeamTrendChart from "./TeamTrendChart";
@@ -436,7 +437,6 @@ const SECTIONS = [
 
 export default function TeamPage() {
   const { seasonCode, clubCode } = useParams();
-  const [selectedPhase, setSelectedPhase] = useState(null);
   const [section, setSection] = useState("overview");
 
   const teamQuery = useQuery({
@@ -453,7 +453,7 @@ export default function TeamPage() {
     enabled: teamQuery.isSuccess,
   });
   const phases = phasesQuery.data?.phases ?? [];
-  const phaseCode = selectedPhase ?? phases.find((phase) => phase.code === "RS")?.code ?? phases[0]?.code;
+  const [phaseCode, setPhaseCode] = usePhaseParam(phases);
 
   const standingsQuery = useQuery({
     queryKey: ["standings", seasonCode, phaseCode],
@@ -512,7 +512,7 @@ export default function TeamPage() {
         ariaLabel="Phase"
         panelId="team-panel"
         activeKey={phaseCode}
-        onChange={setSelectedPhase}
+        onChange={setPhaseCode}
         className="mb-4 w-fit"
         tabs={phases.map((phase) => ({ key: phase.code, label: phase.name ?? phase.code }))}
       />

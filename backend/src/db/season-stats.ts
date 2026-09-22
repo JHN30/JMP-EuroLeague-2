@@ -10,7 +10,7 @@ import {
 
 const COMPETITION_CODE = "E";
 
-export type Page<T> = { items: T[]; hasMore: boolean };
+export type Page<T> = { items: T[]; hasMore: boolean; total: number };
 
 export type StatsTraditional = {
   playerRanking: number | null;
@@ -250,29 +250,36 @@ export async function getSeasonStats(
       ]
     : [asc(seasonStatsTraditional.entryOrdinal), asc(seasonStatsTraditional.personKey)];
 
-  const rows = await catalogRead(() =>
-    db.select({
-      personKey: seasonStatsTraditional.personKey,
-      clubCode: seasonStatsTraditional.clubCode,
-      playerName: seasonStatsTraditional.playerName,
-      playerAge: seasonStatsTraditional.playerAge,
-      playerImageUrl: seasonStatsTraditional.playerImageUrl,
-      clubName: seasonStatsTraditional.clubName,
-      clubTvCodes: seasonStatsTraditional.clubTvCodes,
-      clubImageUrl: seasonStatsTraditional.clubImageUrl,
-      traditional: traditionalFields,
-      advanced: advancedFields,
-      scoring: scoringFields,
-      misc: miscFields,
-    })
-      .from(seasonStatsTraditional)
-      .leftJoin(seasonStatsAdvanced, joinOn(seasonStatsAdvanced))
-      .leftJoin(seasonStatsScoring, joinOn(seasonStatsScoring))
-      .leftJoin(seasonStatsMisc, joinOn(seasonStatsMisc))
-      .where(and(...conditions))
-      .orderBy(...orderBy)
-      .limit(limit + 1)
-      .offset(offset),
-  );
-  return { items: rows.slice(0, limit), hasMore: rows.length > limit };
+  const [rows, countRows] = await Promise.all([
+    catalogRead(() =>
+      db.select({
+        personKey: seasonStatsTraditional.personKey,
+        clubCode: seasonStatsTraditional.clubCode,
+        playerName: seasonStatsTraditional.playerName,
+        playerAge: seasonStatsTraditional.playerAge,
+        playerImageUrl: seasonStatsTraditional.playerImageUrl,
+        clubName: seasonStatsTraditional.clubName,
+        clubTvCodes: seasonStatsTraditional.clubTvCodes,
+        clubImageUrl: seasonStatsTraditional.clubImageUrl,
+        traditional: traditionalFields,
+        advanced: advancedFields,
+        scoring: scoringFields,
+        misc: miscFields,
+      })
+        .from(seasonStatsTraditional)
+        .leftJoin(seasonStatsAdvanced, joinOn(seasonStatsAdvanced))
+        .leftJoin(seasonStatsScoring, joinOn(seasonStatsScoring))
+        .leftJoin(seasonStatsMisc, joinOn(seasonStatsMisc))
+        .where(and(...conditions))
+        .orderBy(...orderBy)
+        .limit(limit + 1)
+        .offset(offset),
+    ),
+    catalogRead(() =>
+      db.select({ count: sql<number>`count(*)::int` })
+        .from(seasonStatsTraditional)
+        .where(and(...conditions)),
+    ),
+  ]);
+  return { items: rows.slice(0, limit), hasMore: rows.length > limit, total: countRows[0]?.count ?? 0 };
 }

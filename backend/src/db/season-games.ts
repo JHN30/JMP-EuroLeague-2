@@ -130,28 +130,33 @@ export async function getGames(
   if (phaseCode !== undefined) conditions.push(eq(games.phaseCode, phaseCode));
   if (round !== undefined) conditions.push(eq(games.roundNumber, round));
 
-  const rows = await catalogRead(() =>
-    db.select(gameFields)
-      .from(games)
-      .leftJoin(localClubs, and(
-        eq(localClubs.competitionCode, games.competitionCode),
-        eq(localClubs.seasonCode, games.seasonCode),
-        eq(localClubs.clubCode, games.localClubCode),
-      ))
-      .leftJoin(roadClubs, and(
-        eq(roadClubs.competitionCode, games.competitionCode),
-        eq(roadClubs.seasonCode, games.seasonCode),
-        eq(roadClubs.clubCode, games.roadClubCode),
-      ))
-      .where(and(...conditions))
-      .orderBy(
-        order === "desc" ? sql`${games.scheduledAt} DESC NULLS LAST` : asc(games.scheduledAt),
-        asc(games.gameCode),
-      )
-      .limit(limit + 1)
-      .offset(offset),
-  );
-  return { items: rows.slice(0, limit).map(toGame), hasMore: rows.length > limit };
+  const [rows, countRows] = await Promise.all([
+    catalogRead(() =>
+      db.select(gameFields)
+        .from(games)
+        .leftJoin(localClubs, and(
+          eq(localClubs.competitionCode, games.competitionCode),
+          eq(localClubs.seasonCode, games.seasonCode),
+          eq(localClubs.clubCode, games.localClubCode),
+        ))
+        .leftJoin(roadClubs, and(
+          eq(roadClubs.competitionCode, games.competitionCode),
+          eq(roadClubs.seasonCode, games.seasonCode),
+          eq(roadClubs.clubCode, games.roadClubCode),
+        ))
+        .where(and(...conditions))
+        .orderBy(
+          order === "desc" ? sql`${games.scheduledAt} DESC NULLS LAST` : asc(games.scheduledAt),
+          asc(games.gameCode),
+        )
+        .limit(limit + 1)
+        .offset(offset),
+    ),
+    catalogRead(() =>
+      db.select({ count: sql<number>`count(*)::int` }).from(games).where(and(...conditions)),
+    ),
+  ]);
+  return { items: rows.slice(0, limit).map(toGame), hasMore: rows.length > limit, total: countRows[0]?.count ?? 0 };
 }
 
 export async function getTeamGames(

@@ -7,6 +7,7 @@ const COMPETITION_CODE = "E";
 const PLAYER_ROLE_CODE = "J";
 
 export type Page<T> = { items: T[]; hasMore: boolean };
+export type CountedPage<T> = Page<T> & { total: number };
 
 export type Team = {
   clubCode: string;
@@ -110,19 +111,24 @@ export async function getPlayers(
   limit: number,
   offset: number,
   search?: string,
-): Promise<Page<Player>> {
+): Promise<CountedPage<Player>> {
   const scope = search
     ? and(playerScope(seasonCode), or(ilike(people.name, `%${search}%`), ilike(people.jerseyName, `%${search}%`))!)
     : playerScope(seasonCode);
-  const rows = await catalogRead(() =>
-    db.select(playerFields)
-      .from(people)
-      .where(scope)
-      .orderBy(asc(people.name), asc(people.personKey))
-      .limit(limit + 1)
-      .offset(offset),
-  );
-  return { items: rows.slice(0, limit), hasMore: rows.length > limit };
+  const [rows, countRows] = await Promise.all([
+    catalogRead(() =>
+      db.select(playerFields)
+        .from(people)
+        .where(scope)
+        .orderBy(asc(people.name), asc(people.personKey))
+        .limit(limit + 1)
+        .offset(offset),
+    ),
+    catalogRead(() =>
+      db.select({ count: sql<number>`count(*)::int` }).from(people).where(scope),
+    ),
+  ]);
+  return { items: rows.slice(0, limit), hasMore: rows.length > limit, total: countRows[0]?.count ?? 0 };
 }
 
 export async function getPlayer(seasonCode: string, personKey: string): Promise<Player | null> {

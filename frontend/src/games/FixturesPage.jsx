@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Link, useParams } from "react-router";
+import { Link, useParams, useSearchParams } from "react-router";
 import { getPhases, getRounds, getSeasonGames } from "../lib/api";
 import AsyncState from "../lib/AsyncState";
 import CompactFilterSelect from "../lib/CompactFilterSelect";
@@ -9,6 +9,7 @@ import { formatDateTime } from "../lib/format";
 import Panel from "../lib/Panel";
 import PageHeader from "../lib/PageHeader";
 import { useDocumentTitle } from "../lib/useDocumentTitle";
+import { usePhaseParam } from "../lib/usePhaseParam";
 import { TabPanel, TabStrip } from "../lib/TabStrip";
 
 const PAGE_SIZE = 20;
@@ -27,8 +28,7 @@ function teamLabel(team) {
 export default function FixturesPage() {
   useDocumentTitle("Fixtures and results");
   const { seasonCode } = useParams();
-  const [selectedPhase, setSelectedPhase] = useState(null);
-  const [selectedRound, setSelectedRound] = useState(null);
+  const [searchParams, setSearchParams] = useSearchParams();
   const [status, setStatus] = useState(undefined);
   const [offset, setOffset] = useState(0);
 
@@ -37,7 +37,10 @@ export default function FixturesPage() {
     queryFn: () => getPhases(seasonCode),
   });
   const phases = phasesQuery.data?.phases ?? [];
-  const phaseCode = selectedPhase ?? phases.find((phase) => phase.code === "RS")?.code ?? phases[0]?.code;
+  const [phaseCode] = usePhaseParam(phases);
+
+  const roundParam = searchParams.get("round");
+  const selectedRound = roundParam ? Number(roundParam) : null;
 
   const roundsQuery = useQuery({
     queryKey: ["rounds", seasonCode, phaseCode],
@@ -47,13 +50,23 @@ export default function FixturesPage() {
   const rounds = roundsQuery.data?.rounds ?? [];
 
   function handlePhaseChange(code) {
-    setSelectedPhase(code);
-    setSelectedRound(null);
+    setSearchParams((params) => {
+      const next = new URLSearchParams(params);
+      if (code) next.set("phase", code); else next.delete("phase");
+      next.delete("round");
+      return next;
+    });
+    setStatus(undefined);
     setOffset(0);
   }
 
   function handleRoundChange(event) {
-    setSelectedRound(event.target.value === "" ? null : Number(event.target.value));
+    const value = event.target.value;
+    setSearchParams((params) => {
+      const next = new URLSearchParams(params);
+      if (value === "") next.delete("round"); else next.set("round", value);
+      return next;
+    });
     setOffset(0);
   }
 
@@ -126,6 +139,9 @@ export default function FixturesPage() {
         <EmptyText>No games match these filters.</EmptyText>
       ) : (
         <>
+          <p className="muted mb-2 text-sm">
+            Showing {offset + 1}-{offset + games.length} of {gamesQuery.data?.pagination.total} games
+          </p>
           <Panel className="p-4">
             <ul>
               {games.map((game) => {

@@ -50,6 +50,9 @@ export default function PlayersPage() {
         <EmptyText>{search ? "No players match your search." : "No players available for this season."}</EmptyText>
       ) : (
         <>
+          <p className="muted mb-2 text-sm">
+            Showing {offset + 1}-{offset + players.length} of {playersQuery.data?.pagination.total} players
+          </p>
           <Panel className="p-4">
             <ul>
               {players.map((player) => (

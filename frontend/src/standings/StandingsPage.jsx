@@ -6,6 +6,7 @@ import AsyncState from "../lib/AsyncState";
 import EmptyText from "../lib/EmptyText";
 import PageHeader from "../lib/PageHeader";
 import { useDocumentTitle } from "../lib/useDocumentTitle";
+import { usePhaseParam } from "../lib/usePhaseParam";
 import { TabPanel, TabStrip } from "../lib/TabStrip";
 import StandingsKpiStrip from "./StandingsKpiStrip";
 import StandingsTable from "./StandingsTable";
@@ -22,7 +23,6 @@ const TREND_ROUNDS_BACK = 5;
 export default function StandingsPage() {
   useDocumentTitle("Standings");
   const { seasonCode } = useParams();
-  const [selectedPhase, setSelectedPhase] = useState(null);
   const [view, setView] = useState("overall");
 
   const phasesQuery = useQuery({
@@ -31,7 +31,7 @@ export default function StandingsPage() {
   });
 
   const phases = phasesQuery.data?.phases ?? [];
-  const phaseCode = selectedPhase ?? phases.find((phase) => phase.code === "RS")?.code ?? phases[0]?.code;
+  const [phaseCode, setPhaseCode] = usePhaseParam(phases);
 
   const standingsQuery = useQuery({
     queryKey: ["standings", seasonCode, phaseCode],
@@ -88,7 +88,7 @@ export default function StandingsPage() {
         ariaLabel="Phase"
         panelId="standings-panel"
         activeKey={phaseCode}
-        onChange={setSelectedPhase}
+        onChange={setPhaseCode}
         className="mb-4 w-fit"
         tabs={phases.map((phase) => ({ key: phase.code, label: phase.name ?? phase.code }))}
       />

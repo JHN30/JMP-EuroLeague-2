@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Link, useParams } from "react-router";
+import { Link, useParams, useSearchParams } from "react-router";
 import { getLeaderStats, getPhases, getSeasonStandings } from "../lib/api";
 import AsyncState from "../lib/AsyncState";
 import CompactFilterSelect from "../lib/CompactFilterSelect";
@@ -9,6 +9,7 @@ import LabelledSelect from "../lib/LabelledSelect";
 import Panel from "../lib/Panel";
 import PageHeader from "../lib/PageHeader";
 import { useDocumentTitle } from "../lib/useDocumentTitle";
+import { usePhaseParam } from "../lib/usePhaseParam";
 import { TabPanel, TabStrip } from "../lib/TabStrip";
 import {
   PLAYER_METRIC_GROUPS,
@@ -146,32 +147,45 @@ function playerMetricValue(player, group, metric) {
 }
 
 function PlayerLeaderboard({ seasonCode, phaseCode }) {
-  const [category, setCategory] = useState(PLAYER_METRIC_GROUPS[0].group);
-  const [mode, setMode] = useState("perGame");
-  const [metric, setMetric] = useState(PLAYER_METRIC_GROUPS[0].options[0][0]);
-  const [direction, setDirection] = useState("desc");
-  const [offset, setOffset] = useState(0);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const mode = searchParams.get("mode") ?? "perGame";
+  const metric = searchParams.get("metric") ?? PLAYER_METRIC_GROUPS[0].options[0][0];
+  const direction = searchParams.get("direction") ?? "desc";
+  const offset = Number(searchParams.get("offset") ?? "0") || 0;
+  const category = metricGroupFor(metric) ?? PLAYER_METRIC_GROUPS[0].group;
+
+  // The player leaderboard mirrors its view-level filters into the URL so a
+  // leaderboard link is shareable, per the guideline's Leaders exception.
+  function updateParams(patch) {
+    setSearchParams((params) => {
+      const next = new URLSearchParams(params);
+      for (const [key, value] of Object.entries(patch)) {
+        if (value === undefined || value === null || value === "") next.delete(key);
+        else next.set(key, String(value));
+      }
+      return next;
+    });
+  }
 
   function handleCategoryChange(nextGroup) {
-    setCategory(nextGroup);
     const groupDef = PLAYER_METRIC_GROUPS.find((g) => g.group === nextGroup);
-    setMetric(groupDef.options[0][0]);
-    setOffset(0);
+    updateParams({ metric: groupDef.options[0][0], offset: undefined });
   }
 
   function handleModeChange(value) {
-    setMode(value);
-    setOffset(0);
+    updateParams({ mode: value, offset: undefined });
   }
 
   function handleMetricChange(value) {
-    setMetric(value);
-    setOffset(0);
+    updateParams({ metric: value, offset: undefined });
   }
 
   function handleDirectionChange(value) {
-    setDirection(value);
-    setOffset(0);
+    updateParams({ direction: value, offset: undefined });
+  }
+
+  function handleOffsetChange(nextOffset) {
+    updateParams({ offset: nextOffset || undefined });
   }
 
   const statsQuery = useQuery({
@@ -253,6 +267,9 @@ function PlayerLeaderboard({ seasonCode, phaseCode }) {
         <EmptyText>No season statistics available yet for this phase.</EmptyText>
       ) : (
         <>
+          <p className="muted mb-2 text-sm">
+            Showing {offset + 1}-{offset + players.length} of {statsQuery.data?.pagination.total} players
+          </p>
           <Panel className="overflow-x-auto overscroll-x-contain p-2">
             <table className="table">
               <thead>
@@ -306,7 +323,7 @@ function PlayerLeaderboard({ seasonCode, phaseCode }) {
               type="button"
               className="btn btn-sm"
               disabled={offset === 0}
-              onClick={() => setOffset((current) => Math.max(0, current - PAGE_SIZE))}
+              onClick={() => handleOffsetChange(Math.max(0, offset - PAGE_SIZE))}
             >
               Previous page
             </button>
@@ -314,7 +331,7 @@ function PlayerLeaderboard({ seasonCode, phaseCode }) {
               type="button"
               className="btn btn-sm"
               disabled={!statsQuery.data?.pagination.hasMore}
-              onClick={() => setOffset((current) => current + PAGE_SIZE)}
+              onClick={() => handleOffsetChange(offset + PAGE_SIZE)}
             >
               Next page
             </button>
@@ -330,14 +347,28 @@ export default function StatisticsPage() {
   useDocumentTitle("Statistics leaderboards");
   const { seasonCode } = useParams();
   const [view, setView] = useState("teams");
-  const [selectedPhase, setSelectedPhase] = useState(null);
 
   const phasesQuery = useQuery({
     queryKey: ["phases", seasonCode],
     queryFn: () => getPhases(seasonCode),
   });
   const phases = phasesQuery.data?.phases ?? [];
-  const phaseCode = selectedPhase ?? phases.find((phase) => phase.code === "RS")?.code ?? phases[0]?.code;
+  const [phaseCode] = usePhaseParam(phases);
+  const [, setSearchParams] = useSearchParams();
+
+  // Changing the archive-level phase resets the player leaderboard's
+  // view-level filters (its own local state resets via `key={phaseCode}`).
+  function handlePhaseChange(code) {
+    setSearchParams((params) => {
+      const next = new URLSearchParams(params);
+      next.set("phase", code);
+      next.delete("mode");
+      next.delete("metric");
+      next.delete("direction");
+      next.delete("offset");
+      return next;
+    });
+  }
 
   if (phasesQuery.isLoading) return <AsyncState status="loading" />;
   if (phasesQuery.isError) {
@@ -372,7 +403,7 @@ export default function StatisticsPage() {
           label="Phase"
           ariaLabel="Statistics phase"
             value={phaseCode ?? ""}
-            onChange={(event) => setSelectedPhase(event.target.value)}
+            onChange={(event) => handlePhaseChange(event.target.value)}
           >
             {phases.map((phase) => (
               <option key={phase.code} value={phase.code}>
@@ -383,7 +414,7 @@ export default function StatisticsPage() {
       </div>
 
       {view === "teams" ? (
-        <TeamLeaderboard seasonCode={seasonCode} phaseCode={phaseCode} />
+        <TeamLeaderboard key={phaseCode} seasonCode={seasonCode} phaseCode={phaseCode} />
       ) : (
         <PlayerLeaderboard seasonCode={seasonCode} phaseCode={phaseCode} />
       )}

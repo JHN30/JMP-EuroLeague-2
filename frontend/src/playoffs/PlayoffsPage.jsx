@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link, useParams } from "react-router";
 import { getPhases, getSeasonGames } from "../lib/api";
@@ -9,6 +8,7 @@ import Panel from "../lib/Panel";
 import PanelHeader from "../lib/PanelHeader";
 import PageHeader from "../lib/PageHeader";
 import { useDocumentTitle } from "../lib/useDocumentTitle";
+import { usePhaseParam } from "../lib/usePhaseParam";
 import { TabPanel, TabStrip } from "../lib/TabStrip";
 
 function teamLabel(team) {
@@ -87,14 +87,13 @@ function MatchupGroups({ seasonCode, games }) {
 export default function PlayoffsPage() {
   useDocumentTitle("Playoffs");
   const { seasonCode } = useParams();
-  const [selectedPhase, setSelectedPhase] = useState(null);
 
   const phasesQuery = useQuery({
     queryKey: ["phases", seasonCode],
     queryFn: () => getPhases(seasonCode),
   });
   const postseasonPhases = (phasesQuery.data?.phases ?? []).filter((phase) => phase.code !== "RS");
-  const phaseCode = selectedPhase ?? postseasonPhases[0]?.code;
+  const [phaseCode, setPhaseCode] = usePhaseParam(postseasonPhases);
 
   const gamesQuery = useQuery({
     queryKey: ["playoff-games", seasonCode, phaseCode],
@@ -119,7 +118,7 @@ export default function PlayoffsPage() {
             ariaLabel="Postseason phase"
             panelId="playoffs-panel"
             activeKey={phaseCode}
-            onChange={setSelectedPhase}
+            onChange={setPhaseCode}
             className="mb-6 w-fit"
             tabs={postseasonPhases.map((phase) => ({ key: phase.code, label: phase.name ?? phase.code }))}
           />

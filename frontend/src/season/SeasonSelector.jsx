@@ -15,7 +15,9 @@ export default function SeasonSelector() {
     const nextSeasonCode = event.target.value;
     const segments = location.pathname.split("/");
     segments[1] = nextSeasonCode;
-    navigate({ pathname: segments.join("/") || "/", search: location.search, hash: location.hash });
+    // Archive- and view-level filters (phase, round, sort, mode...) are tied
+    // to the current season, so a season switch drops the old query string.
+    navigate({ pathname: segments.join("/") || "/", hash: location.hash });
   }
 
   return (

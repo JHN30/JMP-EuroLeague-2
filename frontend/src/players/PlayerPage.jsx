@@ -19,6 +19,7 @@ import { formatStatValue } from "../lib/statsFields";
 import SummaryGrid from "../lib/SummaryGrid";
 import { TabPanel, TabStrip } from "../lib/TabStrip";
 import { useDocumentTitle } from "../lib/useDocumentTitle";
+import { usePhaseParam } from "../lib/usePhaseParam";
 
 const GAMES_LIMIT = 100;
 
@@ -198,7 +199,6 @@ function GameLogSection({ gamesQuery }) {
 
 export default function PlayerPage() {
   const { seasonCode, personKey } = useParams();
-  const [selectedPhase, setSelectedPhase] = useState(null);
   const [mode, setMode] = useState("accumulated");
 
   const playerQuery = useQuery({
@@ -221,7 +221,13 @@ export default function PlayerPage() {
     enabled: playerQuery.isSuccess,
   });
   const phases = phasesQuery.data?.phases ?? [];
-  const phaseCode = selectedPhase ?? phases.find((phase) => phase.code === "RS")?.code ?? phases[0]?.code;
+  const [phaseCode, setPhaseCode] = usePhaseParam(phases);
+
+  // Changing the archive-level phase resets the view-level stats mode.
+  function handlePhaseChange(code) {
+    setPhaseCode(code);
+    setMode("accumulated");
+  }
 
   const statsQuery = useQuery({
     queryKey: ["player-season-stats", seasonCode, personKey, phaseCode, mode],
@@ -283,7 +289,7 @@ export default function PlayerPage() {
             ariaLabel="Phase"
             panelId="player-stats-panel"
             activeKey={phaseCode}
-            onChange={setSelectedPhase}
+            onChange={handlePhaseChange}
             className="w-fit"
             tabs={phases.map((phase) => ({ key: phase.code, label: phase.name ?? phase.code }))}
           />

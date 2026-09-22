@@ -260,7 +260,7 @@ seasonRouter.get("/:seasonCode/season-stats", async (req, res) => {
     sort as SortableStatsField | undefined,
     order,
   );
-  res.json({ phase, mode, players: result.items, pagination: { ...page, hasMore: result.hasMore } });
+  res.json({ phase, mode, players: result.items, pagination: { ...page, hasMore: result.hasMore, total: result.total } });
 });
 
 seasonRouter.get("/:seasonCode/teams", async (req, res) => {
@@ -332,7 +332,7 @@ seasonRouter.get("/:seasonCode/players", async (req, res) => {
   const search = requestedSearch(req, res);
   if (search === null) return;
   const result = await getPlayers(season.seasonCode, page.limit, page.offset, search);
-  res.json({ players: result.items, pagination: { ...page, hasMore: result.hasMore } });
+  res.json({ players: result.items, pagination: { ...page, hasMore: result.hasMore, total: result.total } });
 });
 
 seasonRouter.get("/:seasonCode/players/:personKey", async (req, res) => {
@@ -446,7 +446,7 @@ seasonRouter.get("/:seasonCode/games", async (req, res) => {
   }
 
   const result = await getGames(season.seasonCode, page.limit, page.offset, status, order, phaseCode, round);
-  res.json({ games: result.items, pagination: { ...page, hasMore: result.hasMore } });
+  res.json({ games: result.items, pagination: { ...page, hasMore: result.hasMore, total: result.total } });
 });
 
 seasonRouter.get("/:seasonCode/games/:gameCode", async (req, res) => {

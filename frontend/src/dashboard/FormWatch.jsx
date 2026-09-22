@@ -31,6 +31,7 @@ export default function FormWatch() {
 
   return (
     <WidgetPanel
+      kicker="FORM"
       title="Form watch"
       isLoading={query.isLoading}
       isError={query.isError}

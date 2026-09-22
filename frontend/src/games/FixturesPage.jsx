@@ -7,6 +7,7 @@ import CompactFilterSelect from "../lib/CompactFilterSelect";
 import EmptyText from "../lib/EmptyText";
 import { formatDateTime } from "../lib/format";
 import Panel from "../lib/Panel";
+import PageHeader from "../lib/PageHeader";
 import { TabPanel, TabStrip } from "../lib/TabStrip";
 
 const PAGE_SIZE = 20;
@@ -78,7 +79,7 @@ export default function FixturesPage() {
 
   return (
     <div>
-      <h1 className="mb-6 text-2xl font-semibold">Fixtures and results</h1>
+      <PageHeader kicker="SCHEDULE" title="Fixtures and results" />
 
       <TabStrip
         ariaLabel="Phase"

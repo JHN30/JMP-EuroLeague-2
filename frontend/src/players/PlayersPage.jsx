@@ -5,6 +5,7 @@ import { getSeasonPlayers } from "../lib/api";
 import AsyncState from "../lib/AsyncState";
 import EmptyText from "../lib/EmptyText";
 import Panel from "../lib/Panel";
+import PageHeader from "../lib/PageHeader";
 import SearchField from "../lib/SearchField";
 
 const PAGE_SIZE = 20;
@@ -28,7 +29,7 @@ export default function PlayersPage() {
 
   return (
     <div>
-      <h1 className="mb-6 text-2xl font-semibold">Players</h1>
+      <PageHeader kicker="ROSTERS" title="Players" />
 
       <div className="mb-6">
         <SearchField

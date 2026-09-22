@@ -1,5 +1,7 @@
 import AsyncState from "../lib/AsyncState";
 import Panel from "../lib/Panel";
+import PageHeader from "../lib/PageHeader";
+import PanelHeader from "../lib/PanelHeader";
 import FormWatch from "./FormWatch";
 import GamesSnapshot from "./GamesSnapshot";
 import KpiStrip from "./KpiStrip";
@@ -8,13 +10,11 @@ import LeadersPanel from "./LeadersPanel";
 import Spotlight from "./Spotlight";
 import StandingsSnapshot from "./StandingsSnapshot";
 
-export function WidgetPanel({ title, isLoading, isError, onRetry, isEmpty, emptyMessage, children }) {
+export function WidgetPanel({ kicker, title, isLoading, isError, onRetry, isEmpty, emptyMessage, children }) {
   const status = isLoading ? "loading" : isError ? "error" : isEmpty ? "empty" : "ready";
   return (
     <Panel as="section" className="p-6">
-      <div className="panel-header">
-        <h2 className="panel-title">{title}</h2>
-      </div>
+      <PanelHeader kicker={kicker} title={title} />
       <AsyncState
         status={status}
         message={isError ? "Could not load this section." : emptyMessage}
@@ -31,7 +31,7 @@ export function WidgetPanel({ title, isLoading, isError, onRetry, isEmpty, empty
 export default function Dashboard() {
   return (
     <div className="flex flex-col gap-6">
-      <h1 className="mb-6 text-2xl font-semibold">Home</h1>
+      <PageHeader kicker="OVERVIEW" title="Home" />
       <KpiStrip />
       <Spotlight />
       <div className="grid items-stretch gap-6 lg:grid-cols-3">

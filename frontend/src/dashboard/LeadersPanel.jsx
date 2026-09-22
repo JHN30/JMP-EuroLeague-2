@@ -3,6 +3,7 @@ import { Link, useParams } from "react-router";
 import { getLeaderStats } from "../lib/api";
 import AsyncState from "../lib/AsyncState";
 import Panel from "../lib/Panel";
+import PanelHeader from "../lib/PanelHeader";
 
 const CATEGORIES = [
   { key: "pointsScored", label: "Points per game" },
@@ -57,9 +58,7 @@ export default function LeadersPanel() {
 
   return (
     <Panel as="section" className="p-6">
-      <div className="panel-header">
-        <h2 className="panel-title">Statistical leaders</h2>
-      </div>
+      <PanelHeader kicker="LEADERS" title="Statistical leaders" />
       <div className="leaders-grid">
         {CATEGORIES.map((category) => (
           <StatLeaderCard key={category.key} seasonCode={seasonCode} category={category} />

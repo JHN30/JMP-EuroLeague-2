@@ -7,6 +7,7 @@ import CompactFilterSelect from "../lib/CompactFilterSelect";
 import EmptyText from "../lib/EmptyText";
 import LabelledSelect from "../lib/LabelledSelect";
 import Panel from "../lib/Panel";
+import PageHeader from "../lib/PageHeader";
 import { TabPanel, TabStrip } from "../lib/TabStrip";
 import {
   PLAYER_METRIC_GROUPS,
@@ -343,7 +344,7 @@ export default function StatisticsPage() {
 
   return (
     <div>
-      <h1 className="mb-6 text-2xl font-semibold">Statistics leaderboards</h1>
+      <PageHeader kicker="LEADERBOARDS" title="Statistics leaderboards" />
 
       <div className="mb-6 flex flex-wrap items-center gap-4">
         <div className="scope-toggle" role="group" aria-label="Leaderboard scope">

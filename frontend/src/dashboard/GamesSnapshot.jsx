@@ -66,7 +66,7 @@ function MatchCard({ game, standingByClubCode, seasonCode, showScore }) {
   );
 }
 
-function GameList({ title, seasonCode, queryKey, params, emptyMessage, showScore, standingByClubCode, standingsReady }) {
+function GameList({ kicker, title, seasonCode, queryKey, params, emptyMessage, showScore, standingByClubCode, standingsReady }) {
   const query = useQuery({
     queryKey,
     queryFn: () => getSeasonGames(seasonCode, params),
@@ -75,6 +75,7 @@ function GameList({ title, seasonCode, queryKey, params, emptyMessage, showScore
 
   return (
     <WidgetPanel
+      kicker={kicker}
       title={title}
       isLoading={query.isLoading || !standingsReady}
       isError={query.isError}
@@ -110,6 +111,7 @@ export default function GamesSnapshot() {
   return (
     <>
       <GameList
+        kicker="RESULTS"
         title="Recent results"
         seasonCode={seasonCode}
         queryKey={["games", seasonCode, "played", "desc"]}
@@ -120,6 +122,7 @@ export default function GamesSnapshot() {
         standingsReady={standingsQuery.isSuccess || standingsQuery.isError}
       />
       <GameList
+        kicker="SCHEDULE"
         title="Upcoming games"
         seasonCode={seasonCode}
         queryKey={["games", seasonCode, "scheduled", "asc"]}

@@ -1,5 +1,6 @@
 import { formatPerGame } from "../lib/format";
 import Panel from "../lib/Panel";
+import PanelHeader from "../lib/PanelHeader";
 
 const WIDTH = 900;
 const HEIGHT = 140;
@@ -39,7 +40,7 @@ export default function TeamTrendChart({ games, clubCode }) {
   if (diffs.length < 2) {
     return (
       <Panel as="section" className="p-6">
-        <h2 className="panel-title mb-3">Point differential &middot; last {diffs.length || ""} games</h2>
+        <PanelHeader kicker="TREND" title={`Point differential · last ${diffs.length || ""} games`} />
         <p className="muted">Not enough played games yet for a trend.</p>
       </Panel>
     );
@@ -51,13 +52,16 @@ export default function TeamTrendChart({ games, clubCode }) {
 
   return (
     <Panel as="section" className="p-6">
-      <div className="leader-trend-head mb-3 flex items-end justify-between">
-        <h2 className="panel-title">Point differential &middot; last {diffs.length} games</h2>
-        <div className="leader-trend-stat text-right">
-          <span className="value">{average}</span>
-          <span className="label">Avg diff</span>
-        </div>
-      </div>
+      <PanelHeader
+        kicker="TREND"
+        title={`Point differential · last ${diffs.length} games`}
+        trailing={
+          <div className="leader-trend-stat text-right">
+            <span className="value">{average}</span>
+            <span className="label">Avg diff</span>
+          </div>
+        }
+      />
       <svg
         viewBox={`0 0 ${WIDTH} ${HEIGHT}`}
         preserveAspectRatio="none"

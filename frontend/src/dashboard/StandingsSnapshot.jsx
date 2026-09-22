@@ -14,6 +14,7 @@ export default function StandingsSnapshot() {
 
   return (
     <WidgetPanel
+      kicker="STANDINGS"
       title="Standings"
       isLoading={query.isLoading}
       isError={query.isError}

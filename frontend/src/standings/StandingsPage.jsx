@@ -4,6 +4,7 @@ import { useParams } from "react-router";
 import { getPhases, getSeasonStandings } from "../lib/api";
 import AsyncState from "../lib/AsyncState";
 import EmptyText from "../lib/EmptyText";
+import PageHeader from "../lib/PageHeader";
 import { TabPanel, TabStrip } from "../lib/TabStrip";
 import StandingsKpiStrip from "./StandingsKpiStrip";
 import StandingsTable from "./StandingsTable";
@@ -80,7 +81,7 @@ export default function StandingsPage() {
 
   return (
     <div>
-      <h1 className="mb-6 text-2xl font-semibold">Standings</h1>
+      <PageHeader kicker="SEASON" title="Standings" />
       <TabStrip
         ariaLabel="Phase"
         panelId="standings-panel"

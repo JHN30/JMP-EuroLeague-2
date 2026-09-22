@@ -14,6 +14,7 @@ import { formatDateTime, formatMinutes } from "../lib/format";
 import InfoRow from "../lib/InfoRow";
 import InfoTile from "../lib/InfoTile";
 import Panel from "../lib/Panel";
+import PageHeader from "../lib/PageHeader";
 import { formatStatValue } from "../lib/statsFields";
 import SummaryGrid from "../lib/SummaryGrid";
 import { TabPanel, TabStrip } from "../lib/TabStrip";
@@ -247,24 +248,27 @@ export default function PlayerPage() {
 
   return (
     <div>
-      <div className="mb-6 flex items-center gap-4">
-        {headshotUrl ? (
-          <img
-            src={headshotUrl}
-            alt=""
-            className="h-16 w-16 flex-none rounded-full object-cover"
-            onError={(event) => {
-              event.currentTarget.style.display = "none";
-            }}
-          />
-        ) : null}
-        <div>
-          <h1 className="text-2xl font-semibold">{player.name ?? player.jerseyName ?? player.personKey}</h1>
+      <PageHeader
+        kicker="PLAYER"
+        title={player.name ?? player.jerseyName ?? player.personKey}
+        media={
+          headshotUrl ? (
+            <img
+              src={headshotUrl}
+              alt=""
+              className="h-16 w-16 flex-none rounded-full object-cover"
+              onError={(event) => {
+                event.currentTarget.style.display = "none";
+              }}
+            />
+          ) : null
+        }
+        description={
           <p className="muted">
             {player.jerseyName ?? "-"} · {player.countryCode ?? "-"} · {player.heightCm ? `${player.heightCm} cm` : "-"}
           </p>
-        </div>
-      </div>
+        }
+      />
 
       <section className="mb-8">
         <RegistrationsSection registrationsQuery={registrationsQuery} seasonCode={seasonCode} />

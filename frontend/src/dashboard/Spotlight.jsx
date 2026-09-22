@@ -55,6 +55,7 @@ export default function Spotlight() {
 
   return (
     <WidgetPanel
+      kicker="UP NEXT"
       title="Next game"
       isLoading={nextGameQuery.isLoading || standingsQuery.isLoading}
       isError={nextGameQuery.isError}

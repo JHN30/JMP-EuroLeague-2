@@ -5,6 +5,7 @@ import AsyncState from "../lib/AsyncState";
 import EmptyText from "../lib/EmptyText";
 import { formatDateTime as formatDateTimeShared, formatMinutes } from "../lib/format";
 import Panel from "../lib/Panel";
+import PageHeader from "../lib/PageHeader";
 
 function formatDateTime(scheduledAt) {
   return formatDateTimeShared(scheduledAt, { dateStyle: "full" });
@@ -160,38 +161,45 @@ export default function GameDetailPage() {
 
   return (
     <div>
-      <h1 className="mb-2 flex flex-wrap items-center gap-2 text-2xl font-semibold">
-        <span className={`flex items-center gap-3 ${localWon ? "text-primary" : ""}`}>
-          {game.localTeam?.crestUrl ? (
-            <img
-              src={game.localTeam.crestUrl}
-              alt=""
-              className="h-12 w-12 flex-none object-contain"
-              onError={(event) => {
-                event.currentTarget.style.display = "none";
-              }}
-            />
-          ) : null}
-          {teamName(game.localTeam)}
-        </span>
-        <span className="muted mx-2 text-lg font-normal">vs</span>
-        <span className={`flex items-center gap-3 ${roadWon ? "text-primary" : ""}`}>
-          {game.roadTeam?.crestUrl ? (
-            <img
-              src={game.roadTeam.crestUrl}
-              alt=""
-              className="h-12 w-12 flex-none object-contain"
-              onError={(event) => {
-                event.currentTarget.style.display = "none";
-              }}
-            />
-          ) : null}
-          {teamName(game.roadTeam)}
-        </span>
-      </h1>
-      <p className="muted mb-6">
-        {game.roundName ?? (game.roundNumber ? `Round ${game.roundNumber}` : game.phaseName)} · {formatDateTime(game.scheduledAt)}
-      </p>
+      <PageHeader
+        kicker="MATCHUP"
+        title={
+          <span className="flex flex-wrap items-center gap-2">
+            <span className={`flex items-center gap-3 ${localWon ? "text-primary" : ""}`}>
+              {game.localTeam?.crestUrl ? (
+                <img
+                  src={game.localTeam.crestUrl}
+                  alt=""
+                  className="h-12 w-12 flex-none object-contain"
+                  onError={(event) => {
+                    event.currentTarget.style.display = "none";
+                  }}
+                />
+              ) : null}
+              {teamName(game.localTeam)}
+            </span>
+            <span className="muted mx-2 text-lg font-normal">vs</span>
+            <span className={`flex items-center gap-3 ${roadWon ? "text-primary" : ""}`}>
+              {game.roadTeam?.crestUrl ? (
+                <img
+                  src={game.roadTeam.crestUrl}
+                  alt=""
+                  className="h-12 w-12 flex-none object-contain"
+                  onError={(event) => {
+                    event.currentTarget.style.display = "none";
+                  }}
+                />
+              ) : null}
+              {teamName(game.roadTeam)}
+            </span>
+          </span>
+        }
+        description={
+          <p className="muted">
+            {game.roundName ?? (game.roundNumber ? `Round ${game.roundNumber}` : game.phaseName)} · {formatDateTime(game.scheduledAt)}
+          </p>
+        }
+      />
 
       {game.played ? (
         <div className="stat-callout mb-6">

@@ -3,6 +3,7 @@ import { Link, useParams } from "react-router";
 import { getSeasonTeams } from "../lib/api";
 import AsyncState from "../lib/AsyncState";
 import EmptyText from "../lib/EmptyText";
+import PageHeader from "../lib/PageHeader";
 
 export default function TeamsPage() {
   const { seasonCode } = useParams();
@@ -16,7 +17,7 @@ export default function TeamsPage() {
 
   return (
     <div>
-      <h1 className="mb-6 text-2xl font-semibold">Teams</h1>
+      <PageHeader kicker="CLUBS" title="Teams" />
 
       {teamsQuery.isLoading ? (
         <AsyncState status="loading" />

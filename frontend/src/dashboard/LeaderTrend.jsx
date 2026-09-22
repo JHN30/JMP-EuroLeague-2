@@ -61,6 +61,7 @@ export default function LeaderTrend() {
 
   return (
     <WidgetPanel
+      kicker="SPOTLIGHT"
       title={leaderName ? `${leaderName} · recent form` : "League leader recent form"}
       isLoading={standingsQuery.isLoading || (Boolean(leaderClubCode) && gamesQuery.isLoading)}
       isError={standingsQuery.isError || gamesQuery.isError}

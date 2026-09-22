@@ -6,6 +6,8 @@ import AsyncState from "../lib/AsyncState";
 import EmptyText from "../lib/EmptyText";
 import { formatDateTime } from "../lib/format";
 import Panel from "../lib/Panel";
+import PanelHeader from "../lib/PanelHeader";
+import PageHeader from "../lib/PageHeader";
 import { TabPanel, TabStrip } from "../lib/TabStrip";
 
 function teamLabel(team) {
@@ -17,7 +19,7 @@ function MatchupCard({ seasonCode, groupName, games }) {
 
   return (
     <Panel className="p-4">
-      <h2 className="panel-title mb-3">{groupName}</h2>
+      <PanelHeader kicker="BRACKET" title={groupName} />
       <ul>
         {sorted.map((game) => {
           const localWon = game.played && game.localScore != null && game.roadScore != null && game.localScore > game.roadScore;
@@ -105,7 +107,7 @@ export default function PlayoffsPage() {
 
   return (
     <div>
-      <h1 className="mb-6 text-2xl font-semibold">Playoffs</h1>
+      <PageHeader kicker="POSTSEASON" title="Playoffs" />
 
       {postseasonPhases.length === 0 ? (
         <p className="muted">The postseason has not started yet for this season.</p>

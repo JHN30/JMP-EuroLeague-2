@@ -8,6 +8,8 @@ import { formatDateTime } from "../lib/format";
 import HeaderStats from "../lib/HeaderStats";
 import LabelledSelect from "../lib/LabelledSelect";
 import Panel from "../lib/Panel";
+import PanelHeader from "../lib/PanelHeader";
+import PageHeader from "../lib/PageHeader";
 import {
   getPhases,
   getPlayerGames,
@@ -417,7 +419,7 @@ function TeamSeriesSection({ seasonCode, phaseCode, entityA, entityB }) {
 
   return (
     <Panel as="section" className="p-4">
-      <h2 className="panel-title mb-3">Season series</h2>
+      <PanelHeader kicker="HEAD-TO-HEAD" title="Season series" />
       {matchups.length === 0 ? (
         <EmptyText>No matchups this phase yet.</EmptyText>
       ) : (
@@ -637,7 +639,7 @@ function ComparisonsBody({ seasonCode, phases, phaseCode, setSelectedPhase, allT
 
   return (
     <div>
-      <h1 className="mb-6 text-2xl font-semibold">Comparisons and trends</h1>
+      <PageHeader kicker="HEAD-TO-HEAD" title="Comparisons and trends" />
 
       <div className="mb-6 flex flex-wrap gap-4">
         <LabelledSelect

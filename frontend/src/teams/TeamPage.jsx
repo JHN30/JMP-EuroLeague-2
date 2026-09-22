@@ -8,6 +8,8 @@ import EmptyText from "../lib/EmptyText";
 import { formatDateTime, formatPerGame } from "../lib/format";
 import HeaderStats from "../lib/HeaderStats";
 import Panel from "../lib/Panel";
+import PageHeader from "../lib/PageHeader";
+import PanelHeader from "../lib/PanelHeader";
 import { formatStatValue } from "../lib/statsFields";
 import { TabPanel, TabStrip } from "../lib/TabStrip";
 import StatBarCell from "../statistics/StatBarCell";
@@ -105,7 +107,7 @@ function RecentFormList({ games, clubCode }) {
 
   return (
     <Panel as="section" className="p-4">
-      <h2 className="panel-title mb-3">Recent form</h2>
+      <PanelHeader kicker="FORM" title="Recent form" />
       {recent.length === 0 ? (
         <EmptyText>No played games yet.</EmptyText>
       ) : (
@@ -162,7 +164,7 @@ function CompareShortcuts({ seasonCode, clubCode, nextGame, standingsQuery }) {
 
   return (
     <Panel as="section" className="p-4">
-      <h2 className="panel-title mb-3">Compare</h2>
+      <PanelHeader kicker="SHORTCUTS" title="Compare" />
       <div className="flex flex-col gap-2">
         {links.map((link) => (
           <Link
@@ -491,16 +493,18 @@ export default function TeamPage() {
 
   return (
     <div>
-      <div className="mb-6 flex items-center gap-4">
-        {team.crestUrl ? <img src={team.crestUrl} alt="" className="h-16 w-16 object-contain" /> : null}
-        <div>
-          <h1 className="text-2xl font-semibold">{team.name ?? team.abbreviatedName ?? team.clubCode}</h1>
+      <PageHeader
+        kicker="CLUB"
+        title={team.name ?? team.abbreviatedName ?? team.clubCode}
+        media={team.crestUrl ? <img src={team.crestUrl} alt="" className="h-16 w-16 object-contain" /> : null}
+        description={
           <p className="muted">
             {team.abbreviatedName ?? team.clubCode} · {team.countryCode ?? "-"}
           </p>
-        </div>
+        }
+      >
         {gamesQuery.isSuccess ? <NextGameChip nextGame={nextGame} clubCode={clubCode} /> : null}
-      </div>
+      </PageHeader>
 
       <TabStrip
         ariaLabel="Phase"

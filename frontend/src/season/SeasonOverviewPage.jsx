@@ -490,6 +490,122 @@ function SeasonStandingsSnapshot({ seasonCode }) {
   );
 }
 
+// `groupName` is EuroLeague's own series/tie identifier: one game per
+// group in Play-In and Final Four, 3-5 games per group in Playoffs
+// (best-of-5 series). Grouping by it, rather than by opponent alone,
+// keeps two ties against the same opponent in different phases separate.
+function championRoadSteps(champion, knockoutPhases, knockoutPhaseGamesQueries) {
+  if (!champion) return [];
+
+  const groups = new Map();
+  knockoutPhases.forEach((phase, index) => {
+    const games = knockoutPhaseGamesQueries[index]?.data?.games ?? [];
+    for (const game of games) {
+      const isLocal = game.localTeam?.clubCode === champion.clubCode;
+      const isRoad = game.roadTeam?.clubCode === champion.clubCode;
+      if (!isLocal && !isRoad) continue;
+
+      const key = `${phase.code}:${game.groupName ?? game.gameCode}`;
+      if (!groups.has(key)) {
+        groups.set(key, {
+          phaseCode: phase.code,
+          opponent: isLocal ? game.roadTeam : game.localTeam,
+          games: [],
+          championWins: 0,
+          opponentWins: 0,
+        });
+      }
+      const group = groups.get(key);
+      group.games.push(game);
+      if (game.played && game.localScore != null && game.roadScore != null) {
+        const championScore = isLocal ? game.localScore : game.roadScore;
+        const opponentScore = isLocal ? game.roadScore : game.localScore;
+        if (championScore > opponentScore) group.championWins += 1;
+        else if (opponentScore > championScore) group.opponentWins += 1;
+      }
+    }
+  });
+
+  return [...groups.values()]
+    .map((group) => ({
+      ...group,
+      earliestDate: group.games.map((game) => game.scheduledAt).filter(Boolean).sort()[0] ?? "",
+    }))
+    .sort(
+      (a, b) =>
+        phaseSortIndex(a.phaseCode) - phaseSortIndex(b.phaseCode) ||
+        (a.earliestDate < b.earliestDate ? -1 : a.earliestDate > b.earliestDate ? 1 : 0),
+    );
+}
+
+function RoadStep({ step, index }) {
+  const isSeries = step.games.length > 1;
+  const singleGame = step.games[0];
+  const isLocal = singleGame.localTeam?.clubCode !== step.opponent?.clubCode;
+  const championScore = isLocal ? singleGame.localScore : singleGame.roadScore;
+  const opponentScore = isLocal ? singleGame.roadScore : singleGame.localScore;
+  const resultText = isSeries
+    ? `Won series ${step.championWins}-${step.opponentWins}`
+    : `Won ${championScore}-${opponentScore}`;
+
+  return (
+    <Panel className="flex items-center gap-3 border-success bg-success/10 p-4">
+      <span className="rank rank-1">{index + 1}</span>
+      {step.opponent?.crestUrl ? (
+        <img
+          src={step.opponent.crestUrl}
+          alt=""
+          className="h-8 w-8 flex-none object-contain"
+          onError={(event) => {
+            event.currentTarget.style.display = "none";
+          }}
+        />
+      ) : null}
+      <div className="min-w-0 flex-1">
+        <p className="truncate font-medium">Defeated {teamName(step.opponent)}</p>
+        <p className="muted text-xs">{resultText}</p>
+      </div>
+    </Panel>
+  );
+}
+
+function RoadToTitle({ steps }) {
+  if (steps.length === 0) return null;
+
+  return (
+    <div>
+      <PanelHeader kicker="JOURNEY" title="Road to the title" />
+      <div className="flex flex-col gap-3">
+        {steps.map((step, index) => (
+          <RoadStep key={`${step.phaseCode}-${step.opponent?.clubCode ?? index}`} step={step} index={index} />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function ClosingLinksBar({ seasonCode }) {
+  const links = [
+    { label: "All games", to: `/${seasonCode}/games` },
+    { label: "Standings", to: `/${seasonCode}/standings` },
+    { label: "Teams", to: `/${seasonCode}/teams` },
+    { label: "Playoffs", to: `/${seasonCode}/playoffs` },
+  ];
+
+  return (
+    <Panel className="p-4">
+      <p className="eyebrow mb-3">Keep exploring</p>
+      <div className="flex flex-wrap gap-4">
+        {links.map((link) => (
+          <Link key={link.to} to={link.to} className="panel-link">
+            {link.label} →
+          </Link>
+        ))}
+      </div>
+    </Panel>
+  );
+}
+
 export default function SeasonOverviewPage() {
   const { seasonCode } = useParams();
   useDocumentTitle(`${formatSeasonLabel(seasonCode)} season overview`);
@@ -570,6 +686,7 @@ export default function SeasonOverviewPage() {
   const playedGames = playedGamesQuery.data ?? [];
   const activePhase = phases.length > 0 ? currentPhaseFromPlayedGames(phases, playedGames) : null;
   const champion = findChampion(finalFourGamesQuery.data?.games ?? []);
+  const roadSteps = championRoadSteps(champion, knockoutPhases, knockoutPhaseGamesQueries);
 
   const coverageQuery = useQuery({
     queryKey: ["coverage", seasonCode],
@@ -636,6 +753,7 @@ export default function SeasonOverviewPage() {
             <ScoringTrendChart playedGames={playedGames} />
             <DefiningGames seasonCode={seasonCode} playedGames={playedGames} />
           </div>
+          <RoadToTitle steps={roadSteps} />
         </>
       )}
 
@@ -643,6 +761,8 @@ export default function SeasonOverviewPage() {
         <SeasonLeaders seasonCode={seasonCode} />
         <SeasonStandingsSnapshot seasonCode={seasonCode} />
       </div>
+
+      <ClosingLinksBar seasonCode={seasonCode} />
 
       {coverageQuery.isLoading ? (
         <AsyncState status="loading" label="Loading season data coverage" compact />

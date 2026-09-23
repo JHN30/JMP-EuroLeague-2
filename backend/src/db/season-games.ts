@@ -344,3 +344,94 @@ export async function getBoxScore(seasonCode: string, gameCode: number) {
   ]);
   return { periodScores, teamStats, playerStats };
 }
+
+const MEASURE_KEYS = [
+  "points",
+  "fieldGoalsMade2",
+  "fieldGoalsAttempted2",
+  "fieldGoalsMade3",
+  "fieldGoalsAttempted3",
+  "freeThrowsMade",
+  "freeThrowsAttempted",
+  "fieldGoalsMadeTotal",
+  "fieldGoalsAttemptedTotal",
+  "totalRebounds",
+  "defensiveRebounds",
+  "offensiveRebounds",
+  "assistances",
+  "steals",
+  "turnovers",
+  "blocksFavour",
+  "blocksAgainst",
+  "foulsCommited",
+  "foulsReceived",
+  "valuation",
+] as const;
+
+type MeasureKey = (typeof MEASURE_KEYS)[number];
+type MeasureSums = Record<MeasureKey, number>;
+
+function emptySums(): MeasureSums {
+  return Object.fromEntries(MEASURE_KEYS.map((key) => [key, 0])) as MeasureSums;
+}
+
+function addMeasures(target: MeasureSums, row: { [key in MeasureKey]: string | null }) {
+  for (const key of MEASURE_KEYS) {
+    const value = Number(row[key]);
+    if (Number.isFinite(value)) target[key] += value;
+  }
+}
+
+export type TeamStatsSummary = {
+  phaseCode: string;
+  gamesPlayed: number;
+  own: MeasureSums;
+  opponent: MeasureSums;
+};
+
+export async function getTeamStatsSummary(
+  seasonCode: string,
+  phaseCode: string,
+  clubCode: string,
+): Promise<TeamStatsSummary> {
+  const rows = await catalogRead(() =>
+    db.select({
+      gameCode: games.gameCode,
+      localClubCode: games.localClubCode,
+      roadClubCode: games.roadClubCode,
+      side: gameTeamStats.side,
+      ...measureFields(gameTeamStats),
+    })
+      .from(games)
+      .innerJoin(gameTeamStats, and(
+        eq(gameTeamStats.competitionCode, games.competitionCode),
+        eq(gameTeamStats.seasonCode, games.seasonCode),
+        eq(gameTeamStats.gameCode, games.gameCode),
+        eq(gameTeamStats.statsKind, "total"),
+      ))
+      .where(and(
+        eq(games.competitionCode, COMPETITION_CODE),
+        eq(games.seasonCode, seasonCode),
+        eq(games.phaseCode, phaseCode),
+        eq(games.played, true),
+        or(eq(games.localClubCode, clubCode), eq(games.roadClubCode, clubCode))!,
+      )),
+  );
+
+  const own = emptySums();
+  const opponent = emptySums();
+  const gameCodes = new Set<number>();
+
+  for (const row of rows) {
+    const ownSide = row.localClubCode === clubCode ? "local" : row.roadClubCode === clubCode ? "road" : null;
+    if (!ownSide) continue;
+    gameCodes.add(row.gameCode);
+    if (row.side === ownSide) {
+      addMeasures(own, row);
+    } else {
+      addMeasures(opponent, row);
+    }
+  }
+
+  return { phaseCode, gamesPlayed: gameCodes.size, own, opponent };
+}

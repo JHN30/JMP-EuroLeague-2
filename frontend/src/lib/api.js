@@ -75,6 +75,13 @@ export async function getTeamGames(seasonCode, clubCode, { limit, offset, status
   return data;
 }
 
+export async function getTeamStatsSummary(seasonCode, clubCode, phase) {
+  const { data } = await api.get(`/seasons/${seasonCode}/teams/${clubCode}/team-stats`, {
+    params: { phase },
+  });
+  return data;
+}
+
 export async function getSeasonPlayers(seasonCode, { search, limit, offset } = {}) {
   const { data } = await api.get(`/seasons/${seasonCode}/players`, {
     params: { search, limit, offset },

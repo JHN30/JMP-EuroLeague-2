@@ -16,7 +16,7 @@ import {
   getTeamRoster,
   getTeams,
 } from "../db/season-identities";
-import { getBoxScore, getGame, getGames, getPlayerGameLog, getTeamGames } from "../db/season-games";
+import { getBoxScore, getGame, getGames, getPlayerGameLog, getTeamGames, getTeamStatsSummary } from "../db/season-games";
 import { getCoverage } from "../db/season-coverage";
 import { getLatestStandingsRound, getStandings } from "../db/season-standings";
 import { getSeasonStats, SORTABLE_STATS_FIELDS, type SortableStatsField } from "../db/season-stats";
@@ -322,6 +322,27 @@ seasonRouter.get("/:seasonCode/teams/:clubCode/games", async (req, res) => {
   if (order === null) return;
   const result = await getTeamGames(season.seasonCode, clubCode, page.limit, page.offset, status, order);
   res.json({ games: result.items, pagination: { ...page, hasMore: result.hasMore } });
+});
+
+seasonRouter.get("/:seasonCode/teams/:clubCode/team-stats", async (req, res) => {
+  const season = await requestedSeason(req, res);
+  if (!season) return;
+  const clubCode = req.params.clubCode;
+  if (!validIdentity(clubCode)) {
+    sendError(res, 400, "INVALID_TEAM_CODE", "Invalid team code");
+    return;
+  }
+  if (!await getTeam(season.seasonCode, clubCode)) {
+    sendError(res, 404, "TEAM_NOT_FOUND", "Team not found");
+    return;
+  }
+  const phases = await getPhases(season.seasonCode);
+  const phaseCode = req.query.phase;
+  if (typeof phaseCode !== "string" || !phases.some((phase) => phase.code === phaseCode)) {
+    sendError(res, 404, "PHASE_NOT_FOUND", "Phase not found");
+    return;
+  }
+  res.json(await getTeamStatsSummary(season.seasonCode, phaseCode, clubCode));
 });
 
 seasonRouter.get("/:seasonCode/players", async (req, res) => {

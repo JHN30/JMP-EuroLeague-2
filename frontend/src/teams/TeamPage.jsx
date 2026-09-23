@@ -1,11 +1,19 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link, useParams } from "react-router";
-import { getLeaderStats, getPhases, getSeasonStandings, getTeam, getTeamGames, getTeamRoster } from "../lib/api";
+import {
+  getLeaderStats,
+  getPhases,
+  getSeasonStandings,
+  getTeam,
+  getTeamGames,
+  getTeamRoster,
+  getTeamStatsSummary,
+} from "../lib/api";
 import AsyncState from "../lib/AsyncState";
 import CompactMetric from "../lib/CompactMetric";
 import EmptyText from "../lib/EmptyText";
-import { formatDateTime, formatPerGame } from "../lib/format";
+import { formatDateTime, formatPerGame, formatPercentage } from "../lib/format";
 import HeaderStats from "../lib/HeaderStats";
 import Panel from "../lib/Panel";
 import PageHeader from "../lib/PageHeader";
@@ -17,6 +25,7 @@ import { usePhaseParam } from "../lib/usePhaseParam";
 import StatBarCell from "../statistics/StatBarCell";
 import { barWidthScale } from "../statistics/statBarScale";
 import TeamTrendChart from "./TeamTrendChart";
+import TrendChart from "../comparisons/TrendChart";
 
 const ROSTER_LIMIT = 100;
 const GAMES_LIMIT = 100;
@@ -182,12 +191,116 @@ function CompareShortcuts({ seasonCode, clubCode, nextGame, standingsQuery }) {
   );
 }
 
-function OverviewSection({ seasonCode, clubCode, standingsQuery, games }) {
+function currentStreak(phaseGames, clubCode) {
+  const played = phaseGames
+    .filter((game) => game.played && game.localScore != null && game.roadScore != null)
+    .slice()
+    .sort((a, b) => new Date(b.scheduledAt) - new Date(a.scheduledAt));
+  if (played.length === 0) return null;
+
+  const wonGame = (game) => {
+    const { home } = opponent(game, clubCode);
+    return home ? game.localScore > game.roadScore : game.roadScore > game.localScore;
+  };
+
+  const first = wonGame(played[0]);
+  let count = 0;
+  for (const game of played) {
+    if (wonGame(game) !== first) break;
+    count += 1;
+  }
+  return { won: first, count };
+}
+
+function PhaseTiles({ standingsQuery, clubCode, phaseGames }) {
+  if (standingsQuery.isPending) return <AsyncState status="loading" label="Loading the phase record" />;
+  if (standingsQuery.isError) {
+    return <AsyncState status="error" message="Could not load the phase record." onRetry={() => standingsQuery.refetch()} />;
+  }
+  const entry = standingsQuery.data.standings.find((row) => row.clubCode === clubCode);
+  const basic = entry?.basic;
+  if (!basic || !basic.gamesPlayed) {
+    return <EmptyText>No record yet for this phase.</EmptyText>;
+  }
+
+  const streak = currentStreak(phaseGames, clubCode);
+  const gamesRemaining = phaseGames.filter((game) => !game.played).length;
+  const diffPerGame = basic.pointsDifference != null ? basic.pointsDifference / basic.gamesPlayed : null;
+
+  const tiles = [
+    ["Record", `${basic.gamesWon ?? "-"}-${basic.gamesLost ?? "-"}`],
+    ["Home", basic.homeRecord ?? "-"],
+    ["Away", basic.awayRecord ?? "-"],
+    ["Win %", basic.winPercentage ?? "-"],
+    ["Point diff/game", diffPerGame != null ? (diffPerGame > 0 ? `+${formatPerGame(diffPerGame)}` : formatPerGame(diffPerGame)) : "-"],
+    ["Current streak", streak ? `${streak.won ? "W" : "L"}${streak.count}` : "-"],
+    ["Games remaining", gamesRemaining],
+  ];
+
+  return (
+    <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+      {tiles.map(([label, value]) => (
+        <Panel key={label} className="p-3">
+          <span className="block text-lg font-semibold">{value}</span>
+          <span className="muted text-xs font-bold uppercase tracking-wide">{label}</span>
+        </Panel>
+      ))}
+    </div>
+  );
+}
+
+const LEADER_CATEGORIES = [
+  { key: "pointsScored", label: "Points" },
+  { key: "totalRebounds", label: "Rebounds" },
+  { key: "assists", label: "Assists" },
+  { key: "pir", label: "PIR" },
+];
+
+function TeamLeaders({ seasonCode, rosterStatsQuery }) {
+  if (rosterStatsQuery.isPending) return <AsyncState status="loading" label="Loading team leaders" />;
+  if (rosterStatsQuery.isError) {
+    return <AsyncState status="error" message="Could not load team leaders." onRetry={() => rosterStatsQuery.refetch()} />;
+  }
+  const players = [...(rosterStatsQuery.data?.values() ?? [])];
+  if (players.length === 0) {
+    return <EmptyText>No statistics recorded yet for this phase.</EmptyText>;
+  }
+
+  return (
+    <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+      {LEADER_CATEGORIES.map((category) => {
+        const ranked = players
+          .map((player) => ({ player, value: statNumber(player.traditional?.[category.key]) }))
+          .filter((row) => row.value != null)
+          .sort((a, b) => b.value - a.value);
+        const leader = ranked[0];
+        return (
+          <Panel key={category.key} className="p-3">
+            {leader ? (
+              <Link to={`/${seasonCode}/players/${leader.player.personKey}`} className="link link-hover">
+                <span className="block font-semibold">{leader.player.playerName ?? leader.player.personKey}</span>
+                <span className="text-primary text-lg font-bold tabular-nums">{formatPerGame(leader.value)}</span>
+              </Link>
+            ) : (
+              <span className="muted">-</span>
+            )}
+            <span className="muted block text-xs font-bold uppercase tracking-wide">{category.label} leader</span>
+          </Panel>
+        );
+      })}
+    </div>
+  );
+}
+
+function OverviewSection({ seasonCode, clubCode, phaseCode, standingsQuery, rosterStatsQuery, games }) {
   const nextGame = games.find((game) => !game.played) ?? null;
+  const phaseGames = games.filter((game) => game.phaseCode === phaseCode);
 
   return (
     <div className="flex flex-col gap-6">
       <OverviewKpiStrip standingsQuery={standingsQuery} clubCode={clubCode} />
+      <PhaseTiles standingsQuery={standingsQuery} clubCode={clubCode} phaseGames={phaseGames} />
+      <TeamLeaders seasonCode={seasonCode} rosterStatsQuery={rosterStatsQuery} />
       <TeamTrendChart games={games} clubCode={clubCode} />
       <div className="grid gap-6 sm:grid-cols-2">
         <RecentFormList games={games} clubCode={clubCode} />
@@ -202,103 +315,214 @@ function OverviewSection({ seasonCode, clubCode, standingsQuery, games }) {
   );
 }
 
-function SeasonRecordSection({ standingsQuery, clubCode }) {
-  if (standingsQuery.isPending) return <AsyncState status="loading" label="Loading the season record" />;
-  if (standingsQuery.isError) {
-    return <AsyncState status="error" message="Could not load the season record." onRetry={() => standingsQuery.refetch()} />;
-  }
-  const entry = standingsQuery.data.standings.find((row) => row.clubCode === clubCode);
-  if (!entry || !entry.basic) {
-    return <EmptyText>Standings not available yet for this phase.</EmptyText>;
-  }
-  const basic = entry.basic;
+function pct(made, attempted) {
+  if (!attempted) return null;
+  return (made / attempted) * 100;
+}
+
+function MetricTile({ label, value }) {
   return (
-    <dl className="grid grid-cols-2 gap-x-6 gap-y-2 sm:grid-cols-4">
-      <div>
-        <dt className="muted text-sm">Position</dt>
-        <dd className="font-semibold">{basic.position ?? "-"}</dd>
-      </div>
-      <div>
-        <dt className="muted text-sm">Record</dt>
-        <dd className="font-semibold">
-          {basic.gamesWon ?? "-"}-{basic.gamesLost ?? "-"} ({basic.gamesPlayed ?? "-"} GP)
-        </dd>
-      </div>
-      <div>
-        <dt className="muted text-sm">Win %</dt>
-        <dd className="font-semibold">{basic.winPercentage ?? "-"}</dd>
-      </div>
-      <div>
-        <dt className="muted text-sm">Points for/against</dt>
-        <dd className="font-semibold">
-          {basic.pointsFor ?? "-"} / {basic.pointsAgainst ?? "-"}
-        </dd>
-      </div>
-      <div>
-        <dt className="muted text-sm">Differential</dt>
-        <dd className="font-semibold">{basic.pointsDifference ?? "-"}</dd>
-      </div>
-      <div>
-        <dt className="muted text-sm">Home record</dt>
-        <dd className="font-semibold">{basic.homeRecord ?? "-"}</dd>
-      </div>
-      <div>
-        <dt className="muted text-sm">Away record</dt>
-        <dd className="font-semibold">{basic.awayRecord ?? "-"}</dd>
-      </div>
-      <div>
-        <dt className="muted text-sm">Last 10</dt>
-        <dd className="font-semibold">{basic.lastTenRecord ?? "-"}</dd>
-      </div>
-    </dl>
+    <Panel className="p-3">
+      <span className="block text-lg font-semibold tabular-nums">{value}</span>
+      <span className="muted text-xs font-bold uppercase tracking-wide">{label}</span>
+    </Panel>
   );
 }
 
-function TeamStatisticsSection({ standingsQuery, clubCode }) {
-  if (standingsQuery.isPending) return <AsyncState status="loading" label="Loading team statistics" />;
-  if (standingsQuery.isError) {
-    return <AsyncState status="error" message="Could not load team statistics." onRetry={() => standingsQuery.refetch()} />;
-  }
-  const entry = standingsQuery.data.standings.find((row) => row.clubCode === clubCode);
-  const margins = entry?.margins;
-  if (!margins) {
-    return <EmptyText>Team statistics not available yet for this phase.</EmptyText>;
-  }
-  const rows = [
-    ["Decided by 1-5 pts", margins.pointDifference1To5],
-    ["Decided by 6-10 pts", margins.pointDifference6To10],
-    ["Decided by 11-15 pts", margins.pointDifference11To15],
-    ["Decided by 15+ pts", margins.pointDifferenceMoreThan15],
-    ["Rebounds", margins.rebounds],
-    ["Assists", margins.assists],
-    ["Blocks", margins.blocks],
-    ["Two-pointers", margins.twoPointers],
-    ["Three-pointers", margins.threePointers],
-    ["Free throws", margins.freeThrows],
+function MetricGroup({ title, rows }) {
+  return (
+    <div>
+      <h3 className="mb-2 font-semibold">{title}</h3>
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+        {rows.map(([label, value]) => (
+          <MetricTile key={label} label={label} value={value} />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function traditionalRows(sums, gp) {
+  const perGame = (key) => formatPerGame(sums[key] / gp);
+  return [
+    ["Points", perGame("points")],
+    ["Rebounds", perGame("totalRebounds")],
+    ["Off. rebounds", perGame("offensiveRebounds")],
+    ["Def. rebounds", perGame("defensiveRebounds")],
+    ["Assists", perGame("assistances")],
+    ["Steals", perGame("steals")],
+    ["Blocks", perGame("blocksFavour")],
+    ["Turnovers", perGame("turnovers")],
+    ["Fouls committed", perGame("foulsCommited")],
+    ["PIR", perGame("valuation")],
+    ["2PT %", formatPercentage(pct(sums.fieldGoalsMade2, sums.fieldGoalsAttempted2))],
+    ["3PT %", formatPercentage(pct(sums.fieldGoalsMade3, sums.fieldGoalsAttempted3))],
+    ["FT %", formatPercentage(pct(sums.freeThrowsMade, sums.freeThrowsAttempted))],
   ];
+}
+
+function StatisticsSection({ teamStatsSummaryQuery }) {
+  if (teamStatsSummaryQuery.isPending) return <AsyncState status="loading" label="Loading team statistics" />;
+  if (teamStatsSummaryQuery.isError) {
+    return (
+      <AsyncState
+        status="error"
+        message="Could not load team statistics."
+        onRetry={() => teamStatsSummaryQuery.refetch()}
+      />
+    );
+  }
+  const { gamesPlayed, own, opponent: opp } = teamStatsSummaryQuery.data;
+  if (!gamesPlayed) {
+    return <EmptyText>This club did not play any games in the selected phase.</EmptyText>;
+  }
+
+  const eFg = pct(own.fieldGoalsMadeTotal + 0.5 * own.fieldGoalsMade3, own.fieldGoalsAttemptedTotal);
+  const ts = own.points / (2 * (own.fieldGoalsAttemptedTotal + 0.44 * own.freeThrowsAttempted)) * 100;
+  const advancedRows = [
+    ["eFG %", formatPercentage(eFg)],
+    ["True shooting %", formatPercentage(Number.isFinite(ts) ? ts : null)],
+    ["Assist/turnover", own.turnovers ? formatPerGame(own.assistances / own.turnovers) : "-"],
+    ["Off. rebound %", formatPercentage(pct(own.offensiveRebounds, own.offensiveRebounds + opp.defensiveRebounds))],
+    ["Def. rebound %", formatPercentage(pct(own.defensiveRebounds, own.defensiveRebounds + opp.offensiveRebounds))],
+    ["Free throw rate", formatPercentage(pct(own.freeThrowsAttempted, own.fieldGoalsAttemptedTotal))],
+  ];
+
   return (
-    <dl className="grid grid-cols-2 gap-x-6 gap-y-2 sm:grid-cols-4">
-      {rows.map(([label, value]) => (
-        <div key={label}>
-          <dt className="muted text-sm">{label}</dt>
-          <dd className="font-semibold">{value ?? "-"}</dd>
-        </div>
-      ))}
-    </dl>
+    <div className="flex flex-col gap-6">
+      <p className="muted text-sm">
+        Scoped to the phase selected above - switching it changes every number in this tab.
+      </p>
+      <MetricGroup title="Traditional" rows={traditionalRows(own, gamesPlayed)} />
+      <MetricGroup title="Advanced" rows={advancedRows} />
+      <MetricGroup title="Opponent" rows={traditionalRows(opp, gamesPlayed)} />
+    </div>
   );
 }
 
-function StatsSection({ standingsQuery, clubCode }) {
+function ShootingSection({ teamStatsSummaryQuery }) {
+  if (teamStatsSummaryQuery.isPending) return <AsyncState status="loading" label="Loading shooting splits" />;
+  if (teamStatsSummaryQuery.isError) {
+    return (
+      <AsyncState
+        status="error"
+        message="Could not load shooting splits."
+        onRetry={() => teamStatsSummaryQuery.refetch()}
+      />
+    );
+  }
+  const { gamesPlayed, own, opponent: opp } = teamStatsSummaryQuery.data;
+  if (!gamesPlayed) {
+    return <EmptyText>This club did not play any games in the selected phase.</EmptyText>;
+  }
+
+  const splits = [
+    ["2PT", "fieldGoalsMade2", "fieldGoalsAttempted2"],
+    ["3PT", "fieldGoalsMade3", "fieldGoalsAttempted3"],
+    ["FT", "freeThrowsMade", "freeThrowsAttempted"],
+  ];
+
   return (
-    <div className="flex flex-col gap-8">
-      <section>
-        <h2 className="mb-3 text-xl font-semibold">Season record</h2>
-        <SeasonRecordSection standingsQuery={standingsQuery} clubCode={clubCode} />
-      </section>
-      <section>
-        <h2 className="mb-3 text-xl font-semibold">Team statistics</h2>
-        <TeamStatisticsSection standingsQuery={standingsQuery} clubCode={clubCode} />
-      </section>
+    <Panel className="overflow-x-auto overscroll-x-contain p-2">
+      <table className="table">
+        <thead>
+          <tr>
+            <th>Splits</th>
+            {splits.map(([label]) => (
+              <th key={label}>{label}</th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td className="font-medium">This team</td>
+            {splits.map(([label, made, attempted]) => (
+              <td key={label} className="tabular-nums">
+                {own[made]}-{own[attempted]} ({formatPercentage(pct(own[made], own[attempted]))})
+              </td>
+            ))}
+          </tr>
+          <tr>
+            <td className="font-medium">Allowed</td>
+            {splits.map(([label, made, attempted]) => (
+              <td key={label} className="tabular-nums">
+                {opp[made]}-{opp[attempted]} ({formatPercentage(pct(opp[made], opp[attempted]))})
+              </td>
+            ))}
+          </tr>
+        </tbody>
+      </table>
+    </Panel>
+  );
+}
+
+const ROLLING_WINDOW = 5;
+
+function rollingAverage(values, window) {
+  return values.map((_, index) => {
+    const start = Math.max(0, index - window + 1);
+    const slice = values.slice(start, index + 1);
+    return slice.reduce((sum, value) => sum + value, 0) / slice.length;
+  });
+}
+
+const TREND_METRICS = [
+  { key: "scored", label: "Points scored" },
+  { key: "allowed", label: "Points allowed" },
+  { key: "margin", label: "Margin" },
+];
+
+function TrendsSection({ games, phaseCode, clubCode }) {
+  const [metric, setMetric] = useState("scored");
+
+  const played = games
+    .filter((game) => game.phaseCode === phaseCode && game.played && game.localScore != null && game.roadScore != null)
+    .slice()
+    .sort((a, b) => new Date(a.scheduledAt) - new Date(b.scheduledAt));
+
+  if (played.length < 2) {
+    return <EmptyText>Not enough played games yet in this phase to chart trends.</EmptyText>;
+  }
+
+  const labels = played.map((game) => (game.roundNumber != null ? `R${game.roundNumber}` : formatDateTime(game.scheduledAt)));
+  const scored = played.map((game) => {
+    const { home } = opponent(game, clubCode);
+    return home ? game.localScore : game.roadScore;
+  });
+  const allowed = played.map((game) => {
+    const { home } = opponent(game, clubCode);
+    return home ? game.roadScore : game.localScore;
+  });
+  const margin = scored.map((value, index) => value - allowed[index]);
+
+  const seriesByMetric = { scored, allowed, margin };
+  const values = seriesByMetric[metric];
+  const activeLabel = TREND_METRICS.find((entry) => entry.key === metric).label;
+
+  return (
+    <div className="flex flex-col gap-4">
+      <label className="flex w-fit items-center gap-2 text-sm">
+        Metric
+        <select
+          className="select select-sm select-bordered"
+          value={metric}
+          onChange={(event) => setMetric(event.target.value)}
+        >
+          {TREND_METRICS.map((entry) => (
+            <option key={entry.key} value={entry.key}>
+              {entry.label}
+            </option>
+          ))}
+        </select>
+      </label>
+      <TrendChart
+        title={activeLabel}
+        labels={labels}
+        series={[
+          { label: activeLabel, points: values },
+          { label: `${ROLLING_WINDOW}-game average`, points: rollingAverage(values, ROLLING_WINDOW) },
+        ]}
+      />
     </div>
   );
 }
@@ -326,13 +550,11 @@ function RosterSection({ rosterQuery, rosterStatsQuery, seasonCode }) {
 
   return (
     <Panel className="overflow-x-auto overscroll-x-contain p-2">
-      <table className="table">
+      <table className="data-table-sticky table">
         <thead>
           <tr>
-            <th>#</th>
             <th>Player</th>
             <th>Position</th>
-            <th>Status</th>
             <th>GP</th>
             <th>MIN</th>
             <th>PTS</th>
@@ -346,24 +568,43 @@ function RosterSection({ rosterQuery, rosterStatsQuery, seasonCode }) {
             const stats = entry.player ? statsByPersonKey.get(entry.player.personKey) : undefined;
             const traditional = stats?.traditional;
             const pts = statNumber(traditional?.pointsScored);
+            const isFormer = entry.active === false;
             return (
               <tr key={entry.registrationKey}>
-                <td>{entry.dorsal ?? "-"}</td>
-                <td className="font-medium">
-                  {entry.player ? (
-                    <Link
-                      to={`/${seasonCode}/players/${entry.player.personKey}`}
-                      className="link link-hover block max-w-40 truncate sm:max-w-56"
-                      title={entry.player.name ?? "TBD"}
-                    >
-                      {entry.player.name ?? "TBD"}
-                    </Link>
-                  ) : (
-                    "TBD"
-                  )}
+                <td>
+                  <div className="flex min-w-0 items-center gap-2">
+                    <span className="w-6 flex-none text-center text-xs text-base-content/60">
+                      {entry.dorsal ?? "-"}
+                    </span>
+                    {stats?.playerImageUrl ? (
+                      <img
+                        src={stats.playerImageUrl}
+                        alt=""
+                        className="h-8 w-8 flex-none rounded-full object-cover"
+                        onError={(event) => {
+                          event.currentTarget.style.display = "none";
+                        }}
+                      />
+                    ) : null}
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-1">
+                        {entry.player ? (
+                          <Link
+                            to={`/${seasonCode}/players/${entry.player.personKey}`}
+                            className="link link-hover max-w-32 truncate sm:max-w-48"
+                            title={entry.player.name ?? "TBD"}
+                          >
+                            {entry.player.name ?? "TBD"}
+                          </Link>
+                        ) : (
+                          <span className="max-w-32 truncate sm:max-w-48">TBD</span>
+                        )}
+                        {isFormer ? <span className="badge badge-ghost badge-xs">Former</span> : null}
+                      </div>
+                    </div>
+                  </div>
                 </td>
                 <td>{entry.positionName ?? "-"}</td>
-                <td>{entry.active === false ? "Inactive" : "Active"}</td>
                 <td>{traditional?.gamesPlayed ?? "-"}</td>
                 <td>{formatStatValue("minutesPlayed", traditional?.minutesPlayed)}</td>
                 <StatBarCell widthPct={barScale(pts)}>
@@ -383,17 +624,80 @@ function RosterSection({ rosterQuery, rosterStatsQuery, seasonCode }) {
   );
 }
 
-function ScheduleSection({ gamesQuery, clubCode }) {
-  if (gamesQuery.isPending) return <AsyncState status="loading" label="Loading the schedule" />;
-  if (gamesQuery.isError) {
-    return <AsyncState status="error" message="Could not load the schedule." onRetry={() => gamesQuery.refetch()} />;
+const GAMES_FILTERS = [
+  { key: "all", label: "All" },
+  { key: "results", label: "Results" },
+  { key: "scheduled", label: "Scheduled" },
+  { key: "wins", label: "Wins" },
+  { key: "losses", label: "Losses" },
+];
+
+function gameResult(game, clubCode) {
+  if (!game.played || game.localScore == null || game.roadScore == null) return null;
+  const { home } = opponent(game, clubCode);
+  return (home ? game.localScore > game.roadScore : game.roadScore > game.localScore) ? "win" : "loss";
+}
+
+function filterAndOrderGames(games, clubCode, filter) {
+  if (filter === "scheduled") {
+    return games.filter((game) => !game.played).sort((a, b) => new Date(a.scheduledAt) - new Date(b.scheduledAt));
   }
-  const games = gamesQuery.data.games ?? [];
-  if (games.length === 0) {
+  if (filter === "results") {
+    return games.filter((game) => game.played).sort((a, b) => new Date(b.scheduledAt) - new Date(a.scheduledAt));
+  }
+  if (filter === "wins" || filter === "losses") {
+    const want = filter === "wins" ? "win" : "loss";
+    return games
+      .filter((game) => gameResult(game, clubCode) === want)
+      .sort((a, b) => new Date(b.scheduledAt) - new Date(a.scheduledAt));
+  }
+  const scheduled = games.filter((game) => !game.played).sort((a, b) => new Date(a.scheduledAt) - new Date(b.scheduledAt));
+  const results = games.filter((game) => game.played).sort((a, b) => new Date(b.scheduledAt) - new Date(a.scheduledAt));
+  return [...scheduled, ...results];
+}
+
+function GamesSection({ gamesQuery, clubCode }) {
+  const [filter, setFilter] = useState("all");
+
+  if (gamesQuery.isPending) return <AsyncState status="loading" label="Loading the games" />;
+  if (gamesQuery.isError) {
+    return <AsyncState status="error" message="Could not load the games." onRetry={() => gamesQuery.refetch()} />;
+  }
+  const allGames = gamesQuery.data.games ?? [];
+  if (allGames.length === 0) {
     return <EmptyText>No games scheduled yet.</EmptyText>;
   }
+  const games = filterAndOrderGames(allGames, clubCode, filter);
+
   return (
-    <Panel className="p-4">
+    <div className="flex flex-col gap-3">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <label className="flex items-center gap-2 text-sm">
+          Filter
+          <select
+            className="select select-sm select-bordered"
+            value={filter}
+            onChange={(event) => setFilter(event.target.value)}
+          >
+            {GAMES_FILTERS.map((entry) => (
+              <option key={entry.key} value={entry.key}>
+                {entry.label}
+              </option>
+            ))}
+          </select>
+        </label>
+        <span className="muted text-xs">
+          {filter === "scheduled"
+            ? "Nearest fixtures first"
+            : filter === "all"
+              ? "Nearest fixtures first · newest results first"
+              : "Newest results first"}
+        </span>
+      </div>
+      {games.length === 0 ? (
+        <EmptyText>No games match this filter.</EmptyText>
+      ) : (
+      <Panel className="p-4">
       <ul>
         {games.map((game) => {
           const { team, home } = opponent(game, clubCode);
@@ -424,15 +728,19 @@ function ScheduleSection({ gamesQuery, clubCode }) {
           );
         })}
       </ul>
-    </Panel>
+      </Panel>
+      )}
+    </div>
   );
 }
 
 const SECTIONS = [
   { key: "overview", label: "Overview" },
+  { key: "statistics", label: "Statistics" },
+  { key: "shooting", label: "Shooting" },
+  { key: "trends", label: "Trends" },
   { key: "roster", label: "Roster" },
-  { key: "schedule", label: "Schedule" },
-  { key: "stats", label: "Stats" },
+  { key: "games", label: "Games" },
 ];
 
 export default function TeamPage() {
@@ -470,13 +778,19 @@ export default function TeamPage() {
   const rosterStatsQuery = useQuery({
     queryKey: ["team-roster-stats", seasonCode, phaseCode, clubCode],
     queryFn: () => fetchTeamRosterStats(seasonCode, phaseCode, clubCode),
-    enabled: teamQuery.isSuccess && Boolean(phaseCode) && section === "roster",
+    enabled: teamQuery.isSuccess && Boolean(phaseCode) && (section === "roster" || section === "overview"),
   });
 
   const gamesQuery = useQuery({
     queryKey: ["team-games", seasonCode, clubCode],
     queryFn: () => getTeamGames(seasonCode, clubCode, { limit: GAMES_LIMIT, order: "asc" }),
     enabled: teamQuery.isSuccess,
+  });
+
+  const teamStatsSummaryQuery = useQuery({
+    queryKey: ["team-stats-summary", seasonCode, clubCode, phaseCode],
+    queryFn: () => getTeamStatsSummary(seasonCode, clubCode, phaseCode),
+    enabled: teamQuery.isSuccess && Boolean(phaseCode) && (section === "statistics" || section === "shooting"),
   });
 
   if (teamQuery.isLoading) return <AsyncState status="loading" label="Loading the team" />;
@@ -533,14 +847,25 @@ export default function TeamPage() {
           ) : gamesQuery.isError ? (
             <AsyncState status="error" message="Could not load this team's games." onRetry={() => gamesQuery.refetch()} />
           ) : (
-            <OverviewSection seasonCode={seasonCode} clubCode={clubCode} standingsQuery={standingsQuery} games={games} />
+            <OverviewSection
+              seasonCode={seasonCode}
+              clubCode={clubCode}
+              phaseCode={phaseCode}
+              standingsQuery={standingsQuery}
+              rosterStatsQuery={rosterStatsQuery}
+              games={games}
+            />
           )
+        ) : section === "statistics" ? (
+          <StatisticsSection teamStatsSummaryQuery={teamStatsSummaryQuery} />
+        ) : section === "shooting" ? (
+          <ShootingSection teamStatsSummaryQuery={teamStatsSummaryQuery} />
+        ) : section === "trends" ? (
+          <TrendsSection games={games} phaseCode={phaseCode} clubCode={clubCode} />
         ) : section === "roster" ? (
           <RosterSection rosterQuery={rosterQuery} rosterStatsQuery={rosterStatsQuery} seasonCode={seasonCode} />
-        ) : section === "schedule" ? (
-          <ScheduleSection gamesQuery={gamesQuery} clubCode={clubCode} />
         ) : (
-          <StatsSection standingsQuery={standingsQuery} clubCode={clubCode} />
+          <GamesSection gamesQuery={gamesQuery} clubCode={clubCode} />
         )}
       </TabPanel>
     </div>

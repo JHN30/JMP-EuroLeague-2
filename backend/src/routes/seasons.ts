@@ -104,6 +104,7 @@ function requestedRound(req: Request, res: Response): { round: number | undefine
 
 const SEASON_STATS_PHASES = ["RS", "PI", "PO", "FF", "all"];
 const SEASON_STATS_MODES = ["accumulated", "perGame"];
+const RECORD_METRICS = ["pointsScored", "totalRebounds", "assists", "pir"] as const;
 
 function requestedStatsPhase(req: Request, res: Response): string | null {
   const value = req.query.phase;
@@ -261,6 +262,22 @@ seasonRouter.get("/:seasonCode/season-stats", async (req, res) => {
     order,
   );
   res.json({ phase, mode, players: result.items, pagination: { ...page, hasMore: result.hasMore, total: result.total } });
+});
+
+seasonRouter.get("/:seasonCode/records/player-seasons", async (req, res) => {
+  const season = await requestedSeason(req, res);
+  if (!season) return;
+  const metric = req.query.metric === undefined ? "pointsScored" : req.query.metric;
+  if (typeof metric !== "string" || !RECORD_METRICS.includes(metric as typeof RECORD_METRICS[number])) {
+    sendError(res, 400, "INVALID_RECORD_METRIC", "Invalid record metric");
+    return;
+  }
+  const perSeason = await Promise.all(SUPPORTED_SEASONS.map(async (seasonCode) => {
+    const result = await getSeasonStats(seasonCode, "all", "accumulated", 100, 0, undefined, metric as SortableStatsField, "desc");
+    return result.items.map((player) => ({ seasonCode, personKey: player.personKey, playerName: player.playerName, clubName: player.clubName, value: player.traditional[metric as keyof typeof player.traditional] }));
+  }));
+  const rows = perSeason.flat().map((row) => ({ ...row, numericValue: Number(row.value) })).filter((row) => Number.isFinite(row.numericValue)).sort((a, b) => b.numericValue - a.numericValue || a.seasonCode.localeCompare(b.seasonCode));
+  res.json({ metric, label: { pointsScored: "Points", totalRebounds: "Rebounds", assists: "Assists", pir: "PIR" }[metric], records: rows.slice(0, 50) });
 });
 
 seasonRouter.get("/:seasonCode/teams", async (req, res) => {

@@ -112,3 +112,8 @@ export async function getPlayerGames(seasonCode, personKey, { limit, offset } = 
   });
   return data;
 }
+
+export async function getPlayerSeasonRecords(seasonCode, metric) {
+  const { data } = await api.get(`/seasons/${seasonCode}/records/player-seasons`, { params: { metric } });
+  return data;
+}

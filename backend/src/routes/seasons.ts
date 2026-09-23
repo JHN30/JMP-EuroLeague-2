@@ -1,5 +1,5 @@
 import { Router, type NextFunction, type Request, type Response } from "express";
-import { and, desc, eq } from "drizzle-orm";
+import { and, desc, eq, inArray, sql } from "drizzle-orm";
 import { db } from "../db/client";
 import { catalogRead } from "../db/season-catalog";
 import {
@@ -23,7 +23,7 @@ import { getBoxScore, getGame, getGames, getPlayerGameLog, getTeamGames, getTeam
 import { getCoverage } from "../db/season-coverage";
 import { getLatestStandingsRound, getStandings } from "../db/season-standings";
 import { getSeasonStats, SORTABLE_STATS_FIELDS, type SortableStatsField } from "../db/season-stats";
-import { gamePlayerStats, games } from "../db/season-schema";
+import { gamePlayerStats, gameTeamStats, games } from "../db/season-schema";
 
 export const seasonRouter = Router();
 
@@ -319,6 +319,49 @@ seasonRouter.get("/:seasonCode/records/single-games", async (req, res) => {
     return seasonRows.map((row) => ({ ...row, seasonCode }));
   }))).flat().map((row) => ({ ...row, numericValue: Number(row.value) })).filter((row) => row.value !== null && row.value !== undefined && Number.isFinite(row.numericValue)).sort((a, b) => b.numericValue - a.numericValue || a.seasonCode.localeCompare(b.seasonCode) || a.gameCode - b.gameCode || a.personKey.localeCompare(b.personKey)).slice(0, 50);
   res.json({ metric, label: { points: "Points", valuation: "PIR", totalRebounds: "Rebounds", assistances: "Assists" }[metric], records: rows });
+});
+
+seasonRouter.get("/:seasonCode/records/team-seasons", async (req, res) => {
+  const season = await requestedSeason(req, res);
+  if (!season) return;
+  const metric = req.query.metric === undefined ? "points" : req.query.metric;
+  const columns = {
+    points: gameTeamStats.points,
+    valuation: gameTeamStats.valuation,
+    totalRebounds: gameTeamStats.totalRebounds,
+    assistances: gameTeamStats.assistances,
+  };
+  if (typeof metric !== "string" || !(metric in columns)) {
+    sendError(res, 400, "INVALID_RECORD_METRIC", "Invalid record metric");
+    return;
+  }
+  const column = columns[metric as keyof typeof columns];
+  const clubCode = sql<string | null>`case when ${gameTeamStats.side} = 'local' then ${games.localClubCode} else ${games.roadClubCode} end`;
+  const clubName = sql<string | null>`case when ${gameTeamStats.side} = 'local' then ${games.localClubName} else ${games.roadClubName} end`;
+  const total = sql<string | null>`sum(${column})`;
+  const rows = await catalogRead(() => db.select({
+    seasonCode: gameTeamStats.seasonCode,
+    clubCode,
+    clubName,
+    value: total,
+  }).from(gameTeamStats).innerJoin(games, and(
+    eq(games.competitionCode, gameTeamStats.competitionCode),
+    eq(games.seasonCode, gameTeamStats.seasonCode),
+    eq(games.gameCode, gameTeamStats.gameCode),
+  )).where(and(
+    eq(gameTeamStats.competitionCode, "E"),
+    inArray(gameTeamStats.seasonCode, SUPPORTED_SEASONS),
+    eq(gameTeamStats.statsKind, "total"),
+    eq(games.played, true),
+  )).groupBy(gameTeamStats.seasonCode, clubCode, clubName));
+  const records = rows.flatMap((row) => {
+    if (row.clubCode === null || row.value === null) return [];
+    const numericValue = Number(row.value);
+    return Number.isFinite(numericValue) ? [{ ...row, clubCode: row.clubCode, numericValue }] : [];
+  })
+    .sort((a, b) => b.numericValue - a.numericValue || a.seasonCode.localeCompare(b.seasonCode) || a.clubCode.localeCompare(b.clubCode))
+    .slice(0, 50);
+  res.json({ metric, label: { points: "Points", valuation: "PIR", totalRebounds: "Rebounds", assistances: "Assists" }[metric], records });
 });
 
 seasonRouter.get("/:seasonCode/teams", async (req, res) => {

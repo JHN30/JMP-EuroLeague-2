@@ -1,12 +1,15 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { Chart } from "chart.js/auto";
 import { useQuery } from "@tanstack/react-query";
 import { Link, useParams } from "react-router";
 import {
+  getLeaderStats,
   getPhases,
   getPlayer,
   getPlayerGames,
   getPlayerRegistrations,
   getPlayerSeasonStats,
+  getSeasons,
 } from "../lib/api";
 import AsyncState from "../lib/AsyncState";
 import EmptyText from "../lib/EmptyText";
@@ -15,6 +18,7 @@ import InfoRow from "../lib/InfoRow";
 import InfoTile from "../lib/InfoTile";
 import Panel from "../lib/Panel";
 import PageHeader from "../lib/PageHeader";
+import PanelHeader from "../lib/PanelHeader";
 import { formatStatValue } from "../lib/statsFields";
 import SummaryGrid from "../lib/SummaryGrid";
 import { TabPanel, TabStrip } from "../lib/TabStrip";
@@ -22,6 +26,80 @@ import { useDocumentTitle } from "../lib/useDocumentTitle";
 import { usePhaseParam } from "../lib/usePhaseParam";
 
 const GAMES_LIMIT = 100;
+const LEADERBOARD_PAGE_LIMIT = 100;
+const LEADERBOARD_MAX_PAGES = 5;
+
+const RANKING_CATEGORIES = [
+  { key: "scoring", label: "Scoring", group: "traditional", field: "pointsScored" },
+  { key: "valuation", label: "Valuation", group: "traditional", field: "pir" },
+  { key: "rebounding", label: "Rebounding", group: "traditional", field: "totalRebounds" },
+  { key: "playmaking", label: "Playmaking", group: "traditional", field: "assists" },
+  { key: "steals", label: "Steals", group: "traditional", field: "steals" },
+  { key: "shooting", label: "Shooting", group: "advanced", field: "trueShootingPercentage" },
+];
+
+async function fetchLeagueLeaderboard(seasonCode, phaseCode) {
+  const players = [];
+  let offset = 0;
+  for (let page = 0; page < LEADERBOARD_MAX_PAGES; page += 1) {
+    const data = await getLeaderStats(seasonCode, {
+      phase: phaseCode,
+      mode: "perGame",
+      limit: LEADERBOARD_PAGE_LIMIT,
+      offset,
+    });
+    players.push(...data.players);
+    if (!data.pagination.hasMore) break;
+    offset += LEADERBOARD_PAGE_LIMIT;
+  }
+  return players;
+}
+
+async function fetchSeasonStory(seasons, personKey) {
+  const cards = await Promise.all(
+    seasons.map(async (season) => {
+      try {
+        const { player } = await getPlayer(season.seasonCode, personKey);
+        const [registrationsData, statsData] = await Promise.all([
+          getPlayerRegistrations(season.seasonCode, personKey),
+          getPlayerSeasonStats(season.seasonCode, personKey, { mode: "perGame" }),
+        ]);
+        return {
+          seasonCode: season.seasonCode,
+          seasonName: season.name ?? season.seasonCode,
+          player,
+          registrations: registrationsData.registrations ?? [],
+          stats: statsData.players?.[0]?.traditional ?? null,
+        };
+      } catch (error) {
+        if (error?.response?.status === 404) return null;
+        throw error;
+      }
+    }),
+  );
+  return cards.filter(Boolean);
+}
+
+function statNumber(raw) {
+  if (raw === null || raw === undefined) return null;
+  const num = Number(raw);
+  return Number.isNaN(num) ? null : num;
+}
+
+function computeRankings(players, personKey) {
+  return RANKING_CATEGORIES.map((category) => {
+    const ranked = players
+      .map((player) => ({ player, value: statNumber(player[category.group]?.[category.field]) }))
+      .filter((row) => row.value !== null)
+      .sort((a, b) => b.value - a.value);
+    const total = ranked.length;
+    const index = ranked.findIndex((row) => row.player.personKey === personKey);
+    if (index === -1) return { ...category, value: null, rank: null, total, percentile: null };
+    const rank = index + 1;
+    const percentile = total > 1 ? Math.round(((total - rank) / (total - 1)) * 100) : 100;
+    return { ...category, value: ranked[index].value, rank, total, percentile };
+  });
+}
 
 const STATS_MODES = [
   { label: "Accumulated", value: "accumulated" },
@@ -34,6 +112,200 @@ function teamLabel(team) {
 
 function opponent(game, side) {
   return side === "local" ? game.roadTeam : game.localTeam;
+}
+
+function ordinal(n) {
+  const mod100 = n % 100;
+  if (mod100 >= 11 && mod100 <= 13) return `${n}th`;
+  const suffix = { 1: "st", 2: "nd", 3: "rd" }[n % 10] ?? "th";
+  return `${n}${suffix}`;
+}
+
+function RankingCard({ category }) {
+  const { label, value, rank, total, percentile, field } = category;
+  if (rank === null) {
+    return (
+      <Panel className="p-3">
+        <span className="muted text-xs font-bold uppercase tracking-wide">{label}</span>
+        <p className="muted mt-1 text-sm">No recorded stats yet.</p>
+      </Panel>
+    );
+  }
+  return (
+    <Panel className="p-3">
+      <div className="mb-1 flex items-center justify-between">
+        <span className="muted text-xs font-bold uppercase tracking-wide">{label}</span>
+        <span className="badge badge-primary badge-outline badge-sm">#{rank}</span>
+      </div>
+      <span className="block text-lg font-semibold tabular-nums">{formatStatValue(field, value)}</span>
+      <progress className="progress progress-primary mt-2 w-full" value={percentile} max="100" />
+      <p className="muted mt-1 text-xs">{ordinal(rank)} of {total} players with recorded stats</p>
+    </Panel>
+  );
+}
+
+function useActiveTheme() {
+  const [theme, setTheme] = useState(() => document.documentElement.dataset.theme);
+
+  useEffect(() => {
+    const observer = new MutationObserver(() => setTheme(document.documentElement.dataset.theme));
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
+    return () => observer.disconnect();
+  }, []);
+
+  return theme;
+}
+
+function themeColor(el, variable) {
+  return getComputedStyle(el).getPropertyValue(variable).trim();
+}
+
+function PercentileRadar({ rankings }) {
+  const canvasRef = useRef(null);
+  const chartRef = useRef(null);
+  const theme = useActiveTheme();
+  const hasData = rankings.some((category) => category.percentile !== null);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas || !hasData) return undefined;
+
+    const primary = themeColor(canvas, "--color-primary");
+    const textColor = themeColor(canvas, "--color-base-content");
+    const gridColor = `color-mix(in srgb, ${textColor} 20%, transparent)`;
+
+    chartRef.current = new Chart(canvas, {
+      type: "radar",
+      data: {
+        labels: rankings.map((category) => category.label),
+        datasets: [
+          {
+            label: "Percentile",
+            data: rankings.map((category) => category.percentile ?? 0),
+            borderColor: primary,
+            backgroundColor: `color-mix(in srgb, ${primary} 25%, transparent)`,
+            borderWidth: 2,
+            pointBackgroundColor: primary,
+          },
+        ],
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: {
+          r: {
+            min: 0,
+            max: 100,
+            ticks: { stepSize: 25, color: textColor, backdropColor: "transparent" },
+            grid: { color: gridColor },
+            angleLines: { color: gridColor },
+            pointLabels: { color: textColor },
+          },
+        },
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            callbacks: {
+              label: (context) => `${context.label}: ${context.parsed.r}th percentile`,
+            },
+          },
+        },
+      },
+    });
+
+    return () => {
+      chartRef.current?.destroy();
+      chartRef.current = null;
+    };
+  }, [rankings, theme, hasData]);
+
+  return (
+    <Panel className="p-4">
+      <PanelHeader kicker="PERCENTILE 0-100" title="Percentile radar" />
+      {!hasData ? (
+        <p className="muted text-sm">Not enough recorded stats yet to chart percentiles.</p>
+      ) : (
+        <div className="rounded-field border border-base-300 bg-base-100/60 p-2 sm:p-3">
+          <div className="relative h-72 w-full">
+            <canvas
+              ref={canvasRef}
+              role="img"
+              aria-label={`Percentile radar across ${rankings.map((c) => c.label).join(", ")}`}
+            />
+          </div>
+        </div>
+      )}
+    </Panel>
+  );
+}
+
+function OverviewSection({ leaderboardQuery, personKey }) {
+  if (leaderboardQuery.isPending) return <AsyncState status="loading" label="Loading league rankings" />;
+  if (leaderboardQuery.isError) {
+    return (
+      <AsyncState status="error" message="Could not load league rankings." onRetry={() => leaderboardQuery.refetch()} />
+    );
+  }
+  const rankings = computeRankings(leaderboardQuery.data, personKey);
+
+  return (
+    <div className="flex flex-col gap-6">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+        {rankings.map((category) => (
+          <RankingCard key={category.key} category={category} />
+        ))}
+      </div>
+      <PercentileRadar rankings={rankings} />
+    </div>
+  );
+}
+
+function SeasonStorySection({ seasonStoryQuery }) {
+  if (seasonStoryQuery.isPending) return <AsyncState status="loading" label="Loading season history" />;
+  if (seasonStoryQuery.isError) {
+    return (
+      <AsyncState status="error" message="Could not load season history." onRetry={() => seasonStoryQuery.refetch()} />
+    );
+  }
+  const cards = seasonStoryQuery.data ?? [];
+  if (cards.length === 0) {
+    return <EmptyText>No archived seasons found for this player.</EmptyText>;
+  }
+
+  return (
+    <div className="grid gap-4 sm:grid-cols-2">
+      {cards.map((card) => (
+        <Panel key={card.seasonCode} className="p-4">
+          <PanelHeader kicker={card.seasonCode} title={card.seasonName} />
+          <div className="mb-3 flex flex-col gap-1">
+            {card.registrations.length === 0 ? (
+              <span className="muted text-sm">No team registration recorded.</span>
+            ) : (
+              card.registrations.map((entry) => (
+                <Link
+                  key={entry.registrationKey}
+                  to={`/${card.seasonCode}/teams/${entry.team?.clubCode ?? entry.clubCode}`}
+                  className="link link-hover text-sm font-semibold"
+                >
+                  {entry.team?.name ?? entry.clubCode}
+                </Link>
+              ))
+            )}
+          </div>
+          {card.stats ? (
+            <SummaryGrid>
+              <InfoTile label="GP" value={formatStatValue("gamesPlayed", card.stats.gamesPlayed)} />
+              <InfoTile label="PTS" value={formatStatValue("pointsScored", card.stats.pointsScored)} />
+              <InfoTile label="REB" value={formatStatValue("totalRebounds", card.stats.totalRebounds)} />
+              <InfoTile label="PIR" value={formatStatValue("pir", card.stats.pir)} />
+            </SummaryGrid>
+          ) : (
+            <span className="muted text-sm">No recorded stats for this season.</span>
+          )}
+        </Panel>
+      ))}
+    </div>
+  );
 }
 
 function RegistrationsSection({ registrationsQuery, seasonCode }) {
@@ -199,7 +471,7 @@ function GameLogSection({ gamesQuery }) {
 
 export default function PlayerPage() {
   const { seasonCode, personKey } = useParams();
-  const [section, setSection] = useState("statistics");
+  const [section, setSection] = useState("overview");
   const [mode, setMode] = useState("accumulated");
 
   const playerQuery = useQuery({
@@ -242,6 +514,24 @@ export default function PlayerPage() {
     enabled: playerQuery.isSuccess && section === "games",
   });
 
+  const leaderboardQuery = useQuery({
+    queryKey: ["league-leaderboard", seasonCode, phaseCode],
+    queryFn: () => fetchLeagueLeaderboard(seasonCode, phaseCode),
+    enabled: playerQuery.isSuccess && Boolean(phaseCode) && section === "overview",
+  });
+
+  const seasonsQuery = useQuery({
+    queryKey: ["seasons"],
+    queryFn: () => getSeasons(),
+    enabled: playerQuery.isSuccess && section === "seasons",
+  });
+
+  const seasonStoryQuery = useQuery({
+    queryKey: ["player-season-story", personKey, seasonsQuery.data?.seasons?.map((s) => s.seasonCode).join(",")],
+    queryFn: () => fetchSeasonStory(seasonsQuery.data.seasons, personKey),
+    enabled: playerQuery.isSuccess && section === "seasons" && Boolean(seasonsQuery.data?.seasons),
+  });
+
   if (playerQuery.isLoading) return <AsyncState status="loading" label="Loading the player" />;
 
   if (playerQuery.isError) {
@@ -253,7 +543,9 @@ export default function PlayerPage() {
     );
   }
 
-  const headshotUrl = gamesQuery.data?.games[0]?.headshotUrl;
+  const headshotUrl =
+    leaderboardQuery.data?.find((entry) => entry.personKey === personKey)?.playerImageUrl ??
+    gamesQuery.data?.games[0]?.headshotUrl;
 
   return (
     <div>
@@ -291,12 +583,18 @@ export default function PlayerPage() {
           onChange={setSection}
           className="mb-4 w-fit"
           tabs={[
+            { key: "overview", label: "Overview" },
+            { key: "seasons", label: "Season by season" },
             { key: "statistics", label: "Statistics" },
             { key: "games", label: "Games" },
           ]}
         />
         <TabPanel id="player-detail-panel" focusKey={section}>
-          {section === "statistics" ? (
+          {section === "overview" ? (
+            <OverviewSection leaderboardQuery={leaderboardQuery} personKey={personKey} />
+          ) : section === "seasons" ? (
+            <SeasonStorySection seasonStoryQuery={seasonStoryQuery} />
+          ) : section === "statistics" ? (
             <>
               <h2 className="mb-3 text-xl font-semibold">Season statistics</h2>
               <div className="mb-4 flex flex-wrap items-center gap-4">

@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { useParams, useSearchParams } from "react-router";
+import { Link, useParams, useSearchParams } from "react-router";
 import AsyncState from "../lib/AsyncState";
 import CompactMetric from "../lib/CompactMetric";
 import EmptyText from "../lib/EmptyText";
@@ -859,6 +859,14 @@ function ComparisonsBody({
 
       {effectiveEntityA && effectiveEntityB ? (
         <section className="mb-8">
+          {view === "teams" ? (
+            <Link
+              to={`/${seasonCode}/comparisons/head-to-head?teamA=${encodeURIComponent(effectiveEntityA.id)}&teamB=${encodeURIComponent(effectiveEntityB.id)}`}
+              className="btn btn-outline btn-sm mb-4"
+            >
+              Head-to-head
+            </Link>
+          ) : null}
           <TabStrip
             ariaLabel="Comparison section"
             panelId="comparison-section-panel"

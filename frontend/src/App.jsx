@@ -17,6 +17,7 @@ const PlayersPage = lazy(() => import("./players/PlayersPage"));
 const PlayerPage = lazy(() => import("./players/PlayerPage"));
 const StatisticsPage = lazy(() => import("./statistics/StatisticsPage"));
 const ComparisonsPage = lazy(() => import("./comparisons/ComparisonsPage"));
+const HeadToHeadPage = lazy(() => import("./comparisons/HeadToHeadPage"));
 const PlayoffsPage = lazy(() => import("./playoffs/PlayoffsPage"));
 
 function DefaultSeasonRedirect() {
@@ -59,6 +60,7 @@ function App() {
           <Route path="players/:personKey" element={<PlayerPage />} />
           <Route path="statistics" element={<StatisticsPage />} />
           <Route path="comparisons" element={<ComparisonsPage />} />
+          <Route path="comparisons/head-to-head" element={<HeadToHeadPage />} />
           <Route path="playoffs" element={<PlayoffsPage />} />
         </Route>
         <Route path="*" element={<NotFoundPage />} />

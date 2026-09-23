@@ -10,6 +10,7 @@ import { usePhaseParam } from "../lib/usePhaseParam";
 import { TabPanel, TabStrip } from "../lib/TabStrip";
 import StandingsKpiStrip from "./StandingsKpiStrip";
 import StandingsTable from "./StandingsTable";
+import RaceView from "./RaceView";
 
 const VIEW_TABS = [
   { key: "overall", label: "Overall" },
@@ -18,12 +19,26 @@ const VIEW_TABS = [
   { key: "last10", label: "Last 10" },
 ];
 
+const MODE_TABS = [
+  { key: "table", label: "Table" },
+  { key: "race", label: "Race" },
+];
+
+const BREAKDOWN_TABS = [
+  { key: "overview", label: "Overview" },
+  { key: "streaks", label: "Streaks and form" },
+  { key: "margins", label: "Winning margins" },
+  { key: "aheadBehind", label: "Ahead/behind" },
+];
+
 const TREND_ROUNDS_BACK = 5;
 
 export default function StandingsPage() {
   useDocumentTitle("Standings");
   const { seasonCode } = useParams();
   const [view, setView] = useState("overall");
+  const [mode, setMode] = useState("table");
+  const [breakdown, setBreakdown] = useState("overview");
 
   const phasesQuery = useQuery({
     queryKey: ["phases", seasonCode],
@@ -110,21 +125,55 @@ export default function StandingsPage() {
             />
 
             <TabStrip
-              ariaLabel="Standings view"
+              ariaLabel="Standings display"
               panelId="standings-panel"
-              activeKey={view}
-              onChange={setView}
+              activeKey={mode}
+              onChange={setMode}
               className="w-fit"
-              tabs={VIEW_TABS}
+              tabs={MODE_TABS}
             />
 
-            <StandingsTable
-              standings={standings}
-              seasonCode={seasonCode}
-              view={view}
-              showTiers={phaseCode === "RS"}
-              trendByClub={trendByClub}
-            />
+            {mode === "race" ? (
+              <RaceView seasonCode={seasonCode} phaseCode={phaseCode} latestStandings={standings} />
+            ) : (
+              <>
+                <div className="flex flex-wrap items-center gap-3">
+                  {breakdown === "overview" ? (
+                    <TabStrip
+                      ariaLabel="Standings view"
+                      panelId="standings-panel"
+                      activeKey={view}
+                      onChange={setView}
+                      className="w-fit"
+                      tabs={VIEW_TABS}
+                    />
+                  ) : null}
+                  <label className="flex items-center gap-2 text-xs text-base-content/70">
+                    Breakdown
+                    <select
+                      className="select select-sm select-bordered"
+                      value={breakdown}
+                      onChange={(event) => setBreakdown(event.target.value)}
+                    >
+                      {BREAKDOWN_TABS.map((tab) => (
+                        <option key={tab.key} value={tab.key}>
+                          {tab.label}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                </div>
+
+                <StandingsTable
+                  standings={standings}
+                  seasonCode={seasonCode}
+                  view={view}
+                  showTiers={phaseCode === "RS"}
+                  trendByClub={trendByClub}
+                  breakdown={breakdown}
+                />
+              </>
+            )}
           </div>
         )}
       </TabPanel>

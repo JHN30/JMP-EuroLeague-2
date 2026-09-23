@@ -1,20 +1,11 @@
 import { Fragment } from "react";
-import { Link } from "react-router";
 import { formatCount, formatSignedDiff } from "../lib/format";
 import Panel from "../lib/Panel";
+import { ClubCell, FormCell, PositionCell, StandingsFooterBadges } from "./standingsCells";
 
 const TREND_WIDTH = 52;
 const TREND_HEIGHT = 18;
 const TREND_PAD = 3;
-
-function formBadge(result, key) {
-  const variant = result === "W" ? "badge-success" : result === "L" ? "badge-error" : "badge-ghost";
-  return (
-    <span key={key} className={`badge badge-xs ${variant}`} title={result ?? "Unknown"}>
-      {result ?? "-"}
-    </span>
-  );
-}
 
 function recordWinPct(record) {
   if (typeof record !== "string") return null;
@@ -67,10 +58,10 @@ const TIER_LABELS = {
   out: "Out of playoff contention",
 };
 
-function TierRow({ tier }) {
+function TierRow({ tier, columnCount }) {
   return (
     <tr className={`tier-row tier-row-${tier}`}>
-      <td colSpan={14}>{TIER_LABELS[tier]}</td>
+      <td colSpan={columnCount}>{TIER_LABELS[tier]}</td>
     </tr>
   );
 }
@@ -132,100 +123,249 @@ function TrendCell({ positions }) {
   );
 }
 
-export default function StandingsTable({ standings, seasonCode, view = "overall", showTiers = false, trendByClub }) {
+function TieBreakFlag({ entry }) {
+  if (!entry.basic || !entry.calendar || entry.basic.position === entry.calendar.position) return null;
+  return (
+    <span className="tooltip ml-1" data-tip={`Calendar ranking places this team #${entry.calendar.position}`}>
+      <span className="badge badge-xs badge-warning">*</span>
+    </span>
+  );
+}
+
+function OverviewTable({ standings, seasonCode, view, showTiers, trendByClub }) {
   const sorted = sortForView(standings, view);
   const tiersActive = showTiers && view === "overall";
   const tiers = tiersActive ? sorted.map((entry) => tierForPosition(entry.basic?.position)) : [];
+  const columnCount = 14;
 
   return (
-    <Panel className="overflow-x-auto overscroll-x-contain p-2">
-      <table className="table">
-        <thead>
-          <tr>
-            <th>#</th>
-            <th>Team</th>
-            <th>GP</th>
-            <th>W</th>
-            <th>L</th>
-            <th>PCT</th>
-            <th>PF</th>
-            <th>PA</th>
-            <th>DIFF</th>
-            <th>Home</th>
-            <th>Away</th>
-            <th>L10</th>
-            <th>Form</th>
-            <th>Trend</th>
+    <table className="table">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Team</th>
+          <th>GP</th>
+          <th>W</th>
+          <th>L</th>
+          <th>PCT</th>
+          <th>PF</th>
+          <th>PA</th>
+          <th>DIFF</th>
+          <th>Home</th>
+          <th>Away</th>
+          <th>L10</th>
+          <th>Form</th>
+          <th>Trend</th>
+        </tr>
+      </thead>
+      <tbody>
+        {sorted.map((entry, index) => {
+          const position = entry.basic?.position;
+          const tier = tiersActive ? tiers[index] : null;
+          const showTierHeader = tiersActive && tier !== null && tier !== tiers[index - 1];
+          const displayRank = view === "overall" ? position : index + 1;
+
+          return (
+            <Fragment key={entry.clubCode}>
+              {showTierHeader ? <TierRow tier={tier} columnCount={columnCount} /> : null}
+              <tr>
+                <td>
+                  <PositionCell position={displayRank} qualified={entry.basic?.qualified} />
+                  <TieBreakFlag entry={entry} />
+                </td>
+                <td>
+                  <ClubCell entry={entry} seasonCode={seasonCode} />
+                </td>
+                <td>{entry.basic?.gamesPlayed ?? "-"}</td>
+                <td>{entry.basic?.gamesWon ?? "-"}</td>
+                <td>{entry.basic?.gamesLost ?? "-"}</td>
+                <td>{entry.basic?.winPercentage ?? "-"}</td>
+                <td>{formatCount(entry.basic?.pointsFor)}</td>
+                <td>{formatCount(entry.basic?.pointsAgainst)}</td>
+                <td className="font-semibold">{formatSignedDiff(entry.basic?.pointsDifference)}</td>
+                <td>{entry.basic?.homeRecord ?? "-"}</td>
+                <td>{entry.basic?.awayRecord ?? "-"}</td>
+                <td>{entry.basic?.lastTenRecord ?? "-"}</td>
+                <td>
+                  <FormCell form={entry.form} />
+                </td>
+                <td className="trend-cell">
+                  <TrendCell positions={trendByClub?.get(entry.clubCode)} />
+                </td>
+              </tr>
+            </Fragment>
+          );
+        })}
+      </tbody>
+    </table>
+  );
+}
+
+function StreaksFormTable({ standings, seasonCode }) {
+  return (
+    <table className="table">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Team</th>
+          <th>Home</th>
+          <th>Away</th>
+          <th>L10</th>
+          <th>Home L5</th>
+          <th>Away L5</th>
+          <th>Longest W (season)</th>
+          <th>Longest L (season)</th>
+          <th>Longest W (any season)</th>
+          <th>Longest L (any season)</th>
+          <th>Form</th>
+        </tr>
+      </thead>
+      <tbody>
+        {standings.map((entry) => (
+          <tr key={entry.clubCode}>
+            <td>
+              <PositionCell position={entry.streaks?.position} qualified={entry.streaks?.qualified} />
+            </td>
+            <td>
+              <ClubCell entry={entry} seasonCode={seasonCode} />
+            </td>
+            <td>{entry.streaks?.homeRecord ?? "-"}</td>
+            <td>{entry.streaks?.awayRecord ?? "-"}</td>
+            <td>{entry.streaks?.last10 ?? "-"}</td>
+            <td>{entry.streaks?.homeLast5 ?? "-"}</td>
+            <td>{entry.streaks?.awayLast5 ?? "-"}</td>
+            <td>{entry.streaks?.longestWinStreakCurrentSeason ?? "-"}</td>
+            <td>{entry.streaks?.longestLoseStreakCurrentSeason ?? "-"}</td>
+            <td>{entry.streaks?.longestWinStreakAnySeason ?? "-"}</td>
+            <td>{entry.streaks?.longestLoseStreakAnySeason ?? "-"}</td>
+            <td>
+              <FormCell form={entry.form} />
+            </td>
           </tr>
-        </thead>
-        <tbody>
-          {sorted.map((entry, index) => {
-            const position = entry.basic?.position;
-            const tier = tiersActive ? tiers[index] : null;
-            const showTierHeader = tiersActive && tier !== null && tier !== tiers[index - 1];
+        ))}
+      </tbody>
+    </table>
+  );
+}
 
-            const tieBreak =
-              view === "overall" &&
-              entry.basic &&
-              entry.calendar &&
-              entry.basic.position !== entry.calendar.position;
-            const form = [...entry.form].sort((a, b) => a.resultOrdinal - b.resultOrdinal);
-            const displayRank = view === "overall" ? position : index + 1;
+function MarginsTable({ standings, seasonCode }) {
+  return (
+    <table className="table">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Team</th>
+          <th>Margin 1-5</th>
+          <th>Margin 6-10</th>
+          <th>Margin 11-15</th>
+          <th>Margin 15+</th>
+          <th>Rebounds</th>
+          <th>Assists</th>
+          <th>Blocks</th>
+          <th>3PT</th>
+          <th>2PT</th>
+          <th>FT</th>
+        </tr>
+      </thead>
+      <tbody>
+        {standings.map((entry) => (
+          <tr key={entry.clubCode}>
+            <td>
+              <PositionCell position={entry.margins?.position} qualified={entry.margins?.qualified} />
+            </td>
+            <td>
+              <ClubCell entry={entry} seasonCode={seasonCode} />
+            </td>
+            <td>{entry.margins?.pointDifference1To5 ?? "-"}</td>
+            <td>{entry.margins?.pointDifference6To10 ?? "-"}</td>
+            <td>{entry.margins?.pointDifference11To15 ?? "-"}</td>
+            <td>{entry.margins?.pointDifferenceMoreThan15 ?? "-"}</td>
+            <td>{entry.margins?.rebounds ?? "-"}</td>
+            <td>{entry.margins?.assists ?? "-"}</td>
+            <td>{entry.margins?.blocks ?? "-"}</td>
+            <td>{entry.margins?.threePointers ?? "-"}</td>
+            <td>{entry.margins?.twoPointers ?? "-"}</td>
+            <td>{entry.margins?.freeThrows ?? "-"}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  );
+}
 
-            return (
-              <Fragment key={entry.clubCode}>
-                {showTierHeader ? <TierRow tier={tier} /> : null}
-                <tr key={entry.clubCode}>
-                  <td>
-                    <span className={`rank ${displayRank === 1 ? "rank-1" : ""}`}>{displayRank ?? "-"}</span>
-                    {tieBreak ? (
-                      <span
-                        className="tooltip ml-1"
-                        data-tip={`Calendar ranking places this team #${entry.calendar.position}`}
-                      >
-                        <span className="badge badge-xs badge-warning">*</span>
-                      </span>
-                    ) : null}
-                  </td>
-                  <td>
-                    <Link to={`/${seasonCode}/teams/${entry.clubCode}`} className="link link-hover flex min-w-0 items-center gap-2 font-medium">
-                      {entry.crestUrl ? (
-                        <img
-                          src={entry.crestUrl}
-                          alt=""
-                          className="h-6 w-6 flex-none object-contain"
-                          onError={(event) => {
-                            event.currentTarget.style.display = "none";
-                          }}
-                        />
-                      ) : null}
-                      <span className="max-w-40 truncate sm:max-w-56" title={entry.clubName ?? entry.clubCode}>
-                        {entry.clubName ?? entry.clubCode}
-                      </span>
-                    </Link>
-                  </td>
-                  <td>{entry.basic?.gamesPlayed ?? "-"}</td>
-                  <td>{entry.basic?.gamesWon ?? "-"}</td>
-                  <td>{entry.basic?.gamesLost ?? "-"}</td>
-                  <td>{entry.basic?.winPercentage ?? "-"}</td>
-                  <td>{formatCount(entry.basic?.pointsFor)}</td>
-                  <td>{formatCount(entry.basic?.pointsAgainst)}</td>
-                  <td className="font-semibold">{formatSignedDiff(entry.basic?.pointsDifference)}</td>
-                  <td>{entry.basic?.homeRecord ?? "-"}</td>
-                  <td>{entry.basic?.awayRecord ?? "-"}</td>
-                  <td>{entry.basic?.lastTenRecord ?? "-"}</td>
-                  <td>
-                    <div className="flex gap-1">{form.map((f) => formBadge(f.result, f.resultOrdinal))}</div>
-                  </td>
-                  <td className="trend-cell">
-                    <TrendCell positions={trendByClub?.get(entry.clubCode)} />
-                  </td>
-                </tr>
-              </Fragment>
-            );
-          })}
-        </tbody>
-      </table>
+function AheadBehindTable({ standings, seasonCode }) {
+  return (
+    <table className="table">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Team</th>
+          <th>Win%</th>
+          <th>Q1 Ahead</th>
+          <th>Q1 Behind</th>
+          <th>Q1 Tied</th>
+          <th>Half Ahead</th>
+          <th>Half Behind</th>
+          <th>Half Tied</th>
+          <th>Q3 Ahead</th>
+          <th>Q3 Behind</th>
+          <th>Q3 Tied</th>
+        </tr>
+      </thead>
+      <tbody>
+        {standings.map((entry) => (
+          <tr key={entry.clubCode}>
+            <td>
+              <PositionCell position={entry.aheadBehind?.position} qualified={entry.aheadBehind?.qualified} />
+            </td>
+            <td>
+              <ClubCell entry={entry} seasonCode={seasonCode} />
+            </td>
+            <td>{entry.aheadBehind?.winsPercentage ?? "-"}</td>
+            <td>{entry.aheadBehind?.quarter1Ahead ?? "-"}</td>
+            <td>{entry.aheadBehind?.quarter1Behind ?? "-"}</td>
+            <td>{entry.aheadBehind?.quarter1Tied ?? "-"}</td>
+            <td>{entry.aheadBehind?.half1Ahead ?? "-"}</td>
+            <td>{entry.aheadBehind?.half1Behind ?? "-"}</td>
+            <td>{entry.aheadBehind?.half1Tied ?? "-"}</td>
+            <td>{entry.aheadBehind?.quarter3Ahead ?? "-"}</td>
+            <td>{entry.aheadBehind?.quarter3Behind ?? "-"}</td>
+            <td>{entry.aheadBehind?.quarter3Tied ?? "-"}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  );
+}
+
+export default function StandingsTable({
+  standings,
+  seasonCode,
+  view = "overall",
+  showTiers = false,
+  trendByClub,
+  breakdown = "overview",
+}) {
+  return (
+    <Panel className="p-2">
+      <div className="overflow-x-auto overscroll-x-contain">
+        {breakdown === "streaks" ? (
+          <StreaksFormTable standings={standings} seasonCode={seasonCode} />
+        ) : breakdown === "margins" ? (
+          <MarginsTable standings={standings} seasonCode={seasonCode} />
+        ) : breakdown === "aheadBehind" ? (
+          <AheadBehindTable standings={standings} seasonCode={seasonCode} />
+        ) : (
+          <OverviewTable
+            standings={standings}
+            seasonCode={seasonCode}
+            view={view}
+            showTiers={showTiers}
+            trendByClub={trendByClub}
+          />
+        )}
+      </div>
+      <StandingsFooterBadges />
     </Panel>
   );
 }

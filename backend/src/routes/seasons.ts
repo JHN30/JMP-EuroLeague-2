@@ -1,4 +1,7 @@
 import { Router, type NextFunction, type Request, type Response } from "express";
+import { and, desc, eq } from "drizzle-orm";
+import { db } from "../db/client";
+import { catalogRead } from "../db/season-catalog";
 import {
   CatalogDatabaseError,
   getPhases,
@@ -20,6 +23,7 @@ import { getBoxScore, getGame, getGames, getPlayerGameLog, getTeamGames, getTeam
 import { getCoverage } from "../db/season-coverage";
 import { getLatestStandingsRound, getStandings } from "../db/season-standings";
 import { getSeasonStats, SORTABLE_STATS_FIELDS, type SortableStatsField } from "../db/season-stats";
+import { gamePlayerStats, games } from "../db/season-schema";
 
 export const seasonRouter = Router();
 
@@ -278,6 +282,43 @@ seasonRouter.get("/:seasonCode/records/player-seasons", async (req, res) => {
   }));
   const rows = perSeason.flat().map((row) => ({ ...row, numericValue: Number(row.value) })).filter((row) => Number.isFinite(row.numericValue)).sort((a, b) => b.numericValue - a.numericValue || a.seasonCode.localeCompare(b.seasonCode));
   res.json({ metric, label: { pointsScored: "Points", totalRebounds: "Rebounds", assists: "Assists", pir: "PIR" }[metric], records: rows.slice(0, 50) });
+});
+
+seasonRouter.get("/:seasonCode/records/single-games", async (req, res) => {
+  const season = await requestedSeason(req, res);
+  if (!season) return;
+  const metric = req.query.metric === undefined ? "points" : req.query.metric;
+  const columns = {
+    points: gamePlayerStats.points,
+    valuation: gamePlayerStats.valuation,
+    totalRebounds: gamePlayerStats.totalRebounds,
+    assistances: gamePlayerStats.assistances,
+  };
+  if (typeof metric !== "string" || !(metric in columns)) {
+    sendError(res, 400, "INVALID_RECORD_METRIC", "Invalid record metric");
+    return;
+  }
+  const column = columns[metric as keyof typeof columns];
+  const rows = (await Promise.all(SUPPORTED_SEASONS.map(async (seasonCode) => {
+    const seasonRows = await catalogRead(() => db.select({
+      gameCode: gamePlayerStats.gameCode,
+      personKey: gamePlayerStats.personKey,
+      playerName: gamePlayerStats.personName,
+      clubName: gamePlayerStats.clubName,
+      scheduledAt: games.scheduledAt,
+      value: column,
+    }).from(gamePlayerStats).innerJoin(games, and(
+      eq(games.competitionCode, gamePlayerStats.competitionCode),
+      eq(games.seasonCode, gamePlayerStats.seasonCode),
+      eq(games.gameCode, gamePlayerStats.gameCode),
+    )).where(and(
+      eq(gamePlayerStats.competitionCode, "E"),
+      eq(gamePlayerStats.seasonCode, seasonCode),
+      eq(games.played, true),
+    )).orderBy(desc(column)).limit(50));
+    return seasonRows.map((row) => ({ ...row, seasonCode }));
+  }))).flat().map((row) => ({ ...row, numericValue: Number(row.value) })).filter((row) => row.value !== null && row.value !== undefined && Number.isFinite(row.numericValue)).sort((a, b) => b.numericValue - a.numericValue || a.seasonCode.localeCompare(b.seasonCode) || a.gameCode - b.gameCode || a.personKey.localeCompare(b.personKey)).slice(0, 50);
+  res.json({ metric, label: { points: "Points", valuation: "PIR", totalRebounds: "Rebounds", assistances: "Assists" }[metric], records: rows });
 });
 
 seasonRouter.get("/:seasonCode/teams", async (req, res) => {

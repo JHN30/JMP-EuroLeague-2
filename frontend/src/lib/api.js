@@ -117,3 +117,8 @@ export async function getPlayerSeasonRecords(seasonCode, metric) {
   const { data } = await api.get(`/seasons/${seasonCode}/records/player-seasons`, { params: { metric } });
   return data;
 }
+
+export async function getSingleGameRecords(seasonCode, metric) {
+  const { data } = await api.get(`/seasons/${seasonCode}/records/single-games`, { params: { metric } });
+  return data;
+}

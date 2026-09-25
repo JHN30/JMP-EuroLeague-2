@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useRef } from "react";
-import { useQueries, useQuery } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { Chart } from "chart.js/auto";
 import { Link, useParams } from "react-router";
-import { getPhases, getSeasonGames, getSeasonStandings } from "../lib/api";
+import { getPhases, getPostseasonSeries, getSeasonGames, getSeasonStandings } from "../lib/api";
 import AsyncState from "../lib/AsyncState";
 import { formatCount, formatSignedDiff } from "../lib/format";
 import Panel from "../lib/Panel";
@@ -11,13 +11,7 @@ import PageHeader from "../lib/PageHeader";
 import { useDocumentTitle } from "../lib/useDocumentTitle";
 import { thinAxisLabels } from "../lib/chartHelpers";
 import { useActiveTheme, themeColor } from "../lib/useActiveTheme";
-import {
-  dateRangeLabel,
-  isChampionshipLabel,
-  isPlacementLabel,
-  phaseSortIndex,
-  teamCountFromGames,
-} from "../lib/phaseSummary";
+import { dateRangeLabel, phaseSortIndex, teamCountFromGames } from "../lib/phaseSummary";
 
 const MAX_PAGE_SIZE = 100;
 const MAX_PAGES = 10;
@@ -265,74 +259,100 @@ function RegularSeasonPanel({ seasonCode, games }) {
   );
 }
 
-// `groupName` is EuroLeague's own series/tie identifier: one game per group
-// in Play-In and Final Four, 3-5 games per group in Playoffs (best-of-5
-// series). Grouping by it, not by opponent alone, keeps two ties against the
-// same opponent in different phases separate.
-function buildSeries(phases, gamesByPhase) {
-  const series = [];
-  for (const phase of phases) {
-    if (phase.code === "RS") continue;
-    const games = gamesByPhase[phase.code] ?? [];
-    const groups = new Map();
-    for (const game of games) {
-      const key = game.groupName ?? String(game.gameCode);
-      if (!groups.has(key)) groups.set(key, []);
-      groups.get(key).push(game);
-    }
-    for (const [groupName, groupGames] of groups.entries()) {
-      const sorted = [...groupGames].sort((a, b) => (a.roundNumber ?? 0) - (b.roundNumber ?? 0));
-      const teamCodes = new Set();
-      for (const game of sorted) {
-        if (game.localTeam?.clubCode) teamCodes.add(game.localTeam.clubCode);
-        if (game.roadTeam?.clubCode) teamCodes.add(game.roadTeam.clubCode);
-      }
-      const [teamACode, teamBCode] = [...teamCodes];
-      const teamA = sorted.find((g) => g.localTeam?.clubCode === teamACode)?.localTeam
-        ?? sorted.find((g) => g.roadTeam?.clubCode === teamACode)?.roadTeam;
-      const teamB = sorted.find((g) => g.localTeam?.clubCode === teamBCode)?.localTeam
-        ?? sorted.find((g) => g.roadTeam?.clubCode === teamBCode)?.roadTeam;
+// A lightweight games-shaped list for `teamCountFromGames`/`dateRangeLabel`
+// only, built from the pipeline's postseason-series rows (used by the phase
+// progression row; the knockout journey itself uses `buildSeries` below).
+function postseasonGamesForCount(phaseSeries) {
+  return phaseSeries.flatMap((series) =>
+    series.games.map((game) => ({
+      scheduledAt: game.scheduledAt,
+      localTeam: { clubCode: game.localClubCode },
+      roadTeam: { clubCode: game.roadClubCode },
+    })),
+  );
+}
 
-      let winsA = 0;
-      let winsB = 0;
-      for (const game of sorted) {
-        if (!game.played || game.localScore == null || game.roadScore == null) continue;
-        const localIsA = game.localTeam?.clubCode === teamACode;
-        const localScore = game.localScore;
-        const roadScore = game.roadScore;
-        if (localScore === roadScore) continue;
-        const localWon = localScore > roadScore;
-        if ((localWon && localIsA) || (!localWon && !localIsA)) winsA += 1;
-        else winsB += 1;
-      }
+function matchClub(clubCode, clubA, clubB) {
+  if (clubCode === clubA.clubCode) return clubA;
+  if (clubCode === clubB.clubCode) return clubB;
+  return null;
+}
 
-      const decided = sorted.length > 0 && sorted.every((game) => game.played) && winsA !== winsB;
-      const winnerClubCode = decided ? (winsA > winsB ? teamACode : teamBCode) : null;
-      const earliestDate = sorted.map((game) => game.scheduledAt).filter(Boolean).sort()[0] ?? "";
-      const label = `${groupName ?? ""}`;
+function toDisplayGames(rawGames, clubA, clubB) {
+  return [...rawGames]
+    .sort((a, b) => (a.roundNumber ?? 0) - (b.roundNumber ?? 0))
+    .map((game) => ({
+      gameCode: game.gameCode,
+      scheduledAt: game.scheduledAt,
+      played: game.localScore != null && game.roadScore != null,
+      localScore: game.localScore,
+      roadScore: game.roadScore,
+      localTeam: matchClub(game.localClubCode, clubA, clubB),
+      roadTeam: matchClub(game.roadClubCode, clubA, clubB),
+    }));
+}
 
-      series.push({
-        key: `${phase.code}:${groupName}`,
-        phaseCode: phase.code,
-        phaseName: phase.name ?? phase.code,
-        groupName,
-        games: sorted,
-        teamA,
-        teamB,
-        teamACode,
-        teamBCode,
-        winsA,
-        winsB,
-        decided,
-        winnerClubCode,
-        isChampionship: isChampionshipLabel(label),
-        isPlacement: isPlacementLabel(label),
+// The pipeline table reports pairings, not bracket labels, so a phase's
+// internal final/placement game is identified structurally instead of by a
+// text group name: a series whose both clubs are each some other decided
+// series' winner in the same phase is that phase's own final; a series
+// whose both clubs are each some other decided series' loser is a
+// placement game. Every other series is a regular round.
+function loserOf(series) {
+  if (!series.winnerClubCode) return null;
+  return series.winnerClubCode === series.clubA.clubCode ? series.clubB.clubCode : series.clubA.clubCode;
+}
+
+function isChampionshipSeries(target, phaseSeries) {
+  const others = phaseSeries.filter((series) => series !== target && series.winnerClubCode);
+  return (
+    others.some((series) => series.winnerClubCode === target.clubA.clubCode) &&
+    others.some((series) => series.winnerClubCode === target.clubB.clubCode)
+  );
+}
+
+function isPlacementSeries(target, phaseSeries) {
+  const others = phaseSeries.filter((series) => series !== target && series.winnerClubCode);
+  return (
+    others.some((series) => loserOf(series) === target.clubA.clubCode) &&
+    others.some((series) => loserOf(series) === target.clubB.clubCode)
+  );
+}
+
+function buildSeries(allSeries, phaseNameByCode) {
+  const byPhase = new Map();
+  for (const series of allSeries) {
+    if (!byPhase.has(series.phaseCode)) byPhase.set(series.phaseCode, []);
+    byPhase.get(series.phaseCode).push(series);
+  }
+
+  const result = [];
+  for (const [phaseCode, phaseSeries] of byPhase.entries()) {
+    for (const raw of phaseSeries) {
+      const games = toDisplayGames(raw.games, raw.clubA, raw.clubB);
+      const earliestDate = games.map((game) => game.scheduledAt).filter(Boolean).sort()[0] ?? "";
+
+      result.push({
+        key: `${phaseCode}:${raw.clubA.clubCode}-${raw.clubB.clubCode}`,
+        phaseCode,
+        phaseName: phaseNameByCode.get(phaseCode) ?? phaseCode,
+        games,
+        teamA: raw.clubA,
+        teamB: raw.clubB,
+        teamACode: raw.clubA.clubCode,
+        teamBCode: raw.clubB.clubCode,
+        winsA: raw.clubAWins ?? 0,
+        winsB: raw.clubBWins ?? 0,
+        decided: raw.winnerClubCode != null,
+        winnerClubCode: raw.winnerClubCode,
+        isChampionship: isChampionshipSeries(raw, phaseSeries),
+        isPlacement: isPlacementSeries(raw, phaseSeries),
         earliestDate,
       });
     }
   }
 
-  return series.sort(
+  return result.sort(
     (a, b) =>
       phaseSortIndex(a.phaseCode) - phaseSortIndex(b.phaseCode) ||
       (a.earliestDate < b.earliestDate ? -1 : a.earliestDate > b.earliestDate ? 1 : 0),
@@ -607,25 +627,40 @@ export default function PlayoffsPage() {
   });
   const phases = phasesQuery.data?.phases ?? [];
   const postseasonPhases = phases.filter((phase) => phase.code !== "RS");
+  const regularSeasonPhase = phases.find((phase) => phase.code === "RS");
 
-  const phaseGamesQueries = useQueries({
-    queries: phases.map((phase) => ({
-      queryKey: ["format-phase-games", seasonCode, phase.code],
-      queryFn: () => fetchAllPhaseGames(seasonCode, phase.code),
-      enabled: phases.length > 0,
-    })),
+  const regularSeasonGamesQuery = useQuery({
+    queryKey: ["format-rs-games", seasonCode],
+    queryFn: () => fetchAllPhaseGames(seasonCode, "RS"),
+    enabled: Boolean(regularSeasonPhase),
   });
+
+  const postseasonSeriesQuery = useQuery({
+    queryKey: ["postseason-series", seasonCode],
+    queryFn: () => getPostseasonSeries(seasonCode),
+    enabled: phasesQuery.isSuccess,
+  });
+  const allSeries = postseasonSeriesQuery.data?.series ?? [];
+
+  const seriesByPhase = new Map();
+  for (const oneSeries of allSeries) {
+    if (!seriesByPhase.has(oneSeries.phaseCode)) seriesByPhase.set(oneSeries.phaseCode, []);
+    seriesByPhase.get(oneSeries.phaseCode).push(oneSeries);
+  }
 
   const gamesByPhase = {};
-  phases.forEach((phase, index) => {
-    gamesByPhase[phase.code] = phaseGamesQueries[index]?.data ?? [];
+  phases.forEach((phase) => {
+    gamesByPhase[phase.code] =
+      phase.code === "RS"
+        ? (regularSeasonGamesQuery.data ?? [])
+        : postseasonGamesForCount(seriesByPhase.get(phase.code) ?? []);
   });
 
-  const gamesLoading = phaseGamesQueries.some((query) => query.isLoading);
-  const gamesError = phaseGamesQueries.some((query) => query.isError);
+  const phaseNameByCode = new Map(phases.map((phase) => [phase.code, phase.name ?? phase.code]));
+  const series = buildSeries(allSeries, phaseNameByCode);
 
-  const regularSeasonPhase = phases.find((phase) => phase.code === "RS");
-  const series = buildSeries(phases, gamesByPhase);
+  const dataLoading = (Boolean(regularSeasonPhase) && regularSeasonGamesQuery.isLoading) || postseasonSeriesQuery.isLoading;
+  const dataError = regularSeasonGamesQuery.isError || postseasonSeriesQuery.isError;
 
   if (phasesQuery.isLoading) return <AsyncState status="loading" label="Loading phases" />;
   if (phasesQuery.isError) {
@@ -636,13 +671,16 @@ export default function PlayoffsPage() {
     <div className="flex flex-col gap-8">
       <PageHeader kicker="POSTSEASON" title="Playoffs" />
 
-      {gamesLoading ? (
+      {dataLoading ? (
         <AsyncState status="loading" label="Loading season format" />
-      ) : gamesError ? (
+      ) : dataError ? (
         <AsyncState
           status="error"
           message="Could not load games."
-          onRetry={() => phaseGamesQueries.forEach((query) => query.refetch())}
+          onRetry={() => {
+            regularSeasonGamesQuery.refetch();
+            postseasonSeriesQuery.refetch();
+          }}
         />
       ) : (
         <>

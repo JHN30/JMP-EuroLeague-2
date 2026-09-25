@@ -19,7 +19,7 @@ import {
   getTeamRoster,
   getTeams,
 } from "../db/season-identities";
-import { getBoxScore, getGame, getGames, getPlayByPlay, getPlayerGameLog, getTeamGames, getTeamStatsSummary } from "../db/season-games";
+import { getBoxScore, getGame, getGames, getPlayByPlay, getPlayerGameLog, getPostseasonSeries, getTeamGames, getTeamStatsSummary } from "../db/season-games";
 import { getCoverage } from "../db/season-coverage";
 import { getLatestStandingsRound, getStandings } from "../db/season-standings";
 import { getSeasonStats, SORTABLE_STATS_FIELDS, type SortableStatsField } from "../db/season-stats";
@@ -606,6 +606,12 @@ seasonRouter.get("/:seasonCode/games/:gameCode/play-by-play", async (req, res) =
     return;
   }
   res.json(await getPlayByPlay(season.seasonCode, gameCode));
+});
+
+seasonRouter.get("/:seasonCode/postseason-series", async (req, res) => {
+  const season = await requestedSeason(req, res);
+  if (!season) return;
+  res.json(await getPostseasonSeries(season.seasonCode));
 });
 
 seasonRouter.get("/:seasonCode/coverage", async (req, res) => {

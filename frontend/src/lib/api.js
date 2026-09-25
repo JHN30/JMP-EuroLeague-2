@@ -27,6 +27,11 @@ export async function getPlayByPlay(seasonCode, gameCode) {
   return data;
 }
 
+export async function getPostseasonSeries(seasonCode) {
+  const { data } = await api.get(`/seasons/${seasonCode}/postseason-series`);
+  return data;
+}
+
 export async function getCoverage(seasonCode, { gameCode } = {}) {
   const { data } = await api.get(`/seasons/${seasonCode}/coverage`, { params: { gameCode } });
   return data;

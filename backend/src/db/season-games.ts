@@ -2,7 +2,7 @@ import { and, asc, eq, isNull, or, sql } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 import { db } from "./client";
 import { CatalogDatabaseError, catalogRead } from "./season-catalog";
-import { clubs, gamePeriodScores, gamePlayerStats, gameTeamStats, games, playByPlay, teamSeasonStats } from "./season-schema";
+import { clubs, gamePeriodScores, gamePlayerStats, gameTeamStats, games, playByPlay, postseasonSeries, teamSeasonStats } from "./season-schema";
 
 const COMPETITION_CODE = "E";
 
@@ -15,6 +15,8 @@ export type GameTeam = {
 
 const localClubs = alias(clubs, "local_clubs");
 const roadClubs = alias(clubs, "road_clubs");
+const seriesClubA = alias(clubs, "series_club_a");
+const seriesClubB = alias(clubs, "series_club_b");
 
 export type Game = {
   gameCode: number;
@@ -406,6 +408,68 @@ export async function getPlayByPlay(seasonCode: string, gameCode: number) {
   });
   events.sort((a, b) => a.periodNumber - b.periodNumber || a.eventOrdinal - b.eventOrdinal);
   return { events };
+}
+
+type PostseasonClub = { clubCode: string; name: string | null; abbreviatedName: string | null; crestUrl: string | null };
+
+export async function getPostseasonSeries(seasonCode: string) {
+  const rows = await catalogRead(() =>
+    db
+      .select({
+        phaseCode: postseasonSeries.phaseCode,
+        clubACode: postseasonSeries.clubACode,
+        clubBCode: postseasonSeries.clubBCode,
+        clubAName: postseasonSeries.clubAName,
+        clubBName: postseasonSeries.clubBName,
+        clubAAbbreviatedName: seriesClubA.abbreviatedName,
+        clubBAbbreviatedName: seriesClubB.abbreviatedName,
+        clubACrestUrl: seriesClubA.crestUrl,
+        clubBCrestUrl: seriesClubB.crestUrl,
+        gamesPlayed: postseasonSeries.gamesPlayed,
+        clubAWins: postseasonSeries.clubAWins,
+        clubBWins: postseasonSeries.clubBWins,
+        winnerClubCode: postseasonSeries.winnerClubCode,
+        games: postseasonSeries.games,
+      })
+      .from(postseasonSeries)
+      .leftJoin(seriesClubA, and(
+        eq(seriesClubA.competitionCode, postseasonSeries.competitionCode),
+        eq(seriesClubA.seasonCode, postseasonSeries.seasonCode),
+        eq(seriesClubA.clubCode, postseasonSeries.clubACode),
+      ))
+      .leftJoin(seriesClubB, and(
+        eq(seriesClubB.competitionCode, postseasonSeries.competitionCode),
+        eq(seriesClubB.seasonCode, postseasonSeries.seasonCode),
+        eq(seriesClubB.clubCode, postseasonSeries.clubBCode),
+      ))
+      .where(and(
+        eq(postseasonSeries.competitionCode, COMPETITION_CODE),
+        eq(postseasonSeries.seasonCode, seasonCode),
+      )),
+  );
+
+  const series = rows.map((row) => ({
+    phaseCode: row.phaseCode,
+    clubA: {
+      clubCode: row.clubACode,
+      name: row.clubAName,
+      abbreviatedName: row.clubAAbbreviatedName,
+      crestUrl: row.clubACrestUrl,
+    } satisfies PostseasonClub,
+    clubB: {
+      clubCode: row.clubBCode,
+      name: row.clubBName,
+      abbreviatedName: row.clubBAbbreviatedName,
+      crestUrl: row.clubBCrestUrl,
+    } satisfies PostseasonClub,
+    gamesPlayed: row.gamesPlayed,
+    clubAWins: row.clubAWins,
+    clubBWins: row.clubBWins,
+    winnerClubCode: row.winnerClubCode,
+    games: row.games,
+  }));
+
+  return { series };
 }
 
 const MEASURE_KEYS = [

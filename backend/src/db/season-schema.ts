@@ -262,6 +262,36 @@ export const teamSeasonStats = pgTable(
   (table) => [primaryKey({ columns: [table.competitionCode, table.seasonCode, table.phaseCode, table.clubCode] })],
 );
 
+export const postseasonSeries = pgTable(
+  "app_postseason_series",
+  {
+    competitionCode: text("competition_code").notNull(),
+    seasonCode: text("season_code").notNull(),
+    phaseCode: text("phase_code").notNull(),
+    clubACode: text("club_a_code").notNull(),
+    clubBCode: text("club_b_code").notNull(),
+    clubAName: text("club_a_name"),
+    clubBName: text("club_b_name"),
+    gamesPlayed: integer("games_played"),
+    clubAWins: integer("club_a_wins"),
+    clubBWins: integer("club_b_wins"),
+    winnerClubCode: text("winner_club_code"),
+    games: jsonb("games").notNull().$type<{
+      gameCode: number;
+      roundNumber: number | null;
+      scheduledAt: string | null;
+      localClubCode: string | null;
+      roadClubCode: string | null;
+      localScore: number | null;
+      roadScore: number | null;
+      winnerClubCode: string | null;
+    }[]>(),
+  },
+  (table) => [
+    primaryKey({ columns: [table.competitionCode, table.seasonCode, table.phaseCode, table.clubACode, table.clubBCode] }),
+  ],
+);
+
 export const coverageSeasons = pgTable(
   "app_coverage_seasons",
   {

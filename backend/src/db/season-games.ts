@@ -1,8 +1,8 @@
 import { and, asc, eq, isNull, or, sql } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 import { db } from "./client";
-import { catalogRead } from "./season-catalog";
-import { clubs, gamePeriodScores, gamePlayerStats, gameTeamStats, games } from "./season-schema";
+import { CatalogDatabaseError, catalogRead } from "./season-catalog";
+import { clubs, gamePeriodScores, gamePlayerStats, gameTeamStats, games, teamSeasonStats } from "./season-schema";
 
 const COMPETITION_CODE = "E";
 
@@ -369,17 +369,22 @@ const MEASURE_KEYS = [
 ] as const;
 
 type MeasureKey = (typeof MEASURE_KEYS)[number];
-type MeasureSums = Record<MeasureKey, number>;
+type MeasureSums = Record<MeasureKey, number | null>;
 
 function emptySums(): MeasureSums {
-  return Object.fromEntries(MEASURE_KEYS.map((key) => [key, 0])) as MeasureSums;
+  return Object.fromEntries(MEASURE_KEYS.map((key) => [key, null])) as MeasureSums;
 }
 
-function addMeasures(target: MeasureSums, row: { [key in MeasureKey]: string | null }) {
+function numericMeasures(row: { [key in MeasureKey]: string | null }): MeasureSums {
+  const measures = emptySums();
   for (const key of MEASURE_KEYS) {
-    const value = Number(row[key]);
-    if (Number.isFinite(value)) target[key] += value;
+    const raw = row[key];
+    if (raw === null) continue;
+    const value = Number(raw);
+    if (!Number.isFinite(value)) throw new CatalogDatabaseError();
+    measures[key] = value;
   }
+  return measures;
 }
 
 export type TeamStatsSummary = {
@@ -396,42 +401,69 @@ export async function getTeamStatsSummary(
 ): Promise<TeamStatsSummary> {
   const rows = await catalogRead(() =>
     db.select({
-      gameCode: games.gameCode,
-      localClubCode: games.localClubCode,
-      roadClubCode: games.roadClubCode,
-      side: gameTeamStats.side,
-      ...measureFields(gameTeamStats),
+      phaseCode: teamSeasonStats.phaseCode,
+      gamesPlayed: teamSeasonStats.gamesPlayed,
+      own: {
+        points: teamSeasonStats.ownPoints,
+        fieldGoalsMade2: teamSeasonStats.ownFieldGoalsMade2,
+        fieldGoalsAttempted2: teamSeasonStats.ownFieldGoalsAttempted2,
+        fieldGoalsMade3: teamSeasonStats.ownFieldGoalsMade3,
+        fieldGoalsAttempted3: teamSeasonStats.ownFieldGoalsAttempted3,
+        freeThrowsMade: teamSeasonStats.ownFreeThrowsMade,
+        freeThrowsAttempted: teamSeasonStats.ownFreeThrowsAttempted,
+        fieldGoalsMadeTotal: teamSeasonStats.ownFieldGoalsMadeTotal,
+        fieldGoalsAttemptedTotal: teamSeasonStats.ownFieldGoalsAttemptedTotal,
+        totalRebounds: teamSeasonStats.ownTotalRebounds,
+        defensiveRebounds: teamSeasonStats.ownDefensiveRebounds,
+        offensiveRebounds: teamSeasonStats.ownOffensiveRebounds,
+        assistances: teamSeasonStats.ownAssistances,
+        steals: teamSeasonStats.ownSteals,
+        turnovers: teamSeasonStats.ownTurnovers,
+        blocksFavour: teamSeasonStats.ownBlocksFavour,
+        blocksAgainst: teamSeasonStats.ownBlocksAgainst,
+        foulsCommited: teamSeasonStats.ownFoulsCommited,
+        foulsReceived: teamSeasonStats.ownFoulsReceived,
+        valuation: teamSeasonStats.ownValuation,
+      },
+      opponent: {
+        points: teamSeasonStats.oppPoints,
+        fieldGoalsMade2: teamSeasonStats.oppFieldGoalsMade2,
+        fieldGoalsAttempted2: teamSeasonStats.oppFieldGoalsAttempted2,
+        fieldGoalsMade3: teamSeasonStats.oppFieldGoalsMade3,
+        fieldGoalsAttempted3: teamSeasonStats.oppFieldGoalsAttempted3,
+        freeThrowsMade: teamSeasonStats.oppFreeThrowsMade,
+        freeThrowsAttempted: teamSeasonStats.oppFreeThrowsAttempted,
+        fieldGoalsMadeTotal: teamSeasonStats.oppFieldGoalsMadeTotal,
+        fieldGoalsAttemptedTotal: teamSeasonStats.oppFieldGoalsAttemptedTotal,
+        totalRebounds: teamSeasonStats.oppTotalRebounds,
+        defensiveRebounds: teamSeasonStats.oppDefensiveRebounds,
+        offensiveRebounds: teamSeasonStats.oppOffensiveRebounds,
+        assistances: teamSeasonStats.oppAssistances,
+        steals: teamSeasonStats.oppSteals,
+        turnovers: teamSeasonStats.oppTurnovers,
+        blocksFavour: teamSeasonStats.oppBlocksFavour,
+        blocksAgainst: teamSeasonStats.oppBlocksAgainst,
+        foulsCommited: teamSeasonStats.oppFoulsCommited,
+        foulsReceived: teamSeasonStats.oppFoulsReceived,
+        valuation: teamSeasonStats.oppValuation,
+      },
     })
-      .from(games)
-      .innerJoin(gameTeamStats, and(
-        eq(gameTeamStats.competitionCode, games.competitionCode),
-        eq(gameTeamStats.seasonCode, games.seasonCode),
-        eq(gameTeamStats.gameCode, games.gameCode),
-        eq(gameTeamStats.statsKind, "total"),
-      ))
+      .from(teamSeasonStats)
       .where(and(
-        eq(games.competitionCode, COMPETITION_CODE),
-        eq(games.seasonCode, seasonCode),
-        eq(games.phaseCode, phaseCode),
-        eq(games.played, true),
-        or(eq(games.localClubCode, clubCode), eq(games.roadClubCode, clubCode))!,
-      )),
+        eq(teamSeasonStats.competitionCode, COMPETITION_CODE),
+        eq(teamSeasonStats.seasonCode, seasonCode),
+        eq(teamSeasonStats.phaseCode, phaseCode),
+        eq(teamSeasonStats.clubCode, clubCode),
+      ))
+      .limit(1),
   );
 
-  const own = emptySums();
-  const opponent = emptySums();
-  const gameCodes = new Set<number>();
-
-  for (const row of rows) {
-    const ownSide = row.localClubCode === clubCode ? "local" : row.roadClubCode === clubCode ? "road" : null;
-    if (!ownSide) continue;
-    gameCodes.add(row.gameCode);
-    if (row.side === ownSide) {
-      addMeasures(own, row);
-    } else {
-      addMeasures(opponent, row);
-    }
-  }
-
-  return { phaseCode, gamesPlayed: gameCodes.size, own, opponent };
+  const row = rows[0];
+  if (!row) return { phaseCode, gamesPlayed: 0, own: emptySums(), opponent: emptySums() };
+  return {
+    phaseCode: row.phaseCode,
+    gamesPlayed: row.gamesPlayed,
+    own: numericMeasures(row.own),
+    opponent: numericMeasures(row.opponent),
+  };
 }

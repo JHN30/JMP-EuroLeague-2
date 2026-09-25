@@ -13,7 +13,7 @@ import {
 import AsyncState from "../lib/AsyncState";
 import CompactMetric from "../lib/CompactMetric";
 import EmptyText from "../lib/EmptyText";
-import { formatDateTime, formatPerGame, formatPercentage } from "../lib/format";
+import { formatCount, formatDateTime, formatPerGame, formatPercentage } from "../lib/format";
 import HeaderStats from "../lib/HeaderStats";
 import Panel from "../lib/Panel";
 import PageHeader from "../lib/PageHeader";
@@ -316,8 +316,25 @@ function OverviewSection({ seasonCode, clubCode, phaseCode, standingsQuery, rost
 }
 
 function pct(made, attempted) {
-  if (!attempted) return null;
+  if (made == null || attempted == null || attempted === 0) return null;
   return (made / attempted) * 100;
+}
+
+function sumIfPresent(...values) {
+  if (values.some((value) => value == null)) return null;
+  return values.reduce((total, value) => total + value, 0);
+}
+
+function divideIfPresent(numerator, denominator) {
+  if (numerator == null || denominator == null || denominator === 0) return null;
+  return numerator / denominator;
+}
+
+function shootingSplit(sums, madeKey, attemptedKey) {
+  const made = sums[madeKey];
+  const attempted = sums[attemptedKey];
+  if (made == null || attempted == null) return formatCount(null);
+  return `${formatCount(made)}-${formatCount(attempted)} (${formatPercentage(pct(made, attempted))})`;
 }
 
 function MetricTile({ label, value }) {
@@ -343,7 +360,7 @@ function MetricGroup({ title, rows }) {
 }
 
 function traditionalRows(sums, gp) {
-  const perGame = (key) => formatPerGame(sums[key] / gp);
+  const perGame = (key) => formatPerGame(divideIfPresent(sums[key], gp));
   return [
     ["Points", perGame("points")],
     ["Rebounds", perGame("totalRebounds")],
@@ -377,14 +394,20 @@ function StatisticsSection({ teamStatsSummaryQuery }) {
     return <EmptyText>This club did not play any games in the selected phase.</EmptyText>;
   }
 
-  const eFg = pct(own.fieldGoalsMadeTotal + 0.5 * own.fieldGoalsMade3, own.fieldGoalsAttemptedTotal);
-  const ts = own.points / (2 * (own.fieldGoalsAttemptedTotal + 0.44 * own.freeThrowsAttempted)) * 100;
+  const eFgMade = own.fieldGoalsMade3 == null
+    ? null
+    : sumIfPresent(own.fieldGoalsMadeTotal, 0.5 * own.fieldGoalsMade3);
+  const eFg = pct(eFgMade, own.fieldGoalsAttemptedTotal);
+  const tsAttempts = own.freeThrowsAttempted == null
+    ? null
+    : sumIfPresent(own.fieldGoalsAttemptedTotal, 0.44 * own.freeThrowsAttempted);
+  const trueShooting = pct(own.points, tsAttempts == null ? null : 2 * tsAttempts);
   const advancedRows = [
     ["eFG %", formatPercentage(eFg)],
-    ["True shooting %", formatPercentage(Number.isFinite(ts) ? ts : null)],
-    ["Assist/turnover", own.turnovers ? formatPerGame(own.assistances / own.turnovers) : "-"],
-    ["Off. rebound %", formatPercentage(pct(own.offensiveRebounds, own.offensiveRebounds + opp.defensiveRebounds))],
-    ["Def. rebound %", formatPercentage(pct(own.defensiveRebounds, own.defensiveRebounds + opp.offensiveRebounds))],
+    ["True shooting %", formatPercentage(trueShooting)],
+    ["Assist/turnover", formatPerGame(divideIfPresent(own.assistances, own.turnovers))],
+    ["Off. rebound %", formatPercentage(pct(own.offensiveRebounds, sumIfPresent(own.offensiveRebounds, opp.defensiveRebounds)))],
+    ["Def. rebound %", formatPercentage(pct(own.defensiveRebounds, sumIfPresent(own.defensiveRebounds, opp.offensiveRebounds)))],
     ["Free throw rate", formatPercentage(pct(own.freeThrowsAttempted, own.fieldGoalsAttemptedTotal))],
   ];
 
@@ -438,7 +461,7 @@ function ShootingSection({ teamStatsSummaryQuery }) {
             <td className="font-medium">This team</td>
             {splits.map(([label, made, attempted]) => (
               <td key={label} className="tabular-nums">
-                {own[made]}-{own[attempted]} ({formatPercentage(pct(own[made], own[attempted]))})
+                {shootingSplit(own, made, attempted)}
               </td>
             ))}
           </tr>
@@ -446,7 +469,7 @@ function ShootingSection({ teamStatsSummaryQuery }) {
             <td className="font-medium">Allowed</td>
             {splits.map(([label, made, attempted]) => (
               <td key={label} className="tabular-nums">
-                {opp[made]}-{opp[attempted]} ({formatPercentage(pct(opp[made], opp[attempted]))})
+                {shootingSplit(opp, made, attempted)}
               </td>
             ))}
           </tr>

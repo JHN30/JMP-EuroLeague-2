@@ -1,8 +1,8 @@
 # JMP Euroleague - Project Overview
 
-<!-- blueprint:source-hash 05a857574e2b494b3a62cb78d794b29e8270f52d8b62ee8980b640be9e268da7 -->
+<!-- blueprint:source-hash d9f19c5224310a25f15984ec37a0a4d0891e51d5bbb987c682480ee590f6bc99 -->
 
-> A public, read-only EuroLeague explorer for the 2025-26 (`E2025`) and 2026-27 (`E2026`) seasons, backed by already populated Neon PostgreSQL tables.
+> A public, read-only EuroLeague explorer for the 2025-26 (`E2025`) and 2026-27 (`E2026`) seasons, backed by curated Neon PostgreSQL tables.
 
 ## Problem
 
@@ -18,7 +18,7 @@ Fans currently have to search scattered pages or interpret raw API data to under
 ## Usage model
 
 - Public, internet-facing, read-only, and EuroLeague-only in Phase 1. No accounts, personal-user data, multi-tenancy, payments, or predictions.
-- Only `E2025` and `E2026` are in scope. Current-season data can be incomplete and historical records can contain known gaps or corrections; show uncertainty instead of filling it with zero or an invented result.
+- All current browsing, records, and player views are limited to `E2025` and `E2026`. Archive-wide records and player careers remain deferred until the intended historical seasons are loaded. Current and historical data can contain gaps or corrections; show uncertainty instead of filling it with zero or an invented result.
 - Treat API input as untrusted. Bound growing lists with filters and pagination. Use safe errors, rate limiting, response compression, and structured logging without assuming enterprise scale.
 - Initial traffic and data volume are expected to be modest. Formal compliance, audit logging, enterprise SLAs, and high availability are not Phase 1 requirements.
 
@@ -58,12 +58,23 @@ The headline is a two-season public explorer whose every view stays in the selec
     - **16b Honest game-detail placeholders** - unavailable Shooting and Play-by-play states that link to box-score shooting totals or period-level flow and label derived data.
     - **16c Season and profile coverage integration** - reusable season-scoped coverage presentation and archive-scoped player history, without prebuilding feature 17 tabs.
 17. **Guideline page depth** - season overview, standings, game detail, team detail, player detail, leaderboards, comparisons, records, and season-format depth scoped to available data.
+18. **Event and shot data** - replace feature 16's play-by-play and shooting placeholders with real event and shot data from `app_play_by_play` and `app_shots`, following `UI-UX.md` §6.6–6.9. Build it in five reviewable parts:
+    - **18a Play-by-play log** - game play-by-play endpoint and Game Detail log with event-type, period, and team filters, running score, and "Show 60 more" paging; real play-by-play coverage counts.
+    - **18b Event-level game flow** - lead changes, biggest leads, longest run, score-differential chart, and turning points from play-by-play; the period-score table stays.
+    - **18c Game shot chart** - game shots endpoint, shared half-court renderer, filterable shot map, zone summary, and box-score reconciliation badge; real shot-location coverage counts.
+    - **18d Shooting studio modes** - zone heatmap, team comparison, made-shot replay, and quarter playback with reduced-motion stepping.
+    - **18e Season shot locations** - aggregated season or phase shot charts on Team Detail and Player Detail.
+19. **Application-table adoption and navigation** - replace API recomputation and legacy multi-table reads with the pipeline's page-shaped `app_*` tables for `E2025` and `E2026`, then expose Format in the persistent navigation. Build it in four reviewable parts:
+    - **19a Clean table baseline and consolidated standings** - verify clean `app_*` mappings and discovery filters, read `app_standings`, and prove no app query uses a legacy compatibility view.
+    - **19b Team statistics and coverage** - read precomputed team totals and season/game coverage, including real shot and play-by-play counts.
+    - **19c Postseason series data** - read conservative postseason pairings without inventing bracket positions or completion rules.
+    - **19d Navigation and page integration** - align tabs to Home, Overview, Standings, Games, Teams, Players, Leaders, Compare, and Format and verify affected page states.
 
-Every data-driven page needs loading, empty, unavailable, partial-data, and error states. Known corrections and anomalies must remain visible. JMP Rating, win probabilities, simulations, older seasons, other competitions, and user features are deferred.
+Every data-driven page needs loading, empty, unavailable, partial-data, and error states. Known corrections and anomalies must remain visible. JMP Rating, win probabilities, simulations, older-season browsing, archive-wide records and careers, other competitions, and user features are deferred.
 
 ## Data model
 
-This is the logical application-facing model. `create_v2_v3_tables.sql` documents the existing `app_*` Neon tables and their PostgreSQL types; it is a schema reference, not a request to recreate or reload them. Confirm the live table definitions and content before locking API contracts. Preserve composite source identifiers and season scope.
+This is the logical application-facing model. `DATA_DICTIONARY.md` is the current contract for the populated Neon `app_*` tables. Preserve composite identifiers: season-dependent tables are scoped by both `competition_code` and `season_code`, and entity/game codes are not globally unique by themselves.
 
 | Model | Core fields and types | Relationships |
 | --- | --- | --- |
@@ -79,10 +90,14 @@ This is the logical application-facing model. `create_v2_v3_tables.sql` document
 | Team and player game box scores | `game_code`, `side` (text), `person_key` (player rows), available nullable numeric metrics | `app_game_team_stats` and `app_game_player_stats`; feed game detail. |
 | Player season statistics | `season_code`, `phase_code`, `mode`, `entry_ordinal`, `person_key`, available nullable numeric metrics | Four `app_season_stats_*` tables contain traditional, advanced, scoring, and miscellaneous views. No team season aggregate table is listed in the supplied SQL. |
 | Official standing | `season_code`, `phase_code`, `round_number`, `club_code`, `position` (nullable integer), available record/scoring/form fields | `app_standings` holds one row per club and round with the basic, calendar, streaks, ahead/behind, and margins views plus `form` and `streak_history` JSON. The seven `app_standings_*` feed tables still exist but the app no longer reads them. |
-| Postseason matchup | `seasonCode`, stage (play-in, playoffs, or Final Four), participant team IDs (nullable), related game IDs, result (nullable) | Represents known bracket relationships without inventing future participants. |
+| Team season statistics | `competition_code`, `season_code`, `phase_code`, `club_code`, `games_played`, nullable `own_*` and `opp_*` numeric measures | `app_team_season_stats`; one pipeline-owned aggregate per club and phase. |
+| Coverage summary | season or game key plus `items` (JSONB array of eight typed availability records) | `app_coverage_seasons` and `app_coverage_games`; game coverage mixes game-scoped event counts with season-scoped roster/statistics counts by contract. |
+| Play-by-play event | `game_code`, `period` (text, e.g. `FirstQuarter`), `event_ordinal` (integer), `play_number`, `club_code`, `person_code`, `player_name`, `dorsal` (nullable text), `play_type` (text code), `play_info` (nullable text), `minute` (integer), `marker_time` (nullable `MM:SS`), `points_a`/`points_b` (nullable running score) | `app_play_by_play`, keyed by competition, season, game, period, and event ordinal; belongs to one game. Coverage is per game and can lag the schedule. |
+| Shot | `game_code`, `shot_ordinal` (integer), `play_number`, `club_code`, `person_code`, `player_name`, `action_code`/`action` (made or missed 2PT/3PT/FT), `points` (integer), `coord_x`/`coord_y` (numeric, basket origin), `zone` (text), `fastbreak`/`second_chance`/`points_off_turnover` (boolean), `minute`, `console_time`, `points_a`/`points_b`, `shot_at` (timestamp with time zone) | `app_shots`, keyed by competition, season, game, and shot ordinal; belongs to one game and joins players by person code. |
+| Postseason series | `competition_code`, `season_code`, `phase_code`, ordered club pair, wins, nullable winner, `games` (JSONB) | `app_postseason_series`; reports PI/PO/FF pairings from recorded games without bracket-position labels or a derived completion flag. |
 | Data-quality annotation | Target record ID/type, correction or anomaly flag, public note (when safe) | Explains known corrections, gaps, or incomplete data in affected views. |
 
-Scope every season-dependent query by season code. Distinguish scheduled, live/unknown, postponed/cancelled, and completed games when supplied. `NULL` means unavailable, never zero. Prefer validated Gold/application-facing tables or views, never Bronze/raw ingestion tables in public endpoints. Document one owner for each aggregation, either the pipeline/database or the API, and do not recompute it independently in the frontend.
+Scope every season-dependent query by competition and season code. Distinguish scheduled, live/unknown, postponed/cancelled, and completed games when supplied. `NULL` means unavailable, never zero, and a game without play-by-play or shot rows shows an honest empty state rather than derived or fabricated events. Public endpoints read curated `app_*` tables, never Bronze/raw ingestion tables. The pipeline owns the page-shaped aggregates above; the API maps them to validated response contracts rather than recomputing them. Legacy `etl_flat_*` aliases may be removed only after application queries and Drizzle discovery no longer use them and the deployed app is verified with its production database role; non-web-app `etl_flat_*` tables remain.
 
 ## Tech stack
 
@@ -99,7 +114,7 @@ None in Phase 1. This is a portfolio and fan product; payments, subscriptions, a
 
 Use a dark sports-analytics style with EuroLeague orange, restrained complementary color, and high-contrast neutral surfaces without copying the league website. Prioritize readable tables and visible season, phase, and round context. Provide deliberate mobile layouts, accessible charts when charts help more than tables, semantic structure, keyboard access, visible focus, sufficient contrast, and non-color-only status cues. Avoid expensive blur and excessive animation.
 
-The planned screens are home, standings, fixtures/results, game detail, team directory/detail, player search/detail, leaderboards, comparisons/trends, and playoffs, reached through a persistent navigation bar alongside the season selector. Exact URL paths are not specified in the plans.
+The planned screens are home, season overview, standings, fixtures/results, game detail, team directory/detail, player search/detail, leaderboards, comparisons/trends, and season format, reached through a persistent navigation bar alongside the season selector. The existing Records work remains a two-season prototype until the archive is loaded. Exact URL paths are not specified in the plans.
 
 ## Deployment
 
@@ -107,13 +122,12 @@ The planned screens are home, standings, fixtures/results, game detail, team dir
 - Provide a lightweight public health endpoint such as `GET /api/health`. Expected server variables are `DATABASE_URL`, `PORT`, `NODE_ENV`, and `CLIENT_URL` or `CORS_ORIGIN`; final names must match implementation.
 - Derive install, build, migration, and start commands from actual package scripts. Run migrations as a controlled deployment step, use separate development/production connections, keep secrets out of Vite, and restrict production CORS to real frontend origins.
 - Data import/refresh schedule and mechanism are TBD. Do not add a production cron before source, ownership, retry behavior, and idempotency are defined.
+- Retire only the publisher-managed legacy web-app compatibility views after a successful dry run and live application verification; never issue a blanket drop for all `etl_flat_*` objects.
 
 ## Open questions
 
-> TODO: Confirm the supplied SQL matches the live Neon schema and identify which `app_*` tables are approved for public API reads. The SQL has no separate phase, team season aggregate, postseason matchup, or data-quality annotation table; confirm the source and ownership of those views before their endpoints are specified.
-
 > TODO: Reconcile the planned `DATABASE_URL` and `CLIENT_URL`/`CORS_ORIGIN` names with the current backend `DB_URL` and `FRONTEND_URL` configuration.
 
-> TODO: The plan calls Zustand usage existing, but it is not installed in this scaffold. Chart.js and Motion are also not installed. The scaffold has TanStack Query and Axios, which the project plan does not name. Confirm these choices in the plans when their features are specified.
+> TODO: The plan mentions existing Zustand usage and optional Motion, but neither is installed. The current app uses TanStack Query and Axios for server data and Chart.js for charts; reconcile the remaining stack wording when those choices next change.
 
 > TODO: Clarify how shared/generated TypeScript response types apply to the JavaScript frontend.

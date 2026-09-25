@@ -183,6 +183,80 @@ export const gamePlayerStats = pgTable(
   (table) => [primaryKey({ columns: [table.competitionCode, table.seasonCode, table.gameCode, table.side, table.personKey] })],
 );
 
+export const teamSeasonStats = pgTable(
+  "app_team_season_stats",
+  {
+    competitionCode: text("competition_code").notNull(),
+    seasonCode: text("season_code").notNull(),
+    phaseCode: text("phase_code").notNull(),
+    clubCode: text("club_code").notNull(),
+    clubName: text("club_name"),
+    gamesPlayed: integer("games_played").notNull(),
+    ownPoints: numeric("own_points"),
+    ownFieldGoalsMade2: numeric("own_field_goals_made2"),
+    ownFieldGoalsAttempted2: numeric("own_field_goals_attempted2"),
+    ownFieldGoalsMade3: numeric("own_field_goals_made3"),
+    ownFieldGoalsAttempted3: numeric("own_field_goals_attempted3"),
+    ownFreeThrowsMade: numeric("own_free_throws_made"),
+    ownFreeThrowsAttempted: numeric("own_free_throws_attempted"),
+    ownFieldGoalsMadeTotal: numeric("own_field_goals_made_total"),
+    ownFieldGoalsAttemptedTotal: numeric("own_field_goals_attempted_total"),
+    ownTotalRebounds: numeric("own_total_rebounds"),
+    ownDefensiveRebounds: numeric("own_defensive_rebounds"),
+    ownOffensiveRebounds: numeric("own_offensive_rebounds"),
+    ownAssistances: numeric("own_assistances"),
+    ownSteals: numeric("own_steals"),
+    ownTurnovers: numeric("own_turnovers"),
+    ownBlocksFavour: numeric("own_blocks_favour"),
+    ownBlocksAgainst: numeric("own_blocks_against"),
+    ownFoulsCommited: numeric("own_fouls_commited"),
+    ownFoulsReceived: numeric("own_fouls_received"),
+    ownValuation: numeric("own_valuation"),
+    oppPoints: numeric("opp_points"),
+    oppFieldGoalsMade2: numeric("opp_field_goals_made2"),
+    oppFieldGoalsAttempted2: numeric("opp_field_goals_attempted2"),
+    oppFieldGoalsMade3: numeric("opp_field_goals_made3"),
+    oppFieldGoalsAttempted3: numeric("opp_field_goals_attempted3"),
+    oppFreeThrowsMade: numeric("opp_free_throws_made"),
+    oppFreeThrowsAttempted: numeric("opp_free_throws_attempted"),
+    oppFieldGoalsMadeTotal: numeric("opp_field_goals_made_total"),
+    oppFieldGoalsAttemptedTotal: numeric("opp_field_goals_attempted_total"),
+    oppTotalRebounds: numeric("opp_total_rebounds"),
+    oppDefensiveRebounds: numeric("opp_defensive_rebounds"),
+    oppOffensiveRebounds: numeric("opp_offensive_rebounds"),
+    oppAssistances: numeric("opp_assistances"),
+    oppSteals: numeric("opp_steals"),
+    oppTurnovers: numeric("opp_turnovers"),
+    oppBlocksFavour: numeric("opp_blocks_favour"),
+    oppBlocksAgainst: numeric("opp_blocks_against"),
+    oppFoulsCommited: numeric("opp_fouls_commited"),
+    oppFoulsReceived: numeric("opp_fouls_received"),
+    oppValuation: numeric("opp_valuation"),
+  },
+  (table) => [primaryKey({ columns: [table.competitionCode, table.seasonCode, table.phaseCode, table.clubCode] })],
+);
+
+export const coverageSeasons = pgTable(
+  "app_coverage_seasons",
+  {
+    competitionCode: text("competition_code").notNull(),
+    seasonCode: text("season_code").notNull(),
+    items: jsonb("items").notNull(),
+  },
+  (table) => [primaryKey({ columns: [table.competitionCode, table.seasonCode] })],
+);
+
+export const coverageGames = pgTable(
+  "app_coverage_games",
+  {
+    competitionCode: text("competition_code").notNull(),
+    seasonCode: text("season_code").notNull(),
+    gameCode: integer("game_code").notNull(),
+    items: jsonb("items").notNull(),
+  },
+  (table) => [primaryKey({ columns: [table.competitionCode, table.seasonCode, table.gameCode] })],
+);
+
 export const standings = pgTable(
   "app_standings",
   {

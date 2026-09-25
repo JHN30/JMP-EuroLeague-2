@@ -32,6 +32,7 @@ Users should not need an account or specialist analytics knowledge. The main exp
 - Team and player statistical leaderboards
 - Team/player comparison and trend charts
 - Play-in, playoffs, and Final Four bracket/result views when data exists
+- Navigation that exposes the season-format view alongside the existing season-scoped pages
 - Responsive loading, empty, unavailable, and error states for every data-driven page
 - Visible notes for known official corrections, anomalies, and incomplete current-season data
 
@@ -49,16 +50,20 @@ Core Phase 1 data includes:
 - Team game box scores and derived season aggregates already approved by the data pipeline
 - Player game box scores and derived season aggregates already approved by the data pipeline
 - Official standings records and available tie-break fields
+- Play-by-play events and shot locations where the pipeline supplies them
 - Play-in, playoff, and Final Four matchup relationships/results
+- Precomputed team-season statistics, coverage summaries, and postseason series from the pipeline's `app_*` tables
 - Data-quality annotations or correction flags that are safe and useful to show in the UI
 
 Data rules:
 
-- Every season-dependent query must be scoped by season code.
+- Every season-dependent query must be scoped by both competition code and season code.
+- All current browsing, records, and player views remain limited to `E2025` and `E2026` until the intended historical seasons have been loaded and archive-wide records and careers are planned separately.
 - Keep scheduled, live/unknown, postponed/cancelled when supplied, and completed games distinct.
 - Treat `NULL` as unavailable; never silently convert missing statistics to zero.
 - Preserve stable source identifiers and use them for joins and URLs where appropriate.
 - Prefer trusted Gold/application-facing tables or views. Do not query Bronze/raw ingestion tables from public endpoints.
+- Read web-app data from the clean `app_*` tables. Legacy `etl_flat_*` aliases may be retired only after no application query or Drizzle discovery filter depends on them and the deployed app has been verified with its production database role.
 - Aggregations must have a single documented owner: either the database/data pipeline or the API, not duplicated independently in the frontend.
 - Do not store authentication or personal-user data in Phase 1.
 
@@ -162,6 +167,7 @@ Deployment rules:
 - Win-probability predictions and the Predictor page
 - Automated playoff simulations
 - Seasons earlier than `E2025`
+- Archive-wide records and player-career expansion until the intended historical seasons have been loaded
 - EuroCup, ABA League, NBA, or other competitions
 - User authentication and account recovery
 - Favorites, notifications, social features, and user-generated content

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useRef, useEffect } from "react";
 import { useQueries, useQuery } from "@tanstack/react-query";
 import { Chart } from "chart.js/auto";
 import { Link, useParams } from "react-router";
@@ -10,6 +10,8 @@ import PanelHeader from "../lib/PanelHeader";
 import PageHeader from "../lib/PageHeader";
 import { useDocumentTitle } from "../lib/useDocumentTitle";
 import { thinAxisLabels } from "../lib/chartHelpers";
+import { dateRangeLabel, isChampionshipLabel, phaseSortIndex, teamCountFromGames } from "../lib/phaseSummary";
+import { useActiveTheme, themeColor } from "../lib/useActiveTheme";
 import {
   formatCount,
   formatDateTime,
@@ -17,23 +19,11 @@ import {
   formatSeasonLabel,
 } from "../lib/format";
 
-const PHASE_ORDER = ["RS", "PI", "PO", "FF"];
 const MAX_PAGE_SIZE = 100;
 const MAX_PAGES = 10;
 
-function phaseSortIndex(code) {
-  const index = PHASE_ORDER.indexOf(code);
-  return index === -1 ? PHASE_ORDER.length : index;
-}
-
 function isFinalGame(game) {
-  const label = `${game.groupName ?? ""} ${game.roundName ?? ""}`.toLowerCase();
-  if (label.includes("championship")) return true;
-  // "semifinal" contains the substring "final", so it must be excluded
-  // explicitly before falling back to the plain "final" match.
-  if (label.includes("semifinal") || label.includes("semi-final") || label.includes("semi final")) return false;
-  if (label.includes("3rd") || label.includes("third")) return false;
-  return label.includes("final");
+  return isChampionshipLabel(`${game.groupName ?? ""} ${game.roundName ?? ""}`);
 }
 
 function findChampion(finalFourGames) {
@@ -69,22 +59,6 @@ async function fetchAllPlayedGames(seasonCode) {
     offset += MAX_PAGE_SIZE;
   }
   return all;
-}
-
-function teamCountFromGames(games) {
-  const codes = new Set();
-  for (const game of games) {
-    if (game.localTeam?.clubCode) codes.add(game.localTeam.clubCode);
-    if (game.roadTeam?.clubCode) codes.add(game.roadTeam.clubCode);
-  }
-  return codes.size;
-}
-
-function dateRangeLabel(firstDate, lastDate) {
-  if (!firstDate) return null;
-  const start = formatDateTime(firstDate, { dateStyle: "medium" });
-  const end = lastDate ? formatDateTime(lastDate, { dateStyle: "medium" }) : start;
-  return start === end ? start : `${start} - ${end}`;
 }
 
 function SeasonHero({ champion, phaseName, hasPlayedGames }) {
@@ -254,22 +228,6 @@ function DefiningGames({ seasonCode, playedGames }) {
       )}
     </Panel>
   );
-}
-
-function useActiveTheme() {
-  const [theme, setTheme] = useState(() => document.documentElement.dataset.theme);
-
-  useEffect(() => {
-    const observer = new MutationObserver(() => setTheme(document.documentElement.dataset.theme));
-    observer.observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
-    return () => observer.disconnect();
-  }, []);
-
-  return theme;
-}
-
-function themeColor(el, variable) {
-  return getComputedStyle(el).getPropertyValue(variable).trim();
 }
 
 function monthlyScoringSeries(playedGames) {

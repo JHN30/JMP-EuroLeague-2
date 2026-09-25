@@ -28,6 +28,6 @@ test("shows truthful compact coverage for a game", async ({ page }) => {
   await expect(page.getByRole("heading", { name: "This game's data coverage" })).toBeVisible();
   await expect(page.getByText("Box scores")).toBeVisible();
   await expect(page.getByText("Available", { exact: true })).toBeVisible();
-  await expect(page.getByText("Play-by-play")).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Play-by-play", level: 3 })).toBeVisible();
   await expect(page.getByText("Unavailable", { exact: true })).toBeVisible();
 });

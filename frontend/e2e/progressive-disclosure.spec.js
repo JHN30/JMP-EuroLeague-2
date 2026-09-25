@@ -123,7 +123,7 @@ test("defers a player game log and requests player pages in blocks of 36", async
       leaderboardRequests.push({ offset, limit });
       await route.fulfill({
         json: {
-          players: leaderboardRows(offset, limit),
+          players: leaderboardRows(offset, Math.max(0, Math.min(limit, 50 - offset))),
           pagination: { total: 50, hasMore: offset + limit < 50 },
         },
       });
@@ -160,14 +160,16 @@ test("defers a player game log and requests player pages in blocks of 36", async
   await expect(page.getByText("Showing 37-72 of 72 players")).toBeVisible();
   expect(playerPageRequests.at(-1)).toEqual({ offset: 36, limit: 36 });
 
+  // The player page's league comparison also reads the leaderboard; count only the Statistics page's requests.
+  leaderboardRequests.length = 0;
   await page.goto(`/${SEASON}/statistics?phase=RS`);
   await page.locator(".scope-toggle button", { hasText: "Players" }).click();
   await expect(page.getByText("Showing 1-25 of 50 players")).toBeVisible();
-  expect(leaderboardRequests.at(-1)).toEqual({ offset: 0, limit: 25 });
+  expect(leaderboardRequests).toEqual([{ offset: 0, limit: 100 }]);
 
   await page.getByRole("button", { name: "Next page" }).click();
   await expect(page.getByText("Showing 26-50 of 50 players")).toBeVisible();
-  expect(leaderboardRequests.at(-1)).toEqual({ offset: 25, limit: 25 });
+  expect(leaderboardRequests).toEqual([{ offset: 0, limit: 100 }]);
 
   await page.goto(`/${SEASON}/comparisons?phase=RS`);
   await page.getByLabel("Team A").selectOption("A");

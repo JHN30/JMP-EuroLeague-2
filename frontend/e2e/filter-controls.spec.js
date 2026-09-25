@@ -9,18 +9,18 @@ test("uses compact native selects for statistics and comparison filters", async 
   });
 
   await page.goto("/");
-  await expect(page.getByRole("navigation", { name: "Sections" })).toBeVisible();
+  const sections = page.getByRole("navigation", { name: "Sections" });
+  await expect(sections).toBeVisible();
 
-  await page.getByRole("tab", { name: "Statistics leaderboards", exact: true }).click();
+  await sections.getByRole("link", { name: "Statistics leaderboards", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Statistics leaderboards" })).toBeVisible();
 
-  const leaderboardType = page.getByLabel("Leaderboard type");
-  await expect(leaderboardType).toHaveJSProperty("tagName", "SELECT");
   const statisticsPhase = page.getByLabel("Statistics phase");
   await expect(statisticsPhase).toHaveJSProperty("tagName", "SELECT");
   await statisticsPhase.selectOption({ index: 0 });
-  await leaderboardType.selectOption("players");
-  await expect(leaderboardType).toHaveValue("players");
+  const playersScope = page.getByRole("group", { name: "Leaderboard scope" }).getByRole("button", { name: "Players", exact: true });
+  await playersScope.click();
+  await expect(playersScope).toHaveAttribute("aria-pressed", "true");
 
   const playerMode = page.getByLabel("Player statistics mode");
   await expect(playerMode).toHaveJSProperty("tagName", "SELECT");
@@ -31,7 +31,7 @@ test("uses compact native selects for statistics and comparison filters", async 
   await playerDirection.selectOption("asc");
   await expect(playerDirection).toHaveValue("asc");
 
-  await page.getByRole("tab", { name: "Comparisons and trends", exact: true }).click();
+  await sections.getByRole("link", { name: "Comparisons and trends", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Comparisons and trends" })).toBeVisible();
 
   const comparisonType = page.getByLabel("Comparison type");

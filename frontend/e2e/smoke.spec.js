@@ -2,9 +2,10 @@ import { test, expect } from "@playwright/test";
 
 test("loads the app and browses to the teams directory with live data", async ({ page }) => {
   await page.goto("/");
-  await expect(page.getByRole("navigation", { name: "Sections" })).toBeVisible();
+  const sections = page.getByRole("navigation", { name: "Sections" });
+  await expect(sections).toBeVisible();
 
-  await page.getByRole("tab", { name: "Teams", exact: true }).click();
+  await sections.getByRole("link", { name: "Teams", exact: true }).click();
   await expect(page).toHaveURL(/\/teams$/);
   await expect(page.getByRole("heading", { name: "Teams" })).toBeVisible();
 

@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
-import { classifyShotZone } from "./shotZones";
+import { EFFICIENCY_RAMP_INK, efficiencyRamp } from "./chartHelpers";
+import { classifyShotZone, summarizeZones } from "./shotZones";
 
 // FIBA half-court, basket-origin coordinates matching the source shot
 // coordinates directly (no transform needed). SVG y increases away from the
@@ -102,6 +103,59 @@ function ShotMarker({ shot, color, highlighted, onSelect }) {
   );
 }
 
+// Fixed anchors for the five named zones; corner three is mirrored on both
+// sides of the court (same underlying aggregate value at each anchor) since
+// corners are physically symmetric, while the other zones - none of which
+// the classifier splits left/right - get one representative anchor.
+const ZONE_ANCHORS = [
+  { zone: "Restricted area", x: 0, y: 60 },
+  { zone: "Paint", x: 0, y: 340 },
+  { zone: "Mid-range", x: 0, y: 500 },
+  { zone: "Corner three", x: -600, y: 90 },
+  { zone: "Corner three", x: 600, y: 90 },
+  { zone: "Above-break three", x: 0, y: 820 },
+];
+const MIN_BUBBLE_RADIUS = 78;
+const MAX_BUBBLE_RADIUS = 156;
+
+function HeatmapBubbles({ shots, inkColor }) {
+  const zoneStats = summarizeZones(shots);
+  const statsByZone = new Map(zoneStats.map((stat) => [stat.zone, stat]));
+  const maxAttempts = Math.max(1, ...zoneStats.map((stat) => stat.attempts));
+
+  return (
+    <g>
+      {ZONE_ANCHORS.map((anchor, index) => {
+        const stat = statsByZone.get(anchor.zone) ?? { attempts: 0, made: 0 };
+        if (stat.attempts === 0) return null;
+        const percentage = (stat.made / stat.attempts) * 100;
+        const radius =
+          MIN_BUBBLE_RADIUS + (MAX_BUBBLE_RADIUS - MIN_BUBBLE_RADIUS) * (stat.attempts / maxAttempts);
+        return (
+          <g key={`${anchor.zone}-${index}`}>
+            <circle cx={anchor.x} cy={anchor.y} r={radius} fill={efficiencyRamp(percentage)} opacity={0.88}>
+              <title>
+                {anchor.zone} · {stat.made}-{stat.attempts} ({percentage.toFixed(1)}%)
+              </title>
+            </circle>
+            <text
+              x={anchor.x}
+              y={anchor.y}
+              textAnchor="middle"
+              dominantBaseline="middle"
+              fill={inkColor}
+              fontSize={26}
+              fontWeight={700}
+            >
+              {percentage.toFixed(0)}%
+            </text>
+          </g>
+        );
+      })}
+    </g>
+  );
+}
+
 function useSvgThemeColors(svgRef) {
   const [colors, setColors] = useState(null);
 
@@ -126,8 +180,9 @@ function useSvgThemeColors(svgRef) {
   return colors;
 }
 
-// `mode="markers"` plots individual shots; 18d adds `mode="heatmap"` for
-// per-zone volume/efficiency bubbles without changing this prop shape.
+// `mode="markers"` plots individual shots; `mode="heatmap"` shows one
+// bubble per zone, radius scaled by attempt volume and fill from the
+// sequential efficiency ramp.
 export default function ShootingCourt({ shots, teams, mode = "markers", ariaLabel, highlightedShotId, onShotSelect }) {
   const svgRef = useRef(null);
   const colors = useSvgThemeColors(svgRef);
@@ -152,6 +207,7 @@ export default function ShootingCourt({ shots, teams, mode = "markers", ariaLabe
                 />
               ))
             : null}
+          {mode === "heatmap" ? <HeatmapBubbles shots={shots} inkColor={EFFICIENCY_RAMP_INK} /> : null}
         </>
       ) : null}
     </svg>

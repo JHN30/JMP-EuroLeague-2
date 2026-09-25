@@ -190,6 +190,8 @@ export const shots = pgTable(
     pointsOffTurnover: boolean("points_off_turnover"),
     minute: integer("minute"),
     markerTime: text("console_time"),
+    pointsA: integer("points_a"),
+    pointsB: integer("points_b"),
   },
   (table) => [
     primaryKey({ columns: [table.competitionCode, table.seasonCode, table.gameCode, table.shotOrdinal] }),

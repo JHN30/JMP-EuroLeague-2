@@ -493,6 +493,8 @@ export async function getShots(seasonCode: string, gameCode: number) {
         pointsOffTurnover: shots.pointsOffTurnover,
         minute: shots.minute,
         markerTime: shots.markerTime,
+        pointsA: shots.pointsA,
+        pointsB: shots.pointsB,
       })
       .from(shots)
       .where(and(

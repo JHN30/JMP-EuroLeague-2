@@ -22,3 +22,13 @@ export function classifyShotZone(coordX, coordY, isThree) {
   if (Math.abs(coordX) <= KEY_HALF_WIDTH && coordY <= KEY_DEPTH) return "Paint";
   return "Mid-range";
 }
+
+export function summarizeZones(shots) {
+  return SHOT_ZONES.map((zone) => {
+    const zoneShots = shots.filter(
+      (shot) => classifyShotZone(Number(shot.coordX), Number(shot.coordY), shot.actionCode.startsWith("3")) === zone,
+    );
+    const made = zoneShots.filter((shot) => shot.actionCode.endsWith("M")).length;
+    return { zone, attempts: zoneShots.length, made };
+  });
+}

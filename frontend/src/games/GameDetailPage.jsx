@@ -14,14 +14,16 @@ import {
   formatPeriod,
   formatSignedDiff,
 } from "../lib/format";
+import HeatmapLegend from "../lib/HeatmapLegend";
 import LabelledSelect from "../lib/LabelledSelect";
 import Panel from "../lib/Panel";
 import PageHeader from "../lib/PageHeader";
 import PanelHeader from "../lib/PanelHeader";
 import ShootingCourt from "../lib/ShootingCourt";
 import ShootingLegend from "../lib/ShootingLegend";
-import { classifyShotZone, SHOT_ZONES } from "../lib/shotZones";
+import { summarizeZones } from "../lib/shotZones";
 import { useDocumentTitle } from "../lib/useDocumentTitle";
+import { usePrefersReducedMotion } from "../lib/usePrefersReducedMotion";
 import { TabPanel, TabStrip } from "../lib/TabStrip";
 import { useActiveTheme, themeColor } from "../lib/useActiveTheme";
 
@@ -197,13 +199,7 @@ const PLAY_CONTEXT_FILTERS = [
 ];
 
 function ZoneSummary({ shots }) {
-  const rows = SHOT_ZONES.map((zone) => {
-    const zoneShots = shots.filter(
-      (shot) => classifyShotZone(Number(shot.coordX), Number(shot.coordY), shot.actionCode.startsWith("3")) === zone,
-    );
-    const made = zoneShots.filter((shot) => shot.actionCode.endsWith("M")).length;
-    return { zone, attempts: zoneShots.length, made };
-  });
+  const rows = summarizeZones(shots);
 
   return (
     <Panel className="p-4">
@@ -222,37 +218,268 @@ function ZoneSummary({ shots }) {
   );
 }
 
+const PRESENTATION_MODES = [
+  { key: "map", label: "Shot map" },
+  { key: "heatmap", label: "Zone heatmap" },
+  { key: "comparison", label: "Shooting comparison" },
+  { key: "replay", label: "Replay" },
+];
+
+function formatPeriodOption(option) {
+  return option === "all" ? "Full game" : formatPeriod(Number(option));
+}
+
+// Mirrors `RacePlayback.jsx`'s controlled playback/reduced-motion pattern:
+// the parent owns `playing` and hands it down, so any other filter change
+// can stop it by the same setter.
+function QuarterPlayback({ periodOptions, activeOption, onSelect, playing, onPlayingChange }) {
+  const reducedMotion = usePrefersReducedMotion();
+  const currentIndex = periodOptions.indexOf(activeOption);
+
+  useEffect(() => {
+    if (reducedMotion || !playing) return undefined;
+    const interval = setInterval(() => {
+      const index = periodOptions.indexOf(activeOption);
+      if (index >= periodOptions.length - 1) {
+        onPlayingChange(false);
+        return;
+      }
+      onSelect(periodOptions[index + 1]);
+    }, 1100);
+    return () => clearInterval(interval);
+  }, [playing, reducedMotion, periodOptions, activeOption, onSelect, onPlayingChange]);
+
+  if (reducedMotion) {
+    return (
+      <div className="flex flex-wrap items-center gap-2">
+        <button
+          type="button"
+          className="btn btn-xs touch-target"
+          onClick={() => onSelect(periodOptions[Math.min(currentIndex + 1, periodOptions.length - 1)])}
+          disabled={currentIndex >= periodOptions.length - 1}
+        >
+          Next quarter
+        </button>
+        <span className="muted text-xs">{formatPeriodOption(activeOption)}</span>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex flex-wrap items-center gap-2">
+      <button
+        type="button"
+        className="btn btn-xs touch-target"
+        onClick={() => {
+          if (currentIndex >= periodOptions.length - 1) onSelect(periodOptions[0]);
+          onPlayingChange(!playing);
+        }}
+      >
+        {playing ? "Pause" : "Animate quarters"}
+      </button>
+      {periodOptions.map((option) => (
+        <button
+          key={option}
+          type="button"
+          className={`btn btn-xs touch-target ${option === activeOption ? "btn-primary" : "btn-outline"}`}
+          onClick={() => {
+            onPlayingChange(false);
+            onSelect(option);
+          }}
+        >
+          {formatPeriodOption(option)}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function ReplayPanel({ shots, localTeam, roadTeam }) {
+  const madeShots = shots.filter((shot) => shot.actionCode.endsWith("M"));
+  const reducedMotion = usePrefersReducedMotion();
+  const [index, setIndex] = useState(0);
+  const [playing, setPlaying] = useState(false);
+  const clampedIndex = Math.min(index, Math.max(madeShots.length - 1, 0));
+  const atEnd = clampedIndex >= madeShots.length - 1;
+  const isAnimating = playing && !reducedMotion && !atEnd;
+
+  useEffect(() => {
+    if (!isAnimating) return undefined;
+    const timeout = setTimeout(() => setIndex((current) => current + 1), 850);
+    return () => clearTimeout(timeout);
+  }, [isAnimating]);
+
+  if (madeShots.length === 0) {
+    return <EmptyText>No made shots match these filters yet.</EmptyText>;
+  }
+
+  const current = madeShots[clampedIndex];
+  const isLocal = current.clubCode === localTeam?.clubCode;
+
+  return (
+    <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_20rem]">
+      <div className="rounded-field border border-base-300 bg-base-100/60 p-2 sm:p-3">
+        <ShootingCourt
+          shots={[current]}
+          teams={[localTeam, roadTeam]}
+          highlightedShotId={current.shotOrdinal}
+          ariaLabel={`Replay: shot ${clampedIndex + 1} of ${madeShots.length}`}
+        />
+      </div>
+      <Panel className="flex flex-col gap-3 p-4">
+        <span className="stat-badge stat-badge-neutral w-fit">
+          {clampedIndex + 1}/{madeShots.length}
+        </span>
+        <div>
+          <p className="font-medium">{current.playerName ?? (isLocal ? teamName(localTeam) : teamName(roadTeam))}</p>
+          <p className="muted text-sm">
+            {formatPeriod(periodNumberForMinute(current.minute))} {current.markerTime ?? ""} ·{" "}
+            {current.actionCode.startsWith("3") ? "3PT" : "2PT"}
+          </p>
+        </div>
+        <p className="text-2xl font-semibold text-primary tabular-nums">
+          {current.pointsA ?? "-"}-{current.pointsB ?? "-"}
+        </p>
+        <input
+          type="range"
+          className="range range-primary range-xs"
+          min={0}
+          max={Math.max(madeShots.length - 1, 0)}
+          value={clampedIndex}
+          onChange={(event) => {
+            setPlaying(false);
+            setIndex(Number(event.target.value));
+          }}
+        />
+        {reducedMotion ? (
+          <button
+            type="button"
+            className="btn btn-sm touch-target"
+            onClick={() => setIndex((i) => Math.min(i + 1, madeShots.length - 1))}
+            disabled={clampedIndex >= madeShots.length - 1}
+          >
+            Next make
+          </button>
+        ) : (
+          <button
+            type="button"
+            className="btn btn-sm touch-target"
+            onClick={() => {
+              if (atEnd) {
+                setIndex(0);
+                setPlaying(true);
+              } else {
+                setPlaying((p) => !p);
+              }
+            }}
+          >
+            {isAnimating ? "Pause" : atEnd ? "Replay" : "Play"}
+          </button>
+        )}
+      </Panel>
+    </div>
+  );
+}
+
+function miniShootingLine(shots, test) {
+  const attempts = shots.filter(test);
+  const made = attempts.filter((shot) => shot.actionCode.endsWith("M"));
+  return `${made.length}-${attempts.length} (${formatPercentage(shootingPercentage(made.length, attempts.length))})`;
+}
+
+function TeamComparisonPanel({ team, shots }) {
+  const twoPoint = (shot) => shot.actionCode.startsWith("2");
+  const threePoint = (shot) => shot.actionCode.startsWith("3");
+  const made = shots.filter((shot) => shot.actionCode.endsWith("M"));
+  const effectiveFg =
+    shots.length === 0 ? null : ((made.length + 0.5 * made.filter(threePoint).length) / shots.length) * 100;
+
+  return (
+    <Panel className="p-4">
+      <div className="mb-3 flex items-center gap-2">
+        {team?.crestUrl ? (
+          <img
+            src={team.crestUrl}
+            alt=""
+            className="h-8 w-8 flex-none object-contain"
+            onError={(event) => {
+              event.currentTarget.style.display = "none";
+            }}
+          />
+        ) : null}
+        <span className="font-semibold">{teamName(team)}</span>
+      </div>
+      <div className="mb-3 grid grid-cols-3 gap-2 text-center text-sm">
+        <div>
+          <p className="eyebrow">2PT</p>
+          <p className="tabular-nums">{miniShootingLine(shots, twoPoint)}</p>
+        </div>
+        <div>
+          <p className="eyebrow">3PT</p>
+          <p className="tabular-nums">{miniShootingLine(shots, threePoint)}</p>
+        </div>
+        <div>
+          <p className="eyebrow">eFG%</p>
+          <p className="tabular-nums">{formatPercentage(effectiveFg)}</p>
+        </div>
+      </div>
+      <div className="rounded-field border border-base-300 bg-base-100/60 p-2">
+        <ShootingCourt shots={shots} teams={[team]} mode="heatmap" ariaLabel={`${teamName(team)} shooting zones`} />
+      </div>
+    </Panel>
+  );
+}
+
 function ShootingTab({ shots, teamStats, localTeam, roadTeam }) {
+  const [presentationMode, setPresentationMode] = useState("map");
   const [teamFilter, setTeamFilter] = useState("both");
   const [playerFilter, setPlayerFilter] = useState("all");
   const [shotTypeFilter, setShotTypeFilter] = useState("all");
   const [periodFilter, setPeriodFilter] = useState("all");
   const [resultFilter, setResultFilter] = useState("all");
   const [contextFilter, setContextFilter] = useState("all");
+  const [quarterPlaying, setQuarterPlaying] = useState(false);
 
   if (shots.length === 0) {
     return <EmptyText>Shot data isn't available for this game yet.</EmptyText>;
   }
 
-  const teamFilteredShots = teamFilter === "both" ? shots : shots.filter((shot) => shot.clubCode === teamFilter);
+  function changeFilter(setter) {
+    return (value) => {
+      setQuarterPlaying(false);
+      setter(value);
+    };
+  }
+
+  const isComparison = presentationMode === "comparison";
+  const teamFilteredShots =
+    teamFilter === "both" || isComparison ? shots : shots.filter((shot) => shot.clubCode === teamFilter);
   const players = [...new Map(teamFilteredShots.map((shot) => [shot.personCode, shot.playerName])).entries()].filter(
     ([code]) => code,
   );
   const effectivePlayerFilter = players.some(([code]) => code === playerFilter) ? playerFilter : "all";
 
   const periodNumbers = [...new Set(shots.map((shot) => periodNumberForMinute(shot.minute)))].sort((a, b) => a - b);
+  const periodOptions = ["all", ...periodNumbers.map(String)];
   const shotTypeTest = SHOT_TYPE_FILTERS.find((filter) => filter.key === shotTypeFilter)?.test ?? (() => true);
   const resultTest = RESULT_FILTERS.find((filter) => filter.key === resultFilter)?.test ?? (() => true);
   const contextTest = PLAY_CONTEXT_FILTERS.find((filter) => filter.key === contextFilter)?.test ?? (() => true);
 
-  const filteredShots = teamFilteredShots.filter((shot) => {
-    if (effectivePlayerFilter !== "all" && shot.personCode !== effectivePlayerFilter) return false;
-    if (!shotTypeTest(shot)) return false;
-    if (periodFilter !== "all" && String(periodNumberForMinute(shot.minute)) !== periodFilter) return false;
-    if (!resultTest(shot)) return false;
-    if (!contextTest(shot)) return false;
-    return true;
-  });
+  function applySharedFilters(list) {
+    return list.filter((shot) => {
+      if (!shotTypeTest(shot)) return false;
+      if (periodFilter !== "all" && String(periodNumberForMinute(shot.minute)) !== periodFilter) return false;
+      if (!resultTest(shot)) return false;
+      if (!contextTest(shot)) return false;
+      return true;
+    });
+  }
+
+  const playerFilteredShots =
+    effectivePlayerFilter === "all"
+      ? teamFilteredShots
+      : teamFilteredShots.filter((shot) => shot.personCode === effectivePlayerFilter);
+  const filteredShots = applySharedFilters(playerFilteredShots);
 
   const totals = teamStats.filter((row) => row.statsKind === "total");
   const boxScoreAttempted = totals.reduce((sum, row) => sum + (Number(row.fieldGoalsAttemptedTotal) || 0), 0);
@@ -263,20 +490,34 @@ function ShootingTab({ shots, teamStats, localTeam, roadTeam }) {
       <Panel className="p-4">
         <PanelHeader
           kicker="SHOOTING"
-          title="Shot map"
+          title="Shooting studio"
           trailing={
             <span className={`stat-badge ${reconciles ? "stat-badge-success" : "stat-badge-warning"}`}>
               {reconciles ? "Box score matched" : "Partial chart coverage"} · {formatCount(shots.length)} plotted
             </span>
           }
         />
+        <TabStrip
+          ariaLabel="Shooting presentation"
+          panelId="shooting-presentation-panel"
+          activeKey={presentationMode}
+          onChange={changeFilter(setPresentationMode)}
+          className="mb-4 w-fit"
+          tabs={PRESENTATION_MODES}
+        />
         <div className="mb-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
-          <LabelledSelect label="Team" value={teamFilter} onChange={(event) => setTeamFilter(event.target.value)}>
-            <option value="both">Both teams</option>
-            {localTeam?.clubCode ? <option value={localTeam.clubCode}>{teamName(localTeam)}</option> : null}
-            {roadTeam?.clubCode ? <option value={roadTeam.clubCode}>{teamName(roadTeam)}</option> : null}
-          </LabelledSelect>
-          <LabelledSelect label="Player" value={effectivePlayerFilter} onChange={(event) => setPlayerFilter(event.target.value)}>
+          {isComparison ? null : (
+            <LabelledSelect label="Team" value={teamFilter} onChange={(event) => changeFilter(setTeamFilter)(event.target.value)}>
+              <option value="both">Both teams</option>
+              {localTeam?.clubCode ? <option value={localTeam.clubCode}>{teamName(localTeam)}</option> : null}
+              {roadTeam?.clubCode ? <option value={roadTeam.clubCode}>{teamName(roadTeam)}</option> : null}
+            </LabelledSelect>
+          )}
+          <LabelledSelect
+            label="Player"
+            value={effectivePlayerFilter}
+            onChange={(event) => changeFilter(setPlayerFilter)(event.target.value)}
+          >
             <option value="all">All players</option>
             {players.map(([code, name]) => (
               <option key={code} value={code}>
@@ -284,14 +525,18 @@ function ShootingTab({ shots, teamStats, localTeam, roadTeam }) {
               </option>
             ))}
           </LabelledSelect>
-          <LabelledSelect label="Shot type" value={shotTypeFilter} onChange={(event) => setShotTypeFilter(event.target.value)}>
+          <LabelledSelect
+            label="Shot type"
+            value={shotTypeFilter}
+            onChange={(event) => changeFilter(setShotTypeFilter)(event.target.value)}
+          >
             {SHOT_TYPE_FILTERS.map((filter) => (
               <option key={filter.key} value={filter.key}>
                 {filter.label}
               </option>
             ))}
           </LabelledSelect>
-          <LabelledSelect label="Period" value={periodFilter} onChange={(event) => setPeriodFilter(event.target.value)}>
+          <LabelledSelect label="Period" value={periodFilter} onChange={(event) => changeFilter(setPeriodFilter)(event.target.value)}>
             <option value="all">Full game</option>
             {periodNumbers.map((periodNumber) => (
               <option key={periodNumber} value={String(periodNumber)}>
@@ -299,14 +544,22 @@ function ShootingTab({ shots, teamStats, localTeam, roadTeam }) {
               </option>
             ))}
           </LabelledSelect>
-          <LabelledSelect label="Result" value={resultFilter} onChange={(event) => setResultFilter(event.target.value)}>
+          <LabelledSelect
+            label="Result"
+            value={resultFilter}
+            onChange={(event) => changeFilter(setResultFilter)(event.target.value)}
+          >
             {RESULT_FILTERS.map((filter) => (
               <option key={filter.key} value={filter.key}>
                 {filter.label}
               </option>
             ))}
           </LabelledSelect>
-          <LabelledSelect label="Play context" value={contextFilter} onChange={(event) => setContextFilter(event.target.value)}>
+          <LabelledSelect
+            label="Play context"
+            value={contextFilter}
+            onChange={(event) => changeFilter(setContextFilter)(event.target.value)}
+          >
             {PLAY_CONTEXT_FILTERS.map((filter) => (
               <option key={filter.key} value={filter.key}>
                 {filter.label}
@@ -315,19 +568,46 @@ function ShootingTab({ shots, teamStats, localTeam, roadTeam }) {
           </LabelledSelect>
         </div>
 
-        <div className="rounded-field border border-base-300 bg-base-100/60 p-2 sm:p-3">
-          <ShootingCourt
-            shots={filteredShots}
-            teams={[localTeam, roadTeam]}
-            ariaLabel={`Shot chart: ${formatCount(filteredShots.length)} of ${formatCount(shots.length)} attempts shown`}
-          />
-        </div>
-        <div className="mt-3">
-          <ShootingLegend teams={[localTeam, roadTeam]} />
-        </div>
+        <TabPanel id="shooting-presentation-panel" focusKey={presentationMode}>
+          {presentationMode === "map" || presentationMode === "heatmap" ? (
+            <>
+              <div className="mb-3">
+                <QuarterPlayback
+                  periodOptions={periodOptions}
+                  activeOption={periodFilter}
+                  onSelect={setPeriodFilter}
+                  playing={quarterPlaying}
+                  onPlayingChange={setQuarterPlaying}
+                />
+              </div>
+              <div className="rounded-field border border-base-300 bg-base-100/60 p-2 sm:p-3">
+                <ShootingCourt
+                  shots={filteredShots}
+                  teams={[localTeam, roadTeam]}
+                  mode={presentationMode === "heatmap" ? "heatmap" : "markers"}
+                  ariaLabel={`Shot chart: ${formatCount(filteredShots.length)} of ${formatCount(shots.length)} attempts shown`}
+                />
+              </div>
+              <div className="mt-3">
+                {presentationMode === "heatmap" ? <HeatmapLegend /> : <ShootingLegend teams={[localTeam, roadTeam]} />}
+              </div>
+            </>
+          ) : null}
+
+          {presentationMode === "comparison" ? (
+            <div className="grid gap-4 sm:grid-cols-2">
+              <TeamComparisonPanel team={localTeam} shots={applySharedFilters(shots.filter((shot) => shot.clubCode === localTeam?.clubCode))} />
+              <TeamComparisonPanel team={roadTeam} shots={applySharedFilters(shots.filter((shot) => shot.clubCode === roadTeam?.clubCode))} />
+            </div>
+          ) : null}
+
+          {presentationMode === "replay" ? (
+            <ReplayPanel shots={filteredShots} localTeam={localTeam} roadTeam={roadTeam} />
+          ) : null}
+        </TabPanel>
       </Panel>
 
-      <ZoneSummary shots={filteredShots} />
+      {presentationMode !== "comparison" ? <ZoneSummary shots={filteredShots} /> : null}
     </div>
   );
 }

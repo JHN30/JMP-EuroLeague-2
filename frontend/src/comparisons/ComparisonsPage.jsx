@@ -753,7 +753,7 @@ function ComparisonsBody({
 
   return (
     <div>
-      <PageHeader kicker="HEAD-TO-HEAD" title="Comparisons and trends">
+      <PageHeader kicker="HEAD-TO-HEAD" title="Compare">
         {effectiveEntityA && effectiveEntityB ? (
           <button type="button" className="btn btn-sm" onClick={handleCopyLink}>
             {copyLabel}
@@ -938,7 +938,7 @@ function ComparisonsBody({
 }
 
 export default function ComparisonsPage() {
-  useDocumentTitle("Comparisons and trends");
+  useDocumentTitle("Compare");
   const { seasonCode } = useParams();
   const [searchParams] = useSearchParams();
 

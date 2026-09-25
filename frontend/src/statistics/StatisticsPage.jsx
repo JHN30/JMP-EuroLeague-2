@@ -474,7 +474,7 @@ function PlayerLeaderboard({ seasonCode, phaseCode }) {
 }
 
 export default function StatisticsPage() {
-  useDocumentTitle("Statistics leaderboards");
+  useDocumentTitle("Leaders");
   const { seasonCode } = useParams();
   const [view, setView] = useState("teams");
 
@@ -507,7 +507,7 @@ export default function StatisticsPage() {
 
   return (
     <div>
-      <PageHeader kicker="LEADERBOARDS" title="Statistics leaderboards" />
+      <PageHeader kicker="LEADERBOARDS" title="Leaders" />
 
       <div className="mb-6 flex flex-wrap items-center gap-4">
         <div className="scope-toggle" role="group" aria-label="Leaderboard scope">

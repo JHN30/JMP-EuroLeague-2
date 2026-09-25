@@ -868,7 +868,7 @@ export default function GameDetailPage() {
     retry: false,
   });
   const game = gameQuery.data?.game;
-  useDocumentTitle(game ? `${teamName(game.localTeam)} vs ${teamName(game.roadTeam)}` : "Fixtures and results");
+  useDocumentTitle(game ? `${teamName(game.localTeam)} vs ${teamName(game.roadTeam)}` : "Games");
 
   const boxScoreQuery = useQuery({
     queryKey: ["box-score", seasonCode, gameCode],

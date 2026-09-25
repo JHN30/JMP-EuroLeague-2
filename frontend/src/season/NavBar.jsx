@@ -2,14 +2,14 @@ import { NavLink, useParams } from "react-router";
 
 const TABS = [
   { label: "Home", path: "", end: true },
-  { label: "Season overview", path: "overview" },
+  { label: "Overview", path: "overview" },
   { label: "Standings", path: "standings" },
-  { label: "Fixtures and results", path: "games" },
+  { label: "Games", path: "games" },
   { label: "Teams", path: "teams" },
   { label: "Players", path: "players" },
-  { label: "Statistics leaderboards", path: "statistics" },
-  { label: "Comparisons and trends", path: "comparisons" },
-  { label: "Playoffs", path: "playoffs" },
+  { label: "Leaders", path: "statistics" },
+  { label: "Compare", path: "comparisons" },
+  { label: "Format", path: "playoffs" },
 ];
 
 export default function NavBar() {

@@ -618,7 +618,7 @@ function KnockoutJourney({ seasonCode, series }) {
 }
 
 export default function PlayoffsPage() {
-  useDocumentTitle("Playoffs");
+  useDocumentTitle("Format");
   const { seasonCode } = useParams();
 
   const phasesQuery = useQuery({
@@ -669,7 +669,7 @@ export default function PlayoffsPage() {
 
   return (
     <div className="flex flex-col gap-8">
-      <PageHeader kicker="POSTSEASON" title="Playoffs" />
+      <PageHeader kicker="STRUCTURE" title="Format" />
 
       {dataLoading ? (
         <AsyncState status="loading" label="Loading season format" />

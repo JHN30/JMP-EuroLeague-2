@@ -547,7 +547,7 @@ function ClosingLinksBar({ seasonCode }) {
     { label: "All games", to: `/${seasonCode}/games` },
     { label: "Standings", to: `/${seasonCode}/standings` },
     { label: "Teams", to: `/${seasonCode}/teams` },
-    { label: "Playoffs", to: `/${seasonCode}/playoffs` },
+    { label: "Format", to: `/${seasonCode}/playoffs` },
   ];
 
   return (

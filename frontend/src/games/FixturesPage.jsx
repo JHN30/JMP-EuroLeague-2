@@ -26,7 +26,7 @@ function teamLabel(team) {
 }
 
 export default function FixturesPage() {
-  useDocumentTitle("Fixtures and results");
+  useDocumentTitle("Games");
   const { seasonCode } = useParams();
   const [searchParams, setSearchParams] = useSearchParams();
   const [status, setStatus] = useState(undefined);
@@ -94,7 +94,7 @@ export default function FixturesPage() {
 
   return (
     <div>
-      <PageHeader kicker="SCHEDULE" title="Fixtures and results" />
+      <PageHeader kicker="SCHEDULE" title="Games" />
 
       <TabStrip
         ariaLabel="Phase"

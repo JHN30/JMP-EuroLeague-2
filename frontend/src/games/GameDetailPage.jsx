@@ -469,64 +469,236 @@ function PeriodTable({ periodScores, localTeam, roadTeam }) {
   );
 }
 
-function computeRunningMargins(periodScores) {
-  const periodNumbers = [...new Set(periodScores.map((row) => row.periodNumber))].sort((a, b) => a - b);
-  const runningMargins = [];
-  let localCumulative = 0;
-  let roadCumulative = 0;
-  for (const periodNumber of periodNumbers) {
-    const local = periodScores.find((row) => row.side === "local" && row.periodNumber === periodNumber)?.score;
-    const road = periodScores.find((row) => row.side === "road" && row.periodNumber === periodNumber)?.score;
-    if (local == null || road == null) {
-      runningMargins.push(null);
-      continue;
-    }
-    localCumulative += local;
-    roadCumulative += road;
-    runningMargins.push(localCumulative - roadCumulative);
-  }
-  return { periodNumbers, runningMargins };
+const SCORE_VALUE = { "2FGM": 2, "3FGM": 3, FTM: 1 };
+
+function eventMoment(event) {
+  return { periodNumber: event.periodNumber, markerTime: event.markerTime, scoreA: event.runningScoreA, scoreB: event.runningScoreB };
 }
 
-function GameFlowChart({ periodScores, localTeam, roadTeam }) {
+function momentLabel(moment) {
+  return `${formatPeriod(moment.periodNumber)} ${moment.markerTime ?? ""} · ${moment.scoreA}-${moment.scoreB}`.trim();
+}
+
+// A run is a streak of consecutive scoring plays by one club with no
+// scoring play by the other club in between; non-scoring events (fouls,
+// rebounds, turnovers) don't break it.
+function computeGameFlow(events, localClubCode, roadClubCode) {
+  const scoringEvents = withRunningScore(events).filter((event) => SCORE_VALUE[event.playType]);
+
+  let leadChanges = 0;
+  let ties = 0;
+  let priorSign = 0;
+  let localBiggest = null;
+  let roadBiggest = null;
+
+  for (const event of scoringEvents) {
+    const margin = event.runningScoreA - event.runningScoreB;
+    const sign = margin > 0 ? 1 : margin < 0 ? -1 : 0;
+    if (sign === 0) ties += 1;
+    if (sign !== 0 && priorSign !== 0 && sign !== priorSign) leadChanges += 1;
+    if (sign !== 0) priorSign = sign;
+    if (margin > 0 && (!localBiggest || margin > localBiggest.margin)) {
+      localBiggest = { margin, moment: eventMoment(event) };
+    }
+    if (margin < 0 && (!roadBiggest || -margin > roadBiggest.margin)) {
+      roadBiggest = { margin: -margin, moment: eventMoment(event) };
+    }
+  }
+
+  let localRun = null;
+  let roadRun = null;
+  let currentSide = null;
+  let currentPoints = 0;
+  let currentStart = null;
+  let currentEnd = null;
+  function flushRun() {
+    if (!currentSide || currentPoints === 0) return;
+    const record = { points: currentPoints, startMoment: currentStart, endMoment: currentEnd };
+    if (currentSide === "local" && (!localRun || currentPoints > localRun.points)) localRun = record;
+    if (currentSide === "road" && (!roadRun || currentPoints > roadRun.points)) roadRun = record;
+  }
+  for (const event of scoringEvents) {
+    const side = event.clubCode === localClubCode ? "local" : event.clubCode === roadClubCode ? "road" : null;
+    if (!side) continue;
+    if (side !== currentSide) {
+      flushRun();
+      currentSide = side;
+      currentPoints = 0;
+      currentStart = eventMoment(event);
+    }
+    currentPoints += SCORE_VALUE[event.playType];
+    currentEnd = eventMoment(event);
+  }
+  flushRun();
+
+  return { leadChanges, ties, localBiggest, roadBiggest, localRun, roadRun, scoringEvents };
+}
+
+function FlowMetric({ label, value, detail, tone }) {
+  return (
+    <Panel className={`p-4 ${tone ? `border-${tone} bg-${tone}/10` : ""}`}>
+      <p className="eyebrow mb-1">{label}</p>
+      <p className="text-2xl font-semibold">{value}</p>
+      {detail ? <p className="muted mt-1 text-xs">{detail}</p> : null}
+    </Panel>
+  );
+}
+
+function FlowMetrics({ flow, localTeam, roadTeam }) {
+  const longerRun =
+    (flow.localRun?.points ?? 0) >= (flow.roadRun?.points ?? 0)
+      ? { team: localTeam, run: flow.localRun }
+      : { team: roadTeam, run: flow.roadRun };
+
+  return (
+    <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <FlowMetric label="Lead changes" value={flow.leadChanges} detail={`${flow.ties} tie${flow.ties === 1 ? "" : "s"}`} />
+      <FlowMetric
+        label={`${teamName(localTeam)} biggest lead`}
+        value={flow.localBiggest ? `+${flow.localBiggest.margin}` : "—"}
+        detail={flow.localBiggest ? momentLabel(flow.localBiggest.moment) : "Never led"}
+        tone="primary"
+      />
+      <FlowMetric
+        label={`${teamName(roadTeam)} biggest lead`}
+        value={flow.roadBiggest ? `+${flow.roadBiggest.margin}` : "—"}
+        detail={flow.roadBiggest ? momentLabel(flow.roadBiggest.moment) : "Never led"}
+        tone="secondary"
+      />
+      <FlowMetric
+        label="Longest run"
+        value={longerRun.run ? `${longerRun.run.points}-0` : "—"}
+        detail={longerRun.run ? `${teamName(longerRun.team)} · ${momentLabel(longerRun.run.endMoment)}` : "No runs yet"}
+      />
+    </div>
+  );
+}
+
+function MomentCard({ title, team, detail, moment }) {
+  return (
+    <Panel className="flex items-start gap-3 p-4">
+      {team?.crestUrl ? (
+        <img
+          src={team.crestUrl}
+          alt=""
+          className="h-8 w-8 flex-none object-contain"
+          onError={(event) => {
+            event.currentTarget.style.display = "none";
+          }}
+        />
+      ) : null}
+      <div className="min-w-0">
+        <p className="font-medium">{title}</p>
+        <p className="muted text-sm">{detail}</p>
+        {moment ? <p className="muted text-xs">{momentLabel(moment)}</p> : null}
+      </div>
+    </Panel>
+  );
+}
+
+function TurningPoints({ flow, localTeam, roadTeam }) {
+  return (
+    <div>
+      <PanelHeader kicker="MOMENTS" title="Turning points" />
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <MomentCard
+          title={`${teamName(localTeam)} peak lead`}
+          team={localTeam}
+          detail={flow.localBiggest ? `Up by ${flow.localBiggest.margin}` : "Never led"}
+          moment={flow.localBiggest?.moment}
+        />
+        <MomentCard
+          title={`${teamName(roadTeam)} peak lead`}
+          team={roadTeam}
+          detail={flow.roadBiggest ? `Up by ${flow.roadBiggest.margin}` : "Never led"}
+          moment={flow.roadBiggest?.moment}
+        />
+        <MomentCard
+          title={`${teamName(localTeam)} best run`}
+          team={localTeam}
+          detail={flow.localRun ? `${flow.localRun.points} unanswered points` : "No runs"}
+          moment={flow.localRun?.endMoment}
+        />
+        <MomentCard
+          title={`${teamName(roadTeam)} best run`}
+          team={roadTeam}
+          detail={flow.roadRun ? `${flow.roadRun.points} unanswered points` : "No runs"}
+          moment={flow.roadRun?.endMoment}
+        />
+      </div>
+    </div>
+  );
+}
+
+// Draws a dashed vertical line at each period's first scoring-event index,
+// labelling the period on the x-axis at that same position. Kept as one
+// small inline plugin instead of adding an annotation-plugin dependency.
+function periodBoundaryPlugin(boundaryIndexes) {
+  return {
+    id: "periodBoundaries",
+    afterDraw(chart) {
+      const { ctx, chartArea, scales } = chart;
+      if (!chartArea) return;
+      ctx.save();
+      ctx.strokeStyle = "color-mix(in srgb, currentColor 30%, transparent)";
+      ctx.setLineDash([4, 4]);
+      for (const index of boundaryIndexes) {
+        const x = scales.x.getPixelForValue(index);
+        ctx.beginPath();
+        ctx.moveTo(x, chartArea.top);
+        ctx.lineTo(x, chartArea.bottom);
+        ctx.stroke();
+      }
+      ctx.restore();
+    },
+  };
+}
+
+function ScoreFlowChart({ flow, localTeam, roadTeam }) {
   const canvasRef = useRef(null);
   const chartRef = useRef(null);
   const theme = useActiveTheme();
+  const { scoringEvents } = flow;
 
-  const { periodNumbers, runningMargins } = useMemo(() => computeRunningMargins(periodScores), [periodScores]);
+  const margins = scoringEvents.map((event) => event.runningScoreA - event.runningScoreB);
+  const boundaryIndexes = [];
+  let lastPeriod = null;
+  scoringEvents.forEach((event, index) => {
+    if (event.periodNumber !== lastPeriod) {
+      boundaryIndexes.push(index);
+      lastPeriod = event.periodNumber;
+    }
+  });
 
   useEffect(() => {
     const canvas = canvasRef.current;
-    if (!canvas || periodNumbers.length < 1) return undefined;
+    if (!canvas || margins.length < 2) return undefined;
 
     const primary = themeColor(canvas, "--color-primary");
     const textColor = themeColor(canvas, "--color-base-content");
     const successColor = themeColor(canvas, "--color-success");
     const errorColor = themeColor(canvas, "--color-error");
+    const successFill = `color-mix(in srgb, ${successColor} 18%, transparent)`;
+    const errorFill = `color-mix(in srgb, ${errorColor} 18%, transparent)`;
     const gridColor = `color-mix(in srgb, ${textColor} 20%, transparent)`;
 
     chartRef.current = new Chart(canvas, {
       type: "line",
       data: {
-        labels: periodNumbers.map((n) => formatPeriod(n)),
+        labels: scoringEvents.map((_, index) => index),
         datasets: [
           {
-            label: "Score margin",
-            data: runningMargins,
+            data: margins,
             borderColor: primary,
             segment: {
-              borderColor: (context) => {
-                const value = context.p1.parsed.y;
-                return value >= 0 ? successColor : errorColor;
-              },
+              borderColor: (context) => (context.p1.parsed.y >= 0 ? successColor : errorColor),
+              backgroundColor: (context) => (context.p1.parsed.y >= 0 ? successFill : errorFill),
             },
-            borderWidth: 3,
-            pointRadius: 4,
-            pointBackgroundColor: (context) => {
-              const value = context.parsed?.y;
-              return value >= 0 ? successColor : errorColor;
-            },
-            fill: false,
+            borderWidth: 2,
+            pointRadius: 0,
+            pointHoverRadius: 5,
+            pointBackgroundColor: (context) => ((context.parsed?.y ?? 0) >= 0 ? successColor : errorColor),
+            fill: "origin",
             tension: 0,
           },
         ],
@@ -535,15 +707,25 @@ function GameFlowChart({ periodScores, localTeam, roadTeam }) {
         responsive: true,
         maintainAspectRatio: false,
         scales: {
-          x: { ticks: { color: textColor }, grid: { color: gridColor } },
+          x: {
+            ticks: {
+              color: textColor,
+              callback: (value, index) =>
+                boundaryIndexes.includes(index) ? formatPeriod(scoringEvents[index].periodNumber) : "",
+              autoSkip: false,
+              maxRotation: 0,
+            },
+            grid: { display: false },
+          },
           y: { ticks: { color: textColor }, grid: { color: gridColor } },
         },
         plugins: {
           legend: { display: false },
           tooltip: {
-            mode: "nearest",
-            intersect: true,
+            mode: "index",
+            intersect: false,
             callbacks: {
+              title: (items) => momentLabel(eventMoment(scoringEvents[items[0].dataIndex])),
               label: (context) => {
                 const value = context.parsed.y;
                 const leader = value > 0 ? teamName(localTeam) : value < 0 ? teamName(roadTeam) : null;
@@ -552,33 +734,51 @@ function GameFlowChart({ periodScores, localTeam, roadTeam }) {
             },
           },
         },
-        interaction: { mode: "nearest", intersect: true },
+        interaction: { mode: "index", intersect: false },
       },
+      plugins: [periodBoundaryPlugin(boundaryIndexes)],
     });
 
     return () => {
       chartRef.current?.destroy();
       chartRef.current = null;
     };
-  }, [periodNumbers, runningMargins, theme, localTeam, roadTeam]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [scoringEvents, theme, localTeam, roadTeam]);
 
-  if (periodNumbers.length < 1) {
-    return <EmptyText>Game flow isn't available until this game is played.</EmptyText>;
+  if (margins.length < 2) {
+    return <EmptyText>Not enough play-by-play yet to chart game flow.</EmptyText>;
   }
 
   return (
     <Panel className="p-4">
-      <h3 className="mb-3 font-semibold">Score margin by period</h3>
+      <PanelHeader kicker="FLOW" title="Score differential" />
       <div className="rounded-field border border-base-300 bg-base-100/60 p-2 sm:p-3">
         <div className="relative h-64 w-full">
           <canvas
             ref={canvasRef}
             role="img"
-            aria-label={`Running score margin (${teamName(localTeam)} minus ${teamName(roadTeam)}) after each period`}
+            aria-label={`Running score margin (${teamName(localTeam)} minus ${teamName(roadTeam)}) across every scoring play`}
           />
         </div>
       </div>
     </Panel>
+  );
+}
+
+function GameFlowTab({ events, periodScores, localTeam, roadTeam }) {
+  const flow = useMemo(
+    () => computeGameFlow(events, localTeam?.clubCode, roadTeam?.clubCode),
+    [events, localTeam?.clubCode, roadTeam?.clubCode],
+  );
+
+  return (
+    <div className="flex flex-col gap-6">
+      <FlowMetrics flow={flow} localTeam={localTeam} roadTeam={roadTeam} />
+      <ScoreFlowChart flow={flow} localTeam={localTeam} roadTeam={roadTeam} />
+      <PeriodTable periodScores={periodScores} localTeam={localTeam} roadTeam={roadTeam} />
+      <TurningPoints flow={flow} localTeam={localTeam} roadTeam={roadTeam} />
+    </div>
   );
 }
 
@@ -685,7 +885,7 @@ export default function GameDetailPage() {
   const playByPlayQuery = useQuery({
     queryKey: ["play-by-play", seasonCode, gameCode],
     queryFn: () => getPlayByPlay(seasonCode, gameCode),
-    enabled: gameQuery.isSuccess && game?.played === true && tab === "play-by-play",
+    enabled: gameQuery.isSuccess && game?.played === true && (tab === "play-by-play" || tab === "game-flow"),
   });
 
   if (gameQuery.isLoading) return <AsyncState status="loading" label="Loading the game" />;
@@ -792,23 +992,26 @@ export default function GameDetailPage() {
         ) : null}
 
         {tab === "game-flow" ? (
-          boxScoreQuery.isLoading ? (
+          !game.played ? (
+            <EmptyText>Game flow isn't available until this game is played.</EmptyText>
+          ) : boxScoreQuery.isLoading || playByPlayQuery.isLoading ? (
             <AsyncState status="loading" label="Loading game flow" />
-          ) : boxScoreQuery.isError ? (
-            <AsyncState status="error" message="Could not load game flow." onRetry={() => boxScoreQuery.refetch()} />
+          ) : boxScoreQuery.isError || playByPlayQuery.isError ? (
+            <AsyncState
+              status="error"
+              message="Could not load game flow."
+              onRetry={() => {
+                boxScoreQuery.refetch();
+                playByPlayQuery.refetch();
+              }}
+            />
           ) : (
-            <div className="flex flex-col gap-6">
-              <PeriodTable
-                periodScores={boxScoreQuery.data.periodScores}
-                localTeam={game.localTeam}
-                roadTeam={game.roadTeam}
-              />
-              <GameFlowChart
-                periodScores={boxScoreQuery.data.periodScores}
-                localTeam={game.localTeam}
-                roadTeam={game.roadTeam}
-              />
-            </div>
+            <GameFlowTab
+              events={playByPlayQuery.data.events}
+              periodScores={boxScoreQuery.data.periodScores}
+              localTeam={game.localTeam}
+              roadTeam={game.roadTeam}
+            />
           )
         ) : null}
         {tab === "comparison" ? (

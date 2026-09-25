@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Chart } from "chart.js/auto";
 import { useQuery } from "@tanstack/react-query";
 import { useParams } from "react-router";
-import { getBoxScore, getCoverage, getGame, getPlayByPlay } from "../lib/api";
+import { getBoxScore, getCoverage, getGame, getPlayByPlay, getShots } from "../lib/api";
 import AsyncState from "../lib/AsyncState";
 import DataCoveragePanel from "../lib/DataCoveragePanel";
 import EmptyText from "../lib/EmptyText";
@@ -18,6 +18,9 @@ import LabelledSelect from "../lib/LabelledSelect";
 import Panel from "../lib/Panel";
 import PageHeader from "../lib/PageHeader";
 import PanelHeader from "../lib/PanelHeader";
+import ShootingCourt from "../lib/ShootingCourt";
+import ShootingLegend from "../lib/ShootingLegend";
+import { classifyShotZone, SHOT_ZONES } from "../lib/shotZones";
 import { useDocumentTitle } from "../lib/useDocumentTitle";
 import { TabPanel, TabStrip } from "../lib/TabStrip";
 import { useActiveTheme, themeColor } from "../lib/useActiveTheme";
@@ -169,56 +172,162 @@ function shootingPercentage(made, attempted) {
   return (Number(made) / attemptedNum) * 100;
 }
 
-function ShootingSplitsSection({ teamStats, localTeam, roadTeam }) {
-  const totals = teamStats.filter((row) => row.statsKind === "total");
+function periodNumberForMinute(minute) {
+  if (minute == null) return 0;
+  return minute <= 40 ? Math.ceil(minute / 10) : 4 + Math.ceil((minute - 40) / 5);
+}
 
-  if (totals.length === 0) {
-    return <EmptyText>Shooting splits aren't available until this game is played.</EmptyText>;
-  }
+const SHOT_TYPE_FILTERS = [
+  { key: "all", label: "All shots", test: () => true },
+  { key: "2", label: "2-pointers", test: (shot) => shot.actionCode.startsWith("2") },
+  { key: "3", label: "3-pointers", test: (shot) => shot.actionCode.startsWith("3") },
+];
 
-  const splits = [
-    ["2PT", "fieldGoalsMade2", "fieldGoalsAttempted2"],
-    ["3PT", "fieldGoalsMade3", "fieldGoalsAttempted3"],
-    ["FT", "freeThrowsMade", "freeThrowsAttempted"],
-  ];
+const RESULT_FILTERS = [
+  { key: "all", label: "Makes and misses", test: () => true },
+  { key: "made", label: "Made", test: (shot) => shot.actionCode.endsWith("M") },
+  { key: "missed", label: "Missed", test: (shot) => shot.actionCode.endsWith("A") },
+];
+
+const PLAY_CONTEXT_FILTERS = [
+  { key: "all", label: "All possessions", test: () => true },
+  { key: "fastbreak", label: "Fast breaks", test: (shot) => shot.fastbreak },
+  { key: "secondChance", label: "Second chances", test: (shot) => shot.secondChance },
+  { key: "offTurnover", label: "Off turnovers", test: (shot) => shot.pointsOffTurnover },
+];
+
+function ZoneSummary({ shots }) {
+  const rows = SHOT_ZONES.map((zone) => {
+    const zoneShots = shots.filter(
+      (shot) => classifyShotZone(Number(shot.coordX), Number(shot.coordY), shot.actionCode.startsWith("3")) === zone,
+    );
+    const made = zoneShots.filter((shot) => shot.actionCode.endsWith("M")).length;
+    return { zone, attempts: zoneShots.length, made };
+  });
 
   return (
-    <div>
-      <p className="muted mb-3 text-sm">
-        Shot-location data isn't tracked for this archive - these are the box-score shooting splits.
-      </p>
-      <Panel className="overflow-x-auto overscroll-x-contain p-2">
-        <table className="table">
-          <thead>
-            <tr>
-              <th>Team</th>
-              {splits.map(([label]) => (
-                <th key={label}>{label}</th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {totals.map((row) => {
-              const name = row.side === "local" ? teamName(localTeam) : teamName(roadTeam);
-              return (
-                <tr key={row.side}>
-                  <td className="font-medium">
-                    <span className="block max-w-40 truncate sm:max-w-56" title={name}>
-                      {name}
-                    </span>
-                  </td>
-                  {splits.map(([label, madeField, attemptedField]) => (
-                    <td key={label} className="tabular-nums">
-                      {row[madeField] ?? "-"}-{row[attemptedField] ?? "-"} (
-                      {formatPercentage(shootingPercentage(row[madeField], row[attemptedField]))})
-                    </td>
-                  ))}
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
+    <Panel className="p-4">
+      <PanelHeader kicker="ZONES" title="Zone summary" />
+      <ul className="flex flex-col gap-2">
+        {rows.map((row) => (
+          <li key={row.zone} className="flex items-center justify-between gap-3 text-sm">
+            <span>{row.zone}</span>
+            <span className="tabular-nums">
+              {row.made}-{row.attempts} ({formatPercentage(shootingPercentage(row.made, row.attempts))})
+            </span>
+          </li>
+        ))}
+      </ul>
+    </Panel>
+  );
+}
+
+function ShootingTab({ shots, teamStats, localTeam, roadTeam }) {
+  const [teamFilter, setTeamFilter] = useState("both");
+  const [playerFilter, setPlayerFilter] = useState("all");
+  const [shotTypeFilter, setShotTypeFilter] = useState("all");
+  const [periodFilter, setPeriodFilter] = useState("all");
+  const [resultFilter, setResultFilter] = useState("all");
+  const [contextFilter, setContextFilter] = useState("all");
+
+  if (shots.length === 0) {
+    return <EmptyText>Shot data isn't available for this game yet.</EmptyText>;
+  }
+
+  const teamFilteredShots = teamFilter === "both" ? shots : shots.filter((shot) => shot.clubCode === teamFilter);
+  const players = [...new Map(teamFilteredShots.map((shot) => [shot.personCode, shot.playerName])).entries()].filter(
+    ([code]) => code,
+  );
+  const effectivePlayerFilter = players.some(([code]) => code === playerFilter) ? playerFilter : "all";
+
+  const periodNumbers = [...new Set(shots.map((shot) => periodNumberForMinute(shot.minute)))].sort((a, b) => a - b);
+  const shotTypeTest = SHOT_TYPE_FILTERS.find((filter) => filter.key === shotTypeFilter)?.test ?? (() => true);
+  const resultTest = RESULT_FILTERS.find((filter) => filter.key === resultFilter)?.test ?? (() => true);
+  const contextTest = PLAY_CONTEXT_FILTERS.find((filter) => filter.key === contextFilter)?.test ?? (() => true);
+
+  const filteredShots = teamFilteredShots.filter((shot) => {
+    if (effectivePlayerFilter !== "all" && shot.personCode !== effectivePlayerFilter) return false;
+    if (!shotTypeTest(shot)) return false;
+    if (periodFilter !== "all" && String(periodNumberForMinute(shot.minute)) !== periodFilter) return false;
+    if (!resultTest(shot)) return false;
+    if (!contextTest(shot)) return false;
+    return true;
+  });
+
+  const totals = teamStats.filter((row) => row.statsKind === "total");
+  const boxScoreAttempted = totals.reduce((sum, row) => sum + (Number(row.fieldGoalsAttemptedTotal) || 0), 0);
+  const reconciles = boxScoreAttempted > 0 && boxScoreAttempted === shots.length;
+
+  return (
+    <div className="flex flex-col gap-6">
+      <Panel className="p-4">
+        <PanelHeader
+          kicker="SHOOTING"
+          title="Shot map"
+          trailing={
+            <span className={`stat-badge ${reconciles ? "stat-badge-success" : "stat-badge-warning"}`}>
+              {reconciles ? "Box score matched" : "Partial chart coverage"} · {formatCount(shots.length)} plotted
+            </span>
+          }
+        />
+        <div className="mb-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+          <LabelledSelect label="Team" value={teamFilter} onChange={(event) => setTeamFilter(event.target.value)}>
+            <option value="both">Both teams</option>
+            {localTeam?.clubCode ? <option value={localTeam.clubCode}>{teamName(localTeam)}</option> : null}
+            {roadTeam?.clubCode ? <option value={roadTeam.clubCode}>{teamName(roadTeam)}</option> : null}
+          </LabelledSelect>
+          <LabelledSelect label="Player" value={effectivePlayerFilter} onChange={(event) => setPlayerFilter(event.target.value)}>
+            <option value="all">All players</option>
+            {players.map(([code, name]) => (
+              <option key={code} value={code}>
+                {name}
+              </option>
+            ))}
+          </LabelledSelect>
+          <LabelledSelect label="Shot type" value={shotTypeFilter} onChange={(event) => setShotTypeFilter(event.target.value)}>
+            {SHOT_TYPE_FILTERS.map((filter) => (
+              <option key={filter.key} value={filter.key}>
+                {filter.label}
+              </option>
+            ))}
+          </LabelledSelect>
+          <LabelledSelect label="Period" value={periodFilter} onChange={(event) => setPeriodFilter(event.target.value)}>
+            <option value="all">Full game</option>
+            {periodNumbers.map((periodNumber) => (
+              <option key={periodNumber} value={String(periodNumber)}>
+                {formatPeriod(periodNumber)}
+              </option>
+            ))}
+          </LabelledSelect>
+          <LabelledSelect label="Result" value={resultFilter} onChange={(event) => setResultFilter(event.target.value)}>
+            {RESULT_FILTERS.map((filter) => (
+              <option key={filter.key} value={filter.key}>
+                {filter.label}
+              </option>
+            ))}
+          </LabelledSelect>
+          <LabelledSelect label="Play context" value={contextFilter} onChange={(event) => setContextFilter(event.target.value)}>
+            {PLAY_CONTEXT_FILTERS.map((filter) => (
+              <option key={filter.key} value={filter.key}>
+                {filter.label}
+              </option>
+            ))}
+          </LabelledSelect>
+        </div>
+
+        <div className="rounded-field border border-base-300 bg-base-100/60 p-2 sm:p-3">
+          <ShootingCourt
+            shots={filteredShots}
+            teams={[localTeam, roadTeam]}
+            ariaLabel={`Shot chart: ${formatCount(filteredShots.length)} of ${formatCount(shots.length)} attempts shown`}
+          />
+        </div>
+        <div className="mt-3">
+          <ShootingLegend teams={[localTeam, roadTeam]} />
+        </div>
       </Panel>
+
+      <ZoneSummary shots={filteredShots} />
     </div>
   );
 }
@@ -888,6 +997,12 @@ export default function GameDetailPage() {
     enabled: gameQuery.isSuccess && game?.played === true && (tab === "play-by-play" || tab === "game-flow"),
   });
 
+  const shotsQuery = useQuery({
+    queryKey: ["shots", seasonCode, gameCode],
+    queryFn: () => getShots(seasonCode, gameCode),
+    enabled: gameQuery.isSuccess && game?.played === true && tab === "shooting",
+  });
+
   if (gameQuery.isLoading) return <AsyncState status="loading" label="Loading the game" />;
 
   if (gameQuery.isError) {
@@ -1030,12 +1145,22 @@ export default function GameDetailPage() {
         ) : null}
 
         {tab === "shooting" ? (
-          boxScoreQuery.isLoading ? (
-            <AsyncState status="loading" label="Loading shooting splits" />
-          ) : boxScoreQuery.isError ? (
-            <AsyncState status="error" message="Could not load shooting splits." onRetry={() => boxScoreQuery.refetch()} />
+          !game.played ? (
+            <EmptyText>Shot data isn't available until this game is played.</EmptyText>
+          ) : boxScoreQuery.isLoading || shotsQuery.isLoading ? (
+            <AsyncState status="loading" label="Loading shot chart" />
+          ) : boxScoreQuery.isError || shotsQuery.isError ? (
+            <AsyncState
+              status="error"
+              message="Could not load shot chart."
+              onRetry={() => {
+                boxScoreQuery.refetch();
+                shotsQuery.refetch();
+              }}
+            />
           ) : (
-            <ShootingSplitsSection
+            <ShootingTab
+              shots={shotsQuery.data.shots}
               teamStats={boxScoreQuery.data.teamStats}
               localTeam={game.localTeam}
               roadTeam={game.roadTeam}

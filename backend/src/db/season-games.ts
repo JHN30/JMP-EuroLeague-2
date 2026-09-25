@@ -1,8 +1,8 @@
-import { and, asc, eq, isNull, or, sql } from "drizzle-orm";
+import { and, asc, eq, inArray, isNull, or, sql } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 import { db } from "./client";
 import { CatalogDatabaseError, catalogRead } from "./season-catalog";
-import { clubs, gamePeriodScores, gamePlayerStats, gameTeamStats, games, playByPlay, postseasonSeries, teamSeasonStats } from "./season-schema";
+import { clubs, gamePeriodScores, gamePlayerStats, gameTeamStats, games, playByPlay, postseasonSeries, shots, teamSeasonStats } from "./season-schema";
 
 const COMPETITION_CODE = "E";
 
@@ -470,6 +470,41 @@ export async function getPostseasonSeries(seasonCode: string) {
   }));
 
   return { series };
+}
+
+const FIELD_GOAL_ACTION_CODES = ["2FGM", "2FGA", "3FGM", "3FGA"] as const;
+
+// Free throws have no real court coordinates in the source feed, so this
+// scopes to field-goal attempts only - the domain of a shot chart.
+export async function getShots(seasonCode: string, gameCode: number) {
+  const rows = await catalogRead(() =>
+    db
+      .select({
+        shotOrdinal: shots.shotOrdinal,
+        clubCode: shots.clubCode,
+        personCode: shots.personCode,
+        playerName: shots.playerName,
+        actionCode: shots.actionCode,
+        points: shots.points,
+        coordX: shots.coordX,
+        coordY: shots.coordY,
+        fastbreak: shots.fastbreak,
+        secondChance: shots.secondChance,
+        pointsOffTurnover: shots.pointsOffTurnover,
+        minute: shots.minute,
+        markerTime: shots.markerTime,
+      })
+      .from(shots)
+      .where(and(
+        eq(shots.competitionCode, COMPETITION_CODE),
+        eq(shots.seasonCode, seasonCode),
+        eq(shots.gameCode, gameCode),
+        inArray(shots.actionCode, FIELD_GOAL_ACTION_CODES),
+      ))
+      .orderBy(asc(shots.shotOrdinal)),
+  );
+
+  return { shots: rows };
 }
 
 const MEASURE_KEYS = [

@@ -170,6 +170,32 @@ export const playByPlay = pgTable(
   ],
 );
 
+export const shots = pgTable(
+  "app_shots",
+  {
+    competitionCode: text("competition_code").notNull(),
+    seasonCode: text("season_code").notNull(),
+    gameCode: integer("game_code").notNull(),
+    shotOrdinal: integer("shot_ordinal").notNull(),
+    clubCode: text("club_code"),
+    personCode: text("person_code"),
+    playerName: text("player_name"),
+    actionCode: text("action_code"),
+    points: integer("points"),
+    coordX: numeric("coord_x"),
+    coordY: numeric("coord_y"),
+    zone: text("zone"),
+    fastbreak: boolean("fastbreak"),
+    secondChance: boolean("second_chance"),
+    pointsOffTurnover: boolean("points_off_turnover"),
+    minute: integer("minute"),
+    markerTime: text("console_time"),
+  },
+  (table) => [
+    primaryKey({ columns: [table.competitionCode, table.seasonCode, table.gameCode, table.shotOrdinal] }),
+  ],
+);
+
 export const gameTeamStats = pgTable(
   "app_game_team_stats",
   {

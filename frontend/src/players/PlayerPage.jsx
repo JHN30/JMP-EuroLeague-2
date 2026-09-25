@@ -19,6 +19,7 @@ import InfoTile from "../lib/InfoTile";
 import Panel from "../lib/Panel";
 import PageHeader from "../lib/PageHeader";
 import PanelHeader from "../lib/PanelHeader";
+import SeasonShootingChart from "../lib/SeasonShootingChart";
 import { formatStatValue } from "../lib/statsFields";
 import SummaryGrid from "../lib/SummaryGrid";
 import { TabPanel, TabStrip } from "../lib/TabStrip";
@@ -469,6 +470,49 @@ function GameLogSection({ gamesQuery }) {
   );
 }
 
+function PlayerShootingSection({ seasonCode, phaseCode, player, registrationsQuery, gamesQuery, personKey }) {
+  const [presentation, setPresentation] = useState("heatmap");
+  const [gameSegment, setGameSegment] = useState("all");
+  const [result, setResult] = useState("all");
+
+  if (registrationsQuery.isPending || gamesQuery.isPending) {
+    return <AsyncState status="loading" label="Loading this player's shot locations" />;
+  }
+  if (registrationsQuery.isError || gamesQuery.isError) {
+    return (
+      <AsyncState
+        status="error"
+        message="Could not load this player's shot locations."
+        onRetry={() => {
+          registrationsQuery.refetch();
+          gamesQuery.refetch();
+        }}
+      />
+    );
+  }
+
+  const registrations = registrationsQuery.data.registrations ?? [];
+  const currentTeam = (registrations.find((entry) => entry.active !== false) ?? registrations[0])?.team ?? null;
+  const games = gamesQuery.data?.games ?? [];
+  const playedGames = games.filter((game) => game.phaseCode === phaseCode);
+
+  return (
+    <SeasonShootingChart
+      seasonCode={seasonCode}
+      playedGames={playedGames}
+      ownerFilter={(shot) => shot.personCode === personKey}
+      team={currentTeam}
+      subjectLabel={player.name ?? player.jerseyName ?? "Player"}
+      presentation={presentation}
+      onPresentationChange={setPresentation}
+      gameSegment={gameSegment}
+      onGameSegmentChange={setGameSegment}
+      result={result}
+      onResultChange={setResult}
+    />
+  );
+}
+
 export default function PlayerPage() {
   const { seasonCode, personKey } = useParams();
   const [section, setSection] = useState("overview");
@@ -511,7 +555,7 @@ export default function PlayerPage() {
   const gamesQuery = useQuery({
     queryKey: ["player-games", seasonCode, personKey],
     queryFn: () => getPlayerGames(seasonCode, personKey, { limit: GAMES_LIMIT }),
-    enabled: playerQuery.isSuccess && section === "games",
+    enabled: playerQuery.isSuccess && (section === "games" || section === "shooting"),
   });
 
   const leaderboardQuery = useQuery({
@@ -586,6 +630,7 @@ export default function PlayerPage() {
             { key: "overview", label: "Overview" },
             { key: "seasons", label: "Season by season" },
             { key: "statistics", label: "Statistics" },
+            { key: "shooting", label: "Shooting" },
             { key: "games", label: "Games" },
           ]}
         />
@@ -619,6 +664,15 @@ export default function PlayerPage() {
                 <SeasonStatsSection statsQuery={statsQuery} />
               </TabPanel>
             </>
+          ) : section === "shooting" ? (
+            <PlayerShootingSection
+              seasonCode={seasonCode}
+              phaseCode={phaseCode}
+              player={player}
+              registrationsQuery={registrationsQuery}
+              gamesQuery={gamesQuery}
+              personKey={personKey}
+            />
           ) : (
             <>
               <h2 className="mb-3 text-xl font-semibold">Game-by-game performance</h2>

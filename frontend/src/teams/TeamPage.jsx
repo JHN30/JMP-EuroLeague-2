@@ -18,6 +18,7 @@ import HeaderStats from "../lib/HeaderStats";
 import Panel from "../lib/Panel";
 import PageHeader from "../lib/PageHeader";
 import PanelHeader from "../lib/PanelHeader";
+import SeasonShootingChart from "../lib/SeasonShootingChart";
 import { formatStatValue } from "../lib/statsFields";
 import { TabPanel, TabStrip } from "../lib/TabStrip";
 import { useDocumentTitle } from "../lib/useDocumentTitle";
@@ -423,7 +424,11 @@ function StatisticsSection({ teamStatsSummaryQuery }) {
   );
 }
 
-function ShootingSection({ teamStatsSummaryQuery }) {
+function ShootingSection({ teamStatsSummaryQuery, seasonCode, phaseCode, team, games }) {
+  const [presentation, setPresentation] = useState("heatmap");
+  const [gameSegment, setGameSegment] = useState("all");
+  const [result, setResult] = useState("all");
+
   if (teamStatsSummaryQuery.isPending) return <AsyncState status="loading" label="Loading shooting splits" />;
   if (teamStatsSummaryQuery.isError) {
     return (
@@ -445,37 +450,59 @@ function ShootingSection({ teamStatsSummaryQuery }) {
     ["FT", "freeThrowsMade", "freeThrowsAttempted"],
   ];
 
+  const playedGames = games.filter(
+    (game) => game.phaseCode === phaseCode && game.played && game.localScore != null && game.roadScore != null,
+  );
+
   return (
-    <Panel className="overflow-x-auto overscroll-x-contain p-2">
-      <table className="table">
-        <thead>
-          <tr>
-            <th>Splits</th>
-            {splits.map(([label]) => (
-              <th key={label}>{label}</th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          <tr>
-            <td className="font-medium">This team</td>
-            {splits.map(([label, made, attempted]) => (
-              <td key={label} className="tabular-nums">
-                {shootingSplit(own, made, attempted)}
-              </td>
-            ))}
-          </tr>
-          <tr>
-            <td className="font-medium">Allowed</td>
-            {splits.map(([label, made, attempted]) => (
-              <td key={label} className="tabular-nums">
-                {shootingSplit(opp, made, attempted)}
-              </td>
-            ))}
-          </tr>
-        </tbody>
-      </table>
-    </Panel>
+    <div className="flex flex-col gap-6">
+      <Panel className="overflow-x-auto overscroll-x-contain p-2">
+        <table className="table">
+          <thead>
+            <tr>
+              <th>Splits</th>
+              {splits.map(([label]) => (
+                <th key={label}>{label}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td className="font-medium">This team</td>
+              {splits.map(([label, made, attempted]) => (
+                <td key={label} className="tabular-nums">
+                  {shootingSplit(own, made, attempted)}
+                </td>
+              ))}
+            </tr>
+            <tr>
+              <td className="font-medium">Allowed</td>
+              {splits.map(([label, made, attempted]) => (
+                <td key={label} className="tabular-nums">
+                  {shootingSplit(opp, made, attempted)}
+                </td>
+              ))}
+            </tr>
+          </tbody>
+        </table>
+      </Panel>
+
+      <Panel className="p-4">
+        <SeasonShootingChart
+          seasonCode={seasonCode}
+          playedGames={playedGames}
+          ownerFilter={(shot) => shot.clubCode === team.clubCode}
+          team={team}
+          subjectLabel="Team"
+          presentation={presentation}
+          onPresentationChange={setPresentation}
+          gameSegment={gameSegment}
+          onGameSegmentChange={setGameSegment}
+          result={result}
+          onResultChange={setResult}
+        />
+      </Panel>
+    </div>
   );
 }
 
@@ -882,7 +909,13 @@ export default function TeamPage() {
         ) : section === "statistics" ? (
           <StatisticsSection teamStatsSummaryQuery={teamStatsSummaryQuery} />
         ) : section === "shooting" ? (
-          <ShootingSection teamStatsSummaryQuery={teamStatsSummaryQuery} />
+          <ShootingSection
+            teamStatsSummaryQuery={teamStatsSummaryQuery}
+            seasonCode={seasonCode}
+            phaseCode={phaseCode}
+            team={team}
+            games={games}
+          />
         ) : section === "trends" ? (
           <TrendsSection games={games} phaseCode={phaseCode} clubCode={clubCode} />
         ) : section === "roster" ? (

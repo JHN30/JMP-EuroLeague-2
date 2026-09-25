@@ -22,6 +22,11 @@ export async function getBoxScore(seasonCode, gameCode) {
   return data;
 }
 
+export async function getPlayByPlay(seasonCode, gameCode) {
+  const { data } = await api.get(`/seasons/${seasonCode}/games/${gameCode}/play-by-play`);
+  return data;
+}
+
 export async function getCoverage(seasonCode, { gameCode } = {}) {
   const { data } = await api.get(`/seasons/${seasonCode}/coverage`, { params: { gameCode } });
   return data;

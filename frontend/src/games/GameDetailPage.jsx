@@ -2,21 +2,25 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Chart } from "chart.js/auto";
 import { useQuery } from "@tanstack/react-query";
 import { useParams } from "react-router";
-import { getBoxScore, getCoverage, getGame } from "../lib/api";
+import { getBoxScore, getCoverage, getGame, getPlayByPlay } from "../lib/api";
 import AsyncState from "../lib/AsyncState";
 import DataCoveragePanel from "../lib/DataCoveragePanel";
 import EmptyText from "../lib/EmptyText";
 import {
+  formatCount,
   formatDateTime as formatDateTimeShared,
   formatMinutes,
   formatPercentage,
   formatPeriod,
   formatSignedDiff,
 } from "../lib/format";
+import LabelledSelect from "../lib/LabelledSelect";
 import Panel from "../lib/Panel";
 import PageHeader from "../lib/PageHeader";
+import PanelHeader from "../lib/PanelHeader";
 import { useDocumentTitle } from "../lib/useDocumentTitle";
 import { TabPanel, TabStrip } from "../lib/TabStrip";
+import { useActiveTheme, themeColor } from "../lib/useActiveTheme";
 
 const GAME_TABS = [
   { key: "box-score", label: "Box score" },
@@ -219,52 +223,183 @@ function ShootingSplitsSection({ teamStats, localTeam, roadTeam }) {
   );
 }
 
-function PlayByPlaySection({ periodScores, localTeam, roadTeam }) {
-  if (periodScores.length === 0) {
+const PLAY_TYPE_LABELS = {
+  "2FGM": "Score", "3FGM": "Score", FTM: "Score",
+  "2FGA": "Miss", "3FGA": "Miss", FTA: "Miss",
+  TO: "Turnover",
+  ST: "Steal",
+  AG: "Blocked", FV: "Block",
+  CM: "Foul", OF: "Offensive foul", CMT: "Technical foul", CMU: "Unsportsmanlike foul",
+  CMD: "Disqualifying foul", CMTI: "Throw-in foul", C: "Coach foul", B: "Bench foul",
+  RV: "Foul drawn",
+  D: "Def. rebound", O: "Off. rebound",
+  AS: "Assist",
+  IN: "Sub in", OUT: "Sub out",
+  TOUT: "Timeout", TOUT_TV: "TV timeout",
+  BP: "Period start", EP: "Period end", EG: "Game end",
+  JB: "Jump ball", CCH: "Challenge",
+};
+
+const SCORING_PLAY_TYPES = new Set(["2FGM", "3FGM", "FTM"]);
+const KEY_PLAY_TYPES = new Set(["2FGM", "3FGM", "FTM", "TO", "ST", "AG", "FV", "TOUT", "TOUT_TV"]);
+const FOUL_PLAY_TYPES = new Set(["CM", "OF", "CMT", "CMU", "C", "B", "CMD", "CMTI"]);
+const SUBSTITUTION_PLAY_TYPES = new Set(["IN", "OUT"]);
+
+const EVENT_TYPE_FILTERS = [
+  { key: "key", label: "Key plays", test: (type) => KEY_PLAY_TYPES.has(type) },
+  { key: "scoring", label: "Scoring", test: (type) => SCORING_PLAY_TYPES.has(type) },
+  { key: "all", label: "All events", test: () => true },
+  { key: "fouls", label: "Fouls", test: (type) => FOUL_PLAY_TYPES.has(type) },
+  { key: "substitutions", label: "Substitutions", test: (type) => SUBSTITUTION_PLAY_TYPES.has(type) },
+];
+
+const PAGE_STEP = 60;
+
+function withRunningScore(events) {
+  // `pointsA`/`pointsB` are only populated on scoring rows; forward-fill the
+  // running score across non-scoring rows for a continuous score column.
+  let scoreA = 0;
+  let scoreB = 0;
+  return events.map((event) => {
+    if (event.pointsA != null) scoreA = event.pointsA;
+    if (event.pointsB != null) scoreB = event.pointsB;
+    return { ...event, runningScoreA: scoreA, runningScoreB: scoreB };
+  });
+}
+
+function PlayByPlayRow({ event, localTeam, roadTeam }) {
+  const isLocal = event.clubCode === localTeam?.clubCode;
+  const isRoad = event.clubCode === roadTeam?.clubCode;
+  const crest = isLocal ? localTeam?.crestUrl : isRoad ? roadTeam?.crestUrl : null;
+  const who = event.playerName ?? event.teamName ?? "Game event";
+  const label = PLAY_TYPE_LABELS[event.playType] ?? event.playType ?? "Event";
+  const isScoring = SCORING_PLAY_TYPES.has(event.playType);
+
+  return (
+    <div
+      className={`grid grid-cols-[3.5rem_minmax(0,1fr)_auto] items-center gap-3 py-2 sm:grid-cols-[3.5rem_auto_minmax(0,1fr)_auto] ${isScoring ? "bg-primary/6" : ""}`}
+    >
+      <div>
+        <p className="text-xs font-bold text-primary uppercase">{formatPeriod(event.periodNumber)}</p>
+        <p className="muted font-mono text-xs">{event.markerTime ?? "-"}</p>
+      </div>
+      {crest ? (
+        <img
+          src={crest}
+          alt=""
+          className="hidden h-6 w-6 flex-none object-contain sm:block"
+          onError={(eventTarget) => {
+            eventTarget.currentTarget.style.display = "none";
+          }}
+        />
+      ) : null}
+      <div className="min-w-0">
+        <p className="flex flex-wrap items-center gap-2">
+          <span className="truncate font-medium">{who}</span>
+          <span className="stat-badge stat-badge-neutral text-xs">{label}</span>
+        </p>
+        {event.playInfo ? <p className="muted truncate text-xs">{event.playInfo}</p> : null}
+      </div>
+      <div className="text-right tabular-nums">
+        {event.runningScoreA}
+        <span className="muted px-0.5">:</span>
+        {event.runningScoreB}
+      </div>
+    </div>
+  );
+}
+
+function PlayByPlaySection({ played, events, localTeam, roadTeam }) {
+  const [typeFilter, setTypeFilter] = useState("key");
+  const [periodFilter, setPeriodFilter] = useState("all");
+  const [teamFilter, setTeamFilter] = useState("all");
+  const [visibleCount, setVisibleCount] = useState(PAGE_STEP);
+
+  if (!played) {
     return <EmptyText>Play-by-play isn't available until this game is played.</EmptyText>;
   }
+  if (events.length === 0) {
+    return <EmptyText>Play-by-play isn't available for this game yet.</EmptyText>;
+  }
 
-  const periodNumbers = [...new Set(periodScores.map((row) => row.periodNumber))].sort((a, b) => a - b);
+  const periodNumbers = [...new Set(events.map((event) => event.periodNumber))].sort((a, b) => a - b);
+  const withScores = withRunningScore(events);
+  const typeTest = EVENT_TYPE_FILTERS.find((filter) => filter.key === typeFilter)?.test ?? (() => true);
+
+  const filtered = withScores.filter((event) => {
+    if (!typeTest(event.playType)) return false;
+    if (periodFilter !== "all" && String(event.periodNumber) !== periodFilter) return false;
+    if (teamFilter !== "all" && event.clubCode !== teamFilter) return false;
+    return true;
+  });
+
+  const newestFirst = [...filtered].reverse();
+  const visible = newestFirst.slice(0, visibleCount);
+
+  function resetPaging(setter) {
+    return (value) => {
+      setter(value);
+      setVisibleCount(PAGE_STEP);
+    };
+  }
 
   return (
     <div>
-      <p className="muted mb-3 text-sm">
-        Play-by-play isn't tracked for this archive - here's the period-level scoring flow instead.
-      </p>
-      <Panel className="overflow-x-auto overscroll-x-contain p-2">
-        <table className="table">
-          <thead>
-            <tr>
-              <th>Team</th>
-              {periodNumbers.map((periodNumber) => (
-                <th key={periodNumber}>{formatPeriod(periodNumber)}</th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {["local", "road"].map((side) => {
-              const name = side === "local" ? teamName(localTeam) : teamName(roadTeam);
-              const bySide = periodScores.filter((row) => row.side === side);
-              return (
-                <tr key={side}>
-                  <td className="font-medium">
-                    <span className="block max-w-40 truncate sm:max-w-56" title={name}>
-                      {name}
-                    </span>
-                  </td>
-                  {periodNumbers.map((periodNumber) => {
-                    const entry = bySide.find((row) => row.periodNumber === periodNumber);
-                    return (
-                      <td key={periodNumber} className="tabular-nums">
-                        {entry?.score ?? "-"}
-                      </td>
-                    );
-                  })}
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
+      <Panel className="p-4">
+        <PanelHeader
+          kicker="LIVE LOG"
+          title="Play-by-play"
+          trailing={<span className="stat-badge stat-badge-neutral">{formatCount(filtered.length)} events</span>}
+        />
+        <div className="mb-4 grid gap-3 sm:grid-cols-3">
+          <LabelledSelect label="Event type" value={typeFilter} onChange={(event) => resetPaging(setTypeFilter)(event.target.value)}>
+            {EVENT_TYPE_FILTERS.map((filter) => (
+              <option key={filter.key} value={filter.key}>
+                {filter.label}
+              </option>
+            ))}
+          </LabelledSelect>
+          <LabelledSelect label="Period" value={periodFilter} onChange={(event) => resetPaging(setPeriodFilter)(event.target.value)}>
+            <option value="all">All periods</option>
+            {periodNumbers.map((periodNumber) => (
+              <option key={periodNumber} value={String(periodNumber)}>
+                {formatPeriod(periodNumber)}
+              </option>
+            ))}
+          </LabelledSelect>
+          <LabelledSelect label="Team" value={teamFilter} onChange={(event) => resetPaging(setTeamFilter)(event.target.value)}>
+            <option value="all">Both teams</option>
+            {localTeam?.clubCode ? <option value={localTeam.clubCode}>{teamName(localTeam)}</option> : null}
+            {roadTeam?.clubCode ? <option value={roadTeam.clubCode}>{teamName(roadTeam)}</option> : null}
+          </LabelledSelect>
+        </div>
+
+        {visible.length === 0 ? (
+          <EmptyText>No events match these filters.</EmptyText>
+        ) : (
+          <div className="divide-y divide-base-300">
+            {visible.map((event) => (
+              <PlayByPlayRow
+                key={`${event.periodNumber}-${event.eventOrdinal}`}
+                event={event}
+                localTeam={localTeam}
+                roadTeam={roadTeam}
+              />
+            ))}
+          </div>
+        )}
+
+        {newestFirst.length > visibleCount ? (
+          <div className="mt-4 border-t border-base-300 pt-4 text-center">
+            <button
+              type="button"
+              className="btn btn-outline btn-sm"
+              onClick={() => setVisibleCount((count) => count + PAGE_STEP)}
+            >
+              Show {PAGE_STEP} more
+            </button>
+          </div>
+        ) : null}
       </Panel>
     </div>
   );
@@ -332,22 +467,6 @@ function PeriodTable({ periodScores, localTeam, roadTeam }) {
       </table>
     </Panel>
   );
-}
-
-function useActiveTheme() {
-  const [theme, setTheme] = useState(() => document.documentElement.dataset.theme);
-
-  useEffect(() => {
-    const observer = new MutationObserver(() => setTheme(document.documentElement.dataset.theme));
-    observer.observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
-    return () => observer.disconnect();
-  }, []);
-
-  return theme;
-}
-
-function themeColor(el, variable) {
-  return getComputedStyle(el).getPropertyValue(variable).trim();
 }
 
 function computeRunningMargins(periodScores) {
@@ -563,6 +682,12 @@ export default function GameDetailPage() {
     enabled: gameQuery.isSuccess,
   });
 
+  const playByPlayQuery = useQuery({
+    queryKey: ["play-by-play", seasonCode, gameCode],
+    queryFn: () => getPlayByPlay(seasonCode, gameCode),
+    enabled: gameQuery.isSuccess && game?.played === true && tab === "play-by-play",
+  });
+
   if (gameQuery.isLoading) return <AsyncState status="loading" label="Loading the game" />;
 
   if (gameQuery.isError) {
@@ -716,13 +841,16 @@ export default function GameDetailPage() {
         ) : null}
 
         {tab === "play-by-play" ? (
-          boxScoreQuery.isLoading ? (
+          !game.played ? (
+            <PlayByPlaySection played={false} events={[]} localTeam={game.localTeam} roadTeam={game.roadTeam} />
+          ) : playByPlayQuery.isLoading ? (
             <AsyncState status="loading" label="Loading play-by-play" />
-          ) : boxScoreQuery.isError ? (
-            <AsyncState status="error" message="Could not load play-by-play." onRetry={() => boxScoreQuery.refetch()} />
+          ) : playByPlayQuery.isError ? (
+            <AsyncState status="error" message="Could not load play-by-play." onRetry={() => playByPlayQuery.refetch()} />
           ) : (
             <PlayByPlaySection
-              periodScores={boxScoreQuery.data.periodScores}
+              played={game.played}
+              events={playByPlayQuery.data.events}
               localTeam={game.localTeam}
               roadTeam={game.roadTeam}
             />

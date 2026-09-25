@@ -2,7 +2,7 @@ import { and, asc, eq, isNull, or, sql } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 import { db } from "./client";
 import { CatalogDatabaseError, catalogRead } from "./season-catalog";
-import { clubs, gamePeriodScores, gamePlayerStats, gameTeamStats, games, teamSeasonStats } from "./season-schema";
+import { clubs, gamePeriodScores, gamePlayerStats, gameTeamStats, games, playByPlay, teamSeasonStats } from "./season-schema";
 
 const COMPETITION_CODE = "E";
 
@@ -343,6 +343,69 @@ export async function getBoxScore(seasonCode: string, gameCode: number) {
     )).orderBy(asc(gamePlayerStats.side), asc(gamePlayerStats.personName), asc(gamePlayerStats.personKey))),
   ]);
   return { periodScores, teamStats, playerStats };
+}
+
+// `period` is source text, not chronological order; map each name to its
+// regulation quarter number. "ExtraTime" bundles every overtime under one
+// label, so overtimes are told apart by counting each one's own "Begin
+// Period" (`BP`) marker in event order, not by clock `minute`: a period's
+// trailing "End Period"/"End Game" markers are stamped one minute into the
+// *next* period, which would misattribute a single-overtime game's closing
+// markers to a phantom second overtime if `minute` alone decided the split.
+const REGULATION_PERIOD_NUMBERS: Record<string, number> = {
+  FirstQuarter: 1,
+  SecondQuarter: 2,
+  ThirdQuarter: 3,
+  ForthQuarter: 4,
+};
+
+function overtimeNumbersByEventOrdinal(rows: { period: string; eventOrdinal: number; playType: string | null }[]) {
+  const extraTime = rows
+    .filter((row) => row.period === "ExtraTime")
+    .sort((a, b) => a.eventOrdinal - b.eventOrdinal);
+  const byOrdinal = new Map<number, number>();
+  let overtimeIndex = 0;
+  for (const row of extraTime) {
+    if (row.playType === "BP") overtimeIndex += 1;
+    byOrdinal.set(row.eventOrdinal, Math.max(overtimeIndex, 1));
+  }
+  return byOrdinal;
+}
+
+export async function getPlayByPlay(seasonCode: string, gameCode: number) {
+  const rows = await catalogRead(() =>
+    db
+      .select({
+        period: playByPlay.period,
+        eventOrdinal: playByPlay.eventOrdinal,
+        clubCode: playByPlay.clubCode,
+        personCode: playByPlay.personCode,
+        playType: playByPlay.playType,
+        playerName: playByPlay.playerName,
+        teamName: playByPlay.teamName,
+        dorsal: playByPlay.dorsal,
+        minute: playByPlay.minute,
+        markerTime: playByPlay.markerTime,
+        pointsA: playByPlay.pointsA,
+        pointsB: playByPlay.pointsB,
+        playInfo: playByPlay.playInfo,
+      })
+      .from(playByPlay)
+      .where(and(
+        eq(playByPlay.competitionCode, COMPETITION_CODE),
+        eq(playByPlay.seasonCode, seasonCode),
+        eq(playByPlay.gameCode, gameCode),
+      )),
+  );
+
+  const overtimeNumbers = overtimeNumbersByEventOrdinal(rows);
+  const events = rows.map((row) => {
+    const periodNumber = REGULATION_PERIOD_NUMBERS[row.period]
+      ?? (row.period === "ExtraTime" ? 4 + (overtimeNumbers.get(row.eventOrdinal) ?? 1) : 0);
+    return { ...row, periodNumber };
+  });
+  events.sort((a, b) => a.periodNumber - b.periodNumber || a.eventOrdinal - b.eventOrdinal);
+  return { events };
 }
 
 const MEASURE_KEYS = [

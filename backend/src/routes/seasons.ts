@@ -19,7 +19,7 @@ import {
   getTeamRoster,
   getTeams,
 } from "../db/season-identities";
-import { getBoxScore, getGame, getGames, getPlayerGameLog, getTeamGames, getTeamStatsSummary } from "../db/season-games";
+import { getBoxScore, getGame, getGames, getPlayByPlay, getPlayerGameLog, getTeamGames, getTeamStatsSummary } from "../db/season-games";
 import { getCoverage } from "../db/season-coverage";
 import { getLatestStandingsRound, getStandings } from "../db/season-standings";
 import { getSeasonStats, SORTABLE_STATS_FIELDS, type SortableStatsField } from "../db/season-stats";
@@ -594,6 +594,18 @@ seasonRouter.get("/:seasonCode/games/:gameCode/box-score", async (req, res) => {
     return;
   }
   res.json(await getBoxScore(season.seasonCode, gameCode));
+});
+
+seasonRouter.get("/:seasonCode/games/:gameCode/play-by-play", async (req, res) => {
+  const season = await requestedSeason(req, res);
+  if (!season) return;
+  const gameCode = requestedGameCode(req.params.gameCode, res);
+  if (gameCode === null) return;
+  if (!await getGame(season.seasonCode, gameCode)) {
+    sendError(res, 404, "GAME_NOT_FOUND", "Game not found");
+    return;
+  }
+  res.json(await getPlayByPlay(season.seasonCode, gameCode));
 });
 
 seasonRouter.get("/:seasonCode/coverage", async (req, res) => {

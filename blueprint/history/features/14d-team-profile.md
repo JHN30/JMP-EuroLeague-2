@@ -72,7 +72,7 @@ aggregate table" note). See **Notes for the AI**.
 
 - Team-level rebounds/assists-per-game KPI chips shown in the mockup — no
   team box-score aggregate exists (per-game team stats
-  (`etl_flat_game_team_stats`) are only exposed per single game via the box
+  (`app_game_team_stats`) are only exposed per single game via the box
   score endpoint; there is no season aggregate, and summing every played
   game's box score client-side for one KPI chip would mean 20-38 extra
   requests, disproportionate). The KPI strip uses only
@@ -287,7 +287,7 @@ Barcelona (`BAR`) in `E2025`:
   dropped:** no venue/arena field exists anywhere in `backend/src/db`
   (already confirmed for 14a's dashboard spec — same finding applies here).
   Team-level rebounds/assists per game have no aggregate data source either:
-  `etl_flat_game_team_stats` is only exposed per single game via the box
+  `app_game_team_stats` is only exposed per single game via the box
   score endpoint, and the project overview explicitly notes "No team season
   aggregate table is listed in the supplied SQL." Computing a season average
   client-side would mean fetching every played game's box score

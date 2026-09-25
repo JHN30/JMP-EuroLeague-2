@@ -75,8 +75,8 @@ this season, season totals/per-game statistics, and game-by-game performance.
     simply returns an empty `players` array, like an unmatched phase/round
     filter does elsewhere; no new 404 is introduced on this list endpoint.
   - New `GET /:seasonCode/players/:personKey/games` endpoint and matching
-    `getPlayerGameLog` query (join `etl_flat_game_player_stats` to
-    `etl_flat_games` on `gameCode`, scoped to this player, ordered by
+    `getPlayerGameLog` query (join `app_game_player_stats` to
+    `app_games` on `gameCode`, scoped to this player, ordered by
     `scheduledAt`), reusing the box-score measure columns already selected in
     `getBoxScore`. `404 PLAYER_NOT_FOUND` when the player does not exist,
     matching `/players/:personKey/registrations`'s existing check.

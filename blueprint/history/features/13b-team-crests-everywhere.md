@@ -22,7 +22,7 @@ table/header layouts rather than adding a shared component or stylesheet.
 
 ## In scope
 
-- Join `etl_flat_clubs.crest_url` into each game response's `localTeam` and
+- Join `app_clubs.crest_url` into each game response's `localTeam` and
   `roadTeam` objects, preserving the existing nullable team behavior when a
   game has no team data.
 - Join the same club crest into each standings entry as `crestUrl` using the
@@ -101,7 +101,7 @@ and `workflow.checkpointCommits: "disabled"`. Do not create checkpoint commits;
 ## Data / contracts
 
 - Game API team objects gain `crestUrl: string | null` for both `localTeam` and
-  `roadTeam`, sourced from the matching `etl_flat_clubs` row. A missing club row
+  `roadTeam`, sourced from the matching `app_clubs` row. A missing club row
   or missing URL returns `null`; an entirely absent game team remains `null`.
 - Standings API entries gain `crestUrl: string | null`, sourced from the club
   matching the standings entry's competition, season, and club code. Existing

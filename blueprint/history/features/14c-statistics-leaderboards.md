@@ -47,7 +47,7 @@ for the AI** for why.
 ## Out of scope
 
 - Rank-delta indicators. The season-stats tables
-  (`etl_flat_season_stats_traditional` and its advanced/scoring/misc
+  (`app_season_stats_traditional` and its advanced/scoring/misc
   siblings) have no round or timestamp dimension — every row is the single
   current cumulative snapshot, confirmed against live `E2025` data before
   writing this spec. There is no prior state to diff against, and the

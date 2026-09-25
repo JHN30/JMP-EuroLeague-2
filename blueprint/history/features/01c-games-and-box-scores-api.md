@@ -12,7 +12,7 @@ Expose read-only, season-scoped EuroLeague fixtures/results and the available ga
 ## In scope
 
 - Inspect the live `E2025` and `E2026` game and box-score table definitions, sample rows, row counts, `side` and `stats_kind` values, join coverage, nullable fields, and PostgreSQL numeric serialization without changing source data.
-- Map the selected `etl_flat_games`, `etl_flat_game_period_scores`, `etl_flat_game_team_stats`, and `etl_flat_game_player_stats` columns in Drizzle.
+- Map the selected `app_games`, `app_game_period_scores`, `app_game_team_stats`, and `app_game_player_stats` columns in Drizzle.
 - Add bounded season game-list and game-detail routes plus a route for a known game's available period scores, team statistics, and player statistics.
 - Scope every read and every game lookup by competition `E` and validated season. Select only fields returned to clients, bind all values through Drizzle, and make all list ordering deterministic.
 - Keep missing source values as JSON `null`, including a game with unavailable score, status, schedule, team metadata, or partial/no box-score rows.

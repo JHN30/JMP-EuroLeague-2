@@ -11,7 +11,7 @@ Expose EuroLeague team and player identities and their season roster registratio
 
 ## In scope
 
-- Map the needed columns of `etl_flat_clubs`, `etl_flat_people`, and `etl_flat_registrations` in Drizzle after read-only checks against the live `E2025` and `E2026` Neon data. Keep competition `E` and composite source keys.
+- Map the needed columns of `app_clubs`, `app_people`, and `app_registrations` in Drizzle after read-only checks against the live `E2025` and `E2026` Neon data. Keep competition `E` and composite source keys.
 - Add team and player list/detail routes under `/api/seasons/:seasonCode` plus team roster and player registration routes. Reuse the Season catalog's season validation and JSON error behavior.
 - Return nullable source fields as `null`. Preserve inactive and unknown-activity registrations rather than calling every membership current. Keep registrations with missing linked identity data visible as partial records.
 - Bound growing lists, validate path and query input, and order every list deterministically. Keep queries read-only and select only response columns.

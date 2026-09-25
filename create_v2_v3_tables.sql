@@ -3,7 +3,7 @@
 BEGIN;
 
 -- v2 datasets
-CREATE TABLE IF NOT EXISTS public."etl_flat_seasons" (
+CREATE TABLE IF NOT EXISTS public."app_seasons" (
     "competition_code" TEXT NOT NULL,
     "season_code" TEXT NOT NULL,
     "name" TEXT,
@@ -18,7 +18,7 @@ CREATE TABLE IF NOT EXISTS public."etl_flat_seasons" (
     PRIMARY KEY ("competition_code", "season_code")
 );
 
-CREATE TABLE IF NOT EXISTS public."etl_flat_clubs" (
+CREATE TABLE IF NOT EXISTS public."app_clubs" (
     "competition_code" TEXT NOT NULL,
     "season_code" TEXT NOT NULL,
     "club_code" TEXT NOT NULL,
@@ -44,7 +44,7 @@ CREATE TABLE IF NOT EXISTS public."etl_flat_clubs" (
     PRIMARY KEY ("competition_code", "season_code", "club_code")
 );
 
-CREATE TABLE IF NOT EXISTS public."etl_flat_people" (
+CREATE TABLE IF NOT EXISTS public."app_people" (
     "competition_code" TEXT NOT NULL,
     "season_code" TEXT NOT NULL,
     "person_key" TEXT NOT NULL,
@@ -70,7 +70,7 @@ CREATE TABLE IF NOT EXISTS public."etl_flat_people" (
     PRIMARY KEY ("competition_code", "season_code", "person_key")
 );
 
-CREATE TABLE IF NOT EXISTS public."etl_flat_registrations" (
+CREATE TABLE IF NOT EXISTS public."app_registrations" (
     "competition_code" TEXT NOT NULL,
     "season_code" TEXT NOT NULL,
     "registration_key" TEXT NOT NULL,
@@ -93,7 +93,7 @@ CREATE TABLE IF NOT EXISTS public."etl_flat_registrations" (
     PRIMARY KEY ("competition_code", "season_code", "registration_key")
 );
 
-CREATE TABLE IF NOT EXISTS public."etl_flat_rounds" (
+CREATE TABLE IF NOT EXISTS public."app_rounds" (
     "competition_code" TEXT NOT NULL,
     "season_code" TEXT NOT NULL,
     "round_key" TEXT NOT NULL,
@@ -107,7 +107,7 @@ CREATE TABLE IF NOT EXISTS public."etl_flat_rounds" (
     PRIMARY KEY ("competition_code", "season_code", "round_key")
 );
 
-CREATE TABLE IF NOT EXISTS public."etl_flat_games" (
+CREATE TABLE IF NOT EXISTS public."app_games" (
     "competition_code" TEXT NOT NULL,
     "season_code" TEXT NOT NULL,
     "game_code" INTEGER NOT NULL,
@@ -161,7 +161,7 @@ CREATE TABLE IF NOT EXISTS public."etl_flat_games" (
     PRIMARY KEY ("competition_code", "season_code", "game_code")
 );
 
-CREATE TABLE IF NOT EXISTS public."etl_flat_game_officials" (
+CREATE TABLE IF NOT EXISTS public."app_game_officials" (
     "competition_code" TEXT NOT NULL,
     "season_code" TEXT NOT NULL,
     "game_code" INTEGER NOT NULL,
@@ -176,7 +176,7 @@ CREATE TABLE IF NOT EXISTS public."etl_flat_game_officials" (
     PRIMARY KEY ("competition_code", "season_code", "game_code", "official_number")
 );
 
-CREATE TABLE IF NOT EXISTS public."etl_flat_game_period_scores" (
+CREATE TABLE IF NOT EXISTS public."app_game_period_scores" (
     "competition_code" TEXT NOT NULL,
     "season_code" TEXT NOT NULL,
     "game_code" INTEGER NOT NULL,
@@ -186,7 +186,7 @@ CREATE TABLE IF NOT EXISTS public."etl_flat_game_period_scores" (
     PRIMARY KEY ("competition_code", "season_code", "game_code", "side", "period_number")
 );
 
-CREATE TABLE IF NOT EXISTS public."etl_flat_game_player_stats" (
+CREATE TABLE IF NOT EXISTS public."app_game_player_stats" (
     "competition_code" TEXT NOT NULL,
     "season_code" TEXT NOT NULL,
     "game_code" INTEGER NOT NULL,
@@ -233,7 +233,7 @@ CREATE TABLE IF NOT EXISTS public."etl_flat_game_player_stats" (
     PRIMARY KEY ("competition_code", "season_code", "game_code", "side", "person_key")
 );
 
-CREATE TABLE IF NOT EXISTS public."etl_flat_game_team_stats" (
+CREATE TABLE IF NOT EXISTS public."app_game_team_stats" (
     "competition_code" TEXT NOT NULL,
     "season_code" TEXT NOT NULL,
     "game_code" INTEGER NOT NULL,
@@ -269,7 +269,7 @@ CREATE TABLE IF NOT EXISTS public."etl_flat_game_team_stats" (
 );
 
 -- v3 datasets
-CREATE TABLE IF NOT EXISTS public."etl_flat_season_stats_traditional" (
+CREATE TABLE IF NOT EXISTS public."app_season_stats_traditional" (
     "competition_code" TEXT NOT NULL,
     "season_code" TEXT NOT NULL,
     "phase_code" TEXT NOT NULL,
@@ -311,7 +311,7 @@ CREATE TABLE IF NOT EXISTS public."etl_flat_season_stats_traditional" (
     PRIMARY KEY ("competition_code", "season_code", "phase_code", "mode", "entry_ordinal")
 );
 
-CREATE TABLE IF NOT EXISTS public."etl_flat_season_stats_advanced" (
+CREATE TABLE IF NOT EXISTS public."app_season_stats_advanced" (
     "competition_code" TEXT NOT NULL,
     "season_code" TEXT NOT NULL,
     "phase_code" TEXT NOT NULL,
@@ -343,7 +343,7 @@ CREATE TABLE IF NOT EXISTS public."etl_flat_season_stats_advanced" (
     PRIMARY KEY ("competition_code", "season_code", "phase_code", "mode", "entry_ordinal")
 );
 
-CREATE TABLE IF NOT EXISTS public."etl_flat_season_stats_scoring" (
+CREATE TABLE IF NOT EXISTS public."app_season_stats_scoring" (
     "competition_code" TEXT NOT NULL,
     "season_code" TEXT NOT NULL,
     "phase_code" TEXT NOT NULL,
@@ -374,7 +374,7 @@ CREATE TABLE IF NOT EXISTS public."etl_flat_season_stats_scoring" (
     PRIMARY KEY ("competition_code", "season_code", "phase_code", "mode", "entry_ordinal")
 );
 
-CREATE TABLE IF NOT EXISTS public."etl_flat_season_stats_misc" (
+CREATE TABLE IF NOT EXISTS public."app_season_stats_misc" (
     "competition_code" TEXT NOT NULL,
     "season_code" TEXT NOT NULL,
     "phase_code" TEXT NOT NULL,
@@ -399,7 +399,7 @@ CREATE TABLE IF NOT EXISTS public."etl_flat_season_stats_misc" (
     PRIMARY KEY ("competition_code", "season_code", "phase_code", "mode", "entry_ordinal")
 );
 
-CREATE TABLE IF NOT EXISTS public."etl_flat_standings_basicstandings" (
+CREATE TABLE IF NOT EXISTS public."app_standings_basicstandings" (
     "competition_code" TEXT NOT NULL,
     "season_code" TEXT NOT NULL,
     "phase_code" TEXT NOT NULL,
@@ -426,7 +426,7 @@ CREATE TABLE IF NOT EXISTS public."etl_flat_standings_basicstandings" (
     PRIMARY KEY ("competition_code", "season_code", "phase_code", "round_number", "club_code")
 );
 
-CREATE TABLE IF NOT EXISTS public."etl_flat_standings_calendarstandings" (
+CREATE TABLE IF NOT EXISTS public."app_standings_calendarstandings" (
     "competition_code" TEXT NOT NULL,
     "season_code" TEXT NOT NULL,
     "phase_code" TEXT NOT NULL,
@@ -444,7 +444,7 @@ CREATE TABLE IF NOT EXISTS public."etl_flat_standings_calendarstandings" (
     PRIMARY KEY ("competition_code", "season_code", "phase_code", "round_number", "club_code")
 );
 
-CREATE TABLE IF NOT EXISTS public."etl_flat_standings_streaks" (
+CREATE TABLE IF NOT EXISTS public."app_standings_streaks" (
     "competition_code" TEXT NOT NULL,
     "season_code" TEXT NOT NULL,
     "phase_code" TEXT NOT NULL,
@@ -471,7 +471,7 @@ CREATE TABLE IF NOT EXISTS public."etl_flat_standings_streaks" (
     PRIMARY KEY ("competition_code", "season_code", "phase_code", "round_number", "club_code")
 );
 
-CREATE TABLE IF NOT EXISTS public."etl_flat_standings_aheadbehind" (
+CREATE TABLE IF NOT EXISTS public."app_standings_aheadbehind" (
     "competition_code" TEXT NOT NULL,
     "season_code" TEXT NOT NULL,
     "phase_code" TEXT NOT NULL,
@@ -499,7 +499,7 @@ CREATE TABLE IF NOT EXISTS public."etl_flat_standings_aheadbehind" (
     PRIMARY KEY ("competition_code", "season_code", "phase_code", "round_number", "club_code")
 );
 
-CREATE TABLE IF NOT EXISTS public."etl_flat_standings_margins" (
+CREATE TABLE IF NOT EXISTS public."app_standings_margins" (
     "competition_code" TEXT NOT NULL,
     "season_code" TEXT NOT NULL,
     "phase_code" TEXT NOT NULL,
@@ -527,7 +527,7 @@ CREATE TABLE IF NOT EXISTS public."etl_flat_standings_margins" (
     PRIMARY KEY ("competition_code", "season_code", "phase_code", "round_number", "club_code")
 );
 
-CREATE TABLE IF NOT EXISTS public."etl_flat_standings_calendar_streaks" (
+CREATE TABLE IF NOT EXISTS public."app_standings_calendar_streaks" (
     "competition_code" TEXT NOT NULL,
     "season_code" TEXT NOT NULL,
     "phase_code" TEXT NOT NULL,
@@ -540,7 +540,7 @@ CREATE TABLE IF NOT EXISTS public."etl_flat_standings_calendar_streaks" (
     PRIMARY KEY ("competition_code", "season_code", "phase_code", "round_number", "club_code", "streak_ordinal")
 );
 
-CREATE TABLE IF NOT EXISTS public."etl_flat_standings_basic_form" (
+CREATE TABLE IF NOT EXISTS public."app_standings_basic_form" (
     "competition_code" TEXT NOT NULL,
     "season_code" TEXT NOT NULL,
     "phase_code" TEXT NOT NULL,

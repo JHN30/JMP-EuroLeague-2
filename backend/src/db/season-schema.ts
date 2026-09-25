@@ -1,7 +1,7 @@
-import { boolean, integer, numeric, pgTable, primaryKey, text, timestamp } from "drizzle-orm/pg-core";
+import { boolean, integer, jsonb, numeric, pgTable, primaryKey, text, timestamp } from "drizzle-orm/pg-core";
 
 export const seasons = pgTable(
-  "etl_flat_seasons",
+  "app_seasons",
   {
     competitionCode: text("competition_code").notNull(),
     seasonCode: text("season_code").notNull(),
@@ -13,7 +13,7 @@ export const seasons = pgTable(
 );
 
 export const rounds = pgTable(
-  "etl_flat_rounds",
+  "app_rounds",
   {
     competitionCode: text("competition_code").notNull(),
     seasonCode: text("season_code").notNull(),
@@ -27,7 +27,7 @@ export const rounds = pgTable(
 );
 
 export const games = pgTable(
-  "etl_flat_games",
+  "app_games",
   {
     competitionCode: text("competition_code").notNull(),
     seasonCode: text("season_code").notNull(),
@@ -56,7 +56,7 @@ export const games = pgTable(
 );
 
 export const clubs = pgTable(
-  "etl_flat_clubs",
+  "app_clubs",
   {
     competitionCode: text("competition_code").notNull(),
     seasonCode: text("season_code").notNull(),
@@ -70,7 +70,7 @@ export const clubs = pgTable(
 );
 
 export const people = pgTable(
-  "etl_flat_people",
+  "app_people",
   {
     competitionCode: text("competition_code").notNull(),
     seasonCode: text("season_code").notNull(),
@@ -85,7 +85,7 @@ export const people = pgTable(
 );
 
 export const registrations = pgTable(
-  "etl_flat_registrations",
+  "app_registrations",
   {
     competitionCode: text("competition_code").notNull(),
     seasonCode: text("season_code").notNull(),
@@ -132,7 +132,7 @@ function boxMeasureColumns() {
 }
 
 export const gamePeriodScores = pgTable(
-  "etl_flat_game_period_scores",
+  "app_game_period_scores",
   {
     competitionCode: text("competition_code").notNull(),
     seasonCode: text("season_code").notNull(),
@@ -145,7 +145,7 @@ export const gamePeriodScores = pgTable(
 );
 
 export const gameTeamStats = pgTable(
-  "etl_flat_game_team_stats",
+  "app_game_team_stats",
   {
     competitionCode: text("competition_code").notNull(),
     seasonCode: text("season_code").notNull(),
@@ -160,7 +160,7 @@ export const gameTeamStats = pgTable(
 );
 
 export const gamePlayerStats = pgTable(
-  "etl_flat_game_player_stats",
+  "app_game_player_stats",
   {
     competitionCode: text("competition_code").notNull(),
     seasonCode: text("season_code").notNull(),
@@ -183,8 +183,9 @@ export const gamePlayerStats = pgTable(
   (table) => [primaryKey({ columns: [table.competitionCode, table.seasonCode, table.gameCode, table.side, table.personKey] })],
 );
 
-function standingIdentityColumns() {
-  return {
+export const standings = pgTable(
+  "app_standings",
+  {
     competitionCode: text("competition_code").notNull(),
     seasonCode: text("season_code").notNull(),
     phaseCode: text("phase_code").notNull(),
@@ -192,122 +193,82 @@ function standingIdentityColumns() {
     clubCode: text("club_code").notNull(),
     clubName: text("club_name"),
     clubTvCode: text("club_tv_code"),
+    crestUrl: text("crest_url"),
     groupName: text("group_name"),
-    position: integer("position"),
-    positionChange: text("position_change"),
-    gamesPlayed: integer("games_played"),
-    gamesWon: integer("games_won"),
-    gamesLost: integer("games_lost"),
-    qualified: boolean("qualified"),
-  };
-}
-
-export const standingsBasic = pgTable(
-  "etl_flat_standings_basicstandings",
-  {
-    ...standingIdentityColumns(),
-    winPercentage: numeric("win_percentage"),
-    pointsDifference: integer("points_difference"),
-    pointsFor: integer("points_for"),
-    pointsAgainst: integer("points_against"),
-    homeRecord: text("home_record"),
-    awayRecord: text("away_record"),
-    neutralRecord: text("neutral_record"),
-    overtimeRecord: text("overtime_record"),
-    lastTenRecord: text("last_ten_record"),
+    basicPosition: integer("basic_position"),
+    basicPositionChange: text("basic_position_change"),
+    basicGamesPlayed: integer("basic_games_played"),
+    basicGamesWon: integer("basic_games_won"),
+    basicGamesLost: integer("basic_games_lost"),
+    basicQualified: boolean("basic_qualified"),
+    basicWinPercentage: numeric("basic_win_percentage"),
+    basicPointsDifference: integer("basic_points_difference"),
+    basicPointsFor: integer("basic_points_for"),
+    basicPointsAgainst: integer("basic_points_against"),
+    basicHomeRecord: text("basic_home_record"),
+    basicAwayRecord: text("basic_away_record"),
+    basicNeutralRecord: text("basic_neutral_record"),
+    basicOvertimeRecord: text("basic_overtime_record"),
+    basicLastTenRecord: text("basic_last_ten_record"),
+    calendarPosition: integer("calendar_position"),
+    calendarPositionChange: text("calendar_position_change"),
+    calendarGamesPlayed: integer("calendar_games_played"),
+    calendarGamesWon: integer("calendar_games_won"),
+    calendarGamesLost: integer("calendar_games_lost"),
+    calendarQualified: boolean("calendar_qualified"),
+    streaksPosition: integer("streaks_position"),
+    streaksPositionChange: text("streaks_position_change"),
+    streaksGamesPlayed: integer("streaks_games_played"),
+    streaksGamesWon: integer("streaks_games_won"),
+    streaksGamesLost: integer("streaks_games_lost"),
+    streaksQualified: boolean("streaks_qualified"),
+    streaksHomeRecord: text("streaks_home_record"),
+    streaksAwayRecord: text("streaks_away_record"),
+    streaksLast10: text("streaks_last10"),
+    streaksHomeLast5: text("streaks_home_last5"),
+    streaksAwayLast5: text("streaks_away_last5"),
+    streaksLongestWinStreakCurrentSeason: integer("streaks_longest_win_streak_current_season"),
+    streaksLongestLoseStreakCurrentSeason: integer("streaks_longest_lose_streak_current_season"),
+    streaksLongestWinStreakAnySeason: integer("streaks_longest_win_streak_any_season"),
+    streaksLongestLoseStreakAnySeason: integer("streaks_longest_lose_streak_any_season"),
+    aheadBehindPosition: integer("ahead_behind_position"),
+    aheadBehindPositionChange: text("ahead_behind_position_change"),
+    aheadBehindGamesPlayed: integer("ahead_behind_games_played"),
+    aheadBehindGamesWon: integer("ahead_behind_games_won"),
+    aheadBehindGamesLost: integer("ahead_behind_games_lost"),
+    aheadBehindQualified: boolean("ahead_behind_qualified"),
+    aheadBehindWinsPercentage: numeric("ahead_behind_wins_percentage"),
+    aheadBehindQuarter1Ahead: text("ahead_behind_quarter1_ahead"),
+    aheadBehindQuarter1Behind: text("ahead_behind_quarter1_behind"),
+    aheadBehindQuarter1Tied: text("ahead_behind_quarter1_tied"),
+    aheadBehindHalf1Ahead: text("ahead_behind_half1_ahead"),
+    aheadBehindHalf1Behind: text("ahead_behind_half1_behind"),
+    aheadBehindHalf1Tied: text("ahead_behind_half1_tied"),
+    aheadBehindQuarter3Ahead: text("ahead_behind_quarter3_ahead"),
+    aheadBehindQuarter3Behind: text("ahead_behind_quarter3_behind"),
+    aheadBehindQuarter3Tied: text("ahead_behind_quarter3_tied"),
+    marginsPosition: integer("margins_position"),
+    marginsPositionChange: text("margins_position_change"),
+    marginsGamesPlayed: integer("margins_games_played"),
+    marginsGamesWon: integer("margins_games_won"),
+    marginsGamesLost: integer("margins_games_lost"),
+    marginsQualified: boolean("margins_qualified"),
+    marginsPointDifference1To5: text("margins_point_difference_1_to_5"),
+    marginsPointDifference6To10: text("margins_point_difference_6_to_10"),
+    marginsPointDifference11To15: text("margins_point_difference_11_to_15"),
+    marginsPointDifferenceMoreThan15: text("margins_point_difference_more_than_15"),
+    marginsRebounds: text("margins_rebounds"),
+    marginsAssists: text("margins_assists"),
+    marginsBlocks: text("margins_blocks"),
+    marginsThreePointers: text("margins_three_pointers"),
+    marginsTwoPointers: text("margins_two_pointers"),
+    marginsFreeThrows: text("margins_free_throws"),
+    form: jsonb("form").$type<{ resultOrdinal: number; result: string | null }[]>(),
+    streakHistory: jsonb("streak_history").$type<
+      { streakOrdinal: number; startAt: string | null; endAt: string | null; winLossRecord: string | null }[]
+    >(),
   },
   (table) => [primaryKey({ columns: [table.competitionCode, table.seasonCode, table.phaseCode, table.roundNumber, table.clubCode] })],
-);
-
-export const standingsCalendar = pgTable(
-  "etl_flat_standings_calendarstandings",
-  {
-    ...standingIdentityColumns(),
-  },
-  (table) => [primaryKey({ columns: [table.competitionCode, table.seasonCode, table.phaseCode, table.roundNumber, table.clubCode] })],
-);
-
-export const standingsStreaks = pgTable(
-  "etl_flat_standings_streaks",
-  {
-    ...standingIdentityColumns(),
-    homeRecord: text("home_record"),
-    awayRecord: text("away_record"),
-    last10: text("last10"),
-    homeLast5: text("home_last5"),
-    awayLast5: text("away_last5"),
-    longestWinStreakCurrentSeason: integer("longest_wins_streak_current_season"),
-    longestLoseStreakCurrentSeason: integer("longest_loses_streak_current_season"),
-    longestWinStreakAnySeason: integer("longest_wins_streak_any_season"),
-    longestLoseStreakAnySeason: integer("longest_loses_streak_any_season"),
-  },
-  (table) => [primaryKey({ columns: [table.competitionCode, table.seasonCode, table.phaseCode, table.roundNumber, table.clubCode] })],
-);
-
-export const standingsAheadBehind = pgTable(
-  "etl_flat_standings_aheadbehind",
-  {
-    ...standingIdentityColumns(),
-    winsPercentage: numeric("wins_percentage"),
-    quarter1Ahead: text("quater1_ahead"),
-    quarter1Behind: text("quater1_behind"),
-    quarter1Tied: text("quater1_tied"),
-    half1Ahead: text("half1_ahead"),
-    half1Behind: text("half1_behind"),
-    half1Tied: text("half1_tied"),
-    quarter3Ahead: text("quater3_ahead"),
-    quarter3Behind: text("quater3_behind"),
-    quarter3Tied: text("quater3_tied"),
-  },
-  (table) => [primaryKey({ columns: [table.competitionCode, table.seasonCode, table.phaseCode, table.roundNumber, table.clubCode] })],
-);
-
-export const standingsMargins = pgTable(
-  "etl_flat_standings_margins",
-  {
-    ...standingIdentityColumns(),
-    pointDifference1To5: text("point_difference1to5"),
-    pointDifference6To10: text("point_difference6to10"),
-    pointDifference11To15: text("point_difference11to15"),
-    pointDifferenceMoreThan15: text("point_difference_more_than15"),
-    rebounds: text("rebounds"),
-    assists: text("assists"),
-    blocks: text("blocks"),
-    threePointers: text("three_pointers"),
-    twoPointers: text("two_pointers"),
-    freeThrows: text("free_throws"),
-  },
-  (table) => [primaryKey({ columns: [table.competitionCode, table.seasonCode, table.phaseCode, table.roundNumber, table.clubCode] })],
-);
-
-export const standingsCalendarStreaks = pgTable(
-  "etl_flat_standings_calendar_streaks",
-  {
-    competitionCode: text("competition_code").notNull(),
-    seasonCode: text("season_code").notNull(),
-    phaseCode: text("phase_code").notNull(),
-    roundNumber: integer("round_number").notNull(),
-    clubCode: text("club_code").notNull(),
-    streakOrdinal: integer("streak_ordinal").notNull(),
-    startAt: timestamp("start_at"),
-    endAt: timestamp("end_at"),
-    winLossRecord: text("win_loss_record"),
-  },
-  (table) => [primaryKey({ columns: [table.competitionCode, table.seasonCode, table.phaseCode, table.roundNumber, table.clubCode, table.streakOrdinal] })],
-);
-
-export const standingsForm = pgTable(
-  "etl_flat_standings_basic_form",
-  {
-    competitionCode: text("competition_code").notNull(),
-    seasonCode: text("season_code").notNull(),
-    phaseCode: text("phase_code").notNull(),
-    roundNumber: integer("round_number").notNull(),
-    clubCode: text("club_code").notNull(),
-    resultOrdinal: integer("result_ordinal").notNull(),
-    result: text("result"),
-  },
-  (table) => [primaryKey({ columns: [table.competitionCode, table.seasonCode, table.phaseCode, table.roundNumber, table.clubCode, table.resultOrdinal] })],
 );
 
 function statsIdentityColumns() {
@@ -330,7 +291,7 @@ function statsIdentityColumns() {
 }
 
 export const seasonStatsTraditional = pgTable(
-  "etl_flat_season_stats_traditional",
+  "app_season_stats_traditional",
   {
     ...statsIdentityColumns(),
     gamesPlayed: numeric("games_played"),
@@ -362,7 +323,7 @@ export const seasonStatsTraditional = pgTable(
 );
 
 export const seasonStatsAdvanced = pgTable(
-  "etl_flat_season_stats_advanced",
+  "app_season_stats_advanced",
   {
     ...statsIdentityColumns(),
     gamesPlayed: numeric("games_played"),
@@ -384,7 +345,7 @@ export const seasonStatsAdvanced = pgTable(
 );
 
 export const seasonStatsScoring = pgTable(
-  "etl_flat_season_stats_scoring",
+  "app_season_stats_scoring",
   {
     ...statsIdentityColumns(),
     gamesPlayed: numeric("games_played"),
@@ -405,7 +366,7 @@ export const seasonStatsScoring = pgTable(
 );
 
 export const seasonStatsMisc = pgTable(
-  "etl_flat_season_stats_misc",
+  "app_season_stats_misc",
   {
     ...statsIdentityColumns(),
     gamesPlayed: numeric("games_played"),

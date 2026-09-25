@@ -63,22 +63,22 @@ Every data-driven page needs loading, empty, unavailable, partial-data, and erro
 
 ## Data model
 
-This is the logical application-facing model. `create_v2_v3_tables.sql` documents the existing `etl_flat_*` Neon tables and their PostgreSQL types; it is a schema reference, not a request to recreate or reload them. Confirm the live table definitions and content before locking API contracts. Preserve composite source identifiers and season scope.
+This is the logical application-facing model. `create_v2_v3_tables.sql` documents the existing `app_*` Neon tables and their PostgreSQL types; it is a schema reference, not a request to recreate or reload them. Confirm the live table definitions and content before locking API contracts. Preserve composite source identifiers and season scope.
 
 | Model | Core fields and types | Relationships |
 | --- | --- | --- |
 | Competition | `competition_code` (text), `competition_name` (nullable text) | Appears in each source key; Phase 1 exposes EuroLeague only. |
-| Season | `season_code` (text: `E2025` or `E2026`), `competition_code` (text), `name` (nullable text) | `etl_flat_seasons`; scopes rounds, games, rosters, standings, and statistics. |
+| Season | `season_code` (text: `E2025` or `E2026`), `competition_code` (text), `name` (nullable text) | `app_seasons`; scopes rounds, games, rosters, standings, and statistics. |
 | Phase | `phase_code` (text), `phase_name` (nullable text) | Present in round/game/statistics rows; no separate phase table is listed in the supplied SQL. |
 | Group | `group_id`, `group_name` (nullable text) | Optional subdivision carried by game rows. |
-| Round | `round_key` (text), `phase_code` (text), `round_number` (integer), `name` (nullable text) | `etl_flat_rounds`; groups games within a phase. |
-| Team | `club_code` (text), `name`, `country_code`, `crest_url` (nullable text) | `etl_flat_clubs`, keyed with competition and season; appears in rosters, games, and standings. |
-| Player | `person_key` (text), `name` (nullable text), available profile fields (nullable) | `etl_flat_people`, keyed with competition and season; joins registrations and player statistics. |
-| Roster registration | `registration_key`, `person_key` (text), `club_code` (nullable text), `season_code` (text) | `etl_flat_registrations`; records player-team membership for a season. |
-| Game | `game_code` (integer), `season_code`, `phase_code`, `round_number`, home/away `club_code`, `scheduled_at` (nullable timestamp with time zone), `game_status` (nullable text), scores (nullable integer) | `etl_flat_games`; has two teams and available box scores. |
-| Team and player game box scores | `game_code`, `side` (text), `person_key` (player rows), available nullable numeric metrics | `etl_flat_game_team_stats` and `etl_flat_game_player_stats`; feed game detail. |
-| Player season statistics | `season_code`, `phase_code`, `mode`, `entry_ordinal`, `person_key`, available nullable numeric metrics | Four `etl_flat_season_stats_*` tables contain traditional, advanced, scoring, and miscellaneous views. No team season aggregate table is listed in the supplied SQL. |
-| Official standing | `season_code`, `phase_code`, `round_number`, `club_code`, `position` (nullable integer), available record/scoring/form fields | Seven `etl_flat_standings_*` tables provide distinct official views and form rows. |
+| Round | `round_key` (text), `phase_code` (text), `round_number` (integer), `name` (nullable text) | `app_rounds`; groups games within a phase. |
+| Team | `club_code` (text), `name`, `country_code`, `crest_url` (nullable text) | `app_clubs`, keyed with competition and season; appears in rosters, games, and standings. |
+| Player | `person_key` (text), `name` (nullable text), available profile fields (nullable) | `app_people`, keyed with competition and season; joins registrations and player statistics. |
+| Roster registration | `registration_key`, `person_key` (text), `club_code` (nullable text), `season_code` (text) | `app_registrations`; records player-team membership for a season. |
+| Game | `game_code` (integer), `season_code`, `phase_code`, `round_number`, home/away `club_code`, `scheduled_at` (nullable timestamp with time zone), `game_status` (nullable text), scores (nullable integer) | `app_games`; has two teams and available box scores. |
+| Team and player game box scores | `game_code`, `side` (text), `person_key` (player rows), available nullable numeric metrics | `app_game_team_stats` and `app_game_player_stats`; feed game detail. |
+| Player season statistics | `season_code`, `phase_code`, `mode`, `entry_ordinal`, `person_key`, available nullable numeric metrics | Four `app_season_stats_*` tables contain traditional, advanced, scoring, and miscellaneous views. No team season aggregate table is listed in the supplied SQL. |
+| Official standing | `season_code`, `phase_code`, `round_number`, `club_code`, `position` (nullable integer), available record/scoring/form fields | `app_standings` holds one row per club and round with the basic, calendar, streaks, ahead/behind, and margins views plus `form` and `streak_history` JSON. The seven `app_standings_*` feed tables still exist but the app no longer reads them. |
 | Postseason matchup | `seasonCode`, stage (play-in, playoffs, or Final Four), participant team IDs (nullable), related game IDs, result (nullable) | Represents known bracket relationships without inventing future participants. |
 | Data-quality annotation | Target record ID/type, correction or anomaly flag, public note (when safe) | Explains known corrections, gaps, or incomplete data in affected views. |
 
@@ -110,7 +110,7 @@ The planned screens are home, standings, fixtures/results, game detail, team dir
 
 ## Open questions
 
-> TODO: Confirm the supplied SQL matches the live Neon schema and identify which `etl_flat_*` tables are approved for public API reads. The SQL has no separate phase, team season aggregate, postseason matchup, or data-quality annotation table; confirm the source and ownership of those views before their endpoints are specified.
+> TODO: Confirm the supplied SQL matches the live Neon schema and identify which `app_*` tables are approved for public API reads. The SQL has no separate phase, team season aggregate, postseason matchup, or data-quality annotation table; confirm the source and ownership of those views before their endpoints are specified.
 
 > TODO: Reconcile the planned `DATABASE_URL` and `CLIENT_URL`/`CORS_ORIGIN` names with the current backend `DB_URL` and `FRONTEND_URL` configuration.
 

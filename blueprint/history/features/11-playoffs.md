@@ -18,7 +18,7 @@ doesn't yet have.
   season-home redirect; this feature makes that tab resolve to a real page).
 - **No new backend surface.** Confirmed live against real E2025 data: the
   project overview's data model flagged "postseason matchup" as a possible
-  missing table, but the existing `etl_flat_games` rows already carry
+  missing table, but the existing `app_games` rows already carry
   everything needed. Play-In, Playoffs, and Final Four are just `games` rows
   with `phaseCode` `PI`/`PO`/`FF`, and each matchup (a Play-In pairing, a
   best-of-5 Playoff series, a Final Four semifinal/championship game) is

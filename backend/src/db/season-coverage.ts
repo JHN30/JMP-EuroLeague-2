@@ -9,7 +9,7 @@ import {
   games,
   registrations,
   seasonStatsTraditional,
-  standingsBasic,
+  standings as standingsTable,
 } from "./season-schema";
 
 const COMPETITION_CODE = "E";
@@ -58,8 +58,8 @@ export async function getCoverage(seasonCode: string, gameCode?: number) {
       .where(and(eq(clubs.competitionCode, COMPETITION_CODE), eq(clubs.seasonCode, seasonCode)))),
     catalogRead(() => db.select({ count: countDistinct(registrations.clubCode) }).from(registrations)
       .where(and(eq(registrations.competitionCode, COMPETITION_CODE), eq(registrations.seasonCode, seasonCode), isNotNull(registrations.clubCode)))),
-    catalogRead(() => db.select({ count: countDistinct(standingsBasic.clubCode) }).from(standingsBasic)
-      .where(and(eq(standingsBasic.competitionCode, COMPETITION_CODE), eq(standingsBasic.seasonCode, seasonCode)))),
+    catalogRead(() => db.select({ count: countDistinct(standingsTable.clubCode) }).from(standingsTable)
+      .where(and(eq(standingsTable.competitionCode, COMPETITION_CODE), eq(standingsTable.seasonCode, seasonCode)))),
     catalogRead(() => db.select({ count: countDistinct(seasonStatsTraditional.personKey) }).from(seasonStatsTraditional)
       .where(and(eq(seasonStatsTraditional.competitionCode, COMPETITION_CODE), eq(seasonStatsTraditional.seasonCode, seasonCode)))),
     catalogRead(() => db.select({ count: countDistinct(gamePlayerStats.personKey) }).from(gamePlayerStats)

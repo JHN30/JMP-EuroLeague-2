@@ -1,21 +1,24 @@
+import { useQuery } from "@tanstack/react-query";
+import { useLayoutEffect, useRef, useState } from "react";
+import { useParams } from "react-router";
+import { getSeasonStandings } from "../lib/api";
 import AsyncState from "../lib/AsyncState";
+import { formatSeasonLabel } from "../lib/format";
 import Panel from "../lib/Panel";
 import PageHeader from "../lib/PageHeader";
 import PanelHeader from "../lib/PanelHeader";
 import { useDocumentTitle } from "../lib/useDocumentTitle";
-import FormWatch from "./FormWatch";
-import GamesSnapshot from "./GamesSnapshot";
 import KpiStrip from "./KpiStrip";
-import LeaderTrend from "./LeaderTrend";
 import LeadersPanel from "./LeadersPanel";
-import SeasonCoverage from "./SeasonCoverage";
-import Spotlight from "./Spotlight";
+import LeaderTrend from "./LeaderTrend";
+import RecentResults from "./RecentResults";
 import StandingsSnapshot from "./StandingsSnapshot";
+import UpcomingGames from "./UpcomingGames";
 
-export function WidgetPanel({ kicker, title, isLoading, isError, onRetry, isEmpty, emptyMessage, children }) {
+export function WidgetPanel({ kicker, title, isLoading, isError, onRetry, isEmpty, emptyMessage, style, children }) {
   const status = isLoading ? "loading" : isError ? "error" : isEmpty ? "empty" : "ready";
   return (
-    <Panel as="section" className="p-6">
+    <Panel as="section" className="flex flex-col p-6" style={style}>
       <PanelHeader kicker={kicker} title={title} />
       <AsyncState
         status={status}
@@ -30,27 +33,49 @@ export function WidgetPanel({ kicker, title, isLoading, isError, onRetry, isEmpt
   );
 }
 
+function useMeasuredHeight() {
+  const ref = useRef(null);
+  const [height, setHeight] = useState(null);
+
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el) return undefined;
+    const observer = new ResizeObserver((entries) => {
+      setHeight(entries[0].contentRect.height);
+    });
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+
+  return [ref, height];
+}
+
 export default function Dashboard() {
   useDocumentTitle("Home");
+  const { seasonCode } = useParams();
+  const standingsQuery = useQuery({
+    queryKey: ["standings", seasonCode, "RS"],
+    queryFn: () => getSeasonStandings(seasonCode, "RS"),
+  });
+  const round = standingsQuery.data?.round ?? null;
+  const [resultsRef, resultsHeight] = useMeasuredHeight();
+
   return (
     <div className="flex flex-col gap-6">
-      <PageHeader kicker="OVERVIEW" title="Home" />
-      <KpiStrip />
-      <Spotlight />
-      <div className="grid items-stretch gap-6 lg:grid-cols-3">
-        <div className="flex flex-col gap-6 [&>*:last-child]:flex-1">
-          <StandingsSnapshot />
-        </div>
-        <div className="flex flex-col gap-6 [&>*:last-child]:flex-1">
-          <GamesSnapshot />
-        </div>
-        <div className="flex flex-col gap-6 [&>*:last-child]:flex-1">
-          <LeadersPanel />
-          <FormWatch />
+      <PageHeader
+        kicker={formatSeasonLabel(seasonCode)}
+        title={round != null ? `Round ${round}` : "Season overview"}
+      />
+      <UpcomingGames />
+      <div className="grid items-start gap-6 lg:grid-cols-2">
+        <StandingsSnapshot height={resultsHeight} />
+        <div ref={resultsRef}>
+          <RecentResults />
         </div>
       </div>
+      <KpiStrip />
+      <LeadersPanel />
       <LeaderTrend />
-      <SeasonCoverage />
     </div>
   );
 }

@@ -66,8 +66,8 @@ export default function LeaderTrend() {
 
   return (
     <WidgetPanel
-      kicker="SPOTLIGHT"
-      title={leaderName ? `${leaderName} · recent form` : "League leader recent form"}
+      kicker="FORM"
+      title={leaderName ? `${leaderName} · point margin trend` : "League leader's point margin trend"}
       isLoading={standingsQuery.isLoading || (Boolean(leaderClubCode) && gamesQuery.isLoading)}
       isError={standingsQuery.isError || gamesQuery.isError}
       onRetry={() => gamesQuery.refetch()}
@@ -76,27 +76,33 @@ export default function LeaderTrend() {
     >
       {trend ? (
         <div className="leader-trend">
-          <div className="leader-trend-stat">
-            <span className="value">{average}</span>
-            <span className="label">Avg point diff, last {diffs.length}</span>
+          <div className="leader-trend-row">
+            <div className="leader-trend-stat">
+              <span className="value">{average}</span>
+              <span className="label">Avg point diff, last {diffs.length}</span>
+            </div>
+            <div className="chart-well">
+              <svg
+                viewBox={`0 0 ${WIDTH} ${HEIGHT}`}
+                preserveAspectRatio="none"
+                role="img"
+                aria-label={`Point differential per game over the last ${diffs.length} played games`}
+              >
+                <line x1="0" y1={trend.zeroY} x2={WIDTH} y2={trend.zeroY} className="leader-trend-baseline" vectorEffect="non-scaling-stroke" />
+                <polygon points={trend.areaAttr} className="leader-trend-area" />
+                <polyline points={trend.pointsAttr} className="leader-trend-line" vectorEffect="non-scaling-stroke" />
+                {trend.points.map((point, index) => (
+                  <circle key={index} cx={point.x} cy={point.y} r="3" className="leader-trend-point">
+                    <title>{pointLabel(diffs[index], index)}</title>
+                  </circle>
+                ))}
+              </svg>
+            </div>
           </div>
-          <div className="chart-well">
-            <svg
-              viewBox={`0 0 ${WIDTH} ${HEIGHT}`}
-              preserveAspectRatio="none"
-              role="img"
-              aria-label={`Point differential per game over the last ${diffs.length} played games`}
-            >
-              <line x1="0" y1={trend.zeroY} x2={WIDTH} y2={trend.zeroY} className="leader-trend-baseline" vectorEffect="non-scaling-stroke" />
-              <polygon points={trend.areaAttr} className="leader-trend-area" />
-              <polyline points={trend.pointsAttr} className="leader-trend-line" vectorEffect="non-scaling-stroke" />
-              {trend.points.map((point, index) => (
-                <circle key={index} cx={point.x} cy={point.y} r="3" className="leader-trend-point">
-                  <title>{pointLabel(diffs[index], index)}</title>
-                </circle>
-              ))}
-            </svg>
-          </div>
+          <p className="leader-trend-caption">
+            How many points {leaderName ?? "they"} have won or lost by, game to game. Above the line means winning
+            comfortably; below means it's been close or a loss — the higher above, the more dominant the form.
+          </p>
         </div>
       ) : null}
     </WidgetPanel>

@@ -5,10 +5,13 @@ import { formatDateTime as formatTime } from "../lib/format";
 import { WidgetPanel } from "./Dashboard";
 
 function roundLabel(game) {
+  if (game.phaseCode && game.phaseCode !== "RS") {
+    return game.phaseName ?? game.phaseCode;
+  }
   return game.roundName ?? (game.roundNumber ? `Round ${game.roundNumber}` : game.phaseName);
 }
 
-function MatchCard({ game, standingByClubCode, seasonCode, showScore }) {
+export function MatchCard({ game, standingByClubCode, seasonCode, showScore }) {
   const localEntry = game.localTeam?.clubCode ? standingByClubCode.get(game.localTeam.clubCode) : null;
   const roadEntry = game.roadTeam?.clubCode ? standingByClubCode.get(game.roadTeam.clubCode) : null;
   const localWon = showScore && game.localScore != null && game.roadScore != null && game.localScore > game.roadScore;
@@ -66,22 +69,30 @@ function MatchCard({ game, standingByClubCode, seasonCode, showScore }) {
   );
 }
 
-function GameList({ kicker, title, seasonCode, queryKey, params, emptyMessage, showScore, standingByClubCode, standingsReady }) {
+export default function RecentResults() {
+  const { seasonCode } = useParams();
   const query = useQuery({
-    queryKey,
-    queryFn: () => getSeasonGames(seasonCode, params),
+    queryKey: ["games", seasonCode, "played", "desc"],
+    queryFn: () => getSeasonGames(seasonCode, { status: "played", order: "desc", limit: 5 }),
+  });
+  const standingsQuery = useQuery({
+    queryKey: ["standings", seasonCode, "RS"],
+    queryFn: () => getSeasonStandings(seasonCode, "RS"),
   });
   const games = query.data?.games ?? [];
+  const standingByClubCode = new Map(
+    (standingsQuery.data?.standings ?? []).map((entry) => [entry.clubCode, entry]),
+  );
 
   return (
     <WidgetPanel
-      kicker={kicker}
-      title={title}
-      isLoading={query.isLoading || !standingsReady}
+      kicker="RESULTS"
+      title="Latest scores"
+      isLoading={query.isLoading || !(standingsQuery.isSuccess || standingsQuery.isError)}
       isError={query.isError}
       onRetry={() => query.refetch()}
       isEmpty={query.isSuccess && games.length === 0}
-      emptyMessage={emptyMessage}
+      emptyMessage="No results yet."
     >
       <div className="games-list">
         {games.map((game) => (
@@ -90,47 +101,10 @@ function GameList({ kicker, title, seasonCode, queryKey, params, emptyMessage, s
             game={game}
             standingByClubCode={standingByClubCode}
             seasonCode={seasonCode}
-            showScore={showScore}
+            showScore
           />
         ))}
       </div>
     </WidgetPanel>
-  );
-}
-
-export default function GamesSnapshot() {
-  const { seasonCode } = useParams();
-  const standingsQuery = useQuery({
-    queryKey: ["standings", seasonCode, "RS"],
-    queryFn: () => getSeasonStandings(seasonCode, "RS"),
-  });
-  const standingByClubCode = new Map(
-    (standingsQuery.data?.standings ?? []).map((entry) => [entry.clubCode, entry]),
-  );
-
-  return (
-    <>
-      <GameList
-        kicker="RESULTS"
-        title="Recent results"
-        seasonCode={seasonCode}
-        queryKey={["games", seasonCode, "played", "desc"]}
-        params={{ status: "played", order: "desc", limit: 5 }}
-        emptyMessage="No results yet."
-        showScore
-        standingByClubCode={standingByClubCode}
-        standingsReady={standingsQuery.isSuccess || standingsQuery.isError}
-      />
-      <GameList
-        kicker="SCHEDULE"
-        title="Upcoming games"
-        seasonCode={seasonCode}
-        queryKey={["games", seasonCode, "scheduled", "asc"]}
-        params={{ status: "scheduled", order: "asc", limit: 5 }}
-        emptyMessage="No games scheduled yet."
-        standingByClubCode={standingByClubCode}
-        standingsReady={standingsQuery.isSuccess || standingsQuery.isError}
-      />
-    </>
   );
 }

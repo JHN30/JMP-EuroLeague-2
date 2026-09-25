@@ -78,7 +78,14 @@
 }
 
 :root {
-  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-family:
+    Inter,
+    ui-sans-serif,
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    sans-serif;
   font-synthesis: none;
   --weight-display: 900;
 }
@@ -106,7 +113,10 @@ button {
     radial-gradient(circle at 12% 0%, color-mix(in srgb, var(--color-primary) 24%, transparent), transparent 34rem),
     radial-gradient(circle at 88% 12%, color-mix(in srgb, var(--color-accent) 16%, transparent), transparent 28rem),
     linear-gradient(135deg, color-mix(in srgb, var(--color-base-content) 7%, transparent) 1px, transparent 1px);
-  background-size: auto, auto, 30px 30px;
+  background-size:
+    auto,
+    auto,
+    30px 30px;
   background-repeat: no-repeat, no-repeat, repeat;
 }
 
@@ -124,7 +134,9 @@ button {
   border-radius: var(--radius-box);
   border: 1px solid var(--color-base-300);
   background-color: var(--color-base-200);
-  box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+  box-shadow:
+    0 10px 15px -3px rgb(0 0 0 / 0.1),
+    0 4px 6px -4px rgb(0 0 0 / 0.1);
 }
 
 .app-card {
@@ -141,12 +153,17 @@ button {
 */
 
 .app-card-interactive {
-  transition: transform 200ms ease, border-color 200ms ease, box-shadow 200ms ease;
+  transition:
+    transform 200ms ease,
+    border-color 200ms ease,
+    box-shadow 200ms ease;
 }
 .app-card-interactive:hover {
   transform: translateY(-2px);
   border-color: color-mix(in srgb, var(--color-primary) 50%, var(--color-base-300));
-  box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+  box-shadow:
+    0 10px 15px -3px rgb(0 0 0 / 0.1),
+    0 4px 6px -4px rgb(0 0 0 / 0.1);
 }
 .app-card-interactive:focus-visible {
   outline: 2px solid var(--color-primary);
@@ -209,15 +226,35 @@ button {
 
 .court-lines {
   background-image:
-    radial-gradient(circle at 50% 115%, transparent 0 6.5rem, color-mix(in srgb, var(--color-base-content) 11%, transparent) 6.55rem 6.62rem, transparent 6.67rem),
-    linear-gradient(90deg, transparent 49.9%, color-mix(in srgb, var(--color-base-content) 9%, transparent) 50%, transparent 50.1%);
+    radial-gradient(
+      circle at 50% 115%,
+      transparent 0 6.5rem,
+      color-mix(in srgb, var(--color-base-content) 11%, transparent) 6.55rem 6.62rem,
+      transparent 6.67rem
+    ),
+    linear-gradient(
+      90deg,
+      transparent 49.9%,
+      color-mix(in srgb, var(--color-base-content) 9%, transparent) 50%,
+      transparent 50.1%
+    );
 }
 
-.swatch-orange { background: var(--color-primary); }
-.swatch-paper { background: var(--color-base-100); }
-.swatch-surface { background: var(--color-base-300); }
-.swatch-ink { background: var(--color-base-content); }
-.swatch-accent { background: var(--color-accent); }
+.swatch-orange {
+  background: var(--color-primary);
+}
+.swatch-paper {
+  background: var(--color-base-100);
+}
+.swatch-surface {
+  background: var(--color-base-300);
+}
+.swatch-ink {
+  background: var(--color-base-content);
+}
+.swatch-accent {
+  background: var(--color-accent);
+}
 
 /* theme-aware scrollbars */
 * {
@@ -323,10 +360,23 @@ button {
   font-size: 0.65rem;
   font-weight: 800;
 }
-.coverage-available { --coverage-color: var(--color-success); border-color: color-mix(in srgb, var(--color-success) 45%, var(--color-base-300)); }
-.coverage-partial, .coverage-incomplete { --coverage-color: var(--color-warning); border-color: color-mix(in srgb, var(--color-warning) 45%, var(--color-base-300)); }
-.coverage-unavailable { --coverage-color: var(--color-error); border-color: color-mix(in srgb, var(--color-error) 45%, var(--color-base-300)); }
-.coverage-notYetApplicable { --coverage-color: var(--color-info); border-color: color-mix(in srgb, var(--color-info) 45%, var(--color-base-300)); }
+.coverage-available {
+  --coverage-color: var(--color-success);
+  border-color: color-mix(in srgb, var(--color-success) 45%, var(--color-base-300));
+}
+.coverage-partial,
+.coverage-incomplete {
+  --coverage-color: var(--color-warning);
+  border-color: color-mix(in srgb, var(--color-warning) 45%, var(--color-base-300));
+}
+.coverage-unavailable {
+  --coverage-color: var(--color-error);
+  border-color: color-mix(in srgb, var(--color-error) 45%, var(--color-base-300));
+}
+.coverage-notYetApplicable {
+  --coverage-color: var(--color-info);
+  border-color: color-mix(in srgb, var(--color-info) 45%, var(--color-base-300));
+}
 
 /* big stat callouts */
 .stat-callout {
@@ -535,6 +585,18 @@ button {
   flex-direction: column;
   gap: 0.6rem;
 }
+.games-row {
+  display: flex;
+  flex-direction: row;
+  gap: 0.6rem;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  padding-bottom: 0.25rem;
+}
+.games-row .match-card {
+  flex: 1 1 0;
+  min-width: 15rem;
+}
 .match-card {
   display: block;
   background: var(--color-base-200);
@@ -604,6 +666,18 @@ button {
   display: grid;
   grid-template-columns: 1fr;
   gap: 1rem;
+}
+.leaders-row {
+  display: flex;
+  flex-direction: row;
+  gap: 1rem;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  padding-bottom: 0.25rem;
+}
+.leaders-row .kpi-chip {
+  flex: 1 1 0;
+  min-width: 15rem;
 }
 .leader-card {
   background: var(--color-base-200);
@@ -682,6 +756,11 @@ button {
 /* League leader recent-form trend (dashboard) */
 .leader-trend {
   display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+.leader-trend-row {
+  display: flex;
   align-items: center;
   gap: 1.5rem;
 }
@@ -705,6 +784,12 @@ button {
   letter-spacing: 0.05em;
   margin-top: 0.3rem;
   display: block;
+}
+.leader-trend-caption {
+  font-size: 0.78rem;
+  color: var(--color-base-content);
+  opacity: 0.7;
+  line-height: 1.4;
 }
 .leader-trend svg {
   min-width: 0;
@@ -741,7 +826,7 @@ button {
   stroke-width: 1.5;
 }
 @media (max-width: 639px) {
-  .leader-trend {
+  .leader-trend-row {
     flex-direction: column;
     align-items: stretch;
     gap: 0.75rem;
@@ -766,11 +851,34 @@ button {
     padding-bottom: 0.25rem;
   }
 }
+.kpi-strip.kpi-strip-4 {
+  grid-template-columns: repeat(4, 1fr);
+}
 .kpi-chip {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
   background: var(--color-base-100);
   border: 1px solid var(--color-base-300);
   border-radius: var(--radius-box);
   padding: 0.9rem 1.1rem;
+  overflow: hidden;
+}
+.kpi-chip-body {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.kpi-chip-image {
+  height: 5.5rem;
+  width: auto;
+  max-width: 6rem;
+  flex: none;
+  align-self: flex-end;
+  object-fit: contain;
+  object-position: bottom;
+  margin: -0.9rem -0.4rem -0.9rem 0;
 }
 .kpi-chip .value {
   font-size: 1.4rem;
@@ -791,6 +899,59 @@ button {
   margin-top: 0.4rem;
   display: block;
   white-space: normal;
+}
+.kpi-chip .label:first-child {
+  margin-top: 0;
+}
+.kpi-chip .name {
+  font-size: 0.85rem;
+  color: var(--color-base-content);
+  font-weight: 700;
+  margin-top: 0.2rem;
+  display: block;
+  white-space: normal;
+  overflow-wrap: break-word;
+}
+.kpi-chip .name + .value {
+  margin-top: 0.3rem;
+}
+.kpi-chip .club {
+  font-size: 0.72rem;
+  color: var(--color-base-content);
+  opacity: 0.65;
+  font-weight: 500;
+  margin-top: 0.1rem;
+  display: block;
+  white-space: normal;
+  overflow-wrap: break-word;
+}
+.kpi-chip-link {
+  text-decoration: none;
+  color: inherit;
+}
+.kpi-chip-link:hover {
+  border-color: var(--color-primary);
+}
+
+/* Home's photo KPI cards (KPI strip and stat-leader row) read taller than the
+   standard strip elsewhere. */
+.kpi-strip-4 .kpi-chip,
+.leaders-row .kpi-chip {
+  padding: 1.5rem 1.35rem;
+}
+.kpi-strip-4 .kpi-chip-image,
+.leaders-row .kpi-chip-image {
+  height: 8.5rem;
+  max-width: 8rem;
+  margin: -1.5rem -0.75rem -1.5rem 0;
+}
+.kpi-strip-4 .kpi-chip .name,
+.leaders-row .kpi-chip .name {
+  font-size: 1rem;
+}
+.kpi-strip-4 .kpi-chip .value,
+.leaders-row .kpi-chip .value {
+  font-size: 1.7rem;
 }
 
 /* winner marker - non-color-only leader indicator (comparisons stat rows) */
@@ -860,7 +1021,10 @@ button {
 @media (prefers-reduced-motion: no-preference) {
   .app-shell,
   .panel {
-    transition: background-color 180ms ease, color 180ms ease, border-color 180ms ease;
+    transition:
+      background-color 180ms ease,
+      color 180ms ease,
+      border-color 180ms ease;
   }
 }
 

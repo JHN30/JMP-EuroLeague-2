@@ -1,9 +1,15 @@
 import { useQuery } from "@tanstack/react-query";
 import { useParams } from "react-router";
-import { getLeaderStats, getRounds, getSeasonStandings } from "../lib/api";
+import { getSeasonStandings } from "../lib/api";
 import CompactMetric from "../lib/CompactMetric";
 import { formatPerGame } from "../lib/format";
 import HeaderStats from "../lib/HeaderStats";
+
+function parseWins(record) {
+  if (!record) return null;
+  const wins = Number(record.split("-")[0]);
+  return Number.isFinite(wins) ? wins : null;
+}
 
 export default function KpiStrip() {
   const { seasonCode } = useParams();
@@ -12,95 +18,65 @@ export default function KpiStrip() {
     queryKey: ["standings", seasonCode, "RS"],
     queryFn: () => getSeasonStandings(seasonCode, "RS"),
   });
-  const round = standingsQuery.data?.round ?? null;
   const standings = standingsQuery.data?.standings ?? [];
-
-  const roundsQuery = useQuery({
-    queryKey: ["rounds", seasonCode, "RS"],
-    queryFn: () => getRounds(seasonCode, "RS"),
-  });
-  const totalRounds = roundsQuery.data?.rounds.length ?? null;
-
-  const topScorerQuery = useQuery({
-    queryKey: ["leader-stats", seasonCode, "all", "perGame", "pointsScored"],
-    queryFn: () =>
-      getLeaderStats(seasonCode, { phase: "all", mode: "perGame", sort: "pointsScored", order: "desc", limit: 1 }),
-  });
-  const topScorer = topScorerQuery.data?.players[0] ?? null;
-
-  const previousRoundQuery = useQuery({
-    queryKey: ["standings", seasonCode, "RS", "round", round ? round - 1 : null],
-    queryFn: () => getSeasonStandings(seasonCode, "RS", { round: round - 1 }),
-    enabled: Boolean(round && round > 1),
-  });
 
   const leader = standings.find((entry) => entry.basic?.position === 1) ?? null;
 
-  const gamesWithPoints = standings.filter(
-    (entry) => entry.basic?.pointsFor != null && entry.basic?.gamesPlayed,
-  );
-  const leagueAvgPpg = formatPerGame(
-    gamesWithPoints.length > 0
-      ? gamesWithPoints.reduce((sum, entry) => sum + entry.basic.pointsFor / entry.basic.gamesPlayed, 0) /
-          gamesWithPoints.length
-      : null,
-  );
-
-  let biggestMover = null;
-  if (previousRoundQuery.data?.standings.length) {
-    const previousPositionByClub = new Map(
-      previousRoundQuery.data.standings.map((entry) => [entry.clubCode, entry.basic?.position ?? null]),
-    );
-    for (const entry of standings) {
-      const previousPosition = previousPositionByClub.get(entry.clubCode);
-      const currentPosition = entry.basic?.position;
-      if (previousPosition == null || currentPosition == null) continue;
-      const delta = previousPosition - currentPosition;
-      if (delta === 0) continue;
-      if (biggestMover === null || Math.abs(delta) > Math.abs(biggestMover.delta)) {
-        biggestMover = { entry, delta };
+  let bestOffense = null;
+  let bestDefense = null;
+  let inForm = null;
+  for (const entry of standings) {
+    const gamesPlayed = entry.basic?.gamesPlayed;
+    if (gamesPlayed) {
+      if (entry.basic.pointsFor != null) {
+        const ppg = entry.basic.pointsFor / gamesPlayed;
+        if (bestOffense === null || ppg > bestOffense.ppg) bestOffense = { entry, ppg };
       }
+      if (entry.basic.pointsAgainst != null) {
+        const papg = entry.basic.pointsAgainst / gamesPlayed;
+        if (bestDefense === null || papg < bestDefense.papg) bestDefense = { entry, papg };
+      }
+    }
+    const wins = parseWins(entry.basic?.lastTenRecord);
+    if (wins !== null && (inForm === null || wins > inForm.wins)) {
+      inForm = { entry, wins };
     }
   }
 
   return (
-    <HeaderStats>
-      <CompactMetric
-        isLoading={standingsQuery.isLoading || roundsQuery.isLoading}
-        isError={standingsQuery.isError || roundsQuery.isError}
-        value={round != null && totalRounds != null ? `${round} / ${totalRounds}` : "–"}
-        label="Round in progress"
-      />
+    <HeaderStats className="kpi-strip-4">
       <CompactMetric
         isLoading={standingsQuery.isLoading}
         isError={standingsQuery.isError}
         value={leader ? `${leader.basic.gamesWon}-${leader.basic.gamesLost}` : "–"}
-        label={leader ? `Leader · ${leader.clubName ?? leader.clubCode}` : "Leader"}
-      />
-      <CompactMetric
-        isLoading={topScorerQuery.isLoading}
-        isError={topScorerQuery.isError}
-        value={topScorer?.traditional.pointsScored ?? "–"}
-        label={topScorer ? `Top scorer · ${topScorer.playerName ?? topScorer.personKey}` : "Top scorer"}
+        label="Leader in wins"
+        name={leader?.clubName ?? leader?.clubCode}
+        imageUrl={leader?.crestUrl}
       />
       <CompactMetric
         isLoading={standingsQuery.isLoading}
         isError={standingsQuery.isError}
-        value={leagueAvgPpg}
-        label="League avg PPG"
+        value={inForm ? inForm.entry.basic.lastTenRecord : "–"}
+        label="In-form team · Last 10"
+        name={inForm?.entry.clubName ?? inForm?.entry.clubCode}
+        imageUrl={inForm?.entry.crestUrl}
       />
-      {round && round > 1 ? (
-        <CompactMetric
-          isLoading={previousRoundQuery.isLoading}
-          isError={previousRoundQuery.isError}
-          value={biggestMover ? `${biggestMover.delta > 0 ? "▲" : "▼"} ${Math.abs(biggestMover.delta)}` : "–"}
-          label={
-            biggestMover
-              ? `Biggest mover · ${biggestMover.entry.clubName ?? biggestMover.entry.clubCode}`
-              : "Biggest mover"
-          }
-        />
-      ) : null}
+      <CompactMetric
+        isLoading={standingsQuery.isLoading}
+        isError={standingsQuery.isError}
+        value={bestOffense ? formatPerGame(bestOffense.ppg) : "–"}
+        label="Best offense"
+        name={bestOffense?.entry.clubName ?? bestOffense?.entry.clubCode}
+        imageUrl={bestOffense?.entry.crestUrl}
+      />
+      <CompactMetric
+        isLoading={standingsQuery.isLoading}
+        isError={standingsQuery.isError}
+        value={bestDefense ? formatPerGame(bestDefense.papg) : "–"}
+        label="Best defense"
+        name={bestDefense?.entry.clubName ?? bestDefense?.entry.clubCode}
+        imageUrl={bestDefense?.entry.crestUrl}
+      />
     </HeaderStats>
   );
 }

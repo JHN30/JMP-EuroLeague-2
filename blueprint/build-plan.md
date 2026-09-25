@@ -92,6 +92,15 @@ Scaffolding, shared layout, design tokens, database connection setup, and deploy
   - [x] 19b. **Team statistics and coverage** - Replace API aggregation for team statistics and coverage with `app_team_season_stats`, `app_coverage_seasons`, and `app_coverage_games`, preserving nullable values and surfacing the pipeline's real shot-location and play-by-play coverage counts for `E2025` and `E2026`.
   - [x] 19c. **Postseason series data** - Read `app_postseason_series` for the season-format knockout journey, preserving incomplete and future series without inventing bracket positions or completion rules.
   - [x] 19d. **Navigation and page integration** - Align the persistent tabs to Home, Overview, Standings, Games, Teams, Players, Leaders, Compare, and Format; connect Format to the completed season-format route; and verify every affected page renders the new API-backed data across loading, empty, partial, and error states.
+- [x] 20. **Home dashboard polish** - Rework the Home dashboard's layout and content per direct user request, reusing existing data endpoints (standings, upcoming/recent games, season statistics leaders) with no new backend work expected.
+  - Round indicator shows only the current round (e.g. "Round 1"), dropping the "of 38" total.
+  - Upcoming games move into a horizontal scrolling row, placed after the round indicator and KPI strip.
+  - KPI strip (same horizontal style) becomes: Leader in wins, Top scorer, Best offensive team (highest points scored per game), Best defensive team (fewest points allowed per game).
+  - Below that, a two-column section: left is a standings table trimmed to key columns only; right is recent results trimmed to key stats only.
+  - Below that, a horizontal leaders strip with five cards: points per game, rebounds, assists, steals, PIR.
+  - Spotlight section stays as-is.
+  - Remove the season data-coverage panel from Home entirely (added in 16c) - it reads as developer-facing, not user-facing.
+  - Add team crests and player photos next to team/player references across the page (KPI cards, leaders, standings, results, upcoming games, spotlight) wherever the underlying data already carries them.
 
 ## Guideline deviations
 

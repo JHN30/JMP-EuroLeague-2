@@ -3,27 +3,28 @@ import { Link, useParams } from "react-router";
 import { getSeasonStandings } from "../lib/api";
 import { WidgetPanel } from "./Dashboard";
 
-export default function StandingsSnapshot() {
+export default function StandingsSnapshot({ height }) {
   const { seasonCode } = useParams();
   const query = useQuery({
     queryKey: ["standings", seasonCode, "RS"],
     queryFn: () => getSeasonStandings(seasonCode, "RS"),
   });
 
-  const top10 = query.data?.standings.slice(0, 10) ?? [];
+  const standings = query.data?.standings ?? [];
 
   return (
     <WidgetPanel
       kicker="STANDINGS"
-      title="Standings"
+      title="League table"
       isLoading={query.isLoading}
       isError={query.isError}
       onRetry={() => query.refetch()}
-      isEmpty={query.isSuccess && top10.length === 0}
+      isEmpty={query.isSuccess && standings.length === 0}
       emptyMessage="Standings not available yet."
+      style={height != null ? { height: `${height}px` } : undefined}
     >
-      <ol className="space-y-2">
-        {top10.map((entry) => (
+      <ol className="min-h-0 flex-1 space-y-2 overflow-y-auto overscroll-y-contain pr-4">
+        {standings.map((entry) => (
           <li key={entry.clubCode} className="flex items-center gap-3">
             <span className={`rank ${entry.basic?.position === 1 ? "rank-1" : ""}`}>
               {entry.basic?.position ?? "-"}

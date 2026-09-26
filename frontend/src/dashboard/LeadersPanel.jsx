@@ -4,6 +4,8 @@ import { Link, useParams } from "react-router";
 import { getLeaderStats } from "../lib/api";
 import AsyncState from "../lib/AsyncState";
 import { cardHover, listContainer, listItem } from "../lib/motion";
+import { PHASE_NAMES } from "../lib/phaseSummary";
+import { useCurrentPhaseCode } from "../lib/useCurrentPhaseCode";
 import Panel from "../lib/Panel";
 import PanelHeader from "../lib/PanelHeader";
 
@@ -16,11 +18,11 @@ const CATEGORIES = [
   { key: "pir", label: "PIR per game" },
 ];
 
-function StatLeaderCard({ seasonCode, category }) {
+function StatLeaderCard({ seasonCode, category, phaseCode }) {
   const query = useQuery({
-    queryKey: ["leader-stats", seasonCode, "all", "perGame", category.key],
+    queryKey: ["leader-stats", seasonCode, phaseCode, "perGame", category.key],
     queryFn: () =>
-      getLeaderStats(seasonCode, { phase: "all", mode: "perGame", sort: category.key, order: "desc", limit: 1 }),
+      getLeaderStats(seasonCode, { phase: phaseCode, mode: "perGame", sort: category.key, order: "desc", limit: 1 }),
   });
   const leader = query.data?.players[0] ?? null;
 
@@ -64,17 +66,46 @@ function StatLeaderCard({ seasonCode, category }) {
   );
 }
 
+function PhaseLeadersGroup({ seasonCode, phaseCode, showHeading }) {
+  return (
+    <div>
+      {showHeading ? (
+        <h3 className="mb-2 font-semibold">{PHASE_NAMES[phaseCode] ?? phaseCode}</h3>
+      ) : null}
+      <motion.div className="leaders-row" variants={listContainer} initial="hidden" animate="show">
+        {CATEGORIES.map((category) => (
+          <StatLeaderCard key={category.key} seasonCode={seasonCode} category={category} phaseCode={phaseCode} />
+        ))}
+      </motion.div>
+    </div>
+  );
+}
+
 export default function LeadersPanel() {
   const { seasonCode } = useParams();
+  const phaseCode = useCurrentPhaseCode(seasonCode);
+  // Once postseason stats (a combined "PS" phase) are available from the
+  // pipeline, this can go back to a single phase - for now, a season that
+  // has moved past Regular Season shows both, since RS and postseason
+  // leaders are each genuinely interesting and there's no combined view yet.
+  const phasesToShow = phaseCode === "RS" ? ["RS"] : ["RS", phaseCode];
 
   return (
     <Panel as="section" className="p-6">
-      <PanelHeader kicker="LEADERS" title="Top performers" />
-      <motion.div className="leaders-row" variants={listContainer} initial="hidden" animate="show">
-        {CATEGORIES.map((category) => (
-          <StatLeaderCard key={category.key} seasonCode={seasonCode} category={category} />
+      <PanelHeader
+        kicker="LEADERS"
+        title={phasesToShow.length === 1 ? (PHASE_NAMES[phaseCode] ?? phaseCode) : "Top performers"}
+      />
+      <div className="flex flex-col gap-6">
+        {phasesToShow.map((code) => (
+          <PhaseLeadersGroup
+            key={code}
+            seasonCode={seasonCode}
+            phaseCode={code}
+            showHeading={phasesToShow.length > 1}
+          />
         ))}
-      </motion.div>
+      </div>
     </Panel>
   );
 }

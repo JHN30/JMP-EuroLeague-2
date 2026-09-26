@@ -2,6 +2,13 @@ import { formatDate } from "./format";
 
 export const PHASE_ORDER = ["RS", "PI", "PO", "FF"];
 
+export const PHASE_NAMES = {
+  RS: "Regular Season",
+  PI: "Play-In",
+  PO: "Playoffs",
+  FF: "Final Four",
+};
+
 export function phaseSortIndex(code) {
   const index = PHASE_ORDER.indexOf(code);
   return index === -1 ? PHASE_ORDER.length : index;

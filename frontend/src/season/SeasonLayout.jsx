@@ -96,7 +96,7 @@ export default function SeasonLayout({ themePreference }) {
       <header className="app-nav">
         <div className="flex items-center justify-between gap-4 px-4 py-2 sm:px-6">
           <div className="flex items-center gap-2">
-            <span className="brand-mark" aria-hidden="true">EL</span>
+            <img src="/logo-header.png" alt="" aria-hidden="true" className="brand-mark" />
             <span className="eyebrow">EuroLeague</span>
           </div>
           <div className="flex items-center gap-2">

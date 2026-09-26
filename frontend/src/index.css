@@ -510,13 +510,7 @@ button {
   width: 1.6rem;
   height: 1.6rem;
   border-radius: 0.4rem;
-  background: var(--color-primary);
-  color: var(--color-primary-content);
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 0.7rem;
-  font-weight: 900;
+  object-fit: contain;
   flex: none;
 }
 

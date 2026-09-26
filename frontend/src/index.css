@@ -120,9 +120,8 @@ button {
   background-repeat: no-repeat, no-repeat, repeat;
 }
 
-/* Shared spacing scale (UI-UX.md section 2.4), documented for future pages
-   and the shared Panel component (build-plan 15d) to adopt - not yet
-   enforced anywhere in code:
+/* Shared spacing scale, documented for future pages and the shared Panel
+   component (build-plan 15d) to adopt - not yet enforced anywhere in code:
      Page gutter:  px-3 py-3 -> sm:px-5 sm:py-5 -> lg:px-8 lg:py-6
      Container:    mx-auto w-full max-w-7xl min-w-0 flex-col gap-6
      Panel padding: p-4 sm:p-5 (p-3 on compact cards)
@@ -146,9 +145,8 @@ button {
   box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
 }
 
-/* Inset well (UI-UX.md section 2.2): a Tailwind utility pattern, not a
-   class, used inline wherever a chart or stat block needs to sit inside a
-   recessed frame:
+/* Inset well: a Tailwind utility pattern, not a class, used inline wherever
+   a chart or stat block needs to sit inside a recessed frame:
      rounded-field border border-base-300 bg-base-100/60 p-2 sm:p-3
 */
 
@@ -204,8 +202,8 @@ button {
   color: color-mix(in srgb, var(--color-base-content) 60%, transparent);
 }
 
-/* Three-step opacity hierarchy (UI-UX.md section 2.3): 60 for micro-labels
-   (see .micro-label), 65 for secondary text, 70 for body copy. The floor of
+/* Three-step opacity hierarchy: 60 for micro-labels (see .micro-label), 65
+   for secondary text, 70 for body copy. The floor of
    60 clears 4.5:1 contrast against the panel fill; nothing but decorative
    marks should go lower. Tailwind ships opacity-60 and opacity-70 directly;
    use the arbitrary-value opacity-[65%] for the middle tier. .muted (66%,

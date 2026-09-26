@@ -1,6 +1,6 @@
-// Shared, restrained motion presets (see UI-UX.md §11). Respecting
-// prefers-reduced-motion is handled globally by <MotionConfig reducedMotion="user">
-// in App.jsx, so these presets don't need to check it themselves.
+// Shared, restrained motion presets. Respecting prefers-reduced-motion is
+// handled globally by <MotionConfig reducedMotion="user"> in App.jsx, so
+// these presets don't need to check it themselves.
 
 const EASE_OUT = [0.16, 1, 0.3, 1];
 

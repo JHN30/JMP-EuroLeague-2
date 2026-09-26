@@ -101,6 +101,13 @@ Scaffolding, shared layout, design tokens, database connection setup, and deploy
   - Spotlight section stays as-is.
   - Remove the season data-coverage panel from Home entirely (added in 16c) - it reads as developer-facing, not user-facing.
   - Add team crests and player photos next to team/player references across the page (KPI cards, leaders, standings, results, upcoming games, spotlight) wherever the underlying data already carries them.
+- [x] 21. **Season overview polish** - Rework the season overview page's layout and content per direct user request, reusing existing data endpoints (phases, games, leader stats, standings) with no new backend work expected.
+  - Remove the summary KPI cards (Games, Scoring level, Average margin of victory, Competition path) - judged low-value or redundant with the phase timeline below them.
+  - Revise the phase timeline: highlight the currently active phase, drop the game/team-count numbers, keep the date range, and add a short static format-description line per phase.
+  - Change the scoring trend chart from combined per-game score to average points scored per team.
+  - Expand Defining games from 3 to 4 games with more per-game detail, and expand Statistical leaders with more stat categories; keep both as separate full-width sections rather than side by side.
+  - Remove the standings snapshot, the "Keep exploring" links bar, and the data coverage panel - redundant with the Home dashboard's own standings snapshot, the persistent navbar, and developer-facing content respectively.
+  - Apply the same restrained Motion-based entrance/hover animation already used on the Home dashboard.
 
 ## Guideline deviations
 

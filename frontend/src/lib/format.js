@@ -52,6 +52,11 @@ export function formatDateTime(scheduledAt, { dateStyle = "medium" } = {}) {
   });
 }
 
+export function formatDate(scheduledAt, { dateStyle = "medium" } = {}) {
+  if (!scheduledAt) return "TBD";
+  return new Date(scheduledAt).toLocaleDateString(undefined, { dateStyle });
+}
+
 export function formatRound(roundNumber) {
   if (roundNumber === null || roundNumber === undefined) return EM_DASH;
   return `R${roundNumber}`;

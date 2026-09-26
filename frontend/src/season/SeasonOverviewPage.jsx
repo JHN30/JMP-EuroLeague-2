@@ -1,23 +1,21 @@
 import { useMemo, useRef, useEffect } from "react";
 import { useQueries, useQuery } from "@tanstack/react-query";
 import { Chart } from "chart.js/auto";
+import { motion } from "motion/react";
 import { Link, useParams } from "react-router";
-import { getCoverage, getLeaderStats, getPhases, getSeasonGames, getSeasonStandings, getSeasonTeams } from "../lib/api";
+import { getLeaderStats, getPhases, getSeasonGames, getSeasonStandings } from "../lib/api";
 import AsyncState from "../lib/AsyncState";
-import DataCoveragePanel from "../lib/DataCoveragePanel";
+import { cardHover, listContainer, listItem, sectionContainer, sectionItem } from "../lib/motion";
 import Panel from "../lib/Panel";
 import PanelHeader from "../lib/PanelHeader";
 import PageHeader from "../lib/PageHeader";
 import { useDocumentTitle } from "../lib/useDocumentTitle";
 import { thinAxisLabels } from "../lib/chartHelpers";
-import { dateRangeLabel, isChampionshipLabel, phaseSortIndex, teamCountFromGames } from "../lib/phaseSummary";
+import { PHASE_ORDER, dateRangeLabel, isChampionshipLabel, phaseSortIndex } from "../lib/phaseSummary";
 import { useActiveTheme, themeColor } from "../lib/useActiveTheme";
-import {
-  formatCount,
-  formatDateTime,
-  formatPerGame,
-  formatSeasonLabel,
-} from "../lib/format";
+import { formatDateTime, formatPerGame, formatRound, formatSeasonLabel } from "../lib/format";
+
+const MotionLink = motion.create(Link);
 
 const MAX_PAGE_SIZE = 100;
 const MAX_PAGES = 10;
@@ -61,102 +59,120 @@ async function fetchAllPlayedGames(seasonCode) {
   return all;
 }
 
-function SeasonHero({ champion, phaseName, hasPlayedGames }) {
+function SeasonHero({ champion, leader }) {
   if (champion) {
     return (
-      <Panel className="flex items-center gap-4 border-success bg-success/10 p-4">
-        {champion.crestUrl ? (
+      <Panel className="flex items-center gap-3 p-4">
+        <span className="text-2xl" aria-hidden="true">◇</span>
+        <p className="text-lg font-semibold">Season finished</p>
+      </Panel>
+    );
+  }
+
+  if (!leader) {
+    return (
+      <Panel className="flex items-center gap-3 p-4">
+        <span className="text-2xl" aria-hidden="true">◇</span>
+        <p className="text-lg font-semibold">Season not yet started</p>
+      </Panel>
+    );
+  }
+
+  const gamesPlayed = leader.basic?.gamesPlayed;
+  const ppg = gamesPlayed ? leader.basic.pointsFor / gamesPlayed : null;
+
+  return (
+    <div className="season-hero-kpis grid gap-4 sm:grid-cols-2">
+      <div className="kpi-chip">
+        <div className="kpi-chip-body">
+          <span className="label">League leader</span>
+          <span className="name">{leader.clubName ?? leader.clubCode}</span>
+          <span className="value">
+            {leader.basic?.gamesWon ?? "-"}-{leader.basic?.gamesLost ?? "-"}
+          </span>
+        </div>
+        {leader.crestUrl ? (
           <img
-            src={champion.crestUrl}
+            src={leader.crestUrl}
             alt=""
-            className="h-16 w-16 flex-none object-contain"
+            className="kpi-chip-image"
             onError={(event) => {
               event.currentTarget.style.display = "none";
             }}
           />
         ) : null}
-        <div>
-          <p className="text-success text-xs font-bold uppercase tracking-wide">Season champion</p>
-          <p className="text-xl font-semibold">{champion.name ?? champion.abbreviatedName ?? champion.clubCode}</p>
+      </div>
+      <div className="kpi-chip">
+        <div className="kpi-chip-body">
+          <span className="label">Points per game</span>
+          <span className="name">{leader.clubName ?? leader.clubCode}</span>
+          <span className="value">{ppg != null ? formatPerGame(ppg) : "-"}</span>
         </div>
-      </Panel>
-    );
-  }
-  return (
-    <Panel className="flex items-center gap-3 p-4">
-      <span className="text-2xl" aria-hidden="true">◇</span>
-      <p className="text-lg font-semibold">
-        {hasPlayedGames ? `${phaseName} in progress` : "Season not yet started"}
-      </p>
-    </Panel>
-  );
-}
-
-function SummaryCards({ totalGames, playedGames, phases, currentPhaseCode }) {
-  const withScores = playedGames.filter((game) => game.localScore != null && game.roadScore != null);
-  const combinedScores = withScores.map((game) => game.localScore + game.roadScore);
-  const margins = withScores.map((game) => Math.abs(game.localScore - game.roadScore));
-  const avg = (values) => (values.length === 0 ? null : values.reduce((sum, value) => sum + value, 0) / values.length);
-
-  const cards = [
-    { label: "Games", value: formatCount(totalGames) },
-    { label: "Scoring level", value: withScores.length === 0 ? "—" : `${formatPerGame(avg(combinedScores))} pts/game` },
-    { label: "Average margin of victory", value: withScores.length === 0 ? "—" : `${formatPerGame(avg(margins))} pts` },
-    { label: "Competition path", highlight: currentPhaseCode },
-  ];
-
-  return (
-    <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-      {cards.map((card) => (
-        <Panel key={card.label} className="p-4">
-          <p className="eyebrow mb-1">{card.label}</p>
-          {card.highlight ? (
-            <p className="text-sm font-medium">
-              {phases.map((phase, index) => (
-                <span key={phase.code} className={phase.code === card.highlight ? "text-primary font-semibold" : ""}>
-                  {phase.name ?? phase.code}
-                  {index < phases.length - 1 ? " → " : ""}
-                </span>
-              ))}
-            </p>
-          ) : (
-            <p className="text-2xl font-semibold">{card.value}</p>
-          )}
-        </Panel>
-      ))}
+      </div>
     </div>
   );
 }
 
-function PhaseStory({ phases, phaseSummaries }) {
+const PHASE_NAMES = {
+  RS: "Regular Season",
+  PI: "Play-In",
+  PO: "Playoffs",
+  FF: "Final Four",
+};
+
+const PHASE_BLURBS = {
+  RS: "Every team plays every other team home and away.",
+  PI: "Teams ranked 7th-10th play for the two remaining playoff spots.",
+  PO: "Best-of-five series between the top eight teams.",
+  FF: "Championship weekend: the semifinals and the final.",
+};
+
+function PhaseStory({ phases, phaseSummaries, activePhaseCode }) {
+  // Show the full canonical phase set even when the season's data only has
+  // some of them so far (e.g. only Regular Season exists early in the
+  // season, before Play-In/Playoffs/Final Four rows are created), so users
+  // always see the whole competition path, not just what has data yet.
+  const displayPhases = PHASE_ORDER.map(
+    (code) => phases.find((phase) => phase.code === code) ?? { code, name: PHASE_NAMES[code] },
+  );
+
   return (
     <div>
       <PanelHeader kicker="TIMELINE" title="Phase story" />
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        {phases.map((phase, index) => {
+      <motion.div
+        className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4"
+        variants={listContainer}
+        initial="hidden"
+        animate="show"
+      >
+        {displayPhases.map((phase, index) => {
           const summary = phaseSummaries[phase.code];
+          const isActive = phase.code === activePhaseCode;
           return (
-            <div key={phase.code} className="flex items-center gap-2">
-              <Panel className="relative flex-1 overflow-hidden p-4">
-                <div aria-hidden="true" className="absolute inset-x-0 top-0 h-1 bg-primary" />
-                <p className="eyebrow mb-1">Phase {index + 1}</p>
-                <h3 className="mb-2 font-semibold">{phase.name ?? phase.code}</h3>
-                {!summary || summary.gameCount === 0 ? (
+            <motion.div key={phase.code} variants={listItem} className="flex items-stretch gap-2">
+              <Panel className={`relative flex-1 overflow-hidden p-4 ${isActive ? "border-primary" : ""}`}>
+                {isActive ? <div aria-hidden="true" className="absolute inset-x-0 top-0 h-1 bg-primary" /> : null}
+                <p className="eyebrow mb-1 flex items-center gap-2">
+                  Phase {index + 1}
+                  {isActive ? <span className="badge badge-primary badge-sm">Current</span> : null}
+                </p>
+                <h3 className="mb-2 font-semibold">{phase.name ?? PHASE_NAMES[phase.code] ?? phase.code}</h3>
+                {!summary || !summary.dateRange ? (
                   <p className="muted text-sm">Not yet applicable</p>
                 ) : (
-                  <>
-                    <p className="muted text-sm">{formatCount(summary.gameCount)} games · {formatCount(summary.teamCount)} teams</p>
-                    {summary.dateRange ? <p className="muted text-xs">{summary.dateRange}</p> : null}
-                  </>
+                  <p className="muted text-sm">{summary.dateRange}</p>
                 )}
+                {PHASE_BLURBS[phase.code] ? (
+                  <p className="muted mt-1 text-xs">{PHASE_BLURBS[phase.code]}</p>
+                ) : null}
               </Panel>
-              {index < phases.length - 1 ? (
-                <span className="muted hidden text-lg xl:inline" aria-hidden="true">→</span>
+              {index < displayPhases.length - 1 ? (
+                <span className="muted hidden self-center text-lg xl:inline" aria-hidden="true">→</span>
               ) : null}
-            </div>
+            </motion.div>
           );
         })}
-      </div>
+      </motion.div>
     </div>
   );
 }
@@ -165,86 +181,132 @@ function teamName(team) {
   return team?.name ?? team?.abbreviatedName ?? "TBD";
 }
 
-function DefiningGames({ seasonCode, playedGames }) {
-  const closest = playedGames
+// Instead of just the 4 closest games, mix in different kinds of
+// "defining" games so the section shows a variety, not four near-identical
+// nail-biters. Each pick avoids games already chosen by an earlier category.
+function pickDefiningGames(playedGames) {
+  const withScores = playedGames
     .filter((game) => game.localScore != null && game.roadScore != null)
-    .map((game) => ({ game, margin: Math.abs(game.localScore - game.roadScore) }))
-    .sort((a, b) => a.margin - b.margin)
-    .slice(0, 3);
+    .map((game) => ({
+      game,
+      margin: Math.abs(game.localScore - game.roadScore),
+      combined: game.localScore + game.roadScore,
+    }));
+
+  const chosen = new Map();
+  function take(sorted, tag) {
+    for (const entry of sorted) {
+      if (!chosen.has(entry.game.gameCode)) {
+        chosen.set(entry.game.gameCode, { ...entry, tag });
+        return;
+      }
+    }
+  }
+
+  take([...withScores].sort((a, b) => a.margin - b.margin), "Closest game");
+  take([...withScores].sort((a, b) => b.combined - a.combined), "Highest-scoring game");
+  take([...withScores].sort((a, b) => a.combined - b.combined), "Lowest-scoring game");
+  take([...withScores].sort((a, b) => b.margin - a.margin), "Biggest blowout");
+
+  return [...chosen.values()];
+}
+
+function DefiningGames({ seasonCode, playedGames }) {
+  const picks = pickDefiningGames(playedGames);
 
   return (
     <Panel className="p-4">
       <PanelHeader kicker="HIGHLIGHTS" title="Defining games" />
-      {closest.length === 0 ? (
+      {picks.length === 0 ? (
         <p className="muted text-sm">No played games yet this season.</p>
       ) : (
-        <div className="flex flex-col gap-3">
-          {closest.map(({ game, margin }) => (
-            <Link
-              key={game.gameCode}
-              to={`/${seasonCode}/games/${game.gameCode}`}
-              className="card card-border bg-base-100 p-3 transition-colors hover:border-primary"
-            >
-              <p className="eyebrow mb-1">
-                {game.roundName ?? (game.roundNumber ? `Round ${game.roundNumber}` : "")}
-              </p>
-              <div className="flex items-center justify-between gap-2">
-                <span className="flex min-w-0 items-center gap-2 font-medium">
-                  {game.localTeam?.crestUrl ? (
-                    <img
-                      src={game.localTeam.crestUrl}
-                      alt=""
-                      className="h-6 w-6 flex-none object-contain"
-                      onError={(event) => {
-                        event.currentTarget.style.display = "none";
-                      }}
-                    />
-                  ) : null}
-                  <span className="truncate">{teamName(game.localTeam)}</span>
-                </span>
-                <span className="stat-badge stat-badge-neutral tabular-nums">
-                  {game.localScore}-{game.roadScore}
-                </span>
-                <span className="flex min-w-0 items-center gap-2 font-medium">
-                  <span className="truncate">{teamName(game.roadTeam)}</span>
-                  {game.roadTeam?.crestUrl ? (
-                    <img
-                      src={game.roadTeam.crestUrl}
-                      alt=""
-                      className="h-6 w-6 flex-none object-contain"
-                      onError={(event) => {
-                        event.currentTarget.style.display = "none";
-                      }}
-                    />
-                  ) : null}
-                </span>
-              </div>
-              <p className="muted mt-1 text-xs">
-                Decided by {margin} · {formatDateTime(game.scheduledAt)}
-              </p>
-            </Link>
-          ))}
-        </div>
+        <motion.div
+          className="grid gap-3 sm:grid-cols-2"
+          variants={listContainer}
+          initial="hidden"
+          animate="show"
+        >
+          {picks.map(({ game, margin, combined, tag }) => {
+            const localWon = game.localScore > game.roadScore;
+            const roadWon = game.roadScore > game.localScore;
+            const roundLabel = game.roundName ?? (game.roundNumber ? `Round ${game.roundNumber}` : "");
+            const showGroupName = game.phaseCode !== "RS" && game.groupName;
+            const context = showGroupName ? `${game.groupName} · ${roundLabel}` : roundLabel;
+            const statDetail =
+              tag === "Highest-scoring game" || tag === "Lowest-scoring game"
+                ? `${combined} combined points`
+                : tag === "Biggest blowout"
+                  ? `Won by ${margin}`
+                  : `Decided by ${margin}`;
+            return (
+              <MotionLink
+                key={game.gameCode}
+                to={`/${seasonCode}/games/${game.gameCode}`}
+                className="card card-border bg-base-100 p-3 transition-colors hover:border-primary"
+                variants={listItem}
+                {...cardHover}
+              >
+                <p className="eyebrow mb-1">{tag}</p>
+                <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2">
+                  <span className={`flex min-w-0 items-center gap-2 font-medium ${localWon ? "highlight-leader font-semibold" : "opacity-60"}`}>
+                    {game.localTeam?.crestUrl ? (
+                      <img
+                        src={game.localTeam.crestUrl}
+                        alt=""
+                        className="h-6 w-6 flex-none object-contain"
+                        onError={(event) => {
+                          event.currentTarget.style.display = "none";
+                        }}
+                      />
+                    ) : null}
+                    <span className="truncate">{teamName(game.localTeam)}</span>
+                  </span>
+                  <span className="badge badge-lg tabular-nums">
+                    <span className={localWon ? "highlight-leader font-semibold" : "opacity-60"}>{game.localScore}</span>-
+                    <span className={roadWon ? "highlight-leader font-semibold" : "opacity-60"}>{game.roadScore}</span>
+                  </span>
+                  <span className={`flex min-w-0 items-center justify-end gap-2 font-medium ${roadWon ? "highlight-leader font-semibold" : "opacity-60"}`}>
+                    <span className="truncate">{teamName(game.roadTeam)}</span>
+                    {game.roadTeam?.crestUrl ? (
+                      <img
+                        src={game.roadTeam.crestUrl}
+                        alt=""
+                        className="h-6 w-6 flex-none object-contain"
+                        onError={(event) => {
+                          event.currentTarget.style.display = "none";
+                        }}
+                      />
+                    ) : null}
+                  </span>
+                </div>
+                <p className="muted mt-1 text-xs">
+                  {context} · {statDetail} · {formatDateTime(game.scheduledAt)}
+                </p>
+              </MotionLink>
+            );
+          })}
+        </motion.div>
       )}
     </Panel>
   );
 }
 
-function monthlyScoringSeries(playedGames) {
-  const byMonth = new Map();
+function roundScoringSeries(playedGames) {
+  const byRound = new Map();
   for (const game of playedGames) {
-    if (game.localScore == null || game.roadScore == null || !game.scheduledAt) continue;
-    const date = new Date(game.scheduledAt);
-    const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
-    if (!byMonth.has(key)) byMonth.set(key, { total: 0, count: 0, date });
-    const entry = byMonth.get(key);
+    if (game.localScore == null || game.roadScore == null || game.roundNumber == null) continue;
+    if (!byRound.has(game.roundNumber)) byRound.set(game.roundNumber, { total: 0, count: 0 });
+    const entry = byRound.get(game.roundNumber);
     entry.total += game.localScore + game.roadScore;
     entry.count += 1;
   }
-  const months = [...byMonth.entries()].sort(([a], [b]) => (a < b ? -1 : 1));
+  const rounds = [...byRound.entries()].sort(([a], [b]) => a - b);
   return {
-    labels: months.map(([, entry]) => entry.date.toLocaleDateString(undefined, { month: "short", year: "2-digit" })),
-    values: months.map(([, entry]) => entry.total / entry.count),
+    labels: rounds.map(([roundNumber]) => formatRound(roundNumber)),
+    // `entry.total` sums both teams' scores per game, so dividing by
+    // `count * 2` gives the average points scored per team rather than
+    // the combined per-game total.
+    values: rounds.map(([, entry]) => entry.total / entry.count / 2),
   };
 }
 
@@ -252,7 +314,7 @@ function ScoringTrendChart({ playedGames }) {
   const canvasRef = useRef(null);
   const chartRef = useRef(null);
   const theme = useActiveTheme();
-  const { labels, values } = useMemo(() => monthlyScoringSeries(playedGames), [playedGames]);
+  const { labels, values } = useMemo(() => roundScoringSeries(playedGames), [playedGames]);
   const axisLabels = useMemo(() => thinAxisLabels(labels, 6), [labels]);
 
   useEffect(() => {
@@ -270,7 +332,7 @@ function ScoringTrendChart({ playedGames }) {
         labels: axisLabels,
         datasets: [
           {
-            label: "Average combined score",
+            label: "Average points per team",
             data: values,
             borderColor: primary,
             backgroundColor: fillColor,
@@ -314,7 +376,7 @@ function ScoringTrendChart({ playedGames }) {
             <canvas
               ref={canvasRef}
               role="img"
-              aria-label={`Average combined score per month across the season, from ${Math.round(Math.min(...values))} to ${Math.round(Math.max(...values))} points`}
+              aria-label={`Average points scored per team per round across the season, from ${Math.round(Math.min(...values))} to ${Math.round(Math.max(...values))} points`}
             />
           </div>
         </div>
@@ -327,6 +389,8 @@ const LEADER_CATEGORIES = [
   { key: "pointsScored", label: "Points per game" },
   { key: "totalRebounds", label: "Rebounds per game" },
   { key: "assists", label: "Assists per game" },
+  { key: "steals", label: "Steals per game" },
+  { key: "blocks", label: "Blocks per game" },
   { key: "pir", label: "PIR per game" },
 ];
 
@@ -337,38 +401,43 @@ function LeaderCard({ seasonCode, category }) {
       getLeaderStats(seasonCode, { phase: "all", mode: "perGame", sort: category.key, order: "desc", limit: 1 }),
   });
   const leader = query.data?.players[0] ?? null;
+  const status = query.isLoading ? "loading" : query.isError ? "error" : !leader ? "empty" : "ready";
+
+  if (status !== "ready") {
+    return (
+      <div className="kpi-chip">
+        <div className="kpi-chip-body">
+          <span className="label">{category.label}</span>
+          <AsyncState inline status={status} message={query.isError ? "Could not load." : "Not available yet."} />
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="leader-card">
-      <span className="cat">{category.label}</span>
-      <AsyncState
-        inline
-        status={query.isLoading ? "loading" : query.isError ? "error" : !leader ? "empty" : "ready"}
-        message={query.isError ? "Could not load." : "Not available yet."}
-      >
-        {leader ? (
-          <Link to={`/${seasonCode}/players/${leader.personKey}`} className="leader-top">
-            {leader.playerImageUrl ? (
-              <img
-                src={leader.playerImageUrl}
-                alt=""
-                className="h-14 w-14 flex-none rounded-full object-cover"
-                onError={(event) => {
-                  event.currentTarget.style.display = "none";
-                }}
-              />
-            ) : null}
-            <div className="min-w-0 flex-1">
-              <span className="link link-hover block truncate font-medium">
-                {leader.playerName ?? leader.personKey}
-              </span>
-              <span className="muted block truncate text-sm">{leader.clubName ?? leader.clubCode}</span>
-            </div>
-            <span className="leader-value">{leader.traditional[category.key] ?? "-"}</span>
-          </Link>
-        ) : null}
-      </AsyncState>
-    </div>
+    <MotionLink
+      to={`/${seasonCode}/players/${leader.personKey}`}
+      className="kpi-chip kpi-chip-link"
+      variants={listItem}
+      {...cardHover}
+    >
+      <div className="kpi-chip-body">
+        <span className="label">{category.label}</span>
+        <span className="name">{leader.playerName ?? leader.personKey}</span>
+        <span className="club">{leader.clubName ?? leader.clubCode}</span>
+        <span className="value">{leader.traditional[category.key] ?? "-"}</span>
+      </div>
+      {leader.playerImageUrl ? (
+        <img
+          src={leader.playerImageUrl}
+          alt=""
+          className="kpi-chip-image"
+          onError={(event) => {
+            event.currentTarget.style.display = "none";
+          }}
+        />
+      ) : null}
+    </MotionLink>
   );
 }
 
@@ -384,66 +453,16 @@ function SeasonLeaders({ seasonCode }) {
           </Link>
         }
       />
-      <div className="grid gap-4 sm:grid-cols-2">
+      <motion.div
+        className="season-leaders-grid grid gap-4 sm:grid-cols-2 xl:grid-cols-3"
+        variants={listContainer}
+        initial="hidden"
+        animate="show"
+      >
         {LEADER_CATEGORIES.map((category) => (
           <LeaderCard key={category.key} seasonCode={seasonCode} category={category} />
         ))}
-      </div>
-    </Panel>
-  );
-}
-
-function SeasonStandingsSnapshot({ seasonCode }) {
-  const standingsQuery = useQuery({
-    queryKey: ["standings", seasonCode, "RS"],
-    queryFn: () => getSeasonStandings(seasonCode, "RS"),
-  });
-  const top = standingsQuery.data?.standings.slice(0, 8) ?? [];
-
-  return (
-    <Panel className="p-4">
-      <PanelHeader kicker="STANDINGS" title="Standings snapshot" />
-      {standingsQuery.isLoading ? (
-        <AsyncState status="loading" label="Loading standings" compact />
-      ) : standingsQuery.isError ? (
-        <AsyncState status="error" inline message="Could not load standings." />
-      ) : top.length === 0 ? (
-        <p className="muted text-sm">Standings not available yet.</p>
-      ) : (
-        <>
-          <ol className="space-y-2">
-            {top.map((entry) => (
-              <li key={entry.clubCode} className="flex items-center gap-3">
-                <span className={`rank ${entry.basic?.position === 1 ? "rank-1" : ""}`}>
-                  {entry.basic?.position ?? "-"}
-                </span>
-                <Link
-                  to={`/${seasonCode}/teams/${entry.clubCode}`}
-                  className="link link-hover flex flex-1 items-center gap-2 font-medium"
-                >
-                  {entry.crestUrl ? (
-                    <img
-                      src={entry.crestUrl}
-                      alt=""
-                      className="h-8 w-8 flex-none object-contain"
-                      onError={(event) => {
-                        event.currentTarget.style.display = "none";
-                      }}
-                    />
-                  ) : null}
-                  <span className="truncate">{entry.clubName ?? entry.clubCode}</span>
-                </Link>
-                <span className="muted font-semibold tabular-nums">
-                  {entry.basic?.gamesWon ?? "-"}-{entry.basic?.gamesLost ?? "-"}
-                </span>
-              </li>
-            ))}
-          </ol>
-          <Link to={`/${seasonCode}/standings`} className="panel-link mt-4 inline-block">
-            Full standings →
-          </Link>
-        </>
-      )}
+      </motion.div>
     </Panel>
   );
 }
@@ -527,37 +546,38 @@ function RoadStep({ step, index }) {
   );
 }
 
-function RoadToTitle({ steps }) {
-  if (steps.length === 0) return null;
+function RoadToTitle({ champion, steps }) {
+  if (!champion || steps.length === 0) return null;
 
-  return (
-    <div>
-      <PanelHeader kicker="JOURNEY" title="Road to the title" />
-      <div className="flex flex-col gap-3">
-        {steps.map((step, index) => (
-          <RoadStep key={`${step.phaseCode}-${step.opponent?.clubCode ?? index}`} step={step} index={index} />
-        ))}
-      </div>
-    </div>
-  );
-}
-
-function ClosingLinksBar({ seasonCode }) {
-  const links = [
-    { label: "All games", to: `/${seasonCode}/games` },
-    { label: "Standings", to: `/${seasonCode}/standings` },
-    { label: "Teams", to: `/${seasonCode}/teams` },
-    { label: "Format", to: `/${seasonCode}/playoffs` },
-  ];
+  const totalWins = steps.reduce((sum, step) => sum + step.championWins, 0);
+  const totalLosses = steps.reduce((sum, step) => sum + step.opponentWins, 0);
 
   return (
     <Panel className="p-4">
-      <p className="eyebrow mb-3">Keep exploring</p>
-      <div className="flex flex-wrap gap-4">
-        {links.map((link) => (
-          <Link key={link.to} to={link.to} className="panel-link">
-            {link.label} →
-          </Link>
+      <PanelHeader kicker="JOURNEY" title="Road to the title" />
+      <div className="mb-4 flex items-center gap-4 rounded-field border border-success bg-success/10 p-4">
+        {champion.crestUrl ? (
+          <img
+            src={champion.crestUrl}
+            alt=""
+            className="h-16 w-16 flex-none object-contain"
+            onError={(event) => {
+              event.currentTarget.style.display = "none";
+            }}
+          />
+        ) : null}
+        <div className="min-w-0 flex-1">
+          <p className="text-success text-xs font-bold uppercase tracking-wide">Season champion</p>
+          <p className="text-xl font-semibold">{teamName(champion)}</p>
+          <p className="muted mt-1 text-sm">
+            {totalWins}-{totalLosses} in the postseason · defeated {steps.length}{" "}
+            {steps.length === 1 ? "opponent" : "opponents"}
+          </p>
+        </div>
+      </div>
+      <div className="flex flex-col gap-3">
+        {steps.map((step, index) => (
+          <RoadStep key={`${step.phaseCode}-${step.opponent?.clubCode ?? index}`} step={step} index={index} />
         ))}
       </div>
     </Panel>
@@ -574,13 +594,8 @@ export default function SeasonOverviewPage() {
   });
   const phases = phasesQuery.data?.phases ?? [];
 
-  // First game of each phase (ascending) gives the phase's game count and
-  // start date in one request; a second, descending request gives the end
-  // date. Regular Season's team count comes from its standings (every
-  // registered team appears there); the knockout phases (Play-In, Playoffs,
-  // Final Four) have no standings concept, so their team count is derived
-  // from the phase's own games instead, fetched in one request each since
-  // a knockout bracket never approaches the API's page-size cap.
+  // First game of each phase (ascending) gives its start date; a second,
+  // descending request gives the end date.
   const phaseFirstGameQueries = useQueries({
     queries: phases.map((phase) => ({
       queryKey: ["overview-phase-first-game", seasonCode, phase.code],
@@ -593,24 +608,12 @@ export default function SeasonOverviewPage() {
       queryFn: () => getSeasonGames(seasonCode, { phase: phase.code, limit: 1, order: "desc" }),
     })),
   });
-  // Regular Season's roster is every registered team, regardless of how
-  // many rounds have been played; standings entries only materialize once
-  // games are played, so they would under-report a not-yet-started season.
-  const seasonTeamsQuery = useQuery({
-    queryKey: ["teams", seasonCode],
-    queryFn: () => getSeasonTeams(seasonCode),
-  });
   const knockoutPhases = phases.filter((phase) => phase.code !== "RS");
   const knockoutPhaseGamesQueries = useQueries({
     queries: knockoutPhases.map((phase) => ({
       queryKey: ["overview-phase-games", seasonCode, phase.code],
       queryFn: () => getSeasonGames(seasonCode, { phase: phase.code, limit: MAX_PAGE_SIZE, order: "asc" }),
     })),
-  });
-
-  const totalGamesQuery = useQuery({
-    queryKey: ["overview-games-total", seasonCode],
-    queryFn: () => getSeasonGames(seasonCode, { limit: 1 }),
   });
 
   const playedGamesQuery = useQuery({
@@ -624,19 +627,17 @@ export default function SeasonOverviewPage() {
     enabled: phases.some((phase) => phase.code === "FF"),
   });
 
+  const standingsQuery = useQuery({
+    queryKey: ["standings", seasonCode, "RS"],
+    queryFn: () => getSeasonStandings(seasonCode, "RS"),
+  });
+  const leader = standingsQuery.data?.standings.find((entry) => entry.basic?.position === 1) ?? null;
+
   const phaseSummaries = {};
   phases.forEach((phase, index) => {
     const first = phaseFirstGameQueries[index]?.data;
     const last = phaseLastGameQueries[index]?.data;
-    const teamCount =
-      phase.code === "RS"
-        ? seasonTeamsQuery.data?.teams?.length ?? 0
-        : teamCountFromGames(
-            knockoutPhaseGamesQueries[knockoutPhases.findIndex((p) => p.code === phase.code)]?.data?.games ?? [],
-          );
     phaseSummaries[phase.code] = {
-      gameCount: first?.pagination.total ?? 0,
-      teamCount,
       dateRange: dateRangeLabel(first?.games[0]?.scheduledAt, last?.games[0]?.scheduledAt),
     };
   });
@@ -645,11 +646,6 @@ export default function SeasonOverviewPage() {
   const activePhase = phases.length > 0 ? currentPhaseFromPlayedGames(phases, playedGames) : null;
   const champion = findChampion(finalFourGamesQuery.data?.games ?? []);
   const roadSteps = championRoadSteps(champion, knockoutPhases, knockoutPhaseGamesQueries);
-
-  const coverageQuery = useQuery({
-    queryKey: ["coverage", seasonCode],
-    queryFn: () => getCoverage(seasonCode),
-  });
 
   if (phasesQuery.isLoading) return <AsyncState status="loading" label="Loading phases" fullScreen />;
   if (phasesQuery.isError) {
@@ -662,32 +658,31 @@ export default function SeasonOverviewPage() {
     phaseFirstGameQueries.some((query) => query.isLoading) ||
     phaseLastGameQueries.some((query) => query.isLoading) ||
     knockoutPhaseGamesQueries.some((query) => query.isLoading) ||
-    seasonTeamsQuery.isLoading ||
-    totalGamesQuery.isLoading ||
     playedGamesQuery.isLoading ||
-    finalFourGamesQuery.isLoading;
+    finalFourGamesQuery.isLoading ||
+    standingsQuery.isLoading;
   const summaryError =
     phaseFirstGameQueries.some((query) => query.isError) ||
     phaseLastGameQueries.some((query) => query.isError) ||
     knockoutPhaseGamesQueries.some((query) => query.isError) ||
-    seasonTeamsQuery.isError ||
-    totalGamesQuery.isError ||
     playedGamesQuery.isError ||
-    finalFourGamesQuery.isError;
+    finalFourGamesQuery.isError ||
+    standingsQuery.isError;
 
   function retrySummary() {
     phaseFirstGameQueries.forEach((query) => query.refetch());
     phaseLastGameQueries.forEach((query) => query.refetch());
     knockoutPhaseGamesQueries.forEach((query) => query.refetch());
-    seasonTeamsQuery.refetch();
-    totalGamesQuery.refetch();
     playedGamesQuery.refetch();
     finalFourGamesQuery.refetch();
+    standingsQuery.refetch();
   }
 
   return (
-    <div className="flex flex-col gap-6">
-      <PageHeader kicker="RECAP" title={`EuroLeague ${formatSeasonLabel(seasonCode)}`} />
+    <motion.div className="flex flex-col gap-6" variants={sectionContainer} initial="hidden" animate="show">
+      <motion.div variants={sectionItem}>
+        <PageHeader kicker="RECAP" title={`EuroLeague ${formatSeasonLabel(seasonCode)}`} />
+      </motion.div>
 
       {summaryLoading ? (
         <AsyncState status="loading" label="Loading season summary" />
@@ -695,40 +690,37 @@ export default function SeasonOverviewPage() {
         <AsyncState status="error" message="Could not load this season's summary." onRetry={retrySummary} />
       ) : (
         <>
-          <SeasonHero
-            champion={champion}
-            phaseName={activePhase?.name ?? activePhase?.code ?? "Season"}
-            hasPlayedGames={playedGames.length > 0}
-          />
-          <SummaryCards
-            totalGames={totalGamesQuery.data?.pagination.total}
-            playedGames={playedGames}
-            phases={phases}
-            currentPhaseCode={activePhase?.code}
-          />
-          <PhaseStory phases={phases} phaseSummaries={phaseSummaries} />
-          <div className="grid gap-6 xl:grid-cols-[minmax(0,1.4fr)_minmax(19rem,0.6fr)]">
+          <motion.div variants={sectionItem}>
+            <SeasonHero champion={champion} leader={leader} />
+          </motion.div>
+          <motion.div variants={sectionItem}>
+            <PhaseStory
+              phases={phases}
+              phaseSummaries={phaseSummaries}
+              activePhaseCode={champion ? null : activePhase?.code}
+            />
+          </motion.div>
+          <motion.div variants={sectionItem}>
             <ScoringTrendChart playedGames={playedGames} />
+          </motion.div>
+          <motion.div variants={sectionItem}>
             <DefiningGames seasonCode={seasonCode} playedGames={playedGames} />
-          </div>
-          <RoadToTitle steps={roadSteps} />
+          </motion.div>
         </>
       )}
 
-      <div className="grid gap-6 xl:grid-cols-2">
+      {/* Leaders has its own independent per-category loading/error state
+          (see LeaderCard), so it isn't gated behind the summary queries
+          above - it can render before or after them finish. */}
+      <motion.div variants={sectionItem}>
         <SeasonLeaders seasonCode={seasonCode} />
-        <SeasonStandingsSnapshot seasonCode={seasonCode} />
-      </div>
+      </motion.div>
 
-      <ClosingLinksBar seasonCode={seasonCode} />
-
-      {coverageQuery.isLoading ? (
-        <AsyncState status="loading" label="Loading season data coverage" compact />
-      ) : coverageQuery.isError ? (
-        <AsyncState status="error" inline message="Could not load this season's data coverage." />
-      ) : (
-        <DataCoveragePanel coverage={coverageQuery.data} title="Season data coverage" full />
+      {summaryLoading || summaryError ? null : (
+        <motion.div variants={sectionItem}>
+          <RoadToTitle champion={champion} steps={roadSteps} />
+        </motion.div>
       )}
-    </div>
+    </motion.div>
   );
 }

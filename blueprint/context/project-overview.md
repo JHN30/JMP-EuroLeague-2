@@ -1,6 +1,6 @@
 # JMP Euroleague - Project Overview
 
-<!-- blueprint:source-hash 6b725a2b997f8dd818e68c7b019bcabc8caaaab2a2a6fbad58ee389fe8263433 -->
+<!-- blueprint:source-hash 6e29cc818487beb767f02891989f1c49e476e4802e04d52043cd78c23cd11122 -->
 
 > A public, read-only EuroLeague explorer for the 2025-26 (`E2025`) and 2026-27 (`E2026`) seasons, backed by curated Neon PostgreSQL tables.
 
@@ -69,6 +69,8 @@ The headline is a two-season public explorer whose every view stays in the selec
     - **19b Team statistics and coverage** - read precomputed team totals and season/game coverage, including real shot and play-by-play counts.
     - **19c Postseason series data** - read conservative postseason pairings without inventing bracket positions or completion rules.
     - **19d Navigation and page integration** - align tabs to Home, Overview, Standings, Games, Teams, Players, Leaders, Compare, and Format and verify affected page states.
+20. **Home dashboard polish** - rework the Home dashboard's layout and content per direct user request: trimmed round indicator, a horizontal upcoming-games row, a four-card KPI strip, a two-column standings/results section, a five-category leaders strip, crests/photos throughout, and removal of the developer-facing data-coverage panel.
+21. **Season overview polish** - rework the season overview page's layout and content per direct user request: remove the summary KPI cards and the standings snapshot, keep-exploring bar, and data-coverage panel; highlight the active phase in the timeline with a short format blurb per phase instead of raw counts; chart average points per team instead of combined score; expand Defining games and Statistical leaders into two separate full-width sections; and apply the same restrained animation used on Home.
 
 Every data-driven page needs loading, empty, unavailable, partial-data, and error states. Known corrections and anomalies must remain visible. JMP Rating, win probabilities, simulations, older-season browsing, archive-wide records and careers, other competitions, and user features are deferred.
 

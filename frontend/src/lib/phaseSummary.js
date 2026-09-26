@@ -1,4 +1,4 @@
-import { formatDateTime } from "./format";
+import { formatDate } from "./format";
 
 export const PHASE_ORDER = ["RS", "PI", "PO", "FF"];
 
@@ -18,8 +18,8 @@ export function teamCountFromGames(games) {
 
 export function dateRangeLabel(firstDate, lastDate) {
   if (!firstDate) return null;
-  const start = formatDateTime(firstDate, { dateStyle: "medium" });
-  const end = lastDate ? formatDateTime(lastDate, { dateStyle: "medium" }) : start;
+  const start = formatDate(firstDate);
+  const end = lastDate ? formatDate(lastDate) : start;
   return start === end ? start : `${start} - ${end}`;
 }
 

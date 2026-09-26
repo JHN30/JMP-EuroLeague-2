@@ -18,10 +18,14 @@ export default function UpcomingGames() {
     queryFn: () => getSeasonStandings(seasonCode, "RS"),
   });
   const games = gamesQuery.data?.games ?? [];
-  const standingByClubCode = new Map(
-    (standingsQuery.data?.standings ?? []).map((entry) => [entry.clubCode, entry]),
-  );
+  const standings = standingsQuery.data?.standings ?? [];
+  const standingByClubCode = new Map(standings.map((entry) => [entry.clubCode, entry]));
   const standingsReady = standingsQuery.isSuccess || standingsQuery.isError;
+  // Every scheduled game already has a slot in the season's published
+  // calendar, so an empty result here almost never means "not scheduled
+  // yet" - it means there are no games left, which is only reachable once
+  // some have actually been played.
+  const hasPlayedGames = standings.some((entry) => (entry.basic?.gamesPlayed ?? 0) > 0);
 
   return (
     <WidgetPanel
@@ -31,7 +35,7 @@ export default function UpcomingGames() {
       isError={gamesQuery.isError}
       onRetry={() => gamesQuery.refetch()}
       isEmpty={gamesQuery.isSuccess && games.length === 0}
-      emptyMessage="No games scheduled yet."
+      emptyMessage={hasPlayedGames ? "Season finished." : "No games scheduled yet."}
     >
       <motion.div className="games-row" variants={listContainer} initial="hidden" animate="show">
         {games.map((game) => (

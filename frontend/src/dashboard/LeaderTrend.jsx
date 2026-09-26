@@ -101,9 +101,9 @@ export default function LeaderTrend() {
                   points={trend.pointsAttr}
                   className="leader-trend-line"
                   vectorEffect="non-scaling-stroke"
-                  initial={{ pathLength: 0 }}
-                  animate={{ pathLength: 1 }}
-                  transition={{ duration: 0.6, ease: "easeOut" }}
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ duration: 0.5, delay: 0.15 }}
                 />
                 {trend.points.map((point, index) => (
                   <motion.circle

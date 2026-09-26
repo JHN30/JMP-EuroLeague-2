@@ -13,7 +13,6 @@ const CATEGORIES = [
   { key: "pointsScored", label: "Points per game" },
   { key: "totalRebounds", label: "Rebounds per game" },
   { key: "assists", label: "Assists per game" },
-  { key: "steals", label: "Steals per game" },
   { key: "pir", label: "PIR per game" },
 ];
 

@@ -101,7 +101,7 @@ Scope every season-dependent query by competition and season code. Distinguish s
 
 ## Tech stack
 
-- **Frontend:** React with Vite and React Router. Tailwind CSS and DaisyUI provide the component system; Zustand is planned only for useful small client UI state. Chart.js and Motion are optional when they materially improve a view.
+- **Frontend:** React with Vite and React Router. Tailwind CSS and DaisyUI provide the component system. Zustand is installed for small client-side UI state where it is useful, not yet used anywhere in the app. Chart.js is in use for charts; Motion is installed and used for restrained UI animation, starting with the Home dashboard.
 - **Backend:** Node.js, Express, and strict TypeScript. REST endpoints are organized by seasons, standings, games, teams, players, statistics, and playoffs, with runtime validation at request and response boundaries.
 - **Database:** Neon-hosted PostgreSQL with existing populated tables, mapped through Drizzle ORM. Use versioned Drizzle migrations for future owned schema changes without recreating the existing data. Keep database access server-side, queries parameterized, selected columns explicit, and ordering deterministic.
 - **Engineering:** Thin HTTP handlers, reusable query/business modules, tests around transformations, season scoping, response contracts, and misleading statistical edge cases. Add caching only after a measured need.
@@ -127,7 +127,5 @@ The planned screens are home, season overview, standings, fixtures/results, game
 ## Open questions
 
 > TODO: Reconcile the planned `DATABASE_URL` and `CLIENT_URL`/`CORS_ORIGIN` names with the current backend `DB_URL` and `FRONTEND_URL` configuration.
-
-> TODO: The plan mentions existing Zustand usage and optional Motion, but neither is installed. The current app uses TanStack Query and Axios for server data and Chart.js for charts; reconcile the remaining stack wording when those choices next change.
 
 > TODO: Clarify how shared/generated TypeScript response types apply to the JavaScript frontend.

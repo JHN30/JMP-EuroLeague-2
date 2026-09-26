@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
+import { motion } from "motion/react";
 import { useParams } from "react-router";
 import { getSeasonStandings, getTeamGames } from "../lib/api";
 import { formatPerGame } from "../lib/format";
@@ -89,12 +90,34 @@ export default function LeaderTrend() {
                 aria-label={`Point differential per game over the last ${diffs.length} played games`}
               >
                 <line x1="0" y1={trend.zeroY} x2={WIDTH} y2={trend.zeroY} className="leader-trend-baseline" vectorEffect="non-scaling-stroke" />
-                <polygon points={trend.areaAttr} className="leader-trend-area" />
-                <polyline points={trend.pointsAttr} className="leader-trend-line" vectorEffect="non-scaling-stroke" />
+                <motion.polygon
+                  points={trend.areaAttr}
+                  className="leader-trend-area"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ duration: 0.5, delay: 0.3 }}
+                />
+                <motion.polyline
+                  points={trend.pointsAttr}
+                  className="leader-trend-line"
+                  vectorEffect="non-scaling-stroke"
+                  initial={{ pathLength: 0 }}
+                  animate={{ pathLength: 1 }}
+                  transition={{ duration: 0.6, ease: "easeOut" }}
+                />
                 {trend.points.map((point, index) => (
-                  <circle key={index} cx={point.x} cy={point.y} r="3" className="leader-trend-point">
+                  <motion.circle
+                    key={index}
+                    cx={point.x}
+                    cy={point.y}
+                    r="3"
+                    className="leader-trend-point"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ delay: 0.15 + index * 0.04, duration: 0.25 }}
+                  >
                     <title>{pointLabel(diffs[index], index)}</title>
-                  </circle>
+                  </motion.circle>
                 ))}
               </svg>
             </div>

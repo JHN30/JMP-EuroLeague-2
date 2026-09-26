@@ -1,9 +1,13 @@
 import { useQuery } from "@tanstack/react-query";
+import { motion } from "motion/react";
 import { Link, useParams } from "react-router";
 import { getLeaderStats } from "../lib/api";
 import AsyncState from "../lib/AsyncState";
+import { cardHover, listContainer, listItem } from "../lib/motion";
 import Panel from "../lib/Panel";
 import PanelHeader from "../lib/PanelHeader";
+
+const MotionLink = motion.create(Link);
 
 const CATEGORIES = [
   { key: "pointsScored", label: "Points per game" },
@@ -35,7 +39,12 @@ function StatLeaderCard({ seasonCode, category }) {
   }
 
   return (
-    <Link to={`/${seasonCode}/players/${leader.personKey}`} className="kpi-chip kpi-chip-link">
+    <MotionLink
+      to={`/${seasonCode}/players/${leader.personKey}`}
+      className="kpi-chip kpi-chip-link"
+      variants={listItem}
+      {...cardHover}
+    >
       <div className="kpi-chip-body">
         <span className="label">{category.label}</span>
         <span className="name">{leader.playerName ?? leader.personKey}</span>
@@ -52,7 +61,7 @@ function StatLeaderCard({ seasonCode, category }) {
           }}
         />
       ) : null}
-    </Link>
+    </MotionLink>
   );
 }
 
@@ -62,11 +71,11 @@ export default function LeadersPanel() {
   return (
     <Panel as="section" className="p-6">
       <PanelHeader kicker="LEADERS" title="Top performers" />
-      <div className="leaders-row">
+      <motion.div className="leaders-row" variants={listContainer} initial="hidden" animate="show">
         {CATEGORIES.map((category) => (
           <StatLeaderCard key={category.key} seasonCode={seasonCode} category={category} />
         ))}
-      </div>
+      </motion.div>
     </Panel>
   );
 }

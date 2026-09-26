@@ -1,9 +1,11 @@
 import { useQuery } from "@tanstack/react-query";
+import { AnimatePresence, motion } from "motion/react";
 import { useLayoutEffect, useRef, useState } from "react";
 import { useParams } from "react-router";
 import { getSeasonStandings } from "../lib/api";
 import AsyncState from "../lib/AsyncState";
 import { formatSeasonLabel } from "../lib/format";
+import { sectionContainer, sectionItem } from "../lib/motion";
 import Panel from "../lib/Panel";
 import PageHeader from "../lib/PageHeader";
 import PanelHeader from "../lib/PanelHeader";
@@ -20,15 +22,26 @@ export function WidgetPanel({ kicker, title, isLoading, isError, onRetry, isEmpt
   return (
     <Panel as="section" className="flex flex-col p-6" style={style}>
       <PanelHeader kicker={kicker} title={title} />
-      <AsyncState
-        status={status}
-        message={isError ? "Could not load this section." : emptyMessage}
-        onRetry={onRetry}
-        errorClassName=""
-        compact
-      >
-        {children}
-      </AsyncState>
+      <AnimatePresence mode="wait" initial={false}>
+        <motion.div
+          key={status}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.18 }}
+          className="flex min-h-0 flex-1 flex-col"
+        >
+          <AsyncState
+            status={status}
+            message={isError ? "Could not load this section." : emptyMessage}
+            onRetry={onRetry}
+            errorClassName=""
+            compact
+          >
+            {children}
+          </AsyncState>
+        </motion.div>
+      </AnimatePresence>
     </Panel>
   );
 }
@@ -61,21 +74,31 @@ export default function Dashboard() {
   const [resultsRef, resultsHeight] = useMeasuredHeight();
 
   return (
-    <div className="flex flex-col gap-6">
-      <PageHeader
-        kicker={formatSeasonLabel(seasonCode)}
-        title={round != null ? `Round ${round}` : "Season overview"}
-      />
-      <UpcomingGames />
-      <div className="grid items-start gap-6 lg:grid-cols-2">
+    <motion.div className="flex flex-col gap-6" variants={sectionContainer} initial="hidden" animate="show">
+      <motion.div variants={sectionItem}>
+        <PageHeader
+          kicker={formatSeasonLabel(seasonCode)}
+          title={round != null ? `Round ${round}` : "Season overview"}
+        />
+      </motion.div>
+      <motion.div variants={sectionItem}>
+        <UpcomingGames />
+      </motion.div>
+      <motion.div variants={sectionItem} className="grid items-start gap-6 lg:grid-cols-2">
         <StandingsSnapshot height={resultsHeight} />
         <div ref={resultsRef}>
           <RecentResults />
         </div>
-      </div>
-      <KpiStrip />
-      <LeadersPanel />
-      <LeaderTrend />
-    </div>
+      </motion.div>
+      <motion.div variants={sectionItem}>
+        <KpiStrip />
+      </motion.div>
+      <motion.div variants={sectionItem}>
+        <LeadersPanel />
+      </motion.div>
+      <motion.div variants={sectionItem}>
+        <LeaderTrend />
+      </motion.div>
+    </motion.div>
   );
 }

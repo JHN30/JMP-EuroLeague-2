@@ -1,8 +1,12 @@
 import { useQuery } from "@tanstack/react-query";
+import { motion } from "motion/react";
 import { Link, useParams } from "react-router";
 import { getSeasonGames, getSeasonStandings } from "../lib/api";
 import { formatDateTime as formatTime } from "../lib/format";
+import { cardHover, listContainer, listItem } from "../lib/motion";
 import { WidgetPanel } from "./Dashboard";
+
+const MotionLink = motion.create(Link);
 
 function roundLabel(game) {
   if (game.phaseCode && game.phaseCode !== "RS") {
@@ -18,7 +22,7 @@ export function MatchCard({ game, standingByClubCode, seasonCode, showScore }) {
   const roadWon = showScore && game.localScore != null && game.roadScore != null && game.roadScore > game.localScore;
 
   return (
-    <Link to={`/${seasonCode}/games/${game.gameCode}`} className="match-card">
+    <MotionLink to={`/${seasonCode}/games/${game.gameCode}`} className="match-card" variants={listItem} {...cardHover}>
       <div className="match-card-head">
         <span>{roundLabel(game)}</span>
         <span className={`status-chip ${showScore ? "final" : "upcoming"}`}>
@@ -65,7 +69,7 @@ export function MatchCard({ game, standingByClubCode, seasonCode, showScore }) {
           {showScore ? <span className="score">{game.roadScore ?? "-"}</span> : null}
         </div>
       </div>
-    </Link>
+    </MotionLink>
   );
 }
 
@@ -94,7 +98,7 @@ export default function RecentResults() {
       isEmpty={query.isSuccess && games.length === 0}
       emptyMessage="No results yet."
     >
-      <div className="games-list">
+      <motion.div className="games-list" variants={listContainer} initial="hidden" animate="show">
         {games.map((game) => (
           <MatchCard
             key={game.gameCode}
@@ -104,7 +108,7 @@ export default function RecentResults() {
             showScore
           />
         ))}
-      </div>
+      </motion.div>
     </WidgetPanel>
   );
 }

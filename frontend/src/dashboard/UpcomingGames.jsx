@@ -1,6 +1,8 @@
 import { useQuery } from "@tanstack/react-query";
+import { motion } from "motion/react";
 import { useParams } from "react-router";
 import { getSeasonGames, getSeasonStandings } from "../lib/api";
+import { listContainer } from "../lib/motion";
 import { MatchCard } from "./RecentResults";
 import { WidgetPanel } from "./Dashboard";
 
@@ -31,7 +33,7 @@ export default function UpcomingGames() {
       isEmpty={gamesQuery.isSuccess && games.length === 0}
       emptyMessage="No games scheduled yet."
     >
-      <div className="games-row">
+      <motion.div className="games-row" variants={listContainer} initial="hidden" animate="show">
         {games.map((game) => (
           <MatchCard
             key={game.gameCode}
@@ -41,7 +43,7 @@ export default function UpcomingGames() {
             showScore={false}
           />
         ))}
-      </div>
+      </motion.div>
     </WidgetPanel>
   );
 }

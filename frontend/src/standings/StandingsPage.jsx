@@ -11,6 +11,7 @@ import { TabPanel, TabStrip } from "../lib/TabStrip";
 import StandingsKpiStrip from "./StandingsKpiStrip";
 import StandingsTable from "./StandingsTable";
 import RaceView from "./RaceView";
+import AdvancedStandingsView from "./AdvancedStandingsView";
 
 const VIEW_TABS = [
   { key: "overall", label: "Overall" },
@@ -22,6 +23,7 @@ const VIEW_TABS = [
 const MODE_TABS = [
   { key: "table", label: "Table" },
   { key: "race", label: "Race" },
+  { key: "advanced", label: "Advanced" },
 ];
 
 const BREAKDOWN_TABS = [
@@ -99,14 +101,16 @@ export default function StandingsPage() {
   return (
     <div>
       <PageHeader kicker="SEASON" title="Standings" />
-      <TabStrip
-        ariaLabel="Phase"
-        panelId="standings-panel"
-        activeKey={phaseCode}
-        onChange={setPhaseCode}
-        className="mb-4 w-fit"
-        tabs={phases.map((phase) => ({ key: phase.code, label: phase.name ?? phase.code }))}
-      />
+      {mode === "advanced" ? null : (
+        <TabStrip
+          ariaLabel="Phase"
+          panelId="standings-panel"
+          activeKey={phaseCode}
+          onChange={setPhaseCode}
+          className="mb-4 w-fit"
+          tabs={phases.map((phase) => ({ key: phase.code, label: phase.name ?? phase.code }))}
+        />
+      )}
 
       <TabPanel id="standings-panel" focusKey={`${phaseCode}-${view}`}>
         {standingsQuery.isLoading ? (
@@ -117,12 +121,14 @@ export default function StandingsPage() {
           <EmptyText>Standings not available yet for this phase.</EmptyText>
         ) : (
           <div className="flex flex-col gap-4">
-            <StandingsKpiStrip
-              seasonCode={seasonCode}
-              phaseCode={phaseCode}
-              round={round}
-              standings={standings}
-            />
+            {mode === "advanced" ? null : (
+              <StandingsKpiStrip
+                seasonCode={seasonCode}
+                phaseCode={phaseCode}
+                round={round}
+                standings={standings}
+              />
+            )}
 
             <TabStrip
               ariaLabel="Standings display"
@@ -133,7 +139,9 @@ export default function StandingsPage() {
               tabs={MODE_TABS}
             />
 
-            {mode === "race" ? (
+            {mode === "advanced" ? (
+              <AdvancedStandingsView key={seasonCode} seasonCode={seasonCode} />
+            ) : mode === "race" ? (
               <RaceView seasonCode={seasonCode} phaseCode={phaseCode} latestStandings={standings} />
             ) : (
               <>

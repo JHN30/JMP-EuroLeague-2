@@ -34,6 +34,26 @@ export function formatPercentage(value) {
   return Number.isFinite(num) ? `${num.toFixed(1)}%` : missing;
 }
 
+// Advanced-stat values are numbers (or null); null is missing data and shows a dash, never 0.
+export function formatDecimal(value, digits = 1) {
+  if (value === null || value === undefined) return EM_DASH;
+  const num = Number(value);
+  return Number.isFinite(num) ? num.toFixed(digits) : EM_DASH;
+}
+
+export function formatSignedDecimal(value, digits = 1) {
+  const text = formatDecimal(value, digits);
+  if (text === EM_DASH) return text;
+  return Number(text) > 0 ? `+${text}` : text;
+}
+
+// Shares such as eFG% arrive as fractions (0.565), not 0-100 values.
+export function formatFractionPercent(value, digits = 1) {
+  if (value === null || value === undefined) return EM_DASH;
+  const num = Number(value);
+  return Number.isFinite(num) ? `${(num * 100).toFixed(digits)}%` : EM_DASH;
+}
+
 export function formatMinutes(timePlayed) {
   const missing = formatMissing(timePlayed);
   if (missing === EM_DASH) return missing;

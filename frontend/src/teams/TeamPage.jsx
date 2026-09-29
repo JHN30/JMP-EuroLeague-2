@@ -25,6 +25,7 @@ import { useDocumentTitle } from "../lib/useDocumentTitle";
 import { usePhaseParam } from "../lib/usePhaseParam";
 import StatBarCell from "../statistics/StatBarCell";
 import { barWidthScale } from "../statistics/statBarScale";
+import TeamAdvancedSection from "./TeamAdvancedSection";
 import TeamTrendChart from "./TeamTrendChart";
 import TrendChart from "../comparisons/TrendChart";
 
@@ -788,6 +789,7 @@ const SECTIONS = [
   { key: "overview", label: "Overview" },
   { key: "statistics", label: "Statistics" },
   { key: "shooting", label: "Shooting" },
+  { key: "advanced", label: "Advanced" },
   { key: "trends", label: "Trends" },
   { key: "roster", label: "Roster" },
   { key: "games", label: "Games" },
@@ -872,14 +874,16 @@ export default function TeamPage() {
         {gamesQuery.isSuccess ? <NextGameChip nextGame={nextGame} clubCode={clubCode} /> : null}
       </PageHeader>
 
-      <TabStrip
-        ariaLabel="Phase"
-        panelId="team-panel"
-        activeKey={phaseCode}
-        onChange={setPhaseCode}
-        className="mb-4 w-fit"
-        tabs={phases.map((phase) => ({ key: phase.code, label: phase.name ?? phase.code }))}
-      />
+      {section === "advanced" ? null : (
+        <TabStrip
+          ariaLabel="Phase"
+          panelId="team-panel"
+          activeKey={phaseCode}
+          onChange={setPhaseCode}
+          className="mb-4 w-fit"
+          tabs={phases.map((phase) => ({ key: phase.code, label: phase.name ?? phase.code }))}
+        />
+      )}
 
       <TabStrip
         ariaLabel="Section"
@@ -916,6 +920,8 @@ export default function TeamPage() {
             team={team}
             games={games}
           />
+        ) : section === "advanced" ? (
+          <TeamAdvancedSection key={`${seasonCode}-${clubCode}`} seasonCode={seasonCode} clubCode={clubCode} />
         ) : section === "trends" ? (
           <TrendsSection games={games} phaseCode={phaseCode} clubCode={clubCode} />
         ) : section === "roster" ? (

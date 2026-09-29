@@ -108,6 +108,11 @@ Scaffolding, shared layout, design tokens, database connection setup, and deploy
   - Expand Defining games from 3 to 4 games with more per-game detail, and expand Statistical leaders with more stat categories; keep both as separate full-width sections rather than side by side.
   - Remove the standings snapshot, the "Keep exploring" links bar, and the data coverage panel - redundant with the Home dashboard's own standings snapshot, the persistent navbar, and developer-facing content respectively.
   - Apply the same restrained Motion-based entrance/hover animation already used on the Home dashboard.
+- [x] 22. **Advanced stats from the new Neon tables** - Read the pipeline's 12 advanced tables (feature 30g, `E2025` and `E2026` only) read-only and show them where they belong, with sample sizes shown and small samples hidden.
+  - Standings: an Advanced mode with net rating, pace, eFG%, SRS and last 10, plus scope (regular season, all, postseason) and round selectors.
+  - Team page: an Advanced tab with rating by round, splits, play-by-play, shot zones, and best lineups filtered by club, size, and minimum possessions.
+  - Player page: an Advanced tab with PER, Win Shares, and USG% by round, on/off, and RAPM.
+  - Leaders: an Advanced view ranking PER, Win Shares/48, RAPM, and on/off net rating with a minimum-minutes filter.
 
 ## Guideline deviations
 

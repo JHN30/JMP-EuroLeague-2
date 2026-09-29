@@ -22,6 +22,27 @@ import {
 import { getBoxScore, getGame, getGames, getPlayByPlay, getPlayerGameLog, getPostseasonSeries, getShots, getTeamGames, getTeamStatsSummary } from "../db/season-games";
 import { getCoverage } from "../db/season-coverage";
 import { getLatestStandingsRound, getStandings } from "../db/season-standings";
+import {
+  getLineupRatings,
+  getPerLeaders,
+  getPlayerClubs,
+  getPlayerOnOff,
+  getPlayerRapm,
+  getPlayerRoundRatings,
+  getPlayerRoundStats,
+  getPlayerRoundWinShares,
+  getPlayerStatsScopes,
+  getStandingsStats,
+  getStatsRounds,
+  getStatsScopes,
+  getTeamPbpStats,
+  getTeamRoundRatings,
+  getTeamRoundSplits,
+  getTeamRoundStats,
+  getTeamShotZoneStats,
+  getTeamStatsScopes,
+  getWinShareLeaders,
+} from "../db/season-advanced";
 import { getSeasonStats, SORTABLE_STATS_FIELDS, type SortableStatsField } from "../db/season-stats";
 import { gamePlayerStats, gameTeamStats, games } from "../db/season-schema";
 
@@ -106,6 +127,7 @@ function requestedRound(req: Request, res: Response): { round: number | undefine
   return { round };
 }
 
+const ADVANCED_SCOPES = ["RS", "all", "PS"];
 const SEASON_STATS_PHASES = ["RS", "PI", "PO", "FF", "all"];
 const SEASON_STATS_MODES = ["accumulated", "perGame"];
 const RECORD_METRICS = ["pointsScored", "totalRebounds", "assists", "pir"] as const;
@@ -228,6 +250,139 @@ seasonRouter.get("/:seasonCode/phases/:phaseCode/standings", async (req, res) =>
   }
 
   res.json({ round, standings: await getStandings(season.seasonCode, phaseCode, round) });
+});
+
+seasonRouter.get("/:seasonCode/advanced/standings", async (req, res) => {
+  const season = await requestedSeason(req, res);
+  if (!season) return;
+  const scopeValue = req.query.scope;
+  if (scopeValue !== undefined && (typeof scopeValue !== "string" || !ADVANCED_SCOPES.includes(scopeValue))) {
+    sendError(res, 400, "INVALID_SCOPE", "Invalid scope");
+    return;
+  }
+  const requested = requestedRound(req, res);
+  if (!requested) return;
+
+  // Only scopes with rows are offered, so a season never shows an empty scope.
+  const available = new Set(await getStatsScopes(season.seasonCode));
+  const scopes = ADVANCED_SCOPES.filter((code) => available.has(code));
+  const scope = scopeValue ?? scopes[0];
+  if (scope === undefined || !available.has(scope)) {
+    res.json({ scope: scope ?? null, scopes, round: null, rounds: [], standings: [] });
+    return;
+  }
+
+  const rounds = await getStatsRounds(season.seasonCode, scope);
+  const round = requested.round ?? rounds[rounds.length - 1];
+  if (!rounds.includes(round)) {
+    sendError(res, 404, "ROUND_NOT_FOUND", "Round not found");
+    return;
+  }
+
+  const [rows, teams] = await Promise.all([
+    getStandingsStats(season.seasonCode, scope, round),
+    getTeams(season.seasonCode),
+  ]);
+  const crests = new Map(teams.map((team) => [team.clubCode, team.crestUrl]));
+  res.json({
+    scope,
+    scopes,
+    round,
+    rounds,
+    standings: rows.map((row) => ({ ...row, crestUrl: crests.get(row.clubCode) ?? null })),
+  });
+});
+
+const ADVANCED_LEADER_METRICS = ["per", "winSharesPer48", "rapm", "onOff"];
+// Default minimum minutes (on court for RAPM and on/off) per metric in a full season. Early in a season nobody has
+// that many, so the default drops to a small floor and the response says the season is still early.
+const LEADER_DEFAULT_MIN_MINUTES: Record<string, number> = { per: 100, winSharesPer48: 100, rapm: 500, onOff: 300 };
+const EARLY_SEASON_MIN_MINUTES = 20;
+
+// One leaderboard of the advanced player metrics. PER and WS/48 read each player's cumulative row at the
+// scope's latest round; on/off reads the scope; RAPM is a whole-season table, so its scope is always "all".
+seasonRouter.get("/:seasonCode/advanced/leaders", async (req, res) => {
+  const season = await requestedSeason(req, res);
+  if (!season) return;
+  const metric = req.query.metric === undefined ? "per" : req.query.metric;
+  if (typeof metric !== "string" || !ADVANCED_LEADER_METRICS.includes(metric)) {
+    sendError(res, 400, "INVALID_QUERY", "Invalid metric");
+    return;
+  }
+  const scopeValue = requestedAdvancedScope(req, res);
+  if (scopeValue === null) return;
+
+  const [available, allRounds, teams] = await Promise.all([
+    getStatsScopes(season.seasonCode),
+    getStatsRounds(season.seasonCode, "all"),
+    getTeams(season.seasonCode),
+  ]);
+  const scopes = ADVANCED_SCOPES.filter((code) => available.includes(code));
+  const earlySeason = allRounds.length < EARLY_SEASON_ROUNDS;
+  const defaultMinMinutes = earlySeason ? EARLY_SEASON_MIN_MINUTES : LEADER_DEFAULT_MIN_MINUTES[metric];
+  const minMinutes = pageParameter(req.query.minMinutes, defaultMinMinutes, 0, 3000);
+  const limit = pageParameter(req.query.limit, 50, 1, 100);
+  if (minMinutes === null || limit === null) {
+    sendError(res, 400, "INVALID_QUERY", "Invalid leaderboard filter");
+    return;
+  }
+
+  const scope = metric === "rapm" ? "all" : (scopeValue ?? scopes[0]);
+  const base = { metric, scopes, earlySeason, roundsPlayed: allRounds.length, minMinutes, defaultMinMinutes };
+  if (scope === undefined || !available.includes(scope)) {
+    res.json({ ...base, scope: scope ?? null, round: null, entries: [] });
+    return;
+  }
+
+  const minSeconds = minMinutes * 60;
+  const clubs = new Map(teams.map((team) => [team.clubCode, team]));
+  const club = (clubCode: string | null) => ({
+    clubCode,
+    clubName: clubCode === null ? null : (clubs.get(clubCode)?.name ?? null),
+    crestUrl: clubCode === null ? null : (clubs.get(clubCode)?.crestUrl ?? null),
+  });
+
+  let round: number | null = null;
+  let entries: Record<string, unknown>[];
+  if (metric === "per" || metric === "winSharesPer48") {
+    const rounds = await getStatsRounds(season.seasonCode, scope);
+    round = rounds[rounds.length - 1] ?? null;
+    if (round === null) {
+      res.json({ ...base, scope, round, entries: [] });
+      return;
+    }
+    if (metric === "per") {
+      const rows = await getPerLeaders(season.seasonCode, scope, round, minSeconds, limit);
+      entries = rows.map((row) => ({
+        personKey: row.personKey, playerName: row.playerName, ...club(row.clubCode),
+        games: row.gamesPlayed, seconds: row.secondsPlayed, value: row.per,
+      }));
+    } else {
+      const rows = await getWinShareLeaders(season.seasonCode, scope, round, minSeconds, limit);
+      entries = rows.map((row) => ({
+        personKey: row.personKey, playerName: row.playerName, ...club(row.clubCode),
+        games: row.gamesPlayed, seconds: row.secondsPlayed, value: row.winSharesPer48, winShares: row.winShares,
+      }));
+    }
+  } else if (metric === "rapm") {
+    const rows = await getPlayerRapm(season.seasonCode, { minSeconds, limit });
+    const lastRound = allRounds[allRounds.length - 1];
+    const playerClubs = lastRound === undefined
+      ? new Map<string, string | null>()
+      : await getPlayerClubs(season.seasonCode, "all", lastRound, rows.map((row) => row.personKey));
+    entries = rows.map((row) => ({
+      personKey: row.personKey, playerName: row.playerName, ...club(playerClubs.get(row.personKey) ?? null),
+      games: null, seconds: row.seconds, value: row.rapm, offense: row.offense, defense: row.defense,
+    }));
+  } else {
+    const rows = await getPlayerOnOff(season.seasonCode, scope, { minSeconds, limit });
+    entries = rows.map((row) => ({
+      personKey: row.personKey, playerName: row.playerName, ...club(row.clubCode),
+      games: row.games, seconds: row.onSeconds, value: row.netRatingDiff,
+      onNetRating: row.onNetRating, offNetRating: row.offNetRating,
+    }));
+  }
+  res.json({ ...base, scope, round, entries });
 });
 
 function requestedPersonKeyFilter(req: Request, res: Response): string | undefined | null {
@@ -446,6 +601,109 @@ seasonRouter.get("/:seasonCode/teams/:clubCode/team-stats", async (req, res) => 
   res.json(await getTeamStatsSummary(season.seasonCode, phaseCode, clubCode));
 });
 
+function requestedAdvancedScope(req: Request, res: Response): string | undefined | null {
+  const value = req.query.scope;
+  if (value === undefined) return undefined;
+  if (typeof value !== "string" || !ADVANCED_SCOPES.includes(value)) {
+    sendError(res, 400, "INVALID_SCOPE", "Invalid scope");
+    return null;
+  }
+  return value;
+}
+
+// Trend, splits, play-by-play and shot zones for one club in one scope. The trend is one point per round of
+// cumulative values (never summed); the splits are the state after the club's latest round in the scope.
+seasonRouter.get("/:seasonCode/teams/:clubCode/advanced", async (req, res) => {
+  const season = await requestedSeason(req, res);
+  if (!season) return;
+  const clubCode = req.params.clubCode;
+  if (!validIdentity(clubCode)) {
+    sendError(res, 400, "INVALID_TEAM_CODE", "Invalid team code");
+    return;
+  }
+  const scopeValue = requestedAdvancedScope(req, res);
+  if (scopeValue === null) return;
+  if (!await getTeam(season.seasonCode, clubCode)) {
+    sendError(res, 404, "TEAM_NOT_FOUND", "Team not found");
+    return;
+  }
+
+  const available = new Set(await getTeamStatsScopes(season.seasonCode, clubCode));
+  const scopes = ADVANCED_SCOPES.filter((code) => available.has(code));
+  const scope = scopeValue ?? scopes[0];
+  if (scope === undefined || !available.has(scope)) {
+    res.json({ scope: scope ?? null, scopes, trend: [], splits: null, pbp: null, zones: [] });
+    return;
+  }
+
+  const [stats, ratings, splits, pbp, zones] = await Promise.all([
+    getTeamRoundStats(season.seasonCode, scope, clubCode),
+    getTeamRoundRatings(season.seasonCode, scope, clubCode),
+    getTeamRoundSplits(season.seasonCode, scope, clubCode),
+    getTeamPbpStats(season.seasonCode, scope, clubCode),
+    getTeamShotZoneStats(season.seasonCode, scope, clubCode),
+  ]);
+  const ratingsByRound = new Map(ratings.map((row) => [row.roundNumber, row]));
+  res.json({
+    scope,
+    scopes,
+    trend: stats.map((row) => {
+      const rating = ratingsByRound.get(row.roundNumber);
+      return {
+        round: row.roundNumber,
+        gamesPlayed: row.gamesPlayed,
+        offensiveRating: row.offensiveRating,
+        defensiveRating: row.defensiveRating,
+        netRating: row.netRating,
+        pace: row.pace,
+        srs: rating?.srs ?? null,
+        adjNetRating: rating?.adjNetRating ?? null,
+      };
+    }),
+    splits: splits[splits.length - 1] ?? null,
+    pbp,
+    zones,
+  });
+});
+
+const LINEUP_SIZES = [2, 3, 5];
+
+seasonRouter.get("/:seasonCode/teams/:clubCode/lineups", async (req, res) => {
+  const season = await requestedSeason(req, res);
+  if (!season) return;
+  const clubCode = req.params.clubCode;
+  if (!validIdentity(clubCode)) {
+    sendError(res, 400, "INVALID_TEAM_CODE", "Invalid team code");
+    return;
+  }
+  const scope = requestedAdvancedScope(req, res);
+  if (scope === null) return;
+  const size = pageParameter(req.query.size, 5, 2, 5);
+  if (size === null || !LINEUP_SIZES.includes(size)) {
+    sendError(res, 400, "INVALID_QUERY", "Invalid lineup size");
+    return;
+  }
+  const minPossessions = pageParameter(req.query.minPossessions, 100, 0, 5000);
+  const limit = pageParameter(req.query.limit, 15, 1, 50);
+  if (minPossessions === null || limit === null) {
+    sendError(res, 400, "INVALID_QUERY", "Invalid lineup filter");
+    return;
+  }
+  if (!await getTeam(season.seasonCode, clubCode)) {
+    sendError(res, 404, "TEAM_NOT_FOUND", "Team not found");
+    return;
+  }
+
+  const lineupScope = scope ?? "RS";
+  const lineups = await getLineupRatings(season.seasonCode, lineupScope, {
+    clubCode,
+    lineupSize: size as 2 | 3 | 5,
+    minPossessions,
+    limit,
+  });
+  res.json({ scope: lineupScope, size, minPossessions, lineups });
+});
+
 seasonRouter.get("/:seasonCode/players", async (req, res) => {
   const season = await requestedSeason(req, res);
   if (!season) return;
@@ -471,6 +729,75 @@ seasonRouter.get("/:seasonCode/players/:personKey", async (req, res) => {
     return;
   }
   res.json({ player });
+});
+
+// A season with fewer rounds than this is still early: RAPM and on/off from it are too noisy to trust.
+const EARLY_SEASON_ROUNDS = 10;
+
+// Round-by-round PER, Win Shares and USG% for one player in one scope, plus on/off (one row per club, so a
+// traded player has several) and the whole-season RAPM. Sample sizes come back with the values; the page
+// decides what to hide.
+seasonRouter.get("/:seasonCode/players/:personKey/advanced", async (req, res) => {
+  const season = await requestedSeason(req, res);
+  if (!season) return;
+  const personKey = req.params.personKey;
+  if (!validIdentity(personKey)) {
+    sendError(res, 400, "INVALID_PLAYER_KEY", "Invalid player key");
+    return;
+  }
+  const scopeValue = requestedAdvancedScope(req, res);
+  if (scopeValue === null) return;
+  if (!await getPlayer(season.seasonCode, personKey)) {
+    sendError(res, 404, "PLAYER_NOT_FOUND", "Player not found");
+    return;
+  }
+
+  const available = new Set(await getPlayerStatsScopes(season.seasonCode, personKey));
+  const scopes = ADVANCED_SCOPES.filter((code) => available.has(code));
+  const scope = scopeValue ?? scopes[0];
+  const [seasonRounds, rapmRows] = await Promise.all([
+    getStatsRounds(season.seasonCode, "all"),
+    getPlayerRapm(season.seasonCode, { personKey, limit: 1 }),
+  ]);
+  const base = { scopes, roundsPlayed: seasonRounds.length, earlySeason: seasonRounds.length < EARLY_SEASON_ROUNDS, rapm: rapmRows[0] ?? null };
+  if (scope === undefined || !available.has(scope)) {
+    res.json({ ...base, scope: scope ?? null, rounds: [], onOff: [] });
+    return;
+  }
+
+  const [stats, ratings, winShares, onOff, teams] = await Promise.all([
+    getPlayerRoundStats(season.seasonCode, scope, personKey),
+    getPlayerRoundRatings(season.seasonCode, scope, personKey),
+    getPlayerRoundWinShares(season.seasonCode, scope, personKey),
+    getPlayerOnOff(season.seasonCode, scope, { personKey, limit: 10 }),
+    getTeams(season.seasonCode),
+  ]);
+  const ratingsByRound = new Map(ratings.map((row) => [row.roundNumber, row]));
+  const winSharesByRound = new Map(winShares.map((row) => [row.roundNumber, row]));
+  const clubs = new Map(teams.map((team) => [team.clubCode, team]));
+  res.json({
+    ...base,
+    scope,
+    rounds: stats.map((row) => {
+      const rating = ratingsByRound.get(row.roundNumber);
+      const shares = winSharesByRound.get(row.roundNumber);
+      return {
+        round: row.roundNumber,
+        clubCode: row.clubCode,
+        gamesPlayed: row.gamesPlayed,
+        secondsPlayed: row.secondsPlayed,
+        usgPct: row.usgPct,
+        per: rating?.per ?? null,
+        winShares: shares?.winShares ?? null,
+        winSharesPer48: shares?.winSharesPer48 ?? null,
+      };
+    }),
+    onOff: onOff.map((row) => ({
+      ...row,
+      clubName: clubs.get(row.clubCode)?.name ?? null,
+      crestUrl: clubs.get(row.clubCode)?.crestUrl ?? null,
+    })),
+  });
 });
 
 seasonRouter.get("/:seasonCode/players/:personKey/registrations", async (req, res) => {

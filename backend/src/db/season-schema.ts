@@ -96,7 +96,7 @@ export const registrations = pgTable(
     roleName: text("role_name"),
     active: boolean("active"),
     sortOrder: integer("sort_order"),
-    dorsal: text("dorsal"),
+    dorsal: text("jersey_number"),
     positionName: text("position_name"),
   },
   (table) => [primaryKey({ columns: [table.competitionCode, table.seasonCode, table.registrationKey] })],
@@ -105,28 +105,28 @@ export const registrations = pgTable(
 function boxMeasureColumns() {
   return {
     points: numeric("points"),
-    timePlayed: numeric("time_played"),
-    valuation: numeric("valuation"),
-    fieldGoalsMade2: numeric("field_goals_made2"),
-    fieldGoalsAttempted2: numeric("field_goals_attempted2"),
-    fieldGoalsMade3: numeric("field_goals_made3"),
-    fieldGoalsAttempted3: numeric("field_goals_attempted3"),
+    timePlayed: numeric("seconds_played"),
+    valuation: numeric("pir"),
+    fieldGoalsMade2: numeric("two_pointers_made"),
+    fieldGoalsAttempted2: numeric("two_pointers_attempted"),
+    fieldGoalsMade3: numeric("three_pointers_made"),
+    fieldGoalsAttempted3: numeric("three_pointers_attempted"),
     freeThrowsMade: numeric("free_throws_made"),
     freeThrowsAttempted: numeric("free_throws_attempted"),
-    fieldGoalsMadeTotal: numeric("field_goals_made_total"),
-    fieldGoalsAttemptedTotal: numeric("field_goals_attempted_total"),
+    fieldGoalsMadeTotal: numeric("field_goals_made"),
+    fieldGoalsAttemptedTotal: numeric("field_goals_attempted"),
     accuracyMade: numeric("accuracy_made"),
     accuracyAttempted: numeric("accuracy_attempted"),
     totalRebounds: numeric("total_rebounds"),
     defensiveRebounds: numeric("defensive_rebounds"),
     offensiveRebounds: numeric("offensive_rebounds"),
-    assistances: numeric("assistances"),
+    assistances: numeric("assists"),
     steals: numeric("steals"),
     turnovers: numeric("turnovers"),
-    blocksFavour: numeric("blocks_favour"),
+    blocksFavour: numeric("blocks"),
     blocksAgainst: numeric("blocks_against"),
-    foulsCommited: numeric("fouls_commited"),
-    foulsReceived: numeric("fouls_received"),
+    foulsCommited: numeric("fouls_committed"),
+    foulsReceived: numeric("fouls_drawn"),
     plusMinus: numeric("plus_minus"),
   };
 }
@@ -158,7 +158,7 @@ export const playByPlay = pgTable(
     playType: text("play_type"),
     playerName: text("player_name"),
     teamName: text("team_name"),
-    dorsal: text("dorsal"),
+    dorsal: text("jersey_number"),
     minute: integer("minute"),
     markerTime: text("marker_time"),
     pointsA: integer("points_a"),
@@ -228,7 +228,7 @@ export const gamePlayerStats = pgTable(
     registrationActive: boolean("registration_active"),
     position: integer("position"),
     positionName: text("position_name"),
-    dorsal: text("dorsal"),
+    dorsal: text("jersey_number"),
     headshotUrl: text("headshot_url"),
     started: boolean("started"),
     startedAlt: boolean("started_alt"),
@@ -449,13 +449,13 @@ function statsIdentityColumns() {
 }
 
 export const seasonStatsTraditional = pgTable(
-  "app_season_stats_traditional",
+  "app_season_player_stats_traditional",
   {
     ...statsIdentityColumns(),
     gamesPlayed: numeric("games_played"),
     gamesStarted: numeric("games_started"),
     minutesPlayed: numeric("minutes_played"),
-    pointsScored: numeric("points_scored"),
+    pointsScored: numeric("points"),
     twoPointersMade: numeric("two_pointers_made"),
     twoPointersAttempted: numeric("two_pointers_attempted"),
     twoPointersPercentage: numeric("two_pointers_percentage"),
@@ -473,7 +473,7 @@ export const seasonStatsTraditional = pgTable(
     turnovers: numeric("turnovers"),
     blocks: numeric("blocks"),
     blocksAgainst: numeric("blocks_against"),
-    foulsCommited: numeric("fouls_commited"),
+    foulsCommited: numeric("fouls_committed"),
     foulsDrawn: numeric("fouls_drawn"),
     pir: numeric("pir"),
   },
@@ -481,7 +481,7 @@ export const seasonStatsTraditional = pgTable(
 );
 
 export const seasonStatsAdvanced = pgTable(
-  "app_season_stats_advanced",
+  "app_season_player_stats_advanced",
   {
     ...statsIdentityColumns(),
     gamesPlayed: numeric("games_played"),
@@ -497,13 +497,13 @@ export const seasonStatsAdvanced = pgTable(
     twoPointAttemptsRatio: numeric("two_point_attempts_ratio"),
     threePointAttemptsRatio: numeric("three_point_attempts_ratio"),
     freeThrowsRate: numeric("free_throws_rate"),
-    possessions: numeric("possesions"),
+    possessions: numeric("possessions"),
   },
   (table) => [primaryKey({ columns: [table.competitionCode, table.seasonCode, table.phaseCode, table.mode, table.entryOrdinal] })],
 );
 
 export const seasonStatsScoring = pgTable(
-  "app_season_stats_scoring",
+  "app_season_player_stats_scoring",
   {
     ...statsIdentityColumns(),
     gamesPlayed: numeric("games_played"),
@@ -524,7 +524,7 @@ export const seasonStatsScoring = pgTable(
 );
 
 export const seasonStatsMisc = pgTable(
-  "app_season_stats_misc",
+  "app_season_player_stats_misc",
   {
     ...statsIdentityColumns(),
     gamesPlayed: numeric("games_played"),

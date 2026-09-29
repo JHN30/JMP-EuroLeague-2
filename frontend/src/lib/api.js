@@ -59,6 +59,20 @@ export async function getSeasonStandings(seasonCode, phaseCode, { round } = {}) 
   return data;
 }
 
+export async function getAdvancedStandings(seasonCode, { scope, round } = {}) {
+  const { data } = await api.get(`/seasons/${seasonCode}/advanced/standings`, {
+    params: { scope, round },
+  });
+  return data;
+}
+
+export async function getAdvancedLeaders(seasonCode, { metric, scope, minMinutes, limit } = {}) {
+  const { data } = await api.get(`/seasons/${seasonCode}/advanced/leaders`, {
+    params: { metric, scope, minMinutes, limit },
+  });
+  return data;
+}
+
 export async function getLeaderStats(seasonCode, { phase, mode, limit, offset, sort, order } = {}) {
   const { data } = await api.get(`/seasons/${seasonCode}/season-stats`, {
     params: { phase, mode, limit, offset, sort, order },
@@ -97,6 +111,20 @@ export async function getTeamStatsSummary(seasonCode, clubCode, phase) {
   return data;
 }
 
+export async function getTeamAdvanced(seasonCode, clubCode, { scope } = {}) {
+  const { data } = await api.get(`/seasons/${seasonCode}/teams/${clubCode}/advanced`, {
+    params: { scope },
+  });
+  return data;
+}
+
+export async function getTeamLineups(seasonCode, clubCode, { scope, size, minPossessions, limit } = {}) {
+  const { data } = await api.get(`/seasons/${seasonCode}/teams/${clubCode}/lineups`, {
+    params: { scope, size, minPossessions, limit },
+  });
+  return data;
+}
+
 export async function getSeasonPlayers(seasonCode, { search, limit, offset } = {}) {
   const { data } = await api.get(`/seasons/${seasonCode}/players`, {
     params: { search, limit, offset },
@@ -106,6 +134,13 @@ export async function getSeasonPlayers(seasonCode, { search, limit, offset } = {
 
 export async function getPlayer(seasonCode, personKey) {
   const { data } = await api.get(`/seasons/${seasonCode}/players/${personKey}`);
+  return data;
+}
+
+export async function getPlayerAdvanced(seasonCode, personKey, { scope } = {}) {
+  const { data } = await api.get(`/seasons/${seasonCode}/players/${personKey}/advanced`, {
+    params: { scope },
+  });
   return data;
 }
 

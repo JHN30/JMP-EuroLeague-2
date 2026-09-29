@@ -19,6 +19,7 @@ import {
   metricGroupFor,
   metricLabelFor,
 } from "../lib/statsFields";
+import AdvancedLeaderboard from "./AdvancedLeaderboard";
 import LeaderboardKpiStrip from "./LeaderboardKpiStrip";
 import StatBarCell from "./StatBarCell";
 import { barWidthScale } from "./statBarScale";
@@ -527,23 +528,35 @@ export default function StatisticsPage() {
           >
             Teams
           </button>
+          <button
+            type="button"
+            className={view === "advanced" ? "active" : ""}
+            aria-pressed={view === "advanced"}
+            onClick={() => setView("advanced")}
+          >
+            Advanced
+          </button>
         </div>
 
-        <LabelledSelect
-          label="Phase"
-          ariaLabel="Statistics phase"
-            value={phaseCode ?? ""}
-            onChange={(event) => handlePhaseChange(event.target.value)}
-          >
-            {phases.map((phase) => (
-              <option key={phase.code} value={phase.code}>
-                {phase.name ?? phase.code}
-              </option>
-            ))}
-        </LabelledSelect>
+        {view === "advanced" ? null : (
+          <LabelledSelect
+            label="Phase"
+            ariaLabel="Statistics phase"
+              value={phaseCode ?? ""}
+              onChange={(event) => handlePhaseChange(event.target.value)}
+            >
+              {phases.map((phase) => (
+                <option key={phase.code} value={phase.code}>
+                  {phase.name ?? phase.code}
+                </option>
+              ))}
+          </LabelledSelect>
+        )}
       </div>
 
-      {view === "teams" ? (
+      {view === "advanced" ? (
+        <AdvancedLeaderboard key={seasonCode} seasonCode={seasonCode} />
+      ) : view === "teams" ? (
         <TeamLeaderboard key={phaseCode} seasonCode={seasonCode} phaseCode={phaseCode} />
       ) : (
         <PlayerLeaderboard seasonCode={seasonCode} phaseCode={phaseCode} />

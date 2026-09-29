@@ -25,6 +25,7 @@ import SummaryGrid from "../lib/SummaryGrid";
 import { TabPanel, TabStrip } from "../lib/TabStrip";
 import { useDocumentTitle } from "../lib/useDocumentTitle";
 import { usePhaseParam } from "../lib/usePhaseParam";
+import PlayerAdvancedSection from "./PlayerAdvancedSection";
 
 const GAMES_LIMIT = 100;
 const LEADERBOARD_PAGE_LIMIT = 100;
@@ -630,6 +631,7 @@ export default function PlayerPage() {
             { key: "overview", label: "Overview" },
             { key: "seasons", label: "Season by season" },
             { key: "statistics", label: "Statistics" },
+            { key: "advanced", label: "Advanced" },
             { key: "shooting", label: "Shooting" },
             { key: "games", label: "Games" },
           ]}
@@ -664,6 +666,8 @@ export default function PlayerPage() {
                 <SeasonStatsSection statsQuery={statsQuery} />
               </TabPanel>
             </>
+          ) : section === "advanced" ? (
+            <PlayerAdvancedSection key={`${seasonCode}-${personKey}`} seasonCode={seasonCode} personKey={personKey} />
           ) : section === "shooting" ? (
             <PlayerShootingSection
               seasonCode={seasonCode}

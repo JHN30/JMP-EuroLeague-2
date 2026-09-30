@@ -1,3 +1,6 @@
+import { motion } from "motion/react";
+import { EASE_OUT } from "../lib/motion";
+
 const BAR = 6;
 const GAP = 1;
 const HEIGHT = 46;
@@ -25,7 +28,7 @@ export default function MarginStrip({ games, clubName, maxMargin }) {
         const won = margin > 0;
         const height = Math.max(1.5, Math.abs(margin) * pixelsPerPoint);
         return (
-          <rect
+          <motion.rect
             key={game.gameCode}
             className={won ? "bar-win" : "bar-loss"}
             x={index * (BAR + GAP)}
@@ -33,11 +36,16 @@ export default function MarginStrip({ games, clubName, maxMargin }) {
             width={BAR}
             height={height}
             rx="1"
+            // Each bar grows out of the zero line, left to right.
+            style={{ originX: 0.5, originY: won ? 1 : 0 }}
+            initial={{ scaleY: 0 }}
+            animate={{ scaleY: 1 }}
+            transition={{ duration: 0.4, delay: 0.1 + index * 0.008, ease: EASE_OUT }}
           >
             <title>
               {`${game.roundNumber != null ? `Round ${game.roundNumber}: ` : ""}${game.home ? "vs" : "@"} ${game.opponentCode}, ${won ? "won" : "lost"} by ${Math.abs(margin)} (${game.pointsFor}-${game.pointsAgainst})`}
             </title>
-          </rect>
+          </motion.rect>
         );
       })}
     </svg>

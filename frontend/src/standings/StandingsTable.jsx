@@ -1,6 +1,8 @@
 import { Fragment } from "react";
 import { formatCount, formatSignedDecimal, formatSignedDiff } from "../lib/format";
+import HeaderTip from "../lib/HeaderTip";
 import Panel from "../lib/Panel";
+import { AnimatedBody, AnimatedRow } from "./motionTable";
 import AheadBehindView from "./AheadBehindView";
 import MarginsView from "./MarginsView";
 import StreaksFormView from "./StreaksFormView";
@@ -59,17 +61,19 @@ const TIER_LABELS = {
 
 function TierRow({ tier, columnCount }) {
   return (
-    <tr className={`tier-row tier-row-${tier}`}>
+    <AnimatedRow layout="position" className={`tier-row tier-row-${tier}`}>
       <td colSpan={columnCount}>{TIER_LABELS[tier]}</td>
-    </tr>
+    </AnimatedRow>
   );
 }
 
 function TieBreakFlag({ entry }) {
   if (!entry.basic || !entry.calendar || entry.basic.position === entry.calendar.position) return null;
   return (
-    <span className="tooltip ml-1" data-tip={`Calendar ranking places this team #${entry.calendar.position}`}>
-      <span className="badge badge-xs badge-warning">*</span>
+    <span className="ml-1">
+      <HeaderTip tip={`Calendar ranking places this team #${entry.calendar.position}`}>
+        <span className="badge badge-xs badge-warning">*</span>
+      </HeaderTip>
     </span>
   );
 }
@@ -92,23 +96,23 @@ function OverviewTable({ standings, seasonCode, view, showTiers, netByClub }) {
     <table className="table">
       <thead>
         <tr>
-          <th>#</th>
+          <th><HeaderTip tip="Position: rank in the standings">#</HeaderTip></th>
           <th>Team</th>
-          <th>GP</th>
-          <th>W</th>
-          <th>L</th>
-          <th>PCT</th>
-          <th>PF</th>
-          <th>PA</th>
-          <th>DIFF</th>
-          <th>Home</th>
-          <th>Away</th>
-          <th>L10</th>
-          <th>Form</th>
-          <th title="Net rating: points scored minus allowed per 100 possessions, for the selected view">Net rtg</th>
+          <th><HeaderTip tip="Games played">GP</HeaderTip></th>
+          <th><HeaderTip tip="Wins">W</HeaderTip></th>
+          <th><HeaderTip tip="Losses">L</HeaderTip></th>
+          <th><HeaderTip tip="Win percentage: wins divided by games played">PCT</HeaderTip></th>
+          <th><HeaderTip tip="Points for: total points scored">PF</HeaderTip></th>
+          <th><HeaderTip tip="Points against: total points allowed">PA</HeaderTip></th>
+          <th><HeaderTip tip="Points difference: points for minus points against">DIFF</HeaderTip></th>
+          <th><HeaderTip tip="Home record: wins and losses at home">Home</HeaderTip></th>
+          <th><HeaderTip tip="Away record: wins and losses on the road">Away</HeaderTip></th>
+          <th><HeaderTip tip="Last 10: record in the last 10 games">L10</HeaderTip></th>
+          <th><HeaderTip tip="Form: results of the most recent games">Form</HeaderTip></th>
+          <th><HeaderTip tip="Net rating: points scored minus allowed per 100 possessions, for the selected view">Net rtg</HeaderTip></th>
         </tr>
       </thead>
-      <tbody>
+      <AnimatedBody>
         {sorted.map((entry, index) => {
           const position = entry.basic?.position;
           const tier = tiersActive ? tiers[index] : null;
@@ -118,7 +122,7 @@ function OverviewTable({ standings, seasonCode, view, showTiers, netByClub }) {
           return (
             <Fragment key={entry.clubCode}>
               {showTierHeader ? <TierRow tier={tier} columnCount={columnCount} /> : null}
-              <tr>
+              <AnimatedRow layout="position">
                 <td>
                   <PositionCell position={displayRank} qualified={entry.basic?.qualified} />
                   <TieBreakFlag entry={entry} />
@@ -142,11 +146,11 @@ function OverviewTable({ standings, seasonCode, view, showTiers, netByClub }) {
                 <td className="font-semibold tabular-nums">
                   {formatSignedDecimal(netByClub?.get(entry.clubCode)?.[VIEW_NET_FIELD[view]])}
                 </td>
-              </tr>
+              </AnimatedRow>
             </Fragment>
           );
         })}
-      </tbody>
+      </AnimatedBody>
     </table>
   );
 }

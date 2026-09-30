@@ -1,4 +1,7 @@
+import { motion } from "motion/react";
 import { Link } from "react-router";
+import HeaderTip from "../lib/HeaderTip";
+import { usePrefersReducedMotion } from "../lib/usePrefersReducedMotion";
 
 function tierClass(position) {
   if (position == null) return "";
@@ -17,32 +20,69 @@ function MovementIndicator({ change }) {
   return <span className="font-semibold text-error">{"↓"}{Math.abs(change)}</span>;
 }
 
-export default function RaceSnapshotTable({ seasonCode, rounds, standingsByRound, teamOrder, latestByCode, focusedClub, onFocusClub }) {
-  const lastRound = rounds[rounds.length - 1];
-  const previousRound = rounds[rounds.length - 2];
+function teamName(team) {
+  return team.clubName ?? team.clubCode;
+}
+
+// The standings as they were after `round` (null is the season start, when everyone is 0-0), so the table follows
+// whatever point of the race the chart is showing. Movement is against the round before.
+export default function RaceSnapshotTable({
+  seasonCode,
+  round,
+  previousRound,
+  positionsByRound,
+  recordsByRound,
+  teamOrder,
+  focusedClub,
+  onFocusClub,
+}) {
+  const reducedMotion = usePrefersReducedMotion();
+  const positions = round != null ? positionsByRound.get(round) : null;
+  const records = round != null ? recordsByRound.get(round) : null;
+  const previousPositions = previousRound != null ? positionsByRound.get(previousRound) : null;
+
+  const rows = teamOrder
+    .map((team) => {
+      const position = positions?.get(team.clubCode) ?? null;
+      const previousPosition = previousPositions?.get(team.clubCode) ?? null;
+      const record = round == null ? { won: 0, lost: 0 } : (records?.get(team.clubCode) ?? null);
+      return {
+        team,
+        position,
+        record,
+        change: previousPosition != null && position != null ? previousPosition - position : null,
+      };
+    })
+    .sort((a, b) => {
+      if (a.position != null && b.position != null) return a.position - b.position;
+      if (a.position != null) return -1;
+      if (b.position != null) return 1;
+      return teamName(a.team).localeCompare(teamName(b.team));
+    });
 
   return (
     <div className="panel overflow-x-auto p-2">
+      <p className="px-2 pb-1 text-xs font-semibold text-base-content/70">
+        {round == null ? "Season start" : `Standings after round ${round}`}
+      </p>
       <table className="table">
         <thead>
           <tr>
-            <th>#</th>
+            <th><HeaderTip tip="Position after this round">#</HeaderTip></th>
             <th>Team</th>
-            <th>W-L</th>
-            <th>Move</th>
+            <th><HeaderTip tip="Record after this round: wins and losses">W-L</HeaderTip></th>
+            <th><HeaderTip tip="Move: places gained (↑) or lost (↓) since the previous round">Move</HeaderTip></th>
           </tr>
         </thead>
         <tbody>
-          {teamOrder.map((team) => {
-            const position = standingsByRound.get(lastRound)?.get(team.clubCode) ?? null;
-            const previousPosition = previousRound ? standingsByRound.get(previousRound)?.get(team.clubCode) ?? null : null;
-            const change = previousPosition != null && position != null ? previousPosition - position : null;
-            const entry = latestByCode.get(team.clubCode);
+          {rows.map(({ team, position, record, change }) => {
             const isFocused = focusedClub === team.clubCode;
 
             return (
-              <tr
+              <motion.tr
                 key={team.clubCode}
+                layout={reducedMotion ? false : "position"}
+                transition={{ duration: 0.4 }}
                 className={`${tierClass(position)} ${isFocused ? "outline outline-2 outline-primary" : ""} cursor-pointer`}
                 onClick={() => onFocusClub(isFocused ? null : team.clubCode)}
               >
@@ -53,21 +93,19 @@ export default function RaceSnapshotTable({ seasonCode, rounds, standingsByRound
                     className="link link-hover flex items-center gap-2 font-medium"
                     onClick={(event) => event.stopPropagation()}
                   >
-                    {entry?.crestUrl ? (
-                      <img src={entry.crestUrl} alt="" className="h-5 w-5 flex-none object-contain" />
+                    {team.crestUrl ? (
+                      <img src={team.crestUrl} alt="" className="h-5 w-5 flex-none object-contain" />
                     ) : null}
-                    <span className="max-w-40 truncate" title={team.clubName ?? team.clubCode}>
-                      {team.clubName ?? team.clubCode}
+                    <span className="max-w-40 truncate" title={teamName(team)}>
+                      {teamName(team)}
                     </span>
                   </Link>
                 </td>
-                <td>
-                  {entry?.basic ? `${entry.basic.gamesWon}-${entry.basic.gamesLost}` : "-"}
-                </td>
+                <td className="tabular-nums">{record ? `${record.won}-${record.lost}` : "-"}</td>
                 <td>
                   <MovementIndicator change={change} />
                 </td>
-              </tr>
+              </motion.tr>
             );
           })}
         </tbody>

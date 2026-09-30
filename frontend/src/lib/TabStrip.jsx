@@ -77,7 +77,10 @@ export function TabStrip({ ariaLabel, tabs, activeKey, onChange, panelId, classN
   );
 }
 
-export function TabPanel({ id, focusKey, className = "", children }) {
+// Focus moves to the panel when `focusKey` changes, so keyboard and screen-reader users land on the new content. By default
+// the browser also scrolls the panel into view; pass `scroll={false}` for a panel that holds most of the page, where
+// scrolling to it would only hide the controls above it.
+export function TabPanel({ id, focusKey, scroll = true, className = "", children }) {
   const ref = useRef(null);
   const isFirstRender = useRef(true);
 
@@ -86,11 +89,11 @@ export function TabPanel({ id, focusKey, className = "", children }) {
       isFirstRender.current = false;
       return;
     }
-    ref.current?.focus();
-  }, [focusKey]);
+    ref.current?.focus({ preventScroll: !scroll });
+  }, [focusKey, scroll]);
 
   return (
-    <div ref={ref} id={id} role="tabpanel" tabIndex={-1} className={`outline-none ${className}`}>
+    <div ref={ref} id={id} role="tabpanel" tabIndex={-1} className={`tab-panel outline-none ${className}`}>
       {children}
     </div>
   );

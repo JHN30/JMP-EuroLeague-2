@@ -1,10 +1,14 @@
 import { useState } from "react";
+import { motion } from "motion/react";
+import HeaderTip from "../lib/HeaderTip";
 import AsyncState from "../lib/AsyncState";
 import { formatSignedDecimal } from "../lib/format";
+import { barFill, EASE_OUT, listContainer, listItem } from "../lib/motion";
 import Panel from "../lib/Panel";
 import PanelHeader from "../lib/PanelHeader";
 import { TabPanel, TabStrip } from "../lib/TabStrip";
 import { halfTimeRecords, marginStats, quarterProfile, shapeLabel } from "./breakdownUtils";
+import { AnimatedBody, AnimatedRow } from "./motionTable";
 import RecordBar from "./RecordBar";
 import { ClubCell, PositionCell } from "./standingsCells";
 
@@ -27,9 +31,9 @@ function QuarterCell({ value, maxAbs }) {
     <div className="quarter-cell" title={`Average margin in this quarter: ${formatSignedDecimal(value)}`}>
       <span className={`quarter-num ${tone(value)}`}>{formatSignedDecimal(value)}</span>
       <span className="quarter-bar">
-        <span className="half is-left">{value < 0 ? <i style={{ width: share }} /> : null}</span>
+        <span className="half is-left">{value < 0 ? <motion.i style={{ width: share, originX: 1 }} {...barFill} /> : null}</span>
         <span className="mid" />
-        <span className="half is-right">{value > 0 ? <i style={{ width: share }} /> : null}</span>
+        <span className="half is-right">{value > 0 ? <motion.i style={{ width: share, originX: 0 }} {...barFill} /> : null}</span>
       </span>
     </div>
   );
@@ -64,7 +68,7 @@ function ShapeChart({ profile, scale, clubName }) {
         </g>
       ))}
       <line className="zero" x1={padLeft} x2={width - padRight} y1={middle} y2={middle} />
-      <polyline className="line" points={cumulative.map((value, index) => `${x(index).toFixed(1)},${y(value).toFixed(1)}`).join(" ")} />
+      <motion.polyline className="line" initial={{ pathLength: 0 }} animate={{ pathLength: 1 }} transition={{ duration: 0.8, delay: 0.2, ease: EASE_OUT }} points={cumulative.map((value, index) => `${x(index).toFixed(1)},${y(value).toFixed(1)}`).join(" ")} />
       {cumulative.map((value, index) =>
         index === 0 ? null : (
           <circle key={index} className={`point ${value >= 0 ? "is-up" : "is-down"}`} cx={x(index).toFixed(1)} cy={y(value).toFixed(1)} r="3.4">
@@ -85,11 +89,11 @@ function TimeInFront({ flow }) {
   const share = (seconds) => `${((seconds / total) * 100).toFixed(1)}%`;
   return (
     <>
-      <div className="state-bar" role="img" aria-label={`In front for ${share(flow.timeLeadingSeconds)} of the game`}>
+      <motion.div className="state-bar" style={{ originX: 0 }} {...barFill} role="img" aria-label={`In front for ${share(flow.timeLeadingSeconds)} of the game`}>
         <i className="is-lead" style={{ width: share(flow.timeLeadingSeconds) }} title={`Leading ${share(flow.timeLeadingSeconds)} of the time`} />
         <i className="is-tied" style={{ width: share(flow.timeTiedSeconds) }} title={`Tied ${share(flow.timeTiedSeconds)} of the time`} />
         <i className="is-trail" style={{ width: share(flow.timeTrailingSeconds) }} title={`Trailing ${share(flow.timeTrailingSeconds)} of the time`} />
-      </div>
+      </motion.div>
       <div className="state-bar-text">
         <b>{Math.round((flow.timeLeadingSeconds / total) * 100)}%</b> of the game in front
       </div>
@@ -142,7 +146,7 @@ export default function AheadBehindView({ standings, seasonCode, resultsQuery, r
           className="mb-3 w-fit"
           tabs={VIEWS}
         />
-        <TabPanel id="ahead-behind-panel" focusKey={view}>
+        <TabPanel id="ahead-behind-panel" focusKey={view} scroll={false}>
           {view === "quarters" ? (
             <Panel className="p-2">
               <PanelHeader kicker="QUARTERS" title="Who wins which quarter?" />
@@ -150,18 +154,18 @@ export default function AheadBehindView({ standings, seasonCode, resultsQuery, r
                 <table className="table breakdown-table">
                   <thead>
                     <tr>
-                      <th>#</th>
+                      <th><HeaderTip tip="Position: rank in the standings">#</HeaderTip></th>
                       <th>Team</th>
-                      <th className="group-start">Q1</th>
-                      <th>Q2</th>
-                      <th>Q3</th>
-                      <th>Q4</th>
-                      <th className="group-start">Final</th>
+                      <th className="group-start"><HeaderTip tip="First quarter: average margin in it">Q1</HeaderTip></th>
+                      <th><HeaderTip tip="Second quarter: average margin in it">Q2</HeaderTip></th>
+                      <th><HeaderTip tip="Third quarter: average margin in it">Q3</HeaderTip></th>
+                      <th><HeaderTip tip="Fourth quarter: average margin in it">Q4</HeaderTip></th>
+                      <th className="group-start"><HeaderTip tip="Final margin: average over the whole game, overtime included">Final</HeaderTip></th>
                     </tr>
                   </thead>
-                  <tbody>
+                  <AnimatedBody>
                     {rows.map(({ entry, profile, stats }) => (
-                      <tr key={entry.clubCode}>
+                      <AnimatedRow key={entry.clubCode}>
                         <td>
                           <PositionCell position={entry.basic?.position} qualified={entry.basic?.qualified} />
                         </td>
@@ -180,18 +184,18 @@ export default function AheadBehindView({ standings, seasonCode, resultsQuery, r
                           </td>
                         )}
                         <td className="group-start tabular-nums font-semibold">{stats ? formatSignedDecimal(stats.avgMargin) : "—"}</td>
-                      </tr>
+                      </AnimatedRow>
                     ))}
-                  </tbody>
+                  </AnimatedBody>
                 </table>
               </div>
             </Panel>
           ) : (
             <Panel className="p-2">
               <PanelHeader kicker="GAME SHAPE" title="The shape of a typical game" />
-              <div className="shape-cards">
+              <motion.div className="shape-cards" variants={listContainer} initial="hidden" animate="show">
                 {rows.map(({ entry, profile }) => (
-                  <div key={entry.clubCode} className="shape-card">
+                  <motion.div key={entry.clubCode} className="shape-card" variants={listItem}>
                     <div className="shape-card-head">
                       {entry.crestUrl ? <img src={entry.crestUrl} alt="" onError={(event) => { event.currentTarget.style.display = "none"; }} /> : null}
                       <b title={entry.clubName ?? entry.clubCode}>{entry.clubName ?? entry.clubCode}</b>
@@ -204,9 +208,9 @@ export default function AheadBehindView({ standings, seasonCode, resultsQuery, r
                     ) : (
                       <p className="muted text-sm">No quarter scores yet.</p>
                     )}
-                  </div>
+                  </motion.div>
                 ))}
-              </div>
+              </motion.div>
             </Panel>
           )}
         </TabPanel>
@@ -238,20 +242,20 @@ export default function AheadBehindView({ standings, seasonCode, resultsQuery, r
             <table className="table breakdown-table">
               <thead>
                 <tr>
-                  <th>#</th>
+                  <th><HeaderTip tip="Position: rank in the standings">#</HeaderTip></th>
                   <th>Team</th>
-                  <th className="group-start">Time leading / tied / trailing</th>
-                  <th title="Lead changes per game">Lead changes</th>
-                  <th title="Largest lead of the season">Biggest lead</th>
-                  <th className="group-start">Leading at half, won</th>
-                  <th>Trailing at half, won</th>
+                  <th className="group-start"><HeaderTip tip="Share of the game spent leading, tied and trailing">Time leading / tied / trailing</HeaderTip></th>
+                  <th><HeaderTip tip="Lead changes: times the lead swapped, per game">Lead changes</HeaderTip></th>
+                  <th><HeaderTip tip="Biggest lead: largest lead of the season, in points">Biggest lead</HeaderTip></th>
+                  <th className="group-start"><HeaderTip tip="Record when leading at half-time">Leading at half, won</HeaderTip></th>
+                  <th><HeaderTip tip="Record when trailing at half-time">Trailing at half, won</HeaderTip></th>
                 </tr>
               </thead>
-              <tbody>
+              <AnimatedBody>
                 {rows.map(({ entry, halfTime }) => {
                   const flow = flowByClub.get(entry.clubCode);
                   return (
-                    <tr key={entry.clubCode}>
+                    <AnimatedRow key={entry.clubCode}>
                       <td>
                         <PositionCell position={entry.basic?.position} qualified={entry.basic?.qualified} />
                       </td>
@@ -269,10 +273,10 @@ export default function AheadBehindView({ standings, seasonCode, resultsQuery, r
                       <td>
                         <RecordBar record={halfTime.trail} label="Trailing at half-time" />
                       </td>
-                    </tr>
+                    </AnimatedRow>
                   );
                 })}
-              </tbody>
+              </AnimatedBody>
             </table>
           </div>
         </Panel>

@@ -4,9 +4,12 @@ import { Link } from "react-router";
 const PLAYIN_CUTOFF = 10;
 
 function computeInsights(rounds, standingsByRound, teamOrder) {
-  if (rounds.length === 0 || teamOrder.length === 0) return null;
+  if (teamOrder.length === 0) return null;
+  if (rounds.length === 0) return { leader: null, climber: null, consistent: null, mostQualified: null };
 
-  const firstRound = rounds[0];
+  // The climber is the biggest jump in the latest round alone (the same movement the table shows), not the gap since
+  // the season opened.
+  const previousRound = rounds.length > 1 ? rounds[rounds.length - 2] : null;
   const lastRound = rounds[rounds.length - 1];
 
   let leader = null;
@@ -15,13 +18,15 @@ function computeInsights(rounds, standingsByRound, teamOrder) {
   let mostQualified = null;
 
   for (const team of teamOrder) {
-    const firstPosition = standingsByRound.get(firstRound)?.get(team.clubCode) ?? null;
+    const previousPosition = previousRound != null ? (standingsByRound.get(previousRound)?.get(team.clubCode) ?? null) : null;
     const lastPosition = standingsByRound.get(lastRound)?.get(team.clubCode) ?? null;
     if (lastPosition === 1 && !leader) leader = team;
 
-    if (firstPosition != null && lastPosition != null) {
-      const gain = firstPosition - lastPosition;
-      if (!climber || gain > climber.gain) climber = { ...team, gain };
+    if (previousPosition != null && lastPosition != null) {
+      const gain = previousPosition - lastPosition;
+      if (gain > 0 && (!climber || gain > climber.gain || (gain === climber.gain && lastPosition < climber.position))) {
+        climber = { ...team, gain, position: lastPosition };
+      }
     }
 
     const positions = rounds.map((round) => standingsByRound.get(round)?.get(team.clubCode)).filter((p) => p != null);
@@ -31,7 +36,7 @@ function computeInsights(rounds, standingsByRound, teamOrder) {
     }
 
     const qualifiedRounds = positions.filter((p) => p <= PLAYIN_CUTOFF).length;
-    if (!mostQualified || qualifiedRounds > mostQualified.qualifiedRounds) {
+    if (qualifiedRounds > 0 && (!mostQualified || qualifiedRounds > mostQualified.qualifiedRounds)) {
       mostQualified = { ...team, qualifiedRounds };
     }
   }
@@ -62,11 +67,11 @@ export default function RaceInsightCards({ seasonCode, rounds, standingsByRound,
 
   return (
     <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-      <InsightCard label="Current leader" team={insights.leader} seasonCode={seasonCode} />
+      <InsightCard label="Leader" team={insights.leader} seasonCode={seasonCode} />
       <InsightCard
         label="Biggest climber"
         team={insights.climber}
-        detail={insights.climber ? `+${insights.climber.gain} position${insights.climber.gain === 1 ? "" : "s"}` : null}
+        detail={insights.climber ? `+${insights.climber.gain} position${insights.climber.gain === 1 ? "" : "s"} this round` : null}
         seasonCode={seasonCode}
       />
       <InsightCard
@@ -78,7 +83,7 @@ export default function RaceInsightCards({ seasonCode, rounds, standingsByRound,
       <InsightCard
         label="Most time in contention"
         team={insights.mostQualified}
-        detail={insights.mostQualified ? `${insights.mostQualified.qualifiedRounds} of ${rounds.length} rounds` : null}
+        detail={insights.mostQualified ? `${insights.mostQualified.qualifiedRounds} of ${rounds.length} round${rounds.length === 1 ? "" : "s"}` : null}
         seasonCode={seasonCode}
       />
     </div>

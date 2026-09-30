@@ -1,5 +1,9 @@
+import { motion } from "motion/react";
+import HeaderTip from "../lib/HeaderTip";
+import { EASE_OUT } from "../lib/motion";
 import Panel from "../lib/Panel";
 import { derivedFigures } from "./breakdownUtils";
+import { AnimatedBody, AnimatedRow } from "./motionTable";
 import RecordBar from "./RecordBar";
 import { ClubCell, PositionCell } from "./standingsCells";
 
@@ -8,12 +12,15 @@ function ResultsRibbon({ games, clubName }) {
   const wins = games.filter((game) => game.pointsFor > game.pointsAgainst).length;
   return (
     <div className="results-ribbon" role="img" aria-label={`${clubName}: ${wins} wins and ${games.length - wins} losses, game by game`}>
-      {games.map((game) => {
+      {games.map((game, index) => {
         const won = game.pointsFor > game.pointsAgainst;
         return (
-          <i
+          <motion.i
             key={game.gameCode}
             className={`ribbon-dot ${won ? "is-win" : "is-loss"}`}
+            initial={{ scaleY: 0 }}
+            animate={{ scaleY: 1 }}
+            transition={{ duration: 0.3, delay: 0.1 + index * 0.01, ease: EASE_OUT }}
             title={`${game.roundNumber != null ? `Round ${game.roundNumber}: ` : ""}${game.home ? "vs" : "@"} ${game.opponentCode}, ${won ? "won" : "lost"} ${game.pointsFor}-${game.pointsAgainst}`}
           />
         );
@@ -44,22 +51,22 @@ export default function StreaksFormView({ standings, seasonCode, resultsQuery, r
           <table className="table breakdown-table">
             <thead>
               <tr>
-                <th>#</th>
+                <th><HeaderTip tip="Position: rank in the standings">#</HeaderTip></th>
                 <th>Team</th>
-                <th>Home</th>
-                <th>Away</th>
-                <th>Last 10</th>
-                <th title="Longest winning streak this season">Longest W</th>
-                <th title="Longest losing streak this season">Longest L</th>
-                <th className="group-start">Season, game by game</th>
+                <th><HeaderTip tip="Home record: wins and losses at home">Home</HeaderTip></th>
+                <th><HeaderTip tip="Away record: wins and losses on the road">Away</HeaderTip></th>
+                <th><HeaderTip tip="Last 10: record in the last 10 games">Last 10</HeaderTip></th>
+                <th><HeaderTip tip="Longest winning streak: most wins in a row this season">Longest W</HeaderTip></th>
+                <th><HeaderTip tip="Longest losing streak: most losses in a row this season">Longest L</HeaderTip></th>
+                <th className="group-start"><HeaderTip tip="Every game, oldest first: green is a win, red a loss">Season, game by game</HeaderTip></th>
               </tr>
             </thead>
-            <tbody>
+            <AnimatedBody>
               {standings.map((entry) => {
                 const games = resultsByClub.get(entry.clubCode);
                 const figures = resultsQuery.isPending ? null : derivedFigures(games ?? []);
                 return (
-                <tr key={entry.clubCode}>
+                <AnimatedRow key={entry.clubCode}>
                   <td>
                     <PositionCell position={entry.basic?.position} qualified={entry.basic?.qualified} />
                   </td>
@@ -85,10 +92,10 @@ export default function StreaksFormView({ standings, seasonCode, resultsQuery, r
                     )}
                   </td>
 
-                </tr>
+                </AnimatedRow>
                 );
               })}
-            </tbody>
+            </AnimatedBody>
           </table>
         </div>
       </Panel>

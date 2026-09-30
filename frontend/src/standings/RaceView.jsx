@@ -1,66 +1,92 @@
 import { useMemo, useState } from "react";
 import { useQueries, useQuery } from "@tanstack/react-query";
+import { motion } from "motion/react";
 import { getRounds, getSeasonStandings } from "../lib/api";
 import AsyncState from "../lib/AsyncState";
 import EmptyText from "../lib/EmptyText";
+import { sectionContainer, sectionItem } from "../lib/motion";
 import RaceChart from "./RaceChart";
 import RacePlayback from "./RacePlayback";
 import RaceInsightCards from "./RaceInsightCards";
 import RaceSnapshotTable from "./RaceSnapshotTable";
 
-export default function RaceView({ seasonCode, phaseCode, latestStandings }) {
+function combineSnapshots(results) {
+  return {
+    isLoading: results.some((result) => result.isLoading),
+    isError: results.some((result) => result.isError),
+    data: results.map((result) => result.data),
+  };
+}
+
+// `latestRound` is the last round with standings. The phase lists every scheduled round, but only the played ones
+// have a snapshot, so the race stops there instead of running to the end of the schedule.
+export default function RaceView({ seasonCode, phaseCode, latestRound, latestStandings }) {
   const roundsQuery = useQuery({
     queryKey: ["rounds", seasonCode, phaseCode],
     queryFn: () => getRounds(seasonCode, phaseCode),
     enabled: Boolean(phaseCode),
   });
 
-  const rounds = useMemo(
-    () => (roundsQuery.data?.rounds ?? []).map((r) => r.number).sort((a, b) => a - b),
-    [roundsQuery.data],
+  const playedRounds = useMemo(
+    () =>
+      (roundsQuery.data?.rounds ?? [])
+        .map((r) => r.number)
+        .filter((number) => latestRound != null && number <= latestRound)
+        .sort((a, b) => a - b),
+    [roundsQuery.data, latestRound],
   );
 
-  const roundQueries = useQueries({
-    queries: rounds.map((roundNumber) => ({
+  const snapshots = useQueries({
+    queries: playedRounds.map((roundNumber) => ({
       queryKey: ["standings", seasonCode, phaseCode, "round", roundNumber],
       queryFn: () => getSeasonStandings(seasonCode, phaseCode, { round: roundNumber }),
-      enabled: rounds.length > 0,
     })),
+    combine: combineSnapshots,
   });
 
-  const isLoading = roundsQuery.isLoading || roundQueries.some((q) => q.isLoading);
-  const isError = roundsQuery.isError || roundQueries.some((q) => q.isError);
+  const isLoading = roundsQuery.isLoading || snapshots.isLoading;
+  const isError = roundsQuery.isError || snapshots.isError;
 
-  const standingsByRound = useMemo(() => {
-    const map = new Map();
-    rounds.forEach((roundNumber, index) => {
-      const data = roundQueries[index]?.data;
-      if (!data) return;
-      const positions = new Map();
+  // Each round's snapshot: where every club stood and its record at that point.
+  const { rounds, positionsByRound, recordsByRound } = useMemo(() => {
+    const played = [];
+    const positions = new Map();
+    const records = new Map();
+    playedRounds.forEach((roundNumber, index) => {
+      const data = snapshots.data[index];
+      if (!data || data.standings.length === 0) return;
+      const roundPositions = new Map();
+      const roundRecords = new Map();
       for (const entry of data.standings) {
-        if (entry.basic?.position != null) positions.set(entry.clubCode, entry.basic.position);
+        if (entry.basic?.position == null) continue;
+        roundPositions.set(entry.clubCode, entry.basic.position);
+        roundRecords.set(entry.clubCode, { won: entry.basic.gamesWon, lost: entry.basic.gamesLost });
       }
-      map.set(roundNumber, positions);
+      played.push(roundNumber);
+      positions.set(roundNumber, roundPositions);
+      records.set(roundNumber, roundRecords);
     });
-    return map;
-  }, [rounds, roundQueries]);
+    return { rounds: played, positionsByRound: positions, recordsByRound: records };
+  }, [playedRounds, snapshots.data]);
 
   const teamOrder = useMemo(
     () =>
       [...latestStandings]
         .filter((entry) => entry.basic?.position != null)
         .sort((a, b) => a.basic.position - b.basic.position)
-        .map((entry) => ({ clubCode: entry.clubCode, clubName: entry.clubName, clubTvCode: entry.clubTvCode })),
+        .map((entry) => ({
+          clubCode: entry.clubCode,
+          clubName: entry.clubName,
+          clubTvCode: entry.clubTvCode,
+          crestUrl: entry.crestUrl,
+        })),
     [latestStandings],
   );
 
-  const latestByCode = useMemo(() => new Map(latestStandings.map((entry) => [entry.clubCode, entry])), [latestStandings]);
-
-  const [visibleCount, setVisibleCount] = useState(1);
-  const [playing, setPlaying] = useState(false);
+  // How many rounds the race has replayed: 0 is the season start (everyone 0-0), the last step is the latest round.
+  // Until somebody touches the slider or plays it, the race shows the latest standings.
+  const [step, setStep] = useState(null);
   const [focusedClub, setFocusedClub] = useState(null);
-
-  const visibleRounds = useMemo(() => rounds.slice(0, visibleCount), [rounds, visibleCount]);
 
   if (isLoading) return <AsyncState status="loading" label="Loading standings race" />;
   if (isError) {
@@ -76,16 +102,22 @@ export default function RaceView({ seasonCode, phaseCode, latestStandings }) {
     return <EmptyText>Not enough rounds played yet to replay the standings race.</EmptyText>;
   }
 
+  const shown = Math.min(step ?? rounds.length, rounds.length);
+  const shownRound = shown > 0 ? rounds[shown - 1] : null;
+  const previousRound = shown > 1 ? rounds[shown - 2] : null;
+
   return (
-    <div className="flex flex-col gap-3">
+    <motion.div className="flex flex-col gap-3" variants={sectionContainer} initial="hidden" animate="show">
+      <motion.div variants={sectionItem}>
       <RaceInsightCards
         seasonCode={seasonCode}
-        rounds={rounds}
-        standingsByRound={standingsByRound}
+        rounds={rounds.slice(0, shown)}
+        standingsByRound={positionsByRound}
         teamOrder={teamOrder}
       />
+      </motion.div>
 
-      <div className="legend flex flex-wrap gap-4 text-xs text-base-content/70">
+      <motion.div variants={sectionItem} className="legend flex flex-wrap gap-4 text-xs text-base-content/70">
         <span className="inline-flex items-center gap-2">
           <span
             className="inline-block h-3 w-3 rounded-sm"
@@ -100,40 +132,38 @@ export default function RaceView({ seasonCode, phaseCode, latestStandings }) {
           />
           Play-in tournament (7-10)
         </span>
-      </div>
+      </motion.div>
 
+      <motion.div variants={sectionItem}>
       <RacePlayback
-        roundCount={rounds.length}
-        visibleCount={visibleCount}
-        onChange={setVisibleCount}
-        playing={playing}
-        onPlayingChange={setPlaying}
+        total={rounds.length}
+        value={shown}
+        label={shownRound == null ? "Season start" : `Round ${shownRound}`}
+        endLabel={`Round ${rounds[rounds.length - 1]}`}
+        onChange={setStep}
       />
+      </motion.div>
 
-      <div className="grid grid-cols-1 gap-3 lg:grid-cols-[2fr_1fr]">
+      <motion.div variants={sectionItem} className="grid grid-cols-1 gap-3 lg:grid-cols-[2fr_1fr]">
         <RaceChart
-          rounds={visibleRounds}
-          totalRounds={rounds.length}
-          standingsByRound={standingsByRound}
+          rounds={rounds}
+          visibleCount={shown}
+          standingsByRound={positionsByRound}
           teamOrder={teamOrder}
           focusedClub={focusedClub}
           onFocusClub={setFocusedClub}
         />
         <RaceSnapshotTable
           seasonCode={seasonCode}
-          rounds={rounds}
-          standingsByRound={standingsByRound}
+          round={shownRound}
+          previousRound={previousRound}
+          positionsByRound={positionsByRound}
+          recordsByRound={recordsByRound}
           teamOrder={teamOrder}
-          latestByCode={latestByCode}
           focusedClub={focusedClub}
           onFocusClub={setFocusedClub}
         />
-      </div>
-
-      <p className="text-xs text-base-content/55">
-        The race chart replays position from historical per-round standings snapshots. The table above remains the
-        authoritative current standings.
-      </p>
-    </div>
+      </motion.div>
+    </motion.div>
   );
 }

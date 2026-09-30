@@ -1,3 +1,5 @@
+import { motion } from "motion/react";
+import { barFill } from "../lib/motion";
 import { formatShare, parseRecord, recordGames, recordShare } from "./breakdownUtils";
 
 // A W-L record with a bar under it: the green part is the win share, the rest is losses. The numbers stay visible.
@@ -12,7 +14,7 @@ export default function RecordBar({ record, label }) {
         {parsed.w}-{parsed.l}
       </span>
       <span className="record-bar-track" aria-hidden="true">
-        <i style={{ width: `${(recordShare(parsed) * 100).toFixed(1)}%` }} />
+        <motion.i style={{ width: `${(recordShare(parsed) * 100).toFixed(1)}%`, originX: 0 }} {...barFill} />
       </span>
     </div>
   );

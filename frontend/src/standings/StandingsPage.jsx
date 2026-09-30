@@ -1,10 +1,12 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { motion } from "motion/react";
 import { useParams } from "react-router";
 import { getAdvancedStandings, getGameFlow, getPhaseResults, getPhases, getSeasonStandings } from "../lib/api";
 import AsyncState from "../lib/AsyncState";
 import EmptyText from "../lib/EmptyText";
 import PageHeader from "../lib/PageHeader";
+import { EASE_OUT } from "../lib/motion";
 import { useDocumentTitle } from "../lib/useDocumentTitle";
 import { usePhaseParam } from "../lib/usePhaseParam";
 import { TabPanel, TabStrip } from "../lib/TabStrip";
@@ -99,7 +101,7 @@ export default function StandingsPage() {
         />
       )}
 
-      <TabPanel id="standings-panel" focusKey={`${phaseCode}-${view}`}>
+      <TabPanel id="standings-panel" focusKey={`${phaseCode}-${view}`} scroll={false}>
         {standingsQuery.isLoading ? (
           <AsyncState status="loading" label="Loading standings" />
         ) : standingsQuery.isError ? (
@@ -128,11 +130,30 @@ export default function StandingsPage() {
             />
 
             {mode === "advanced" ? (
-              <AdvancedStandingsView key={seasonCode} seasonCode={seasonCode} />
+              <motion.div
+                key="advanced-mode"
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.3, ease: EASE_OUT }}
+              >
+                <AdvancedStandingsView key={seasonCode} seasonCode={seasonCode} />
+              </motion.div>
             ) : mode === "race" ? (
-              <RaceView seasonCode={seasonCode} phaseCode={phaseCode} latestStandings={standings} />
+              <RaceView
+                key={`${seasonCode}-${phaseCode}`}
+                seasonCode={seasonCode}
+                phaseCode={phaseCode}
+                latestRound={round}
+                latestStandings={standings}
+              />
             ) : (
-              <>
+              <motion.div
+                key="table-mode"
+                className="flex flex-col gap-4"
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.3, ease: EASE_OUT }}
+              >
                 <div className="flex flex-wrap items-center gap-3">
                   {breakdown === "overview" ? (
                     <TabStrip
@@ -160,6 +181,7 @@ export default function StandingsPage() {
                   </label>
                 </div>
 
+                <motion.div key={breakdown} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.25 }}>
                 <StandingsTable
                   standings={standings}
                   seasonCode={seasonCode}
@@ -171,7 +193,8 @@ export default function StandingsPage() {
                   gameFlowQuery={gameFlowQuery}
                   breakdown={breakdown}
                 />
-              </>
+                </motion.div>
+              </motion.div>
             )}
           </div>
         )}

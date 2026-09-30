@@ -3,7 +3,9 @@ import { formatDecimal, formatSignedDecimal } from "../lib/format";
 import Panel from "../lib/Panel";
 import PanelHeader from "../lib/PanelHeader";
 import { CATEGORIES, derivedFigures, marginStats, sumRecords } from "./breakdownUtils";
+import HeaderTip from "../lib/HeaderTip";
 import MarginStrip from "./MarginStrip";
+import { AnimatedBody, AnimatedRow } from "./motionTable";
 import RecordBar from "./RecordBar";
 import { ClubCell, PositionCell } from "./standingsCells";
 
@@ -94,20 +96,20 @@ export default function MarginsView({ standings, seasonCode, resultsQuery, resul
             <table className="table breakdown-table">
               <thead>
                 <tr>
-                  <th>#</th>
+                  <th><HeaderTip tip="Position: rank in the standings">#</HeaderTip></th>
                   <th>Team</th>
-                  <th>Season, game by game</th>
-                  <th className="group-start" title="Average margin over all games">Avg margin</th>
-                  <th title="Average margin in wins">Avg win</th>
-                  <th title="Average margin in losses">Avg loss</th>
-                  <th>Biggest win</th>
-                  <th>Biggest loss</th>
-                  <th title="Games decided by 3 points or fewer">Close (≤3)</th>
+                  <th><HeaderTip tip="Margin of every game, oldest first: up is a win, down a loss">Season, game by game</HeaderTip></th>
+                  <th className="group-start"><HeaderTip tip="Average margin: points won or lost by, per game">Avg margin</HeaderTip></th>
+                  <th><HeaderTip tip="Average win margin: points won by, in wins">Avg win</HeaderTip></th>
+                  <th><HeaderTip tip="Average loss margin: points lost by, in losses">Avg loss</HeaderTip></th>
+                  <th><HeaderTip tip="Biggest win: largest winning margin">Biggest win</HeaderTip></th>
+                  <th><HeaderTip tip="Biggest loss: largest losing margin">Biggest loss</HeaderTip></th>
+                  <th><HeaderTip tip="Close games: record when decided by 3 points or fewer">Close (≤3)</HeaderTip></th>
                 </tr>
               </thead>
-              <tbody>
+              <AnimatedBody>
                 {rows.map(({ entry, games, stats }) => (
-                  <tr key={entry.clubCode}>
+                  <AnimatedRow key={entry.clubCode}>
                     <td>
                       <PositionCell position={entry.basic?.position} qualified={entry.basic?.qualified} />
                     </td>
@@ -123,9 +125,9 @@ export default function MarginsView({ standings, seasonCode, resultsQuery, resul
                     <td className="tabular-nums">{stats ? formatSignedDecimal(stats.biggestWin, 0) : "—"}</td>
                     <td className="tabular-nums">{stats ? formatSignedDecimal(stats.biggestLoss, 0) : "—"}</td>
                     <td title="Games decided by 3 points or fewer">{stats ? <RecordBar record={stats.close} label="Close games" /> : "—"}</td>
-                  </tr>
+                  </AnimatedRow>
                 ))}
-              </tbody>
+              </AnimatedBody>
             </table>
           </div>
         </Panel>
@@ -144,7 +146,7 @@ export default function MarginsView({ standings, seasonCode, resultsQuery, resul
             <table className="table breakdown-table">
               <thead>
                 <tr>
-                  <th>#</th>
+                  <th><HeaderTip tip="Position: rank in the standings">#</HeaderTip></th>
                   <th>Team</th>
                   <th className="group-start">
                     <svg className="viz-svg" viewBox={`0 0 ${EXPECTED_WIDTH + 44} 16`} width={EXPECTED_WIDTH + 44} height="16" aria-hidden="true">
@@ -161,13 +163,13 @@ export default function MarginsView({ standings, seasonCode, resultsQuery, resul
                       ))}
                     </svg>
                   </th>
-                  <th>Wins</th>
-                  <th>Expected</th>
+                  <th><HeaderTip tip="Wins: actual wins this season">Wins</HeaderTip></th>
+                  <th><HeaderTip tip="Expected wins: wins the points scored and allowed suggest">Expected</HeaderTip></th>
                 </tr>
               </thead>
-              <tbody>
+              <AnimatedBody>
                 {expectedRows.map(({ entry, wins, expected }) => (
-                  <tr key={entry.clubCode}>
+                  <AnimatedRow key={entry.clubCode}>
                     <td>
                       <PositionCell position={entry.basic?.position} qualified={entry.basic?.qualified} />
                     </td>
@@ -179,9 +181,9 @@ export default function MarginsView({ standings, seasonCode, resultsQuery, resul
                     </td>
                     <td className="tabular-nums">{wins}</td>
                     <td className="tabular-nums">{formatDecimal(expected)}</td>
-                  </tr>
+                  </AnimatedRow>
                 ))}
-              </tbody>
+              </AnimatedBody>
             </table>
           </div>
         </Panel>
@@ -198,18 +200,20 @@ export default function MarginsView({ standings, seasonCode, resultsQuery, resul
           <table className="table breakdown-table">
             <thead>
               <tr>
-                <th>#</th>
+                <th><HeaderTip tip="Position: rank in the standings">#</HeaderTip></th>
                 <th>Team</th>
                 {CATEGORIES.map((category, index) => (
                   <th key={category.key} className={index === 0 ? "group-start" : undefined}>
-                    {category.label}
+                    <HeaderTip tip={`${category.label}: record in games with more than the opponent`}>
+                      {category.label}
+                    </HeaderTip>
                   </th>
                 ))}
               </tr>
             </thead>
-            <tbody>
+            <AnimatedBody>
               {rows.map(({ entry, figures }) => (
-                <tr key={entry.clubCode}>
+                <AnimatedRow key={entry.clubCode}>
                   <td>
                     <PositionCell position={entry.basic?.position} qualified={entry.basic?.qualified} />
                   </td>
@@ -221,9 +225,9 @@ export default function MarginsView({ standings, seasonCode, resultsQuery, resul
                       <RecordBar record={figures.categories[category.key]} label={category.label} />
                     </td>
                   ))}
-                </tr>
+                </AnimatedRow>
               ))}
-              <tr className="font-bold">
+              <AnimatedRow className="font-bold">
                 <td />
                 <td>Whole league</td>
                 {CATEGORIES.map((category, index) => (
@@ -231,8 +235,8 @@ export default function MarginsView({ standings, seasonCode, resultsQuery, resul
                     <RecordBar record={league[category.key]} label={`League, ${category.label}`} />
                   </td>
                 ))}
-              </tr>
-            </tbody>
+              </AnimatedRow>
+            </AnimatedBody>
           </table>
         </div>
       </Panel>

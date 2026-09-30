@@ -77,7 +77,7 @@ export default function RecentResults() {
   const { seasonCode } = useParams();
   const query = useQuery({
     queryKey: ["games", seasonCode, "played", "desc"],
-    queryFn: () => getSeasonGames(seasonCode, { status: "played", order: "desc", limit: 5 }),
+    queryFn: () => getSeasonGames(seasonCode, { status: "played", order: "desc", limit: 10 }),
   });
   const standingsQuery = useQuery({
     queryKey: ["standings", seasonCode, "RS"],
@@ -98,17 +98,19 @@ export default function RecentResults() {
       isEmpty={query.isSuccess && games.length === 0}
       emptyMessage="No results yet."
     >
-      <motion.div className="games-list" variants={listContainer} initial="hidden" animate="show">
-        {games.map((game) => (
-          <MatchCard
-            key={game.gameCode}
-            game={game}
-            standingByClubCode={standingByClubCode}
-            seasonCode={seasonCode}
-            showScore
-          />
-        ))}
-      </motion.div>
+      <div className="games-list-box">
+        <motion.div className="games-list" variants={listContainer} initial="hidden" animate="show">
+          {games.map((game) => (
+            <MatchCard
+              key={game.gameCode}
+              game={game}
+              standingByClubCode={standingByClubCode}
+              seasonCode={seasonCode}
+              showScore
+            />
+          ))}
+        </motion.div>
+      </div>
     </WidgetPanel>
   );
 }

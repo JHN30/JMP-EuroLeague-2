@@ -15,6 +15,10 @@ every such change so it can be found later.
 - [standings-animations-header-tips-and-scroll.md](standings-animations-header-tips-and-scroll.md): Motion animations, animated column header tips, the tab scroll jump
 - [advanced-standings-views-explained-tab-and-visuals.md](advanced-standings-views-explained-tab-and-visuals.md): Advanced sub-tabs, the Explained tab, and the approved visuals
 
+## Home page
+
+- [home-ten-upcoming-games-and-results.md](home-ten-upcoming-games-and-results.md): 10 upcoming games in a wrapping grid and 10 latest results
+
 ## Data and platform
 
 - [read-renamed-app-neon-tables.md](read-renamed-app-neon-tables.md)

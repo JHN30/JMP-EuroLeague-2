@@ -11,7 +11,7 @@ export default function UpcomingGames() {
 
   const gamesQuery = useQuery({
     queryKey: ["games", seasonCode, "scheduled", "asc"],
-    queryFn: () => getSeasonGames(seasonCode, { status: "scheduled", order: "asc", limit: 5 }),
+    queryFn: () => getSeasonGames(seasonCode, { status: "scheduled", order: "asc", limit: 10 }),
   });
   const standingsQuery = useQuery({
     queryKey: ["standings", seasonCode, "RS"],

@@ -571,23 +571,29 @@ button {
 }
 
 /* Match cards - denser fixtures presentation (dashboard) */
+.games-list-box {
+  container-type: inline-size;
+}
 .games-list {
   display: flex;
   flex-direction: column;
   gap: 0.6rem;
 }
+/* Wide enough for two columns: the five newest results on the left, the next five on the right. */
+@container (min-width: 34rem) {
+  .games-list {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-rows: repeat(5, auto);
+    grid-auto-flow: column;
+  }
+}
 .games-row {
-  display: flex;
-  flex-direction: row;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr));
   gap: 0.6rem;
-  overflow-x: auto;
-  overscroll-behavior-x: contain;
   padding-top: 0.25rem;
   padding-bottom: 0.25rem;
-}
-.games-row .match-card {
-  flex: 1 1 0;
-  min-width: 15rem;
 }
 .match-card {
   display: block;

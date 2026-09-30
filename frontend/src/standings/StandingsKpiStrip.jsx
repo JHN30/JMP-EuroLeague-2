@@ -1,10 +1,16 @@
 import { useQuery } from "@tanstack/react-query";
 import { getSeasonStandings } from "../lib/api";
 import CompactMetric from "../lib/CompactMetric";
-import { formatPerGame } from "../lib/format";
+import { formatSignedDecimal } from "../lib/format";
 import HeaderStats from "../lib/HeaderStats";
 
-export default function StandingsKpiStrip({ seasonCode, phaseCode, round, standings }) {
+function clubLabel(entry) {
+  return entry.clubName ?? entry.clubCode;
+}
+
+// `netQuery` is the phase's advanced-standings query (shared with the table's Net rtg column). Best net rating is
+// the efficiency view of who is strongest, distinct from Home's raw best offense and defense.
+export default function StandingsKpiStrip({ seasonCode, phaseCode, round, standings, netQuery }) {
   const previousRoundQuery = useQuery({
     queryKey: ["standings", seasonCode, phaseCode, "round", round ? round - 1 : null],
     queryFn: () => getSeasonStandings(seasonCode, phaseCode, { round: round - 1 }),
@@ -35,26 +41,25 @@ export default function StandingsKpiStrip({ seasonCode, phaseCode, round, standi
     }
   }
 
-  const marginEntries = standings.filter(
-    (entry) => entry.basic?.pointsDifference != null && entry.basic?.gamesPlayed,
-  );
-  const avgMargin = formatPerGame(
-    marginEntries.length > 0
-      ? marginEntries.reduce((sum, entry) => sum + Math.abs(entry.basic.pointsDifference) / entry.basic.gamesPlayed, 0) /
-          marginEntries.length
-      : null,
-  );
+  let bestNet = null;
+  for (const row of netQuery.data?.standings ?? []) {
+    if (row.netRating !== null && (bestNet === null || row.netRating > bestNet.netRating)) bestNet = row;
+  }
 
   return (
     <HeaderStats>
       <CompactMetric
         value={leader ? `${leader.basic.gamesWon}-${leader.basic.gamesLost}` : "–"}
-        label={leader ? `Leader · ${leader.clubName ?? leader.clubCode}` : "Leader"}
+        label="Leader"
+        name={leader ? clubLabel(leader) : undefined}
+        imageUrl={leader?.crestUrl}
       />
       {cutoff ? (
         <CompactMetric
           value={`${cutoff.basic.gamesWon}-${cutoff.basic.gamesLost}`}
-          label={`Playoff cutoff · ${cutoff.clubName ?? cutoff.clubCode}`}
+          label="Playoff cutoff"
+          name={clubLabel(cutoff)}
+          imageUrl={cutoff.crestUrl}
         />
       ) : null}
       {round && round > 1 ? (
@@ -62,7 +67,10 @@ export default function StandingsKpiStrip({ seasonCode, phaseCode, round, standi
           isLoading={previousRoundQuery.isLoading}
           isError={previousRoundQuery.isError}
           value={biggestRiser ? `▲ ${Math.abs(biggestRiser.delta)}` : "–"}
-          label={biggestRiser ? `Biggest riser · ${biggestRiser.entry.clubName ?? biggestRiser.entry.clubCode}` : "Biggest riser"}
+          label="Biggest riser"
+          name={biggestRiser ? clubLabel(biggestRiser.entry) : undefined}
+          imageUrl={biggestRiser?.entry.crestUrl}
+          tone={biggestRiser ? "positive" : undefined}
         />
       ) : null}
       {round && round > 1 ? (
@@ -70,10 +78,20 @@ export default function StandingsKpiStrip({ seasonCode, phaseCode, round, standi
           isLoading={previousRoundQuery.isLoading}
           isError={previousRoundQuery.isError}
           value={biggestFaller ? `▼ ${Math.abs(biggestFaller.delta)}` : "–"}
-          label={biggestFaller ? `Biggest faller · ${biggestFaller.entry.clubName ?? biggestFaller.entry.clubCode}` : "Biggest faller"}
+          label="Biggest faller"
+          name={biggestFaller ? clubLabel(biggestFaller.entry) : undefined}
+          imageUrl={biggestFaller?.entry.crestUrl}
+          tone={biggestFaller ? "negative" : undefined}
         />
       ) : null}
-      <CompactMetric value={avgMargin} label="Avg margin of victory" />
+      <CompactMetric
+        isLoading={netQuery.isLoading}
+        isError={netQuery.isError}
+        value={bestNet ? formatSignedDecimal(bestNet.netRating) : "–"}
+        label="Best net rating"
+        name={bestNet ? clubLabel(bestNet) : undefined}
+        imageUrl={bestNet?.crestUrl}
+      />
     </HeaderStats>
   );
 }

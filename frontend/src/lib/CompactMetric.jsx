@@ -1,5 +1,8 @@
-export default function CompactMetric({ value, label, name, isLoading = false, isError = false, imageUrl, imageAlt = "" }) {
+// `tone` colours the value ("positive" green, "negative" red) for good or bad news; pair it with an arrow or sign
+// in the value so the meaning never depends on colour alone.
+export default function CompactMetric({ value, label, name, isLoading = false, isError = false, imageUrl, imageAlt = "", tone }) {
   const displayValue = isLoading ? "–" : isError ? "–" : value;
+  const valueClass = tone && !isLoading && !isError ? `value tone-${tone}` : "value";
   const valueTitle = isError ? "Could not load this value." : undefined;
 
   return (
@@ -9,13 +12,13 @@ export default function CompactMetric({ value, label, name, isLoading = false, i
           <>
             <span className="label">{label}</span>
             <span className="name">{name}</span>
-            <span className="value" title={valueTitle}>
+            <span className={valueClass} title={valueTitle}>
               {displayValue}
             </span>
           </>
         ) : (
           <>
-            <span className="value" title={valueTitle}>
+            <span className={valueClass} title={valueTitle}>
               {displayValue}
             </span>
             <span className="label">{label}</span>

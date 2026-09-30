@@ -225,6 +225,29 @@ export async function getTeamPbpStats(seasonCode: string, scope: string, clubCod
   return rows[0] ?? null;
 }
 
+export type GameFlowRow = Pick<
+  TeamPbpStatsRow,
+  "clubCode" | "games" | "timeLeadingSeconds" | "timeTrailingSeconds" | "timeTiedSeconds" | "leadChangesPerGame" | "largestLead"
+>;
+
+// Time spent leading, tied and trailing for every club in a scope (play-by-play based, so E2025 and E2026 only).
+export async function getGameFlow(seasonCode: string, scope: string): Promise<GameFlowRow[]> {
+  return catalogRead(() =>
+    db.select({
+      clubCode: teamPbpStats.clubCode,
+      games: teamPbpStats.games,
+      timeLeadingSeconds: teamPbpStats.timeLeadingSeconds,
+      timeTrailingSeconds: teamPbpStats.timeTrailingSeconds,
+      timeTiedSeconds: teamPbpStats.timeTiedSeconds,
+      leadChangesPerGame: teamPbpStats.leadChangesPerGame,
+      largestLead: teamPbpStats.largestLead,
+    })
+      .from(teamPbpStats)
+      .where(and(...inScope(teamPbpStats, seasonCode, scope)))
+      .orderBy(asc(teamPbpStats.clubCode)),
+  );
+}
+
 export async function getTeamShotZoneStats(seasonCode: string, scope: string, clubCode: string): Promise<TeamShotZoneStatsRow[]> {
   return catalogRead(() =>
     db.select()

@@ -1,13 +1,14 @@
 import { useState } from "react";
-import { useQueries, useQuery } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { useParams } from "react-router";
-import { getPhases, getSeasonStandings } from "../lib/api";
+import { getAdvancedStandings, getGameFlow, getPhaseResults, getPhases, getSeasonStandings } from "../lib/api";
 import AsyncState from "../lib/AsyncState";
 import EmptyText from "../lib/EmptyText";
 import PageHeader from "../lib/PageHeader";
 import { useDocumentTitle } from "../lib/useDocumentTitle";
 import { usePhaseParam } from "../lib/usePhaseParam";
 import { TabPanel, TabStrip } from "../lib/TabStrip";
+import { resultsByClub } from "./breakdownUtils";
 import StandingsKpiStrip from "./StandingsKpiStrip";
 import StandingsTable from "./StandingsTable";
 import RaceView from "./RaceView";
@@ -33,8 +34,6 @@ const BREAKDOWN_TABS = [
   { key: "aheadBehind", label: "Ahead/behind" },
 ];
 
-const TREND_ROUNDS_BACK = 5;
-
 export default function StandingsPage() {
   useDocumentTitle("Standings");
   const { seasonCode } = useParams();
@@ -59,39 +58,27 @@ export default function StandingsPage() {
   const round = standingsQuery.data?.round ?? null;
   const standings = standingsQuery.data?.standings ?? [];
 
-  const historyRounds = [];
-  if (round) {
-    for (let n = round - 1; n >= Math.max(1, round - TREND_ROUNDS_BACK); n -= 1) {
-      historyRounds.push(n);
-    }
-  }
-
-  const historyQueries = useQueries({
-    queries: historyRounds.map((roundNumber) => ({
-      queryKey: ["standings", seasonCode, phaseCode, "round", roundNumber],
-      queryFn: () => getSeasonStandings(seasonCode, phaseCode, { round: roundNumber }),
-      enabled: Boolean(phaseCode) && Boolean(round),
-    })),
+  // The phase's advanced numbers (the phase code doubles as the scope, latest round) feed the Best net rating KPI
+  // and the table's Net rtg column. Only regular-season standings exist so far; other phases show no table.
+  const netQuery = useQuery({
+    queryKey: ["advanced-standings-phase", seasonCode, phaseCode],
+    queryFn: () => getAdvancedStandings(seasonCode, { scope: phaseCode }),
+    enabled: Boolean(phaseCode) && standings.length > 0,
   });
-
-  const trendByClub = new Map();
-  if (standings.length > 0) {
-    const roundsAscending = [
-      ...historyRounds.map((roundNumber, i) => ({ round: roundNumber, data: historyQueries[i].data })),
-      { round, data: { standings } },
-    ]
-      .filter((entry) => entry.data)
-      .sort((a, b) => a.round - b.round);
-
-    for (const entry of standings) {
-      const positions = [];
-      for (const { data } of roundsAscending) {
-        const match = data.standings.find((row) => row.clubCode === entry.clubCode);
-        if (match?.basic?.position != null) positions.push(match.basic.position);
-      }
-      trendByClub.set(entry.clubCode, positions);
-    }
-  }
+  // The breakdowns work from each club's own results (and quarter scores): the ribbon, margin bars, form line and
+  // quarter profile are all drawn or derived from them.
+  const resultsQuery = useQuery({
+    queryKey: ["phase-results", seasonCode, phaseCode],
+    queryFn: () => getPhaseResults(seasonCode, phaseCode),
+    enabled: Boolean(phaseCode) && standings.length > 0 && mode === "table" && breakdown !== "overview",
+  });
+  // Time spent in front comes from play-by-play, which the ahead/behind breakdown shows for the phase.
+  const gameFlowQuery = useQuery({
+    queryKey: ["game-flow", seasonCode, phaseCode],
+    queryFn: () => getGameFlow(seasonCode, { scope: phaseCode }),
+    enabled: Boolean(phaseCode) && standings.length > 0 && mode === "table" && breakdown === "aheadBehind",
+  });
+  const netByClub = new Map((netQuery.data?.standings ?? []).map((row) => [row.clubCode, row]));
 
   if (phasesQuery.isLoading) return <AsyncState status="loading" label="Loading phases" />;
   if (phasesQuery.isError) {
@@ -127,6 +114,7 @@ export default function StandingsPage() {
                 phaseCode={phaseCode}
                 round={round}
                 standings={standings}
+                netQuery={netQuery}
               />
             )}
 
@@ -177,7 +165,10 @@ export default function StandingsPage() {
                   seasonCode={seasonCode}
                   view={view}
                   showTiers={phaseCode === "RS"}
-                  trendByClub={trendByClub}
+                  netByClub={netByClub}
+                  resultsQuery={resultsQuery}
+                  resultsByClub={resultsByClub(resultsQuery.data)}
+                  gameFlowQuery={gameFlowQuery}
                   breakdown={breakdown}
                 />
               </>

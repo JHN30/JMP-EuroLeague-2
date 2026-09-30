@@ -44,6 +44,7 @@ export function formatDecimal(value, digits = 1) {
 export function formatSignedDecimal(value, digits = 1) {
   const text = formatDecimal(value, digits);
   if (text === EM_DASH) return text;
+  if (Number(text) === 0) return text.replace("-", "");
   return Number(text) > 0 ? `+${text}` : text;
 }
 

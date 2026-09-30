@@ -19,10 +19,11 @@ import {
   getTeamRoster,
   getTeams,
 } from "../db/season-identities";
-import { getBoxScore, getGame, getGames, getPlayByPlay, getPlayerGameLog, getPostseasonSeries, getShots, getTeamGames, getTeamStatsSummary } from "../db/season-games";
+import { getBoxScore, getGame, getGames, getPhaseResults, getPlayByPlay, getPlayerGameLog, getPostseasonSeries, getShots, getTeamGames, getTeamStatsSummary } from "../db/season-games";
 import { getCoverage } from "../db/season-coverage";
 import { getLatestStandingsRound, getStandings } from "../db/season-standings";
 import {
+  getGameFlow,
   getLineupRatings,
   getPerLeaders,
   getPlayerClubs,
@@ -250,6 +251,27 @@ seasonRouter.get("/:seasonCode/phases/:phaseCode/standings", async (req, res) =>
   }
 
   res.json({ round, standings: await getStandings(season.seasonCode, phaseCode, round) });
+});
+
+seasonRouter.get("/:seasonCode/phases/:phaseCode/results", async (req, res) => {
+  const season = await requestedSeason(req, res);
+  if (!season) return;
+  const phases = await getPhases(season.seasonCode);
+  const phaseCode = req.params.phaseCode;
+  if (typeof phaseCode !== "string" || !phases.some((phase) => phase.code === phaseCode)) {
+    sendError(res, 404, "PHASE_NOT_FOUND", "Phase not found");
+    return;
+  }
+  res.json({ results: await getPhaseResults(season.seasonCode, phaseCode) });
+});
+
+seasonRouter.get("/:seasonCode/advanced/game-flow", async (req, res) => {
+  const season = await requestedSeason(req, res);
+  if (!season) return;
+  const scope = requestedAdvancedScope(req, res);
+  if (scope === null) return;
+  const requestedScope = scope ?? "RS";
+  res.json({ scope: requestedScope, clubs: await getGameFlow(season.seasonCode, requestedScope) });
 });
 
 seasonRouter.get("/:seasonCode/advanced/standings", async (req, res) => {

@@ -1,4 +1,4 @@
-import { and, asc, eq, inArray, isNull, or, sql } from "drizzle-orm";
+import { and, asc, eq, inArray, isNotNull, isNull, or, sql } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 import { db } from "./client";
 import { CatalogDatabaseError, catalogRead } from "./season-catalog";
@@ -630,4 +630,158 @@ export async function getTeamStatsSummary(
     own: numericMeasures(row.own),
     opponent: numericMeasures(row.opponent),
   };
+}
+
+// How much more (or less) the club made than its opponent in each category, per game. The standings breakdown counts
+// the games where this is above zero for its "what wins games" record.
+export type CategoryEdges = {
+  rebounds: number | null;
+  assists: number | null;
+  blocks: number | null;
+  threePointers: number | null;
+  twoPointers: number | null;
+  freeThrows: number | null;
+};
+
+export type PhaseResult = {
+  gameCode: number;
+  roundNumber: number | null;
+  opponentCode: string;
+  home: boolean;
+  pointsFor: number;
+  pointsAgainst: number;
+  edges: CategoryEdges;
+  // The club's margin in each of the four regulation quarters (null when a quarter score is missing).
+  quarterMargins: number[] | null;
+};
+
+export type ClubPhaseResults = { clubCode: string; games: PhaseResult[] };
+
+const localTotals = alias(gameTeamStats, "local_totals");
+const roadTotals = alias(gameTeamStats, "road_totals");
+
+type Measures = { [K in keyof CategoryEdges]: string | null };
+
+function edgeBetween(own: string | null | undefined, opponent: string | null | undefined): number | null {
+  if (own == null || opponent == null) return null;
+  const difference = Number(own) - Number(opponent);
+  return Number.isFinite(difference) ? difference : null;
+}
+
+function edgesOf(own: Measures | null, opponent: Measures | null): CategoryEdges {
+  return {
+    rebounds: edgeBetween(own?.rebounds, opponent?.rebounds),
+    assists: edgeBetween(own?.assists, opponent?.assists),
+    blocks: edgeBetween(own?.blocks, opponent?.blocks),
+    threePointers: edgeBetween(own?.threePointers, opponent?.threePointers),
+    twoPointers: edgeBetween(own?.twoPointers, opponent?.twoPointers),
+    freeThrows: edgeBetween(own?.freeThrows, opponent?.freeThrows),
+  };
+}
+
+// Every played, scored game of a phase from each club's side, oldest first, with the box-score category edges.
+// The standings breakdowns work these out themselves (results ribbon, streaks, margin buckets, what wins games)
+// because the source's per-view feeds can lag the basic standings by a game.
+export async function getPhaseResults(seasonCode: string, phaseCode: string): Promise<ClubPhaseResults[]> {
+  const rows = await catalogRead(() =>
+    db.select({
+      gameCode: games.gameCode,
+      roundNumber: games.roundNumber,
+      localClubCode: games.localClubCode,
+      roadClubCode: games.roadClubCode,
+      localScore: games.localScore,
+      roadScore: games.roadScore,
+      local: {
+        rebounds: localTotals.totalRebounds,
+        assists: localTotals.assistances,
+        blocks: localTotals.blocksFavour,
+        threePointers: localTotals.fieldGoalsMade3,
+        twoPointers: localTotals.fieldGoalsMade2,
+        freeThrows: localTotals.freeThrowsMade,
+      },
+      road: {
+        rebounds: roadTotals.totalRebounds,
+        assists: roadTotals.assistances,
+        blocks: roadTotals.blocksFavour,
+        threePointers: roadTotals.fieldGoalsMade3,
+        twoPointers: roadTotals.fieldGoalsMade2,
+        freeThrows: roadTotals.freeThrowsMade,
+      },
+    })
+      .from(games)
+      .leftJoin(localTotals, and(
+        eq(localTotals.competitionCode, games.competitionCode),
+        eq(localTotals.seasonCode, games.seasonCode),
+        eq(localTotals.gameCode, games.gameCode),
+        eq(localTotals.side, "local"),
+        eq(localTotals.statsKind, "total"),
+      ))
+      .leftJoin(roadTotals, and(
+        eq(roadTotals.competitionCode, games.competitionCode),
+        eq(roadTotals.seasonCode, games.seasonCode),
+        eq(roadTotals.gameCode, games.gameCode),
+        eq(roadTotals.side, "road"),
+        eq(roadTotals.statsKind, "total"),
+      ))
+      .where(and(
+        eq(games.competitionCode, COMPETITION_CODE),
+        eq(games.seasonCode, seasonCode),
+        eq(games.phaseCode, phaseCode),
+        eq(games.played, true),
+        isNotNull(games.localScore),
+        isNotNull(games.roadScore),
+        isNotNull(games.localClubCode),
+        isNotNull(games.roadClubCode),
+      ))
+      .orderBy(asc(games.scheduledAt), asc(games.gameCode)),
+  );
+
+  const gameCodes = rows.map((row) => row.gameCode);
+  const periodRows = gameCodes.length === 0 ? [] : await catalogRead(() =>
+    db.select({
+      gameCode: gamePeriodScores.gameCode,
+      side: gamePeriodScores.side,
+      period: gamePeriodScores.periodNumber,
+      score: gamePeriodScores.score,
+    })
+      .from(gamePeriodScores)
+      .where(and(
+        eq(gamePeriodScores.competitionCode, COMPETITION_CODE),
+        eq(gamePeriodScores.seasonCode, seasonCode),
+        inArray(gamePeriodScores.gameCode, gameCodes),
+      )),
+  );
+  const periodScores = new Map<number, { local: Map<number, number>; road: Map<number, number> }>();
+  for (const row of periodRows) {
+    if (row.score === null || (row.side !== "local" && row.side !== "road")) continue;
+    const game = periodScores.get(row.gameCode) ?? { local: new Map(), road: new Map() };
+    game[row.side].set(row.period, row.score);
+    periodScores.set(row.gameCode, game);
+  }
+  const quarterMarginsOf = (gameCode: number, own: "local" | "road"): number[] | null => {
+    const game = periodScores.get(gameCode);
+    if (!game) return null;
+    const opponent = own === "local" ? "road" : "local";
+    const margins: number[] = [];
+    for (const quarter of [1, 2, 3, 4]) {
+      const mine = game[own].get(quarter);
+      const theirs = game[opponent].get(quarter);
+      if (mine === undefined || theirs === undefined) return null;
+      margins.push(mine - theirs);
+    }
+    return margins;
+  };
+
+  const byClub = new Map<string, PhaseResult[]>();
+  const add = (clubCode: string, result: PhaseResult) => {
+    const list = byClub.get(clubCode) ?? [];
+    list.push(result);
+    byClub.set(clubCode, list);
+  };
+  for (const row of rows) {
+    if (row.localClubCode === null || row.roadClubCode === null || row.localScore === null || row.roadScore === null) continue;
+    add(row.localClubCode, { gameCode: row.gameCode, roundNumber: row.roundNumber, opponentCode: row.roadClubCode, home: true, pointsFor: row.localScore, pointsAgainst: row.roadScore, edges: edgesOf(row.local, row.road), quarterMargins: quarterMarginsOf(row.gameCode, "local") });
+    add(row.roadClubCode, { gameCode: row.gameCode, roundNumber: row.roundNumber, opponentCode: row.localClubCode, home: false, pointsFor: row.roadScore, pointsAgainst: row.localScore, edges: edgesOf(row.road, row.local), quarterMargins: quarterMarginsOf(row.gameCode, "road") });
+  }
+  return [...byClub.entries()].map(([clubCode, clubGames]) => ({ clubCode, games: clubGames }));
 }

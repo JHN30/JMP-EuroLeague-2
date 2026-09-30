@@ -109,6 +109,16 @@ function SeasonHero({ champion, leader }) {
           <span className="name">{leader.clubName ?? leader.clubCode}</span>
           <span className="value">{ppg != null ? formatPerGame(ppg) : "-"}</span>
         </div>
+        {leader.crestUrl ? (
+          <img
+            src={leader.crestUrl}
+            alt=""
+            className="kpi-chip-image"
+            onError={(event) => {
+              event.currentTarget.style.display = "none";
+            }}
+          />
+        ) : null}
       </div>
     </div>
   );

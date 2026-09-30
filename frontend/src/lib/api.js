@@ -59,6 +59,18 @@ export async function getSeasonStandings(seasonCode, phaseCode, { round } = {}) 
   return data;
 }
 
+export async function getPhaseResults(seasonCode, phaseCode) {
+  const { data } = await api.get(`/seasons/${seasonCode}/phases/${phaseCode}/results`);
+  return data;
+}
+
+export async function getGameFlow(seasonCode, { scope } = {}) {
+  const { data } = await api.get(`/seasons/${seasonCode}/advanced/game-flow`, {
+    params: { scope },
+  });
+  return data;
+}
+
 export async function getAdvancedStandings(seasonCode, { scope, round } = {}) {
   const { data } = await api.get(`/seasons/${seasonCode}/advanced/standings`, {
     params: { scope, round },

@@ -631,7 +631,7 @@ function RosterSection({ rosterQuery, rosterStatsQuery, seasonCode }) {
                       <img
                         src={stats.playerImageUrl}
                         alt=""
-                        className="h-8 w-8 flex-none rounded-full object-cover"
+                        className="aspect-3/4 h-8 w-auto flex-none object-contain object-bottom"
                         onError={(event) => {
                           event.currentTarget.style.display = "none";
                         }}

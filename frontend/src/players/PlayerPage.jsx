@@ -602,7 +602,7 @@ export default function PlayerPage() {
             <img
               src={headshotUrl}
               alt=""
-              className="h-16 w-16 flex-none rounded-full object-cover"
+              className="aspect-3/4 h-16 w-auto flex-none object-contain object-bottom"
               onError={(event) => {
                 event.currentTarget.style.display = "none";
               }}

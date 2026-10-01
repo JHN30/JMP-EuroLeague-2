@@ -302,7 +302,7 @@ function PlayerHeaderCell({ label, imageUrl }) {
         <img
           src={imageUrl}
           alt=""
-          className="mx-auto mb-1 h-12 w-12 rounded-full object-cover"
+          className="mx-auto mb-1 aspect-3/4 h-12 w-auto object-contain object-bottom"
           onError={(event) => {
             event.currentTarget.style.display = "none";
           }}

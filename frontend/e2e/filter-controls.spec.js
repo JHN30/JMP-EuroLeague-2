@@ -12,8 +12,8 @@ test("uses compact native selects for statistics and comparison filters", async 
   const sections = page.getByRole("navigation", { name: "Sections" });
   await expect(sections).toBeVisible();
 
-  await sections.getByRole("link", { name: "Statistics leaderboards", exact: true }).click();
-  await expect(page.getByRole("heading", { name: "Statistics leaderboards" })).toBeVisible();
+  await sections.getByRole("link", { name: "Leaders", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "Leaders" })).toBeVisible();
 
   const statisticsPhase = page.getByLabel("Statistics phase");
   await expect(statisticsPhase).toHaveJSProperty("tagName", "SELECT");
@@ -31,8 +31,8 @@ test("uses compact native selects for statistics and comparison filters", async 
   await playerDirection.selectOption("asc");
   await expect(playerDirection).toHaveValue("asc");
 
-  await sections.getByRole("link", { name: "Comparisons and trends", exact: true }).click();
-  await expect(page.getByRole("heading", { name: "Comparisons and trends" })).toBeVisible();
+  await sections.getByRole("link", { name: "Compare", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "Compare", exact: true })).toBeVisible();
 
   const comparisonType = page.getByLabel("Comparison type");
   await expect(comparisonType).toHaveJSProperty("tagName", "SELECT");

@@ -270,7 +270,8 @@ export async function getGame(seasonCode: string, gameCode: number): Promise<Gam
 }
 
 function measureFields(table: typeof gameTeamStats | typeof gamePlayerStats) {
-  // PostgreSQL NUMERIC is delivered as text by pg, preserving source precision.
+  // PostgreSQL NUMERIC is delivered as text by pg ("14.0"). Callers that return a box score
+  // convert these with withNumericMeasures; other readers of these columns still get the text.
   return {
     points: table.points,
     timePlayed: table.timePlayed,
@@ -297,6 +298,24 @@ function measureFields(table: typeof gameTeamStats | typeof gamePlayerStats) {
     foulsReceived: table.foulsReceived,
     plusMinus: table.plusMinus,
   };
+}
+
+type BoxMeasureKey = keyof ReturnType<typeof measureFields>;
+type BoxNumericMeasures = { [Key in BoxMeasureKey]: number | null };
+
+const BOX_MEASURE_KEYS = Object.keys(measureFields(gameTeamStats)) as BoxMeasureKey[];
+
+function toNumber(value: string | null): number | null {
+  if (value === null) return null;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+// NULL stays null; anything that is not a finite number becomes null rather than NaN.
+function withNumericMeasures<Row extends Record<BoxMeasureKey, string | null>>(row: Row): Omit<Row, BoxMeasureKey> & BoxNumericMeasures {
+  const converted: Record<string, unknown> = { ...row };
+  for (const key of BOX_MEASURE_KEYS) converted[key] = toNumber(row[key]);
+  return converted as Omit<Row, BoxMeasureKey> & BoxNumericMeasures;
 }
 
 export async function getBoxScore(seasonCode: string, gameCode: number) {
@@ -344,7 +363,11 @@ export async function getBoxScore(seasonCode: string, gameCode: number) {
       eq(gamePlayerStats.gameCode, gameCode),
     )).orderBy(asc(gamePlayerStats.side), asc(gamePlayerStats.personName), asc(gamePlayerStats.personKey))),
   ]);
-  return { periodScores, teamStats, playerStats };
+  return {
+    periodScores,
+    teamStats: teamStats.map(withNumericMeasures),
+    playerStats: playerStats.map(withNumericMeasures),
+  };
 }
 
 // `period` is source text, not chronological order; map each name to its

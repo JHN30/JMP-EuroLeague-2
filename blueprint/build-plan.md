@@ -113,6 +113,12 @@ Scaffolding, shared layout, design tokens, database connection setup, and deploy
   - Team page: an Advanced tab with rating by round, splits, play-by-play, shot zones, and best lineups filtered by club, size, and minimum possessions.
   - Player page: an Advanced tab with PER, Win Shares, and USG% by round, on/off, and RAPM.
   - Leaders: an Advanced view ranking PER, Win Shares/48, RAPM, and on/off net rating with a minimum-minutes filter.
+- [ ] 23. **Game detail rebuild** - Rework the Game Detail page per direct user request, drawing on the EuroLeague game center, Sofascore, and Basketball-Reference layouts. Per-game advanced stats come from two pipeline tables the owner will publish to Neon (`app_game_player_advanced`, `app_game_team_advanced`); the backend reads them and does not recompute them.
+  - [x] 23a. **Box score cleanup** - Remove the data-coverage panel from the game page (and update its browser test). Stack the two team tables vertically at full width. Return box-score numbers as numbers and show whole numbers and clean made-attempted lines (`9-9`); percentages keep one decimal. Starters first, then by minutes, with players who didn't play collapsed. Player names link to player pages. Bold the game-high in each column.
+  - [ ] 23b. **Overview tab** - A new first and default tab: quarter-by-quarter line score, best player per team (headshot and stat line; chosen by game PER among players with at least 10 minutes, falling back to PIR until the column is published, through one swappable function), game leaders for points, rebounds and assists, key-stat mirrored bars, and a small score-flow chart reusing the existing game-flow code.
+  - [ ] 23c. **Minutes timeline and connections** - A player minutes timeline built from substitution events, and an assist-to-scorer "best connections" view if play-by-play supports it.
+  - [ ] 23d. **Advanced box score** - A Traditional/Advanced toggle with per-game advanced columns from `app_game_player_advanced`, plus season PER, WS/48 and USG% through the game's round from the existing round tables, respecting the small-sample hiding rule. New `games/:gameCode/advanced` endpoint. *Blocked until the owner publishes the table.*
+  - [ ] 23e. **Team Four Factors** - Four Factors with season-average markers, pace and offensive/defensive rating from `app_game_team_advanced`, and the team comparison upgraded to mirrored bars. *Blocked until the owner publishes the table.*
 
 ## Guideline deviations
 

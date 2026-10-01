@@ -53,6 +53,8 @@ Core Phase 1 data includes:
 - Play-by-play events and shot locations where the pipeline supplies them
 - Play-in, playoff, and Final Four matchup relationships/results
 - Precomputed team-season statistics, coverage summaries, and postseason series from the pipeline's `app_*` tables
+- Advanced statistics from the pipeline's `app_*` advanced tables (`E2025` and `E2026` only): round-by-round team and player ratings, win shares, splits, on/off, lineups, RAPM, and shot-zone and play-by-play team stats. These are read as published; the API does not recompute them.
+- Per-game advanced statistics for players and teams from `app_game_player_advanced` and `app_game_team_advanced`, which the project owner will publish to Neon. Until they exist, nothing on the Game Detail page may recompute them in the API or frontend.
 - Data-quality annotations or correction flags that are safe and useful to show in the UI
 
 Data rules:
@@ -89,12 +91,12 @@ Data rules:
 - PostgreSQL hosted on Neon
 - Drizzle ORM and Drizzle migrations
 - Parameterized queries, explicit selected columns, deterministic ordering, and indexes based on real access paths
-- Database access only from the backend; never expose `DATABASE_URL` or direct Neon access to the browser
+- Database access only from the backend; never expose `DB_URL` or direct Neon access to the browser
 
 ### Engineering approach
 
 - Reuse useful frontend behavior and visual patterns from the current repository, but do not carry over MongoDB/Mongoose, JWT/authentication, Mailtrap, or JMP Rating dependencies.
-- Share or generate TypeScript response types where practical so database, API, and UI naming cannot drift silently.
+- The frontend is JavaScript and the backend is TypeScript. Backend types and runtime response validation are the API contract; the frontend does not import or generate shared types. Add shared or generated types only if naming drift between API and UI actually causes bugs.
 - Keep route handlers thin: validation and HTTP concerns in routes/controllers, business queries in services/repositories, and schema definitions/migrations in the database layer.
 - Add automated tests first around data transformations, season scoping, API response contracts, and edge cases that could misrepresent statistics.
 - Add caching only after measuring a repeated expensive query; correctness and transparent invalidation matter more than adding Redis in Phase 1.
@@ -131,12 +133,10 @@ Current target architecture:
 - Cloudflare for domain/DNS configuration where already in use
 - A lightweight public health endpoint such as `GET /api/health`
 
-Expected environment variables (final names must match the implementation):
+Environment variables (these are the names the code reads):
 
-- `DATABASE_URL`
-- `PORT`
-- `NODE_ENV`
-- `CLIENT_URL` or `CORS_ORIGIN`
+- Backend: `DB_URL` (PostgreSQL connection string), `PORT`, `NODE_ENV`, and `FRONTEND_URL` (the single allowed frontend origin, used for CORS; it must be a bare HTTP origin with no path)
+- Frontend build: `VITE_API_URL` (public API base URL; optional, defaults to `http://localhost:3000/api` in local development). It is public, so it must never hold a secret.
 
 Deployment rules:
 

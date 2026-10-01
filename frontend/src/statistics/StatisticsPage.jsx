@@ -197,13 +197,13 @@ function PodiumCard({ row, seasonCode, group, metric, metricLabel, className }) 
         <img
           src={player.playerImageUrl}
           alt=""
-          className="h-20 w-20 flex-none rounded-full object-cover"
+          className="aspect-3/4 h-20 w-auto flex-none object-contain object-bottom"
           onError={(event) => {
             event.currentTarget.style.display = "none";
           }}
         />
       ) : (
-        <div className="h-20 w-20 flex-none rounded-full bg-base-200" />
+        <div className="aspect-3/4 h-20 flex-none rounded-field bg-base-200" />
       )}
       <span className="font-semibold">{player.playerName ?? player.personKey}</span>
       <span className="muted text-xs">{player.clubName ?? player.clubCode}</span>
@@ -424,7 +424,7 @@ function PlayerLeaderboard({ seasonCode, phaseCode }) {
                           <img
                             src={row.player.playerImageUrl}
                             alt=""
-                            className="h-8 w-8 flex-none rounded-full object-cover"
+                            className="aspect-3/4 h-8 w-auto flex-none object-contain object-bottom"
                             onError={(event) => {
                               event.currentTarget.style.display = "none";
                             }}

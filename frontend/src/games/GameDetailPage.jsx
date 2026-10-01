@@ -1,19 +1,21 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Chart } from "chart.js/auto";
 import { useQuery } from "@tanstack/react-query";
-import { useParams } from "react-router";
-import { getBoxScore, getCoverage, getGame, getPlayByPlay, getShots } from "../lib/api";
+import { motion } from "motion/react";
+import { Link, useParams } from "react-router";
+import { getBoxScore, getGame, getPlayByPlay, getShots } from "../lib/api";
 import AsyncState from "../lib/AsyncState";
-import DataCoveragePanel from "../lib/DataCoveragePanel";
 import EmptyText from "../lib/EmptyText";
 import {
   formatCount,
   formatDateTime as formatDateTimeShared,
   formatMinutes,
+  formatMissing,
   formatPercentage,
   formatPeriod,
   formatSignedDiff,
 } from "../lib/format";
+import HeaderTip from "../lib/HeaderTip";
 import HeatmapLegend from "../lib/HeatmapLegend";
 import LabelledSelect from "../lib/LabelledSelect";
 import Panel from "../lib/Panel";
@@ -23,7 +25,9 @@ import ShootingCourt from "../lib/ShootingCourt";
 import ShootingLegend from "../lib/ShootingLegend";
 import { summarizeZones } from "../lib/shotZones";
 import { useDocumentTitle } from "../lib/useDocumentTitle";
+import { sectionContainer, sectionItem } from "../lib/motion";
 import { usePrefersReducedMotion } from "../lib/usePrefersReducedMotion";
+import { AnimatedBody, AnimatedRow } from "../standings/motionTable";
 import { TabPanel, TabStrip } from "../lib/TabStrip";
 import { useActiveTheme, themeColor } from "../lib/useActiveTheme";
 
@@ -44,36 +48,99 @@ function teamName(team) {
 }
 
 function madeAttempted(made, attempted) {
-  if (made == null && attempted == null) return "-";
-  return `${made ?? "-"}-${attempted ?? "-"}`;
+  if (made == null && attempted == null) return formatMissing(null);
+  return `${formatMissing(made)}-${formatMissing(attempted)}`;
 }
 
+// Hover tip per box score stat: the full name first, then a short explanation.
+const STAT_TIPS = {
+  MIN: "Minutes: time on the court",
+  PTS: "Points: total points scored",
+  "2PT": "Two-pointers: made-attempted",
+  "3PT": "Three-pointers: made-attempted",
+  FT: "Free throws: made-attempted",
+  REB: "Rebounds: offensive plus defensive",
+  OREB: "Offensive rebounds: rebounds taken off the team's own misses",
+  DREB: "Defensive rebounds: rebounds taken off the opponent's misses",
+  AST: "Assists: passes that lead straight to a made basket",
+  STL: "Steals: balls taken away from the opponent",
+  TO: "Turnovers: possessions given away without a shot",
+  BLK: "Blocks: opponent shots blocked",
+  BLKA: "Blocks against: this player's shots blocked by the opponent",
+  FC: "Fouls committed",
+  FD: "Fouls drawn: fouls committed against this player",
+  "+/-": "Plus/minus: the team's point difference while this player was on the court",
+  PIR: "Performance Index Rating: the EuroLeague efficiency score. Points, rebounds, assists, steals, blocks and fouls drawn, minus misses, turnovers, blocks against and fouls committed",
+};
+
+// `highKey` marks the columns where the game's highest value is bolded.
 const BOX_SCORE_COLUMNS = [
-  ["MIN", (row) => formatMinutes(row.timePlayed)],
-  ["PTS", (row) => row.points ?? "-"],
-  ["2PT", (row) => madeAttempted(row.fieldGoalsMade2, row.fieldGoalsAttempted2)],
-  ["3PT", (row) => madeAttempted(row.fieldGoalsMade3, row.fieldGoalsAttempted3)],
-  ["FT", (row) => madeAttempted(row.freeThrowsMade, row.freeThrowsAttempted)],
-  ["REB", (row) => row.totalRebounds ?? "-"],
-  ["OREB", (row) => row.offensiveRebounds ?? "-"],
-  ["DREB", (row) => row.defensiveRebounds ?? "-"],
-  ["AST", (row) => row.assistances ?? "-"],
-  ["STL", (row) => row.steals ?? "-"],
-  ["TO", (row) => row.turnovers ?? "-"],
-  ["BLK", (row) => row.blocksFavour ?? "-"],
-  ["BLKA", (row) => row.blocksAgainst ?? "-"],
-  ["FC", (row) => row.foulsCommited ?? "-"],
-  ["FD", (row) => row.foulsReceived ?? "-"],
-  ["+/-", (row) => formatSignedDiff(row.plusMinus)],
-  ["PIR", (row) => row.valuation ?? "-"],
+  { label: "MIN", render: (row) => formatMinutes(row.timePlayed) },
+  { label: "PTS", render: (row) => formatCount(row.points), highKey: "points" },
+  { label: "2PT", render: (row) => madeAttempted(row.fieldGoalsMade2, row.fieldGoalsAttempted2) },
+  { label: "3PT", render: (row) => madeAttempted(row.fieldGoalsMade3, row.fieldGoalsAttempted3) },
+  { label: "FT", render: (row) => madeAttempted(row.freeThrowsMade, row.freeThrowsAttempted) },
+  { label: "REB", render: (row) => formatCount(row.totalRebounds), highKey: "totalRebounds" },
+  { label: "OREB", render: (row) => formatCount(row.offensiveRebounds), highKey: "offensiveRebounds" },
+  { label: "DREB", render: (row) => formatCount(row.defensiveRebounds), highKey: "defensiveRebounds" },
+  { label: "AST", render: (row) => formatCount(row.assistances), highKey: "assistances" },
+  { label: "STL", render: (row) => formatCount(row.steals), highKey: "steals" },
+  { label: "TO", render: (row) => formatCount(row.turnovers) },
+  { label: "BLK", render: (row) => formatCount(row.blocksFavour), highKey: "blocksFavour" },
+  { label: "BLKA", render: (row) => formatCount(row.blocksAgainst) },
+  { label: "FC", render: (row) => formatCount(row.foulsCommited) },
+  { label: "FD", render: (row) => formatCount(row.foulsReceived), highKey: "foulsReceived" },
+  { label: "+/-", render: (row) => formatSignedDiff(row.plusMinus), highKey: "plusMinus" },
+  { label: "PIR", render: (row) => formatCount(row.valuation), highKey: "valuation" },
 ];
 
-function BoxScoreTable({ players, teamTotal, team, won }) {
+const hasMinutes = (row) => row.timePlayed > 0;
+const isStarter = (row) => Boolean(row.started ?? row.startedAlt);
+
+function compareByName(left, right) {
+  return (left.personName ?? "").localeCompare(right.personName ?? "") || left.personKey.localeCompare(right.personKey);
+}
+
+// Starters first, then the bench, each by minutes. Players with no minutes are listed apart, unless nobody on the team
+// has minutes (a box score without them), in which case everyone is shown by name.
+function orderRoster(rows) {
+  if (!rows.some(hasMinutes)) return { played: [...rows].sort(compareByName), didNotPlay: [] };
+  const played = rows
+    .filter(hasMinutes)
+    .sort((left, right) => Number(isStarter(right)) - Number(isStarter(left)) || right.timePlayed - left.timePlayed || compareByName(left, right));
+  const didNotPlay = rows.filter((row) => !hasMinutes(row)).sort(compareByName);
+  return { played, didNotPlay };
+}
+
+// The game-high per column, over players of both teams who played. A column with no positive value has no high.
+function computeGameHighs(playerStats) {
+  const highs = {};
+  const playedRows = playerStats.filter(hasMinutes);
+  for (const { highKey } of BOX_SCORE_COLUMNS) {
+    if (!highKey) continue;
+    const values = playedRows.map((row) => row[highKey]).filter((value) => Number.isFinite(value));
+    const max = values.length > 0 ? Math.max(...values) : 0;
+    highs[highKey] = max > 0 ? max : null;
+  }
+  return highs;
+}
+
+function PlayerLink({ seasonCode, player, className = "" }) {
+  const name = player.personName ?? player.personKey;
+  return (
+    <Link to={`/${seasonCode}/players/${player.personKey}`} className={`hover:text-primary ${className}`} title={name}>
+      {name}
+    </Link>
+  );
+}
+
+function BoxScoreTable({ players, teamTotal, team, won, seasonCode, gameHighs }) {
   const rows = players.filter((row) => row.side === teamTotal?.side);
+  const { played, didNotPlay } = orderRoster(rows);
   const name = teamName(team);
 
   return (
-    <div>
+    <motion.div variants={sectionItem}>
       <div className="mb-2 flex flex-wrap items-center gap-2">
         {team?.crestUrl ? (
           <img
@@ -95,66 +162,65 @@ function BoxScoreTable({ players, teamTotal, team, won }) {
         <EmptyText>Box score not available yet.</EmptyText>
       ) : (
         <Panel className="overflow-x-auto overscroll-x-contain p-2">
-          <table className="data-table-sticky table table-sm">
+          <table className="data-table-sticky table table-sm hover">
             <thead>
               <tr>
                 <th>Player</th>
-                {BOX_SCORE_COLUMNS.map(([label]) => (
+                {BOX_SCORE_COLUMNS.map(({ label }) => (
                   <th key={label} className="num text-center">
-                    {label}
+                    <HeaderTip tip={STAT_TIPS[label]}>{label}</HeaderTip>
                   </th>
                 ))}
               </tr>
             </thead>
-            <tbody>
-              {rows.map((player) => {
-                const started = Boolean(player.started ?? player.startedAlt);
-                return (
-                  <tr key={player.personKey}>
-                    <td>
-                      <div className="flex min-w-0 items-center gap-2">
-                        <span className="w-6 flex-none text-center text-xs text-base-content/60">
-                          {player.dorsal ?? "-"}
-                        </span>
-                        {player.headshotUrl ? (
-                          <img
-                            src={player.headshotUrl}
-                            alt=""
-                            className="h-8 w-8 flex-none rounded-full object-cover"
-                            onError={(event) => {
-                              event.currentTarget.style.display = "none";
-                            }}
-                          />
-                        ) : null}
-                        <div className="min-w-0">
-                          <div className="flex items-center gap-1">
-                            <span
-                              className="max-w-32 truncate sm:max-w-48"
-                              title={player.personName ?? player.personKey}
-                            >
-                              {player.personName ?? player.personKey}
-                            </span>
-                            {started ? <span className="badge badge-primary badge-xs">S</span> : null}
-                          </div>
-                          {player.positionName ? (
-                            <div className="text-xs text-base-content/60">{player.positionName}</div>
+            <AnimatedBody>
+              {played.map((player) => (
+                <AnimatedRow key={player.personKey}>
+                  <td>
+                    <div className="flex min-w-0 items-center gap-2">
+                      <span className="w-6 flex-none text-center text-xs text-base-content/60">
+                        {player.dorsal ?? "-"}
+                      </span>
+                      {player.headshotUrl ? (
+                        <img
+                          src={player.headshotUrl}
+                          alt=""
+                          className="aspect-3/4 h-10 w-auto flex-none object-contain object-bottom"
+                          onError={(event) => {
+                            event.currentTarget.style.display = "none";
+                          }}
+                        />
+                      ) : null}
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-1">
+                          <PlayerLink seasonCode={seasonCode} player={player} className="max-w-32 truncate sm:max-w-48" />
+                          {isStarter(player) ? (
+                            <HeaderTip tip="Starter: in the starting five">
+                              <span className="badge badge-primary badge-xs">S</span>
+                            </HeaderTip>
                           ) : null}
                         </div>
+                        {player.positionName ? (
+                          <div className="text-xs text-base-content/60">{player.positionName}</div>
+                        ) : null}
                       </div>
-                    </td>
-                    {BOX_SCORE_COLUMNS.map(([label, render]) => (
-                      <td key={label} className="num text-center tabular-nums">
+                    </div>
+                  </td>
+                  {BOX_SCORE_COLUMNS.map(({ label, render, highKey }) => {
+                    const isHigh = highKey && gameHighs[highKey] != null && player[highKey] === gameHighs[highKey];
+                    return (
+                      <td key={label} className={`num text-center tabular-nums${isHigh ? " font-bold" : ""}`}>
                         {render(player)}
                       </td>
-                    ))}
-                  </tr>
-                );
-              })}
-            </tbody>
+                    );
+                  })}
+                </AnimatedRow>
+              ))}
+            </AnimatedBody>
             <tfoot>
               <tr className="font-bold">
                 <td>Total</td>
-                {BOX_SCORE_COLUMNS.map(([label, render]) => (
+                {BOX_SCORE_COLUMNS.map(({ label, render }) => (
                   <td key={label} className="num text-center tabular-nums">
                     {render(teamTotal)}
                   </td>
@@ -162,9 +228,46 @@ function BoxScoreTable({ players, teamTotal, team, won }) {
               </tr>
             </tfoot>
           </table>
+          {didNotPlay.length > 0 ? (
+            <p className="muted px-2 pt-2 pb-1 text-sm">
+              <span className="font-semibold">Did not play:</span>{" "}
+              {didNotPlay.map((player, index) => (
+                <span key={player.personKey}>
+                  {index > 0 ? ", " : ""}
+                  <PlayerLink seasonCode={seasonCode} player={player} />
+                </span>
+              ))}
+            </p>
+          ) : null}
         </Panel>
       )}
-    </div>
+    </motion.div>
+  );
+}
+
+function BoxScoreTab({ boxScore, game, seasonCode, localWon, roadWon }) {
+  const gameHighs = computeGameHighs(boxScore.playerStats);
+  const totalFor = (side) => boxScore.teamStats.find((row) => row.side === side && row.statsKind === "total");
+
+  return (
+    <motion.div className="flex flex-col gap-6" variants={sectionContainer} initial="hidden" animate="show">
+      <BoxScoreTable
+        players={boxScore.playerStats}
+        teamTotal={totalFor("local")}
+        team={game.localTeam}
+        won={localWon}
+        seasonCode={seasonCode}
+        gameHighs={gameHighs}
+      />
+      <BoxScoreTable
+        players={boxScore.playerStats}
+        teamTotal={totalFor("road")}
+        team={game.roadTeam}
+        won={roadWon}
+        seasonCode={seasonCode}
+        gameHighs={gameHighs}
+      />
+    </motion.div>
   );
 }
 
@@ -568,7 +671,7 @@ function ShootingTab({ shots, teamStats, localTeam, roadTeam }) {
           </LabelledSelect>
         </div>
 
-        <TabPanel id="shooting-presentation-panel" focusKey={presentationMode}>
+        <TabPanel id="shooting-presentation-panel" focusKey={presentationMode} scroll={false}>
           {presentationMode === "map" || presentationMode === "heatmap" ? (
             <>
               <div className="mb-3">
@@ -1173,11 +1276,11 @@ function GameFlowTab({ events, periodScores, localTeam, roadTeam }) {
 
 function shootingCell(made, attempted) {
   const pct = shootingPercentage(made, attempted);
-  return `${made ?? "-"}-${attempted ?? "-"} (${formatPercentage(pct)})`;
+  return `${madeAttempted(made, attempted)} (${formatPercentage(pct)})`;
 }
 
 const COMPARISON_ROWS = [
-  { label: "Points", render: (row) => row.points ?? "-", value: (row) => Number(row.points) },
+  { label: "Points", render: (row) => formatCount(row.points), value: (row) => Number(row.points) },
   {
     label: "2PT",
     render: (row) => shootingCell(row.fieldGoalsMade2, row.fieldGoalsAttempted2),
@@ -1193,17 +1296,17 @@ const COMPARISON_ROWS = [
     render: (row) => shootingCell(row.freeThrowsMade, row.freeThrowsAttempted),
     value: (row) => shootingPercentage(row.freeThrowsMade, row.freeThrowsAttempted),
   },
-  { label: "Rebounds", render: (row) => row.totalRebounds ?? "-", value: (row) => Number(row.totalRebounds) },
-  { label: "Offensive rebounds", render: (row) => row.offensiveRebounds ?? "-", value: (row) => Number(row.offensiveRebounds) },
-  { label: "Defensive rebounds", render: (row) => row.defensiveRebounds ?? "-", value: (row) => Number(row.defensiveRebounds) },
-  { label: "Assists", render: (row) => row.assistances ?? "-", value: (row) => Number(row.assistances) },
-  { label: "Steals", render: (row) => row.steals ?? "-", value: (row) => Number(row.steals) },
-  { label: "Turnovers", render: (row) => row.turnovers ?? "-", value: (row) => Number(row.turnovers), lowerIsBetter: true },
-  { label: "Blocks", render: (row) => row.blocksFavour ?? "-", value: (row) => Number(row.blocksFavour) },
-  { label: "Blocks against", render: (row) => row.blocksAgainst ?? "-", value: (row) => Number(row.blocksAgainst), lowerIsBetter: true },
-  { label: "Fouls committed", render: (row) => row.foulsCommited ?? "-", value: (row) => Number(row.foulsCommited), lowerIsBetter: true },
-  { label: "Fouls drawn", render: (row) => row.foulsReceived ?? "-", value: (row) => Number(row.foulsReceived) },
-  { label: "PIR", render: (row) => row.valuation ?? "-", value: (row) => Number(row.valuation) },
+  { label: "Rebounds", render: (row) => formatCount(row.totalRebounds), value: (row) => Number(row.totalRebounds) },
+  { label: "Offensive rebounds", render: (row) => formatCount(row.offensiveRebounds), value: (row) => Number(row.offensiveRebounds) },
+  { label: "Defensive rebounds", render: (row) => formatCount(row.defensiveRebounds), value: (row) => Number(row.defensiveRebounds) },
+  { label: "Assists", render: (row) => formatCount(row.assistances), value: (row) => Number(row.assistances) },
+  { label: "Steals", render: (row) => formatCount(row.steals), value: (row) => Number(row.steals) },
+  { label: "Turnovers", render: (row) => formatCount(row.turnovers), value: (row) => Number(row.turnovers), lowerIsBetter: true },
+  { label: "Blocks", render: (row) => formatCount(row.blocksFavour), value: (row) => Number(row.blocksFavour) },
+  { label: "Blocks against", render: (row) => formatCount(row.blocksAgainst), value: (row) => Number(row.blocksAgainst), lowerIsBetter: true },
+  { label: "Fouls committed", render: (row) => formatCount(row.foulsCommited), value: (row) => Number(row.foulsCommited), lowerIsBetter: true },
+  { label: "Fouls drawn", render: (row) => formatCount(row.foulsReceived), value: (row) => Number(row.foulsReceived) },
+  { label: "PIR", render: (row) => formatCount(row.valuation), value: (row) => Number(row.valuation) },
 ];
 
 function TeamComparisonTable({ localTotal, roadTotal, localTeam, roadTeam }) {
@@ -1221,7 +1324,7 @@ function TeamComparisonTable({ localTotal, roadTotal, localTeam, roadTeam }) {
             <th className="text-left">{teamName(roadTeam)}</th>
           </tr>
         </thead>
-        <tbody>
+        <AnimatedBody>
           {COMPARISON_ROWS.map((row) => {
             const localValue = row.value(localTotal);
             const roadValue = row.value(roadTotal);
@@ -1230,18 +1333,20 @@ function TeamComparisonTable({ localTotal, roadTotal, localTeam, roadTeam }) {
             const roadBetter = validComparison && !localBetter;
 
             return (
-              <tr key={row.label}>
+              <AnimatedRow key={row.label}>
                 <td className={`text-right tabular-nums ${localBetter ? "font-semibold text-primary" : ""}`}>
                   {row.render(localTotal)}
                 </td>
-                <td className="muted text-center text-xs font-bold tracking-wide uppercase opacity-65">{row.label}</td>
+                <td className="muted text-center text-xs font-bold tracking-wide uppercase opacity-65">
+                  {STAT_TIPS[row.label] ? <HeaderTip tip={STAT_TIPS[row.label]}>{row.label}</HeaderTip> : row.label}
+                </td>
                 <td className={`text-left tabular-nums ${roadBetter ? "font-semibold text-primary" : ""}`}>
                   {row.render(roadTotal)}
                 </td>
-              </tr>
+              </AnimatedRow>
             );
           })}
-        </tbody>
+        </AnimatedBody>
       </table>
     </Panel>
   );
@@ -1262,12 +1367,6 @@ export default function GameDetailPage() {
   const boxScoreQuery = useQuery({
     queryKey: ["box-score", seasonCode, gameCode],
     queryFn: () => getBoxScore(seasonCode, gameCode),
-    enabled: gameQuery.isSuccess,
-  });
-
-  const coverageQuery = useQuery({
-    queryKey: ["coverage", seasonCode, gameCode],
-    queryFn: () => getCoverage(seasonCode, { gameCode }),
     enabled: gameQuery.isSuccess,
   });
 
@@ -1350,39 +1449,23 @@ export default function GameDetailPage() {
         )}
       </PageHeader>
 
-      <div className="mb-6">
-        {coverageQuery.isLoading ? (
-          <AsyncState status="loading" label="Loading game data coverage" compact />
-        ) : coverageQuery.isError ? (
-          <AsyncState status="error" inline message="Could not load this game's data coverage." />
-        ) : (
-          <DataCoveragePanel coverage={coverageQuery.data} />
-        )}
-      </div>
-
       <TabStrip ariaLabel="Game detail" panelId="game-detail-panel" activeKey={tab} onChange={setTab} className="mb-4 w-fit" tabs={GAME_TABS} />
 
-      <TabPanel id="game-detail-panel" focusKey={tab}>
+      <TabPanel id="game-detail-panel" focusKey={tab} scroll={false}>
+        <motion.div key={tab} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.25 }}>
         {tab === "box-score" ? (
           boxScoreQuery.isLoading ? (
             <AsyncState status="loading" label="Loading the box score" />
           ) : boxScoreQuery.isError ? (
             <AsyncState status="error" message="Could not load box score." onRetry={() => boxScoreQuery.refetch()} />
           ) : (
-            <div className="grid gap-6 xl:grid-cols-2">
-              <BoxScoreTable
-                players={boxScoreQuery.data.playerStats}
-                teamTotal={boxScoreQuery.data.teamStats.find((row) => row.side === "local" && row.statsKind === "total")}
-                team={game.localTeam}
-                won={localWon}
-              />
-              <BoxScoreTable
-                players={boxScoreQuery.data.playerStats}
-                teamTotal={boxScoreQuery.data.teamStats.find((row) => row.side === "road" && row.statsKind === "total")}
-                team={game.roadTeam}
-                won={roadWon}
-              />
-            </div>
+            <BoxScoreTab
+              boxScore={boxScoreQuery.data}
+              game={game}
+              seasonCode={seasonCode}
+              localWon={localWon}
+              roadWon={roadWon}
+            />
           )
         ) : null}
 
@@ -1464,6 +1547,7 @@ export default function GameDetailPage() {
             />
           )
         ) : null}
+        </motion.div>
       </TabPanel>
     </div>
   );

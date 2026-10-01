@@ -78,6 +78,16 @@ export function formatDate(scheduledAt, { dateStyle = "medium" } = {}) {
   return new Date(scheduledAt).toLocaleDateString(undefined, { dateStyle });
 }
 
+export function formatShortDate(scheduledAt) {
+  if (!scheduledAt) return "TBD";
+  return new Date(scheduledAt).toLocaleDateString(undefined, { weekday: "short", day: "numeric", month: "short" });
+}
+
+export function formatTimeOfDay(scheduledAt) {
+  if (!scheduledAt) return "TBD";
+  return new Date(scheduledAt).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" });
+}
+
 export function formatRound(roundNumber) {
   if (roundNumber === null || roundNumber === undefined) return EM_DASH;
   return `R${roundNumber}`;

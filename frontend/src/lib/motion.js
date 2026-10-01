@@ -30,6 +30,19 @@ export const cardHover = {
   transition: { type: "spring", stiffness: 420, damping: 28 },
 };
 
+// Wide cards (the Games page): a lighter lift and press than cardHover, which suits small tiles.
+export const wideCardHover = {
+  whileHover: { y: -2 },
+  whileTap: { scale: 0.985 },
+  transition: { type: "spring", stiffness: 420, damping: 30 },
+};
+
+// A score or time pops in just after its card has appeared (inherits the card's show state).
+export const centerPop = {
+  hidden: { opacity: 0, scale: 0.85 },
+  show: { opacity: 1, scale: 1, transition: { type: "spring", stiffness: 380, damping: 22, delay: 0.1 } },
+};
+
 // Table bodies reveal their rows one after another; a row also works alone outside a body.
 export const tableBody = {
   hidden: {},

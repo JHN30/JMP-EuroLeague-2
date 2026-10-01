@@ -659,6 +659,141 @@ button {
   color: var(--color-primary);
 }
 
+/* Games page - round strip and two-up game cards */
+.round-strip {
+  min-width: 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.round-strip::-webkit-scrollbar {
+  display: none;
+}
+.round-strip .tab {
+  position: relative;
+  isolation: isolate;
+}
+.round-indicator {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: var(--radius-field);
+  background: color-mix(in srgb, var(--color-primary) 16%, transparent);
+}
+.round-strip .tab-active {
+  color: var(--color-primary);
+}
+.fixture-box {
+  container-type: inline-size;
+}
+.fixture-grid {
+  display: grid;
+  gap: 0.75rem;
+}
+@container (min-width: 40rem) {
+  .fixture-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+.fixture-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+  padding: 1rem;
+  background: var(--color-base-200);
+  border: 1px solid var(--color-base-300);
+  border-radius: var(--radius-field);
+  text-decoration: none;
+  color: inherit;
+}
+.fixture-card:hover {
+  border-color: var(--color-primary);
+}
+.fixture-card-body {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: center;
+  gap: 0.75rem;
+}
+.fixture-team {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.25rem;
+  text-align: center;
+  font-size: 0.85rem;
+  font-weight: 600;
+  min-width: 0;
+}
+.fixture-team.win .fixture-team-name {
+  font-weight: 800;
+}
+.fixture-crest {
+  width: 2.75rem;
+  height: 2.75rem;
+  object-fit: contain;
+  flex: none;
+}
+.fixture-team-name {
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}
+.fixture-team-record {
+  font-size: 0.72rem;
+  opacity: 0.65;
+}
+.fixture-center {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.35rem;
+}
+.fixture-date {
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  opacity: 0.7;
+  white-space: nowrap;
+}
+.fixture-time {
+  font-size: 1.6rem;
+  line-height: 1;
+  font-weight: var(--weight-display);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.score-pill {
+  display: inline-flex;
+  overflow: hidden;
+  border: 1px solid var(--color-base-300);
+  border-radius: var(--radius-field);
+  font-variant-numeric: tabular-nums;
+  font-size: 1.35rem;
+  font-weight: var(--weight-display);
+  line-height: 1;
+}
+.score-pill > span {
+  min-width: 2.75rem;
+  padding: 0.5rem 0.6rem;
+  text-align: center;
+}
+.score-pill > span.win {
+  background: var(--color-primary);
+  color: var(--color-primary-content);
+}
+.fixture-cta {
+  padding: 0.4rem 0.75rem;
+  border: 1px solid var(--color-base-300);
+  border-radius: var(--radius-field);
+  text-align: center;
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+.fixture-card:hover .fixture-cta {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+}
+
 /* Per-stat leader cards (dashboard) */
 .leaders-row {
   display: flex;

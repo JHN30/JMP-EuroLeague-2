@@ -19,6 +19,10 @@ every such change so it can be found later.
 
 - [home-ten-upcoming-games-and-results.md](home-ten-upcoming-games-and-results.md): 10 upcoming games in a wrapping grid and 10 latest results
 
+## Games page
+
+- [games-page-round-picker-and-two-up-cards.md](games-page-round-picker-and-two-up-cards.md): round tabs instead of the dropdown and "All rounds", two game cards per row
+
 ## Data and platform
 
 - [read-renamed-app-neon-tables.md](read-renamed-app-neon-tables.md)

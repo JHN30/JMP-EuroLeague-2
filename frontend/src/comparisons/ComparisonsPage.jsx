@@ -9,6 +9,8 @@ import HeaderStats from "../lib/HeaderStats";
 import LabelledSelect from "../lib/LabelledSelect";
 import Panel from "../lib/Panel";
 import PanelHeader from "../lib/PanelHeader";
+import ComparisonRow from "../lib/ComparisonRow";
+import { winnerSide } from "../lib/comparisonMath";
 import PageHeader from "../lib/PageHeader";
 import { useDocumentTitle } from "../lib/useDocumentTitle";
 import { usePhaseParam } from "../lib/usePhaseParam";
@@ -73,71 +75,6 @@ const PLAYER_METRIC_DIRECTIONS = {
   doubleDoubles: "higher",
   tripleDoubles: "higher",
 };
-
-function winnerSide(rawA, rawB, direction) {
-  if (direction === "neutral" || !direction) return null;
-  const a = Number(rawA);
-  const b = Number(rawB);
-  if (!Number.isFinite(a) || !Number.isFinite(b) || a === b) return null;
-  if (direction === "higher") return a > b ? "a" : "b";
-  return a < b ? "a" : "b";
-}
-
-function toNumber(raw) {
-  if (raw === null || raw === undefined) return null;
-  const num = Number(raw);
-  return Number.isFinite(num) ? num : null;
-}
-
-const BAND_MIN = 35;
-
-function comparisonBand(rawA, rawB) {
-  const a = toNumber(rawA);
-  const b = toNumber(rawB);
-  if (a === null || b === null) {
-    return { widthA: a === null ? 0 : 100, widthB: b === null ? 0 : 100 };
-  }
-  const magA = Math.abs(a);
-  const magB = Math.abs(b);
-  const maxMag = Math.max(magA, magB);
-  if (maxMag === 0) return { widthA: 100, widthB: 100 };
-  return {
-    widthA: magA === maxMag ? 100 : BAND_MIN + (magA / maxMag) * (100 - BAND_MIN),
-    widthB: magB === maxMag ? 100 : BAND_MIN + (magB / maxMag) * (100 - BAND_MIN),
-  };
-}
-
-function ComparisonRow({ label, rawA, rawB, displayA, displayB, direction }) {
-  const winner = winnerSide(rawA, rawB, direction);
-  const { widthA, widthB } = comparisonBand(rawA, rawB);
-  const aMissing = rawA === null || rawA === undefined;
-  const bMissing = rawB === null || rawB === undefined;
-
-  return (
-    <div className="border-b border-base-300 py-3 last:border-0">
-      <div className="mb-2 text-center">
-        <span className="text-xs font-bold tracking-wide uppercase">{label}</span>
-        {direction === "lower" ? (
-          <span className="muted ml-2 text-[0.65rem] tracking-wide uppercase">Lower is better</span>
-        ) : null}
-      </div>
-      <div className="grid grid-cols-2 gap-4">
-        <div className={`rounded-field p-2 ${winner === "a" ? "bg-primary/10 text-primary" : ""}`}>
-          <div className="mb-1 text-right font-semibold tabular-nums">{aMissing ? "—" : displayA}</div>
-          <div className="h-1.5 w-full overflow-hidden rounded-full bg-base-300">
-            <div className="h-full rounded-full bg-current" style={{ width: `${aMissing ? 0 : widthA}%` }} />
-          </div>
-        </div>
-        <div className={`rounded-field p-2 ${winner === "b" ? "bg-primary/10 text-primary" : ""}`}>
-          <div className="mb-1 text-left font-semibold tabular-nums">{bMissing ? "—" : displayB}</div>
-          <div className="h-1.5 w-full overflow-hidden rounded-full bg-base-300">
-            <div className="ml-auto h-full rounded-full bg-current" style={{ width: `${bMissing ? 0 : widthB}%` }} />
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
 
 function TeamPicker({ label, allTeams, teamsPending, selected, excludeId, onSelect }) {
   const teams = allTeams.filter((team) => team.clubCode !== excludeId);

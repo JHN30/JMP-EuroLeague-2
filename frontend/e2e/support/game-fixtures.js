@@ -112,9 +112,9 @@ export const BOX_SCORE = {
 const UNPLAYED_BOX_SCORE = { periodScores: [], teamStats: [], playerStats: [] };
 
 // Mocks every API request the game page makes. Options: `requests` (collects requested paths), `played`,
-// `boxScore`, `playByPlay` (response body), and `playByPlayStatus` (use 500 to simulate a failure).
+// `boxScore`, `boxScoreStatus`, `playByPlay` (response body), and `playByPlayStatus` (use 500 to simulate a failure).
 export async function mockGameApi(page, options = {}) {
-  const { requests = [], played = true, boxScore = BOX_SCORE, playByPlay = { events: [] }, playByPlayStatus = 200 } = options;
+  const { requests = [], played = true, boxScore = BOX_SCORE, boxScoreStatus = 200, playByPlay = { events: [] }, playByPlayStatus = 200 } = options;
   await page.route("**/api/**", async (route) => {
     const pathname = new URL(route.request().url()).pathname;
     requests.push(pathname);
@@ -140,7 +140,10 @@ export async function mockGameApi(page, options = {}) {
       return;
     }
     if (pathname === `/api/seasons/${SEASON}/games/1/box-score`) {
-      await route.fulfill({ json: played ? boxScore : UNPLAYED_BOX_SCORE });
+      await route.fulfill({
+        status: boxScoreStatus,
+        json: boxScoreStatus !== 200 ? { error: "Mocked failure" } : played ? boxScore : UNPLAYED_BOX_SCORE,
+      });
       return;
     }
     if (pathname === `/api/seasons/${SEASON}/games/1/play-by-play`) {

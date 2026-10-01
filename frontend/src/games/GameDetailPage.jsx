@@ -32,12 +32,14 @@ import { PeriodTable, ScoreFlowChart } from "./gameFlow";
 import { computeGameFlow, momentLabel, withRunningScore } from "./gameFlowData";
 import OverviewTab from "./OverviewTab";
 import PlayerLink from "./PlayerLink";
+import RotationsTab from "./RotationsTab";
 import { TabPanel, TabStrip } from "../lib/TabStrip";
 
 const GAME_TABS = [
   { key: "overview", label: "Overview" },
   { key: "box-score", label: "Box score" },
   { key: "game-flow", label: "Game flow" },
+  { key: "rotations", label: "Rotations" },
   { key: "comparison", label: "Team comparison" },
   { key: "shooting", label: "Shooting" },
   { key: "play-by-play", label: "Play-by-play" },
@@ -1080,7 +1082,7 @@ export default function GameDetailPage() {
   const playByPlayQuery = useQuery({
     queryKey: ["play-by-play", seasonCode, gameCode],
     queryFn: () => getPlayByPlay(seasonCode, gameCode),
-    enabled: gameQuery.isSuccess && game?.played === true && (tab === "overview" || tab === "play-by-play" || tab === "game-flow"),
+    enabled: gameQuery.isSuccess && game?.played === true && (tab === "overview" || tab === "play-by-play" || tab === "game-flow" || tab === "rotations"),
   });
 
   const shotsQuery = useQuery({
@@ -1177,6 +1179,8 @@ export default function GameDetailPage() {
             />
           )
         ) : null}
+
+        {tab === "rotations" ? <RotationsTab game={game} seasonCode={seasonCode} boxScoreQuery={boxScoreQuery} playByPlayQuery={playByPlayQuery} /> : null}
 
         {tab === "game-flow" ? (
           !game.played ? (

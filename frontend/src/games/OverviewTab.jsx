@@ -12,24 +12,7 @@ import { computeGameFlow } from "./gameFlowData";
 import { teamName } from "./gameUtils";
 import { BEST_PLAYER_METRIC, gameLeaders, keyStatRows, pickBestPlayer } from "./overview";
 import PlayerLink from "./PlayerLink";
-
-function TeamLabel({ team }) {
-  return (
-    <div className="flex items-center gap-2">
-      {team?.crestUrl ? (
-        <img
-          src={team.crestUrl}
-          alt=""
-          className="h-6 w-6 flex-none object-contain"
-          onError={(event) => {
-            event.currentTarget.style.display = "none";
-          }}
-        />
-      ) : null}
-      <span className="font-semibold">{teamName(team)}</span>
-    </div>
-  );
-}
+import TeamLabel from "./TeamLabel";
 
 function Headshot({ player }) {
   return player.headshotUrl ? (

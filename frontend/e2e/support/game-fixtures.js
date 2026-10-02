@@ -128,11 +128,28 @@ export const ADVANCED = {
   scope: "all",
   round: 2,
   minSeasonMinutes: 20,
-  teams: ["local", "road"].map((side) => ({
-    side, clubCode: side === "local" ? "A" : "B", possessions: 70, pace: 70, offensiveRating: 114, defensiveRating: 100, netRating: 14,
-    efgPct: side === "local" ? 0.59 : 0.5, oppEfgPct: 0.5, tovPct: 0.12, oppTovPct: 0.16, orbPct: 0.3, drbPct: 0.7, ftRate: 0.2, oppFtRate: 0.2,
-    trueShootingPct: side === "local" ? 0.62 : 0.55, assistRatio: 0.5, gameMinutes: 40, ownPossessionsEstimate: 70,
-  })),
+  minSeasonGames: 3,
+  // Team A (local) has a season average to compare with; Team B has played too few games, so its block is hidden.
+  teams: [
+    {
+      side: "local", clubCode: "A", possessions: 70, pace: 70, offensiveRating: 114, defensiveRating: 100, netRating: 14,
+      efgPct: 0.59, oppEfgPct: 0.5, tovPct: 0.12, oppTovPct: 0.16, orbPct: 0.3, drbPct: 0.7, ftRate: 0.2, oppFtRate: 0.2,
+      trueShootingPct: 0.62, assistRatio: 0.5, gameMinutes: 40, ownPossessionsEstimate: 70,
+      season: {
+        gamesPlayed: 10, hidden: false, pace: 71.2, offensiveRating: 110, defensiveRating: 105, netRating: 5, efgPct: 0.55,
+        tovPct: 0.14, orbPct: 0.3, drbPct: 0.7, ftRate: 0.18, oppEfgPct: 0.52, oppTovPct: 0.15, oppFtRate: 0.2,
+      },
+    },
+    {
+      side: "road", clubCode: "B", possessions: 70, pace: 70, offensiveRating: 100, defensiveRating: 114, netRating: -14,
+      efgPct: 0.5, oppEfgPct: 0.59, tovPct: 0.16, oppTovPct: 0.12, orbPct: 0.28, drbPct: 0.66, ftRate: 0.15, oppFtRate: 0.2,
+      trueShootingPct: 0.55, assistRatio: 0.5, gameMinutes: 40, ownPossessionsEstimate: 70,
+      season: {
+        gamesPlayed: 2, hidden: true, pace: null, offensiveRating: null, defensiveRating: null, netRating: null, efgPct: null,
+        tovPct: null, orbPct: null, drbPct: null, ftRate: null, oppEfgPct: null, oppTovPct: null, oppFtRate: null,
+      },
+    },
+  ],
   players: [
     advancedPlayer("local", "A-STARTER", 900, 20.1, {
       gameScore: 21.4, trueShootingPct: 0.6, efgPct: 0.65, usagePct: 0.3,

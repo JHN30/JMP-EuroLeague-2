@@ -4,6 +4,7 @@ import { motion } from "motion/react";
 import { useParams } from "react-router";
 import { getBoxScore, getGame, getGameAdvanced, getPlayByPlay, getShots } from "../lib/api";
 import AsyncState from "../lib/AsyncState";
+import ComparisonRow from "../lib/ComparisonRow";
 import EmptyText from "../lib/EmptyText";
 import {
   formatCount,
@@ -31,6 +32,8 @@ import { compareByName, hasMinutes, isStarter, teamName } from "./gameUtils";
 import { PeriodTable, ScoreFlowChart } from "./gameFlow";
 import { computeGameFlow, momentLabel, withRunningScore } from "./gameFlowData";
 import { advancedColumns, attachAdvanced } from "./AdvancedBoxScore";
+import FourFactors from "./FourFactors";
+import TeamLabel from "./TeamLabel";
 import OverviewTab from "./OverviewTab";
 import PlayerLink from "./PlayerLink";
 import RotationsTab from "./RotationsTab";
@@ -1059,46 +1062,62 @@ const COMPARISON_ROWS = [
   { label: "PIR", render: (row) => formatCount(row.valuation), value: (row) => Number(row.valuation) },
 ];
 
-function TeamComparisonTable({ localTotal, roadTotal, localTeam, roadTeam }) {
+// The previous table's rows as mirrored bars: the printed text is the old cell text, the bar is sized by `value`.
+function TeamComparisonRows({ localTotal, roadTotal, localTeam, roadTeam }) {
   if (!localTotal || !roadTotal) {
     return <EmptyText>Team comparison isn't available until this game is played.</EmptyText>;
   }
 
   return (
-    <Panel className="overflow-x-auto overscroll-x-contain p-2">
-      <table className="table">
-        <thead>
-          <tr>
-            <th className="text-right">{teamName(localTeam)}</th>
-            <th className="text-center">Stat</th>
-            <th className="text-left">{teamName(roadTeam)}</th>
-          </tr>
-        </thead>
-        <AnimatedBody>
-          {COMPARISON_ROWS.map((row) => {
-            const localValue = row.value(localTotal);
-            const roadValue = row.value(roadTotal);
-            const validComparison = Number.isFinite(localValue) && Number.isFinite(roadValue) && localValue !== roadValue;
-            const localBetter = validComparison && (row.lowerIsBetter ? localValue < roadValue : localValue > roadValue);
-            const roadBetter = validComparison && !localBetter;
-
-            return (
-              <AnimatedRow key={row.label}>
-                <td className={`text-right tabular-nums ${localBetter ? "font-semibold text-primary" : ""}`}>
-                  {row.render(localTotal)}
-                </td>
-                <td className="muted text-center text-xs font-bold tracking-wide uppercase opacity-65">
-                  {STAT_TIPS[row.label] ? <HeaderTip tip={STAT_TIPS[row.label]}>{row.label}</HeaderTip> : row.label}
-                </td>
-                <td className={`text-left tabular-nums ${roadBetter ? "font-semibold text-primary" : ""}`}>
-                  {row.render(roadTotal)}
-                </td>
-              </AnimatedRow>
-            );
-          })}
-        </AnimatedBody>
-      </table>
+    <Panel className="flex flex-1 flex-col p-4">
+      <div className="mb-2 grid grid-cols-2 gap-4">
+        <div className="flex justify-end">
+          <TeamLabel team={localTeam} />
+        </div>
+        <TeamLabel team={roadTeam} />
+      </div>
+      {COMPARISON_ROWS.map((row) => (
+        <ComparisonRow
+          key={row.label}
+          label={row.label}
+          tip={STAT_TIPS[row.label]}
+          direction={row.lowerIsBetter ? "lower" : "higher"}
+          rawA={row.value(localTotal)}
+          rawB={row.value(roadTotal)}
+          displayA={row.render(localTotal)}
+          displayB={row.render(roadTotal)}
+        />
+      ))}
     </Panel>
+  );
+}
+
+// The box-score rows (left) and the Four Factors (right) sit side by side on wide screens and stack on narrow ones. The
+// two panels are equally tall: the shorter one spreads its rows out evenly instead of leaving empty space at the bottom.
+// They load separately, so trouble with one never hides the other.
+function TeamComparisonTab({ game, boxScoreQuery, advancedQuery }) {
+  if (!game.played) {
+    return <EmptyText>Team comparison isn't available until this game is played.</EmptyText>;
+  }
+  const totalFor = (side) => boxScoreQuery.data?.teamStats.find((row) => row.side === side && row.statsKind === "total");
+
+  return (
+    <div className="grid gap-6 lg:grid-cols-2">
+      <section className="flex flex-col">
+        <PanelHeader kicker="BOX SCORE" title="Head to head" />
+        {boxScoreQuery.isLoading ? (
+          <AsyncState status="loading" label="Loading team comparison" />
+        ) : boxScoreQuery.isError ? (
+          <AsyncState status="error" message="Could not load team comparison." onRetry={() => boxScoreQuery.refetch()} />
+        ) : (
+          <TeamComparisonRows localTotal={totalFor("local")} roadTotal={totalFor("road")} localTeam={game.localTeam} roadTeam={game.roadTeam} />
+        )}
+      </section>
+      <section className="flex flex-col">
+        <PanelHeader kicker="FOUR FACTORS" title="Each team against its season average" />
+        <FourFactors advancedQuery={advancedQuery} localTeam={game.localTeam} roadTeam={game.roadTeam} />
+      </section>
+    </div>
   );
 }
 
@@ -1130,7 +1149,7 @@ export default function GameDetailPage() {
   const advancedQuery = useQuery({
     queryKey: ["game-advanced", seasonCode, gameCode],
     queryFn: () => getGameAdvanced(seasonCode, gameCode),
-    enabled: gameQuery.isSuccess && game?.played === true && (tab === "overview" || tab === "box-score"),
+    enabled: gameQuery.isSuccess && game?.played === true && (tab === "overview" || tab === "box-score" || tab === "comparison"),
     retry: false,
   });
 
@@ -1255,20 +1274,7 @@ export default function GameDetailPage() {
             />
           )
         ) : null}
-        {tab === "comparison" ? (
-          boxScoreQuery.isLoading ? (
-            <AsyncState status="loading" label="Loading team comparison" />
-          ) : boxScoreQuery.isError ? (
-            <AsyncState status="error" message="Could not load team comparison." onRetry={() => boxScoreQuery.refetch()} />
-          ) : (
-            <TeamComparisonTable
-              localTotal={boxScoreQuery.data.teamStats.find((row) => row.side === "local" && row.statsKind === "total")}
-              roadTotal={boxScoreQuery.data.teamStats.find((row) => row.side === "road" && row.statsKind === "total")}
-              localTeam={game.localTeam}
-              roadTeam={game.roadTeam}
-            />
-          )
-        ) : null}
+        {tab === "comparison" ? <TeamComparisonTab game={game} boxScoreQuery={boxScoreQuery} advancedQuery={advancedQuery} /> : null}
 
         {tab === "shooting" ? (
           !game.played ? (

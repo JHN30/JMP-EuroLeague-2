@@ -43,6 +43,7 @@ import {
   getTeamRoundSplits,
   getTeamRoundStats,
   getTeamShotZoneStats,
+  getTeamsSeasonToDate,
   getTeamStatsScopes,
   getWinShareLeaders,
 } from "../db/season-advanced";
@@ -950,6 +951,8 @@ seasonRouter.get("/:seasonCode/games/:gameCode/box-score", async (req, res) => {
 // Season-to-date values come from the `all` scope at the game's own round. They are hidden (null) while the
 // player's cumulative minutes are under the same minimum the advanced leaders use.
 const GAME_SEASON_SCOPE = "all";
+// A team average over fewer games than this is mostly the game itself, so it is hidden.
+const MIN_SEASON_GAMES = 3;
 
 seasonRouter.get("/:seasonCode/games/:gameCode/advanced", async (req, res) => {
   const season = await requestedSeason(req, res);
@@ -965,19 +968,47 @@ seasonRouter.get("/:seasonCode/games/:gameCode/advanced", async (req, res) => {
   const minSeasonMinutes = round !== null && round < EARLY_SEASON_ROUNDS ? EARLY_SEASON_MIN_MINUTES : LEADER_DEFAULT_MIN_MINUTES.per;
   const { teams, players } = await getGameAdvanced(season.seasonCode, gameCode);
   if (teams.length === 0 && players.length === 0) {
-    res.json({ available: false, scope: GAME_SEASON_SCOPE, round, minSeasonMinutes, teams: [], players: [] });
+    res.json({ available: false, scope: GAME_SEASON_SCOPE, round, minSeasonMinutes, minSeasonGames: MIN_SEASON_GAMES, teams: [], players: [] });
     return;
   }
 
-  const seasonToDate = round === null
-    ? new Map()
-    : await getPlayersSeasonToDate(season.seasonCode, round, players.map((row) => row.personKey));
+  const [seasonToDate, teamsToDate] = round === null
+    ? [new Map(), new Map()]
+    : await Promise.all([
+        getPlayersSeasonToDate(season.seasonCode, round, players.map((row) => row.personKey)),
+        getTeamsSeasonToDate(season.seasonCode, round, teams.map((row) => row.clubCode)),
+      ]);
   res.json({
     available: true,
     scope: GAME_SEASON_SCOPE,
     round,
     minSeasonMinutes,
-    teams: teams.map(({ competitionCode: _competition, seasonCode: _season, gameCode: _game, ...row }) => row),
+    minSeasonGames: MIN_SEASON_GAMES,
+    teams: teams.map(({ competitionCode: _competition, seasonCode: _season, gameCode: _game, ...row }) => {
+      const cumulative = teamsToDate.get(row.clubCode);
+      const hidden = !cumulative || cumulative.gamesPlayed < MIN_SEASON_GAMES;
+      return {
+        ...row,
+        season: cumulative
+          ? {
+              gamesPlayed: cumulative.gamesPlayed,
+              hidden,
+              pace: hidden ? null : cumulative.pace,
+              offensiveRating: hidden ? null : cumulative.offensiveRating,
+              defensiveRating: hidden ? null : cumulative.defensiveRating,
+              netRating: hidden ? null : cumulative.netRating,
+              efgPct: hidden ? null : cumulative.efgPct,
+              tovPct: hidden ? null : cumulative.tovPct,
+              orbPct: hidden ? null : cumulative.orbPct,
+              drbPct: hidden ? null : cumulative.drbPct,
+              ftRate: hidden ? null : cumulative.ftRate,
+              oppEfgPct: hidden ? null : cumulative.oppEfgPct,
+              oppTovPct: hidden ? null : cumulative.oppTovPct,
+              oppFtRate: hidden ? null : cumulative.oppFtRate,
+            }
+          : null,
+      };
+    }),
     players: players.map(({ competitionCode: _competition, seasonCode: _season, gameCode: _game, ...row }) => {
       const cumulative = seasonToDate.get(row.personKey);
       const hidden = !cumulative || cumulative.secondsPlayed === null || cumulative.secondsPlayed < minSeasonMinutes * 60;

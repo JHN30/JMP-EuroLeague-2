@@ -409,3 +409,44 @@ export async function getPlayersSeasonToDate(
   for (const row of winShares) Object.assign(entry(row.personKey), { winShares: row.winShares, secondsPlayed: row.secondsPlayed });
   return result;
 }
+
+export type TeamSeasonToDate = Pick<
+  StandingsStatsRow,
+  | "clubCode" | "gamesPlayed" | "pace" | "offensiveRating" | "defensiveRating" | "netRating" | "efgPct" | "tovPct"
+  | "orbPct" | "drbPct" | "ftRate" | "oppEfgPct" | "oppTovPct" | "oppFtRate"
+>;
+
+// Season-to-date team values for some clubs: their cumulative row at one round of the `all` scope. A club with no
+// row at that round is left out of the map.
+export async function getTeamsSeasonToDate(
+  seasonCode: string,
+  roundNumber: number,
+  clubCodes: string[],
+): Promise<Map<string, TeamSeasonToDate>> {
+  if (clubCodes.length === 0) return new Map();
+  const rows = await catalogRead(() =>
+    db.select({
+      clubCode: standingsStats.clubCode,
+      gamesPlayed: standingsStats.gamesPlayed,
+      pace: standingsStats.pace,
+      offensiveRating: standingsStats.offensiveRating,
+      defensiveRating: standingsStats.defensiveRating,
+      netRating: standingsStats.netRating,
+      efgPct: standingsStats.efgPct,
+      tovPct: standingsStats.tovPct,
+      orbPct: standingsStats.orbPct,
+      drbPct: standingsStats.drbPct,
+      ftRate: standingsStats.ftRate,
+      oppEfgPct: standingsStats.oppEfgPct,
+      oppTovPct: standingsStats.oppTovPct,
+      oppFtRate: standingsStats.oppFtRate,
+    })
+      .from(standingsStats)
+      .where(and(
+        ...inScope(standingsStats, seasonCode, "all"),
+        eq(standingsStats.roundNumber, roundNumber),
+        inArray(standingsStats.clubCode, clubCodes),
+      )),
+  );
+  return new Map(rows.map((row) => [row.clubCode, row]));
+}

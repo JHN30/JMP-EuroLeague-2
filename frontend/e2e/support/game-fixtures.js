@@ -115,6 +115,29 @@ export const NO_ADVANCED = { available: false, scope: "all", round: 2, minSeason
 // The team-flow response for a game without those tables (the default, so older tests see no extra rows).
 export const NO_TEAM_FLOW = { available: false, teams: [] };
 
+// One field-goal attempt for the Shooting tab. `club` is "A" (local) or "B" (road); coordinates are centimetres from the
+// hoop, +y toward the half-court line and +x toward the shooter's right.
+export function shot(shotOrdinal, club, actionCode, coordX, coordY, overrides = {}) {
+  return {
+    shotOrdinal,
+    clubCode: club,
+    personCode: `${club}-STARTER`,
+    playerName: club === "A" ? "ONE, AL" : "UNO, BO",
+    actionCode,
+    points: actionCode.startsWith("3") ? 3 : 2,
+    coordX,
+    coordY,
+    fastbreak: false,
+    secondChance: false,
+    pointsOffTurnover: false,
+    minute: 3,
+    markerTime: "07:00",
+    pointsA: null,
+    pointsB: null,
+    ...overrides,
+  };
+}
+
 // The lineups response for a game without on-court rows (the default, so older tests see the empty states).
 export const NO_LINEUPS = { available: false, gameSeconds: 2400, onCourt: [], units: [] };
 
@@ -268,9 +291,10 @@ const UNPLAYED_BOX_SCORE = { periodScores: [], teamStats: [], playerStats: [] };
 // `boxScore`, `boxScoreStatus`, `playByPlay` (response body), `playByPlayStatus` (use 500 to simulate a failure), and
 // `advanced` / `advancedStatus` for the game's advanced stats (default: none available), and `teamFlow` /
 // `teamFlowStatus` for its score flow, shot splits and possessions (default: none available), and `lineups` /
-// `lineupsStatus` for its on-court intervals and five-man units (default: none available).
+// `lineupsStatus` for its on-court intervals and five-man units (default: none available), and `shots` /
+// `shotsStatus` for the Shooting tab (an array of `shot(...)` rows, default: none).
 export async function mockGameApi(page, options = {}) {
-  const { requests = [], played = true, boxScore = BOX_SCORE, boxScoreStatus = 200, playByPlay = { events: [] }, playByPlayStatus = 200, advanced = NO_ADVANCED, advancedStatus = 200, teamFlow = NO_TEAM_FLOW, teamFlowStatus = 200, lineups = NO_LINEUPS, lineupsStatus = 200 } = options;
+  const { requests = [], played = true, boxScore = BOX_SCORE, boxScoreStatus = 200, playByPlay = { events: [] }, playByPlayStatus = 200, advanced = NO_ADVANCED, advancedStatus = 200, teamFlow = NO_TEAM_FLOW, teamFlowStatus = 200, lineups = NO_LINEUPS, lineupsStatus = 200, shots = [], shotsStatus = 200 } = options;
   await page.route("**/api/**", async (route) => {
     const pathname = new URL(route.request().url()).pathname;
     requests.push(pathname);
@@ -308,6 +332,10 @@ export async function mockGameApi(page, options = {}) {
     }
     if (pathname === `/api/seasons/${SEASON}/games/1/team-flow`) {
       await route.fulfill({ status: teamFlowStatus, json: teamFlowStatus === 200 ? teamFlow : { error: "Mocked failure" } });
+      return;
+    }
+    if (pathname === `/api/seasons/${SEASON}/games/1/shots`) {
+      await route.fulfill({ status: shotsStatus, json: shotsStatus === 200 ? { shots } : { error: "Mocked failure" } });
       return;
     }
     if (pathname === `/api/seasons/${SEASON}/games/1/lineups`) {

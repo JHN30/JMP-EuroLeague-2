@@ -23,7 +23,7 @@ import PageHeader from "../lib/PageHeader";
 import PanelHeader from "../lib/PanelHeader";
 import ShootingCourt from "../lib/ShootingCourt";
 import ShootingLegend from "../lib/ShootingLegend";
-import { summarizeZones } from "../lib/shotZones";
+import { countWithoutLocation } from "../lib/shotZones";
 import { useDocumentTitle } from "../lib/useDocumentTitle";
 import { sectionContainer, sectionItem } from "../lib/motion";
 import { usePrefersReducedMotion } from "../lib/usePrefersReducedMotion";
@@ -38,6 +38,7 @@ import TeamLabel from "./TeamLabel";
 import OverviewTab from "./OverviewTab";
 import PlayerLink from "./PlayerLink";
 import RotationsTab from "./RotationsTab";
+import ZoneComparison from "./ZoneComparison";
 import { TabPanel, TabStrip } from "../lib/TabStrip";
 
 const GAME_TABS = [
@@ -332,31 +333,10 @@ const PLAY_CONTEXT_FILTERS = [
   { key: "offTurnover", label: "Off turnovers", test: (shot) => shot.pointsOffTurnover },
 ];
 
-function ZoneSummary({ shots }) {
-  const rows = summarizeZones(shots);
-
-  return (
-    <Panel className="p-4">
-      <PanelHeader kicker="ZONES" title="Zone summary" />
-      <ul className="flex flex-col gap-2">
-        {rows.map((row) => (
-          <li key={row.zone} className="flex items-center justify-between gap-3 text-sm">
-            <span>{row.zone}</span>
-            <span className="tabular-nums">
-              {row.made}-{row.attempts} ({formatPercentage(shootingPercentage(row.made, row.attempts))})
-            </span>
-          </li>
-        ))}
-      </ul>
-    </Panel>
-  );
-}
-
 const PRESENTATION_MODES = [
   { key: "map", label: "Shot map" },
   { key: "heatmap", label: "Zone heatmap" },
   { key: "comparison", label: "Shooting comparison" },
-  { key: "replay", label: "Replay" },
 ];
 
 function formatPeriodOption(option) {
@@ -424,93 +404,6 @@ function QuarterPlayback({ periodOptions, activeOption, onSelect, playing, onPla
           {formatPeriodOption(option)}
         </button>
       ))}
-    </div>
-  );
-}
-
-function ReplayPanel({ shots, localTeam, roadTeam }) {
-  const madeShots = shots.filter((shot) => shot.actionCode.endsWith("M"));
-  const reducedMotion = usePrefersReducedMotion();
-  const [index, setIndex] = useState(0);
-  const [playing, setPlaying] = useState(false);
-  const clampedIndex = Math.min(index, Math.max(madeShots.length - 1, 0));
-  const atEnd = clampedIndex >= madeShots.length - 1;
-  const isAnimating = playing && !reducedMotion && !atEnd;
-
-  useEffect(() => {
-    if (!isAnimating) return undefined;
-    const timeout = setTimeout(() => setIndex((current) => current + 1), 850);
-    return () => clearTimeout(timeout);
-  }, [isAnimating]);
-
-  if (madeShots.length === 0) {
-    return <EmptyText>No made shots match these filters yet.</EmptyText>;
-  }
-
-  const current = madeShots[clampedIndex];
-  const isLocal = current.clubCode === localTeam?.clubCode;
-
-  return (
-    <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_20rem]">
-      <div className="rounded-field border border-base-300 bg-base-100/60 p-2 sm:p-3">
-        <ShootingCourt
-          shots={[current]}
-          teams={[localTeam, roadTeam]}
-          highlightedShotId={current.shotOrdinal}
-          ariaLabel={`Replay: shot ${clampedIndex + 1} of ${madeShots.length}`}
-        />
-      </div>
-      <Panel className="flex flex-col gap-3 p-4">
-        <span className="stat-badge stat-badge-neutral w-fit">
-          {clampedIndex + 1}/{madeShots.length}
-        </span>
-        <div>
-          <p className="font-medium">{current.playerName ?? (isLocal ? teamName(localTeam) : teamName(roadTeam))}</p>
-          <p className="muted text-sm">
-            {formatPeriod(periodNumberForMinute(current.minute))} {current.markerTime ?? ""} ·{" "}
-            {current.actionCode.startsWith("3") ? "3PT" : "2PT"}
-          </p>
-        </div>
-        <p className="text-2xl font-semibold text-primary tabular-nums">
-          {current.pointsA ?? "-"}-{current.pointsB ?? "-"}
-        </p>
-        <input
-          type="range"
-          className="range range-primary range-xs"
-          min={0}
-          max={Math.max(madeShots.length - 1, 0)}
-          value={clampedIndex}
-          onChange={(event) => {
-            setPlaying(false);
-            setIndex(Number(event.target.value));
-          }}
-        />
-        {reducedMotion ? (
-          <button
-            type="button"
-            className="btn btn-sm touch-target"
-            onClick={() => setIndex((i) => Math.min(i + 1, madeShots.length - 1))}
-            disabled={clampedIndex >= madeShots.length - 1}
-          >
-            Next make
-          </button>
-        ) : (
-          <button
-            type="button"
-            className="btn btn-sm touch-target"
-            onClick={() => {
-              if (atEnd) {
-                setIndex(0);
-                setPlaying(true);
-              } else {
-                setPlaying((p) => !p);
-              }
-            }}
-          >
-            {isAnimating ? "Pause" : atEnd ? "Replay" : "Play"}
-          </button>
-        )}
-      </Panel>
     </div>
   );
 }
@@ -595,8 +488,11 @@ function ShootingTab({ shots, teamStats, localTeam, roadTeam }) {
 
   const periodNumbers = [...new Set(shots.map((shot) => periodNumberForMinute(shot.minute)))].sort((a, b) => a - b);
   const periodOptions = ["all", ...periodNumbers.map(String)];
-  const shotTypeTest = SHOT_TYPE_FILTERS.find((filter) => filter.key === shotTypeFilter)?.test ?? (() => true);
-  const resultTest = RESULT_FILTERS.find((filter) => filter.key === resultFilter)?.test ?? (() => true);
+  // Shot type and result only make sense on the shot map: a heatmap of misses is all 0% and of makes all 100%, and the
+  // zones already separate twos from threes. Their selects are hidden elsewhere, so they must not filter there either.
+  const showsShotFilters = presentationMode === "map";
+  const shotTypeTest = showsShotFilters ? SHOT_TYPE_FILTERS.find((filter) => filter.key === shotTypeFilter)?.test ?? (() => true) : () => true;
+  const resultTest = showsShotFilters ? RESULT_FILTERS.find((filter) => filter.key === resultFilter)?.test ?? (() => true) : () => true;
   const contextTest = PLAY_CONTEXT_FILTERS.find((filter) => filter.key === contextFilter)?.test ?? (() => true);
 
   function applySharedFilters(list) {
@@ -618,6 +514,7 @@ function ShootingTab({ shots, teamStats, localTeam, roadTeam }) {
   const totals = teamStats.filter((row) => row.statsKind === "total");
   const boxScoreAttempted = totals.reduce((sum, row) => sum + (Number(row.fieldGoalsAttemptedTotal) || 0), 0);
   const reconciles = boxScoreAttempted > 0 && boxScoreAttempted === shots.length;
+  const withoutLocation = countWithoutLocation(shots);
 
   return (
     <div className="flex flex-col gap-6">
@@ -627,7 +524,8 @@ function ShootingTab({ shots, teamStats, localTeam, roadTeam }) {
           title="Shooting studio"
           trailing={
             <span className={`stat-badge ${reconciles ? "stat-badge-success" : "stat-badge-warning"}`}>
-              {reconciles ? "Box score matched" : "Partial chart coverage"} · {formatCount(shots.length)} plotted
+              {reconciles ? "Box score matched" : "Partial chart coverage"} · {formatCount(shots.length - withoutLocation)} plotted
+              {withoutLocation > 0 ? ` · ${formatCount(withoutLocation)} without location` : ""}
             </span>
           }
         />
@@ -659,17 +557,19 @@ function ShootingTab({ shots, teamStats, localTeam, roadTeam }) {
               </option>
             ))}
           </LabelledSelect>
-          <LabelledSelect
-            label="Shot type"
-            value={shotTypeFilter}
-            onChange={(event) => changeFilter(setShotTypeFilter)(event.target.value)}
-          >
-            {SHOT_TYPE_FILTERS.map((filter) => (
-              <option key={filter.key} value={filter.key}>
-                {filter.label}
-              </option>
-            ))}
-          </LabelledSelect>
+          {showsShotFilters ? (
+            <LabelledSelect
+              label="Shot type"
+              value={shotTypeFilter}
+              onChange={(event) => changeFilter(setShotTypeFilter)(event.target.value)}
+            >
+              {SHOT_TYPE_FILTERS.map((filter) => (
+                <option key={filter.key} value={filter.key}>
+                  {filter.label}
+                </option>
+              ))}
+            </LabelledSelect>
+          ) : null}
           <LabelledSelect label="Period" value={periodFilter} onChange={(event) => changeFilter(setPeriodFilter)(event.target.value)}>
             <option value="all">Full game</option>
             {periodNumbers.map((periodNumber) => (
@@ -678,17 +578,19 @@ function ShootingTab({ shots, teamStats, localTeam, roadTeam }) {
               </option>
             ))}
           </LabelledSelect>
-          <LabelledSelect
-            label="Result"
-            value={resultFilter}
-            onChange={(event) => changeFilter(setResultFilter)(event.target.value)}
-          >
-            {RESULT_FILTERS.map((filter) => (
-              <option key={filter.key} value={filter.key}>
-                {filter.label}
-              </option>
-            ))}
-          </LabelledSelect>
+          {showsShotFilters ? (
+            <LabelledSelect
+              label="Result"
+              value={resultFilter}
+              onChange={(event) => changeFilter(setResultFilter)(event.target.value)}
+            >
+              {RESULT_FILTERS.map((filter) => (
+                <option key={filter.key} value={filter.key}>
+                  {filter.label}
+                </option>
+              ))}
+            </LabelledSelect>
+          ) : null}
           <LabelledSelect
             label="Play context"
             value={contextFilter}
@@ -734,14 +636,10 @@ function ShootingTab({ shots, teamStats, localTeam, roadTeam }) {
               <TeamComparisonPanel team={roadTeam} shots={applySharedFilters(shots.filter((shot) => shot.clubCode === roadTeam?.clubCode))} />
             </div>
           ) : null}
-
-          {presentationMode === "replay" ? (
-            <ReplayPanel shots={filteredShots} localTeam={localTeam} roadTeam={roadTeam} />
-          ) : null}
         </TabPanel>
       </Panel>
 
-      {presentationMode !== "comparison" ? <ZoneSummary shots={filteredShots} /> : null}
+      {presentationMode !== "comparison" ? <ZoneComparison localTeam={localTeam} roadTeam={roadTeam} shots={filteredShots} /> : null}
     </div>
   );
 }
@@ -788,12 +686,13 @@ function PlayByPlayRow({ event, localTeam, roadTeam }) {
 
   return (
     <div
-      className={`grid grid-cols-[3.5rem_minmax(0,1fr)_auto] items-center gap-3 py-2 sm:grid-cols-[3.5rem_auto_minmax(0,1fr)_auto] ${isScoring ? "bg-primary/6" : ""}`}
+      className={`grid grid-cols-[3.5rem_minmax(0,1fr)_auto] items-center gap-3 px-3 py-2 sm:grid-cols-[3.5rem_1.5rem_minmax(0,1fr)_auto] ${isScoring ? "bg-primary/6" : ""}`}
     >
       <div>
         <p className="text-xs font-bold text-primary uppercase">{formatPeriod(event.periodNumber)}</p>
         <p className="muted font-mono text-xs">{event.markerTime ?? "-"}</p>
       </div>
+      {/* Always one cell, so rows without a crest (timeouts, period starts) keep the same columns. */}
       {crest ? (
         <img
           src={crest}
@@ -803,7 +702,9 @@ function PlayByPlayRow({ event, localTeam, roadTeam }) {
             eventTarget.currentTarget.style.display = "none";
           }}
         />
-      ) : null}
+      ) : (
+        <span aria-hidden="true" className="hidden h-6 w-6 sm:block" />
+      )}
       <div className="min-w-0">
         <p className="flex flex-wrap items-center gap-2">
           <span className="truncate font-medium">{who}</span>
@@ -811,7 +712,7 @@ function PlayByPlayRow({ event, localTeam, roadTeam }) {
         </p>
         {event.playInfo ? <p className="muted truncate text-xs">{event.playInfo}</p> : null}
       </div>
-      <div className="text-right tabular-nums">
+      <div className="min-w-[4.5rem] text-right tabular-nums">
         {event.runningScoreA}
         <span className="muted px-0.5">:</span>
         {event.runningScoreB}

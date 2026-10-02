@@ -13,7 +13,6 @@ export default function HeatmapLegend() {
           {stop.label}
         </span>
       ))}
-      <span className="muted">Size represents volume</span>
     </div>
   );
 }

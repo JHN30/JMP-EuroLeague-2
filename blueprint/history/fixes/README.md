@@ -10,6 +10,7 @@ every such change so it can be found later.
 
 ## Standings page
 
+- [play-by-play-row-padding-and-alignment.md](play-by-play-row-padding-and-alignment.md)
 - [standings-polish-and-breakdown-views.md](standings-polish-and-breakdown-views.md): KPIs, net rating column, and the three rebuilt breakdown tabs (and their two endpoints)
 - [standings-race-tab-repair.md](standings-race-tab-repair.md): race chart, table, and cards stop at the played rounds; crest chart; table follows the race
 - [standings-animations-header-tips-and-scroll.md](standings-animations-header-tips-and-scroll.md): Motion animations, animated column header tips, the tab scroll jump

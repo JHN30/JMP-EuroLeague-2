@@ -9,7 +9,7 @@ export function periodSeconds(periodNumber) {
   return periodNumber <= 4 ? 600 : 300;
 }
 
-function periodStart(periodNumber) {
+export function periodStart(periodNumber) {
   let total = 0;
   for (let number = 1; number < periodNumber; number += 1) total += periodSeconds(number);
   return total;

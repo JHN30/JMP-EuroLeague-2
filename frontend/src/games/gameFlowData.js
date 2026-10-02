@@ -1,4 +1,5 @@
 import { formatPeriod } from "../lib/format";
+import { periodSeconds, periodStart } from "./rotations";
 
 export function withRunningScore(events) {
   // `pointsA`/`pointsB` are only populated on scoring rows; forward-fill the
@@ -75,4 +76,33 @@ export function computeGameFlow(events, localClubCode, roadClubCode) {
   flushRun();
 
   return { leadChanges, ties, localBiggest, roadBiggest, localRun, roadRun, scoringEvents };
+}
+
+// Seconds elapsed in the game at a clock reading ("MM:SS" left in the period), or null without a usable clock.
+export function elapsedSeconds(periodNumber, markerTime) {
+  const match = /^(\d{1,2}):(\d{2})$/.exec(markerTime ?? "");
+  if (!match || !Number.isInteger(periodNumber) || periodNumber < 1) return null;
+  const length = periodSeconds(periodNumber);
+  return periodStart(periodNumber) + length - Math.min(Number(match[1]) * 60 + Number(match[2]), length);
+}
+
+// The home-minus-road margin as a step series over game time: it starts at 0-0 at the tip-off, changes at each scoring
+// play and is held to the end of the last period. `event` is the scoring play behind a point (null for the ends).
+export function buildMarginSeries(scoringEvents) {
+  const lastPeriod = Math.max(1, ...scoringEvents.map((event) => event.periodNumber).filter(Number.isInteger));
+  const periods = Array.from({ length: lastPeriod }, (_, index) => ({
+    number: index + 1,
+    start: periodStart(index + 1),
+    end: periodStart(index + 1) + periodSeconds(index + 1),
+  }));
+  const gameSeconds = periods.at(-1).end;
+
+  const points = [{ x: 0, y: 0, event: null }];
+  for (const event of scoringEvents) {
+    const previous = points.at(-1);
+    const elapsed = elapsedSeconds(event.periodNumber, event.markerTime);
+    points.push({ x: Math.max(previous.x, elapsed ?? previous.x), y: event.runningScoreA - event.runningScoreB, event });
+  }
+  points.push({ x: gameSeconds, y: points.at(-1).y, event: null });
+  return { points, periods, gameSeconds };
 }

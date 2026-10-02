@@ -5,6 +5,9 @@ import { catalogRead } from "./season-catalog";
 import {
   gamePlayerAdvanced,
   gameTeamAdvanced,
+  gameTeamPossessions,
+  gameTeamScoreFlow,
+  gameTeamShotSplits,
   lineupRatings,
   playerOnOff,
   playerRapm,
@@ -449,4 +452,37 @@ export async function getTeamsSeasonToDate(
       )),
   );
   return new Map(rows.map((row) => [row.clubCode, row]));
+}
+
+type GameTeamTableRow = { side: string; clubCode: string };
+
+// The part of a per-game team row that is not its key: what the page shows.
+function without<Row extends GameTeamTableRow>(row: Row | undefined) {
+  if (!row) return null;
+  const { side: _side, clubCode: _club, opponentClubCode: _opponent, competitionCode: _competition, seasonCode: _season, gameCode: _game, ...rest } =
+    row as Row & { opponentClubCode?: unknown; competitionCode?: unknown; seasonCode?: unknown; gameCode?: unknown };
+  return rest as Omit<Row, "side" | "clubCode" | "opponentClubCode" | "competitionCode" | "seasonCode" | "gameCode">;
+}
+
+// Score flow, shot splits and counted possessions of both sides of one game. A side's block is null when its table
+// has no row for it; no teams at all means the game has none of the three.
+export async function getGameTeamFlow(seasonCode: string, gameCode: number) {
+  const scopeOf = (table: { competitionCode: AnyPgColumn; seasonCode: AnyPgColumn; gameCode: AnyPgColumn }) =>
+    and(eq(table.competitionCode, COMPETITION_CODE), eq(table.seasonCode, seasonCode), eq(table.gameCode, gameCode));
+  const [flow, splits, possessions] = await Promise.all([
+    catalogRead(() => db.select().from(gameTeamScoreFlow).where(scopeOf(gameTeamScoreFlow))),
+    catalogRead(() => db.select().from(gameTeamShotSplits).where(scopeOf(gameTeamShotSplits))),
+    catalogRead(() => db.select().from(gameTeamPossessions).where(scopeOf(gameTeamPossessions))),
+  ]);
+  const clubs = new Map<string, string>();
+  for (const row of [...flow, ...splits, ...possessions]) clubs.set(row.side, row.clubCode);
+  return ["local", "road"]
+    .filter((side) => clubs.has(side))
+    .map((side) => ({
+      side,
+      clubCode: clubs.get(side) as string,
+      flow: without(flow.find((row) => row.side === side)),
+      splits: without(splits.find((row) => row.side === side)),
+      possessions: without(possessions.find((row) => row.side === side)),
+    }));
 }

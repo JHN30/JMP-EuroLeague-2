@@ -112,6 +112,36 @@ export const BOX_SCORE = {
 // The advanced response for a game without advanced rows (the default, so older tests keep their PIR best player).
 export const NO_ADVANCED = { available: false, scope: "all", round: 2, minSeasonMinutes: 20, teams: [], players: [] };
 
+// The team-flow response for a game without those tables (the default, so older tests see no extra rows).
+export const NO_TEAM_FLOW = { available: false, teams: [] };
+
+// Score flow, shot splits and counted possessions for Team A (local) and Team B (road); the clutch numbers are real.
+export const TEAM_FLOW = {
+  available: true,
+  teams: [
+    {
+      side: "local",
+      clubCode: "A",
+      flow: {
+        pointsFor: 80, pointsAgainst: 70, leadChanges: 5, ties: 5, timeLeadingSeconds: 1931, timeTrailingSeconds: 258,
+        timeTiedSeconds: 211, largestLead: 20, longestRun: 12, runs6Plus: 5, clutchSeconds: 90, clutchPointsFor: 6, clutchPointsAgainst: 4,
+      },
+      splits: { fastBreakPoints: 12, secondChancePoints: 8, pointsOffTurnoverPoints: 10, fieldGoalsMade: 30, assistedFieldGoals: 19, assistedFgPct: 0.633333 },
+      possessions: { countedPossessions: 73, possessionSeconds: 1249, avgPossessionSeconds: 17.109589, estimatedPossessions: 72.92 },
+    },
+    {
+      side: "road",
+      clubCode: "B",
+      flow: {
+        pointsFor: 70, pointsAgainst: 80, leadChanges: 5, ties: 5, timeLeadingSeconds: 258, timeTrailingSeconds: 1931,
+        timeTiedSeconds: 211, largestLead: 6, longestRun: 8, runs6Plus: 2, clutchSeconds: 90, clutchPointsFor: 4, clutchPointsAgainst: 6,
+      },
+      splits: { fastBreakPoints: 10, secondChancePoints: 17, pointsOffTurnoverPoints: 15, fieldGoalsMade: 35, assistedFieldGoals: 15, assistedFgPct: 0.428571 },
+      possessions: { countedPossessions: 72, possessionSeconds: 1151, avgPossessionSeconds: 15.986111, estimatedPossessions: 72.92 },
+    },
+  ],
+};
+
 function advancedPlayer(side, personKey, secondsPlayed, gamePer, overrides) {
   return {
     side, personKey, clubCode: side === "local" ? "A" : "B", secondsPlayed, gameScore: 10, usagePct: 0.2, assistPct: 0.1,
@@ -167,9 +197,10 @@ const UNPLAYED_BOX_SCORE = { periodScores: [], teamStats: [], playerStats: [] };
 
 // Mocks every API request the game page makes. Options: `requests` (collects requested paths), `played`,
 // `boxScore`, `boxScoreStatus`, `playByPlay` (response body), `playByPlayStatus` (use 500 to simulate a failure), and
-// `advanced` / `advancedStatus` for the game's advanced stats (default: none available).
+// `advanced` / `advancedStatus` for the game's advanced stats (default: none available), and `teamFlow` /
+// `teamFlowStatus` for its score flow, shot splits and possessions (default: none available).
 export async function mockGameApi(page, options = {}) {
-  const { requests = [], played = true, boxScore = BOX_SCORE, boxScoreStatus = 200, playByPlay = { events: [] }, playByPlayStatus = 200, advanced = NO_ADVANCED, advancedStatus = 200 } = options;
+  const { requests = [], played = true, boxScore = BOX_SCORE, boxScoreStatus = 200, playByPlay = { events: [] }, playByPlayStatus = 200, advanced = NO_ADVANCED, advancedStatus = 200, teamFlow = NO_TEAM_FLOW, teamFlowStatus = 200 } = options;
   await page.route("**/api/**", async (route) => {
     const pathname = new URL(route.request().url()).pathname;
     requests.push(pathname);
@@ -203,6 +234,10 @@ export async function mockGameApi(page, options = {}) {
     }
     if (pathname === `/api/seasons/${SEASON}/games/1/advanced`) {
       await route.fulfill({ status: advancedStatus, json: advancedStatus === 200 ? advanced : { error: "Mocked failure" } });
+      return;
+    }
+    if (pathname === `/api/seasons/${SEASON}/games/1/team-flow`) {
+      await route.fulfill({ status: teamFlowStatus, json: teamFlowStatus === 200 ? teamFlow : { error: "Mocked failure" } });
       return;
     }
     if (pathname === `/api/seasons/${SEASON}/games/1/play-by-play`) {

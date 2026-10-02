@@ -14,6 +14,7 @@ import { attachAdvanced } from "./AdvancedBoxScore";
 import { bestPlayerMetric, gameLeaders, keyStatRows, pickBestPlayer } from "./overview";
 import PlayerLink from "./PlayerLink";
 import TeamLabel from "./TeamLabel";
+import { overviewFlowRows } from "./teamFlow";
 
 function Headshot({ player }) {
   return player.headshotUrl ? (
@@ -78,7 +79,8 @@ function LeadersCard({ team, rows, seasonCode }) {
   );
 }
 
-function KeyStatsCard({ game, localTotal, roadTotal }) {
+// `flowRows` are the extra rows from the score-flow and shot-split tables; without them the box-score rows stand alone.
+function KeyStatsCard({ game, localTotal, roadTotal, flowRows }) {
   return (
     <Panel className="p-4">
       <div className="mb-2 grid grid-cols-2 gap-4">
@@ -87,7 +89,7 @@ function KeyStatsCard({ game, localTotal, roadTotal }) {
         </div>
         <TeamLabel team={game.roadTeam} />
       </div>
-      {keyStatRows(localTotal, roadTotal).map(({ key, ...row }) => (
+      {[...keyStatRows(localTotal, roadTotal), ...flowRows].map(({ key, ...row }) => (
         <ComparisonRow key={key} {...row} />
       ))}
     </Panel>
@@ -110,7 +112,7 @@ function FlowSection({ game, playByPlayQuery }) {
 }
 
 // The game summary: line score, standouts, leaders, key stats, and a compact score flow.
-export default function OverviewTab({ game, seasonCode, boxScoreQuery, playByPlayQuery, advancedQuery }) {
+export default function OverviewTab({ game, seasonCode, boxScoreQuery, playByPlayQuery, advancedQuery, teamFlowQuery }) {
   if (!game.played) {
     return <EmptyText>Overview isn't available until this game is played.</EmptyText>;
   }
@@ -123,6 +125,8 @@ export default function OverviewTab({ game, seasonCode, boxScoreQuery, playByPla
   // Game PER when the game has advanced rows, otherwise PIR. A failed advanced request just means PIR.
   const metric = bestPlayerMetric(advancedQuery.data);
   const rankedStats = advancedQuery.data?.available === true ? attachAdvanced(boxScore, advancedQuery.data).playerStats : boxScore.playerStats;
+  // The extra key-stat rows arrive when the team-flow request does; a failure or an empty answer adds none.
+  const flowRows = teamFlowQuery.data?.available === true ? overviewFlowRows(teamFlowQuery.data.teams) : [];
   const localRows = rankedStats.filter((row) => row.side === "local");
   const roadRows = rankedStats.filter((row) => row.side === "road");
   const hasPlayers = boxScore.playerStats.length > 0;
@@ -166,7 +170,7 @@ export default function OverviewTab({ game, seasonCode, boxScoreQuery, playByPla
       <motion.section variants={sectionItem}>
         <PanelHeader kicker="KEY STATS" title="How the teams compared" />
         {localTotal && roadTotal ? (
-          <KeyStatsCard game={game} localTotal={localTotal} roadTotal={roadTotal} />
+          <KeyStatsCard game={game} localTotal={localTotal} roadTotal={roadTotal} flowRows={flowRows} />
         ) : (
           <EmptyText>Team totals aren't available for this game yet.</EmptyText>
         )}

@@ -446,3 +446,71 @@ export const gameTeamAdvanced = pgTable(
   },
   (table) => [primaryKey({ columns: [table.competitionCode, table.seasonCode, table.gameCode, table.side] })],
 );
+
+// Per-game team tables built from play-by-play and shots (feature 30i), one row per club per played game.
+// Clock-based columns can be NULL for a game with an unusable clock; the three point columns of the shot splits
+// are NULL before E2016 and for a game with an unflagged shot.
+function gameTeamKey() {
+  return {
+    competitionCode: text("competition_code").notNull(),
+    seasonCode: text("season_code").notNull(),
+    gameCode: integer("game_code").notNull(),
+    side: text("side").notNull(),
+    clubCode: text("club_code").notNull(),
+    opponentClubCode: text("opponent_club_code"),
+  };
+}
+
+const gameTeamPrimaryKey = (table: {
+  competitionCode: AnyPgColumn;
+  seasonCode: AnyPgColumn;
+  gameCode: AnyPgColumn;
+  side: AnyPgColumn;
+}) => [primaryKey({ columns: [table.competitionCode, table.seasonCode, table.gameCode, table.side] })];
+
+export const gameTeamScoreFlow = pgTable(
+  "app_game_team_score_flow",
+  {
+    ...gameTeamKey(),
+    pointsFor: integer("points_for"),
+    pointsAgainst: integer("points_against"),
+    leadChanges: integer("lead_changes"),
+    ties: integer("ties"),
+    timeLeadingSeconds: measure("time_leading_seconds"),
+    timeTrailingSeconds: measure("time_trailing_seconds"),
+    timeTiedSeconds: measure("time_tied_seconds"),
+    largestLead: integer("largest_lead"),
+    longestRun: integer("longest_run"),
+    runs6Plus: integer("runs_6_plus"),
+    clutchSeconds: measure("clutch_seconds"),
+    clutchPointsFor: integer("clutch_points_for"),
+    clutchPointsAgainst: integer("clutch_points_against"),
+  },
+  gameTeamPrimaryKey,
+);
+
+export const gameTeamShotSplits = pgTable(
+  "app_game_team_shot_splits",
+  {
+    ...gameTeamKey(),
+    fastBreakPoints: integer("fast_break_points"),
+    secondChancePoints: integer("second_chance_points"),
+    pointsOffTurnoverPoints: integer("points_off_turnover_points"),
+    fieldGoalsMade: integer("field_goals_made"),
+    assistedFieldGoals: integer("assisted_field_goals"),
+    assistedFgPct: measure("assisted_fg_pct"),
+  },
+  gameTeamPrimaryKey,
+);
+
+export const gameTeamPossessions = pgTable(
+  "app_game_team_possessions",
+  {
+    ...gameTeamKey(),
+    countedPossessions: integer("counted_possessions"),
+    possessionSeconds: measure("possession_seconds"),
+    avgPossessionSeconds: measure("avg_possession_seconds"),
+    estimatedPossessions: measure("estimated_possessions"),
+  },
+  gameTeamPrimaryKey,
+);

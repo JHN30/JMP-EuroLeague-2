@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { motion } from "motion/react";
 import { useParams } from "react-router";
-import { getBoxScore, getGame, getGameAdvanced, getPlayByPlay, getShots } from "../lib/api";
+import { getBoxScore, getGame, getGameAdvanced, getGameTeamFlow, getPlayByPlay, getShots } from "../lib/api";
 import AsyncState from "../lib/AsyncState";
 import ComparisonRow from "../lib/ComparisonRow";
 import EmptyText from "../lib/EmptyText";
@@ -33,6 +33,7 @@ import { PeriodTable, ScoreFlowChart } from "./gameFlow";
 import { computeGameFlow, momentLabel, withRunningScore } from "./gameFlowData";
 import { advancedColumns, attachAdvanced } from "./AdvancedBoxScore";
 import FourFactors from "./FourFactors";
+import ScoringProfile from "./ScoringProfile";
 import TeamLabel from "./TeamLabel";
 import OverviewTab from "./OverviewTab";
 import PlayerLink from "./PlayerLink";
@@ -1095,7 +1096,7 @@ function TeamComparisonRows({ localTotal, roadTotal, localTeam, roadTeam }) {
 // The box-score rows (left) and the Four Factors (right) sit side by side on wide screens and stack on narrow ones. The
 // two panels are equally tall: the shorter one spreads its rows out evenly instead of leaving empty space at the bottom.
 // They load separately, so trouble with one never hides the other.
-function TeamComparisonTab({ game, boxScoreQuery, advancedQuery }) {
+function TeamComparisonTab({ game, boxScoreQuery, advancedQuery, teamFlowQuery }) {
   if (!game.played) {
     return <EmptyText>Team comparison isn't available until this game is played.</EmptyText>;
   }
@@ -1116,6 +1117,10 @@ function TeamComparisonTab({ game, boxScoreQuery, advancedQuery }) {
       <section className="flex flex-col">
         <PanelHeader kicker="FOUR FACTORS" title="Each team against its season average" />
         <FourFactors advancedQuery={advancedQuery} localTeam={game.localTeam} roadTeam={game.roadTeam} />
+      </section>
+      <section className="flex flex-col lg:col-span-2">
+        <PanelHeader kicker="SCORING PROFILE" title="How each team scored and how the game was led" />
+        <ScoringProfile teamFlowQuery={teamFlowQuery} localTeam={game.localTeam} roadTeam={game.roadTeam} />
       </section>
     </div>
   );
@@ -1150,6 +1155,14 @@ export default function GameDetailPage() {
     queryKey: ["game-advanced", seasonCode, gameCode],
     queryFn: () => getGameAdvanced(seasonCode, gameCode),
     enabled: gameQuery.isSuccess && game?.played === true && (tab === "overview" || tab === "box-score" || tab === "comparison"),
+    retry: false,
+  });
+
+  // The pipeline's score flow, shot splits and counted possessions: extra rows, never required by the page.
+  const teamFlowQuery = useQuery({
+    queryKey: ["game-team-flow", seasonCode, gameCode],
+    queryFn: () => getGameTeamFlow(seasonCode, gameCode),
+    enabled: gameQuery.isSuccess && game?.played === true && (tab === "overview" || tab === "comparison"),
     retry: false,
   });
 
@@ -1230,7 +1243,7 @@ export default function GameDetailPage() {
 
       <TabPanel id="game-detail-panel" focusKey={tab} scroll={false}>
         <motion.div key={tab} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.25 }}>
-        {tab === "overview" ? <OverviewTab game={game} seasonCode={seasonCode} boxScoreQuery={boxScoreQuery} playByPlayQuery={playByPlayQuery} advancedQuery={advancedQuery} /> : null}
+        {tab === "overview" ? <OverviewTab game={game} seasonCode={seasonCode} boxScoreQuery={boxScoreQuery} playByPlayQuery={playByPlayQuery} advancedQuery={advancedQuery} teamFlowQuery={teamFlowQuery} /> : null}
 
         {tab === "box-score" ? (
           boxScoreQuery.isLoading ? (
@@ -1274,7 +1287,7 @@ export default function GameDetailPage() {
             />
           )
         ) : null}
-        {tab === "comparison" ? <TeamComparisonTab game={game} boxScoreQuery={boxScoreQuery} advancedQuery={advancedQuery} /> : null}
+        {tab === "comparison" ? <TeamComparisonTab game={game} boxScoreQuery={boxScoreQuery} advancedQuery={advancedQuery} teamFlowQuery={teamFlowQuery} /> : null}
 
         {tab === "shooting" ? (
           !game.played ? (

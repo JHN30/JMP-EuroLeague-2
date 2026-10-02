@@ -1,5 +1,5 @@
 import { test, expect } from "@playwright/test";
-import { BOX_SCORE, SEASON, mockGameApi, player } from "./support/game-fixtures";
+import { LINEUPS, SEASON, mockGameApi, rosterBox } from "./support/game-fixtures";
 
 async function openRotations(page) {
   await page.getByRole("tab", { name: "Rotations", exact: true }).click();
@@ -21,23 +21,14 @@ test("the Rotations tab comes after Game flow and does not scroll the page", asy
 });
 
 test("an unplayed game's Rotations tab says it is not available yet", async ({ page }) => {
-  await mockGameApi(page, { played: false });
+  const requests = [];
+  await mockGameApi(page, { played: false, requests });
   await page.goto(`/${SEASON}/games/1`);
   await openRotations(page);
 
   await expect(page.getByText("Rotations aren't available until this game is played.")).toBeVisible();
   await expect(page.getByRole("alert")).toHaveCount(0);
-});
-
-test("a play-by-play failure shows a retry on the Rotations tab", async ({ page }) => {
-  await mockGameApi(page, { playByPlayStatus: 500 });
-  await page.goto(`/${SEASON}/games/1`);
-  await openRotations(page);
-
-  // The query retries a few times before it reports the error.
-  const alert = page.getByRole("alert").filter({ hasText: "Could not load rotations." });
-  await expect(alert).toBeVisible({ timeout: 20_000 });
-  await expect(alert.getByRole("button", { name: "Retry" })).toBeVisible();
+  expect(requests.filter((path) => path.endsWith("/lineups"))).toEqual([]);
 });
 
 const NAMES = { A1: "ONE, AL", A2: "TWO, ABE", A3: "THREE, ART", A4: "FOUR, ARI", A5: "FIVE, ABBY", B1: "UNO, BO", B2: "DOS, BEN" };
@@ -45,41 +36,6 @@ const NAMES = { A1: "ONE, AL", A2: "TWO, ABE", A3: "THREE, ART", A4: "FOUR, ARI"
 function event(periodNumber, markerTime, playType, clubCode, personCode) {
   return { periodNumber, markerTime, playType, clubCode, personCode, playerName: NAMES[personCode] ?? personCode };
 }
-
-function rosterBox(overrides = {}) {
-  const starter = (side, key, name, timePlayed) => player(side, key, name, { started: true, timePlayed });
-  return {
-    periodScores: BOX_SCORE.periodScores,
-    teamStats: BOX_SCORE.teamStats,
-    playerStats: [
-      starter("local", "A1", "ONE, AL", overrides.A1 ?? 2340),
-      starter("local", "A2", "TWO, ABE", 2700),
-      starter("local", "A3", "THREE, ART", 2700),
-      starter("local", "A4", "FOUR, ARI", 2700),
-      starter("local", "A5", "FIVE, ABBY", 2700),
-      player("local", "A6", "SIX, ABEL", { timePlayed: overrides.A6 ?? 360 }),
-      player("local", "A7", "SEVEN, AMY", { timePlayed: 0 }),
-      starter("road", "B1", "UNO, BO", 1500),
-      starter("road", "B2", "DOS, BEN", 2700),
-      starter("road", "B3", "TRES, BAZ", 2700),
-      starter("road", "B4", "CUATRO, BEA", 2700),
-      starter("road", "B5", "CINCO, BIA", 2700),
-      player("road", "B6", "SEIS, BRI", { timePlayed: 1200 }),
-    ],
-  };
-}
-
-// Q1 06:00 A1 out, A6 in; A6 out and A1 back in at the start of Q2; B1 out and B6 in at Q3 05:00; a basket in
-// overtime so the game has five periods (2,700 seconds).
-const ROTATION_EVENTS = [
-  event(1, "06:00", "OUT", "A", "A1"),
-  event(1, "06:00", "IN", "A", "A6"),
-  event(2, "10:00", "OUT", "A", "A6"),
-  event(2, "10:00", "IN", "A", "A1"),
-  event(3, "05:00", "OUT", "B", "B1"),
-  event(3, "05:00", "IN", "B", "B6"),
-  event(5, "03:00", "2FGM", "A", "A2"),
-];
 
 async function openTimeline(page) {
   await page.getByRole("tab", { name: "Rotations", exact: true }).click();
@@ -93,8 +49,8 @@ function teamBlock(page, firstName) {
     .locator("div.panel", { hasText: firstName });
 }
 
-test("the timeline places stints from the substitution times, one bar across period boundaries", async ({ page }) => {
-  await mockGameApi(page, { boxScore: rosterBox(), playByPlay: { events: ROTATION_EVENTS } });
+test("the timeline draws the pipeline's intervals, one bar across period boundaries", async ({ page }) => {
+  await mockGameApi(page, { boxScore: rosterBox(), lineups: LINEUPS });
   await page.goto(`/${SEASON}/games/1`);
   await openTimeline(page);
 
@@ -111,13 +67,14 @@ test("the timeline places stints from the substitution times, one bar across per
   const two = teamA.locator("li", { hasText: "TWO, ABE" }).locator("span[title]");
   await expect(two).toHaveCount(1);
   await expect(two).toHaveAttribute("title", "Q1 10:00 to OT1 00:00");
-  // A swap in the middle of a period, and one at a period start.
+  // A swap in the middle of a period, and a return at a period start.
   const one = teamA.locator("li", { hasText: "ONE, AL" }).locator("span[title]");
   await expect(one).toHaveCount(2);
   await expect(one.nth(0)).toHaveAttribute("title", "Q1 10:00 to Q1 06:00");
   await expect(one.nth(1)).toHaveAttribute("title", "Q2 10:00 to OT1 00:00");
-  await expect(teamA.locator("li", { hasText: "SIX, ABEL" }).locator("span[title]")).toHaveAttribute("title", "Q1 06:00 to Q2 10:00");
-  // Reconstructed minutes: 2,340 s and 360 s.
+  // A stint that ends exactly on a period boundary reads as the end of that period.
+  await expect(teamA.locator("li", { hasText: "SIX, ABEL" }).locator("span[title]")).toHaveAttribute("title", "Q1 06:00 to Q1 00:00");
+  // The minutes are the sum of the intervals: 2,340 s and 360 s.
   await expect(rows.nth(4)).toContainText("39:00");
   await expect(rows.nth(5)).toContainText("6:00");
   // Screen readers get the stints as text.
@@ -131,8 +88,16 @@ test("the timeline places stints from the substitution times, one bar across per
   await expect(teamA.getByText("OT1", { exact: true })).toBeVisible();
 });
 
+test("the timeline does not wait for the play-by-play", async ({ page }) => {
+  await mockGameApi(page, { boxScore: rosterBox(), lineups: LINEUPS, playByPlayStatus: 500 });
+  await page.goto(`/${SEASON}/games/1`);
+  await openTimeline(page);
+
+  await expect(teamBlock(page, "ONE, AL").locator("li")).toHaveCount(6);
+});
+
 test("the badge says Matches when the minutes agree", async ({ page }) => {
-  await mockGameApi(page, { boxScore: rosterBox(), playByPlay: { events: ROTATION_EVENTS } });
+  await mockGameApi(page, { boxScore: rosterBox(), lineups: LINEUPS });
   await page.goto(`/${SEASON}/games/1`);
   await openTimeline(page);
 
@@ -140,7 +105,7 @@ test("the badge says Matches when the minutes agree", async ({ page }) => {
 });
 
 test("a gap over 30 seconds against the box score is called out", async ({ page }) => {
-  await mockGameApi(page, { boxScore: rosterBox({ A6: 460 }), playByPlay: { events: ROTATION_EVENTS } });
+  await mockGameApi(page, { boxScore: rosterBox({ A6: 460 }), lineups: LINEUPS });
   await page.goto(`/${SEASON}/games/1`);
   await openTimeline(page);
 
@@ -148,32 +113,46 @@ test("a gap over 30 seconds against the box score is called out", async ({ page 
   await expect(teamBlock(page, "UNO, BO").getByText("Matches the box score")).toBeVisible();
 });
 
-test("a substitution that cannot be placed makes the result approximate", async ({ page }) => {
-  // A2 is already on the court, so an IN for A2 cannot be placed.
-  const events = [...ROTATION_EVENTS, event(1, "05:00", "IN", "A", "A2")];
-  await mockGameApi(page, { boxScore: rosterBox(), playByPlay: { events } });
+test("a team without intervals says its on-court times are not available", async ({ page }) => {
+  const lineups = { ...LINEUPS, onCourt: LINEUPS.onCourt.filter((player) => player.side === "local") };
+  await mockGameApi(page, { boxScore: rosterBox(), lineups });
   await page.goto(`/${SEASON}/games/1`);
   await openTimeline(page);
 
-  await expect(teamBlock(page, "ONE, AL").getByText("Approximate · some substitutions couldn't be placed")).toBeVisible();
+  await expect(teamBlock(page, "ONE, AL").locator("li")).toHaveCount(6);
+  await expect(teamBlock(page, "Team B")).toContainText("On-court times aren't available for this team.");
+  await expect(page.getByText("Matches the box score")).toHaveCount(1);
 });
 
-test("a team without exactly five starters has no timeline", async ({ page }) => {
-  // The default fixture has one starter per team.
-  const events = [event(1, "06:00", "OUT", "A", "A-STARTER"), event(1, "06:00", "IN", "A", "A-BENCH")];
-  await mockGameApi(page, { playByPlay: { events } });
+test("a game without on-court rows says rotations are not available", async ({ page }) => {
+  await mockGameApi(page, { boxScore: rosterBox() });
   await page.goto(`/${SEASON}/games/1`);
   await openTimeline(page);
 
-  await expect(page.getByText("Starting lineup isn't available for this game.")).toHaveCount(2);
+  await expect(page.getByText("Rotations aren't available for this game yet.")).toBeVisible();
 });
 
-test("without substitution events the tab says there is not enough play-by-play yet", async ({ page }) => {
-  await mockGameApi(page);
+test("a lineups failure shows a retry and leaves the connections in place", async ({ page }) => {
+  await mockGameApi(page, { lineupsStatus: 500, playByPlay: { events: [made("2FGM", "A", "A2"), assist("A", "A1")] } });
   await page.goto(`/${SEASON}/games/1`);
-  await openTimeline(page);
+  await openRotations(page);
 
-  await expect(page.getByText("Not enough play-by-play yet to build rotations.")).toBeVisible();
+  const alert = page.getByRole("alert").filter({ hasText: "Could not load rotations." });
+  await expect(alert).toBeVisible();
+  await expect(alert.getByRole("button", { name: "Retry" })).toBeVisible();
+  await expect(connectionsBlock(page, "Team A")).toContainText("1 basket · 2 pts");
+});
+
+test("a play-by-play failure shows a retry on the connections and leaves the timeline in place", async ({ page }) => {
+  await mockGameApi(page, { boxScore: rosterBox(), lineups: LINEUPS, playByPlayStatus: 500 });
+  await page.goto(`/${SEASON}/games/1`);
+  await openRotations(page);
+
+  // The play-by-play query retries a few times before it reports the error.
+  const alert = page.getByRole("alert").filter({ hasText: "Could not load assist connections." });
+  await expect(alert).toBeVisible({ timeout: 20_000 });
+  await expect(alert.getByRole("button", { name: "Retry" })).toBeVisible();
+  await expect(teamBlock(page, "ONE, AL").locator("li")).toHaveCount(6);
 });
 
 function connectionsBlock(page, teamName) {

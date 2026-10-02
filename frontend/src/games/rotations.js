@@ -1,10 +1,8 @@
 import { formatPeriod } from "../lib/format";
 import { compareByName, isStarter } from "./gameUtils";
 
-// A reconstructed rotation counts as matching the box score when every player is within this many seconds.
+// A rotation counts as matching the box score when every player is within this many seconds of the box-score minutes.
 export const RECONCILIATION_TOLERANCE_SECONDS = 30;
-
-const STARTING_FIVE = 5;
 
 // Periods 1 to 4 are 10 minutes; each overtime is 5.
 export function periodSeconds(periodNumber) {
@@ -17,79 +15,32 @@ function periodStart(periodNumber) {
   return total;
 }
 
-// `markerTime` is the time remaining in the period ("MM:SS"), or null for untimed events.
-function remainingSeconds(markerTime) {
-  const match = /^(\d{1,2}):(\d{2})$/.exec(markerTime ?? "");
-  return match ? Number(match[1]) * 60 + Number(match[2]) : null;
+// "Q2 10:00": the period an elapsed second falls in and the clock left in it. A stint that ends exactly on a period
+// boundary reads as the end of that period ("Q1 00:00"); one that starts on it reads as the start of the next.
+function momentLabel(elapsed, { isEnd }) {
+  let number = 1;
+  while (isEnd ? elapsed > periodStart(number) + periodSeconds(number) : elapsed >= periodStart(number) + periodSeconds(number)) number += 1;
+  const remaining = periodStart(number) + periodSeconds(number) - elapsed;
+  const clock = `${String(Math.floor(remaining / 60)).padStart(2, "0")}:${String(remaining % 60).padStart(2, "0")}`;
+  return `${formatPeriod(number)} ${clock}`;
 }
 
-function elapsedAt(event) {
-  const remaining = remainingSeconds(event.markerTime);
-  if (remaining === null || !Number.isInteger(event.periodNumber) || event.periodNumber < 1) return null;
-  const length = periodSeconds(event.periodNumber);
-  return periodStart(event.periodNumber) + length - Math.min(remaining, length);
-}
-
-function momentLabel(event) {
-  return `${formatPeriod(event.periodNumber)} ${event.markerTime}`;
-}
-
-// Joins stints that touch, such as a player who leaves and returns at the same instant.
-function mergeStints(stints) {
-  const merged = [];
-  for (const stint of [...stints].sort((left, right) => left.start - right.start)) {
-    const last = merged.at(-1);
-    if (last && stint.start <= last.end) {
-      if (stint.end > last.end) {
-        last.end = stint.end;
-        last.endLabel = stint.endLabel;
-      }
-    } else {
-      merged.push({ ...stint });
-    }
-  }
-  return merged;
-}
-
-function sideRotations({ players, subEvents, gameSeconds, endLabel, hasUnknownPlayer }) {
-  const starters = players.filter(isStarter);
-  if (starters.length !== STARTING_FIVE) return { status: "no-starters" };
+function sideRotations({ intervalsByKey, players }) {
+  if (intervalsByKey.size === 0) return { status: "no-intervals" };
 
   const byKey = new Map(players.map((player) => [player.personKey, player]));
-  const open = new Map(starters.map((player) => [player.personKey, { start: 0, startLabel: `${formatPeriod(1)} 10:00` }]));
-  const stintsByKey = new Map();
-  let approximate = hasUnknownPlayer;
-
-  function close(key, end, label) {
-    const stint = open.get(key);
-    open.delete(key);
-    if (end <= stint.start) return;
-    const stints = stintsByKey.get(key) ?? [];
-    stints.push({ start: stint.start, end, startLabel: stint.startLabel, endLabel: label });
-    stintsByKey.set(key, stints);
-  }
-
-  for (const event of subEvents) {
-    if (!byKey.has(event.personCode)) continue;
-    const time = elapsedAt(event);
-    if (time === null) {
-      approximate = true;
-      continue;
-    }
-    if (event.playType === "OUT") {
-      if (open.has(event.personCode)) close(event.personCode, time, momentLabel(event));
-      else approximate = true;
-    } else if (open.has(event.personCode)) {
-      approximate = true;
-    } else {
-      open.set(event.personCode, { start: time, startLabel: momentLabel(event) });
-    }
-  }
-  for (const key of [...open.keys()]) close(key, gameSeconds, endLabel);
-
-  const rows = [...stintsByKey.entries()].map(([key, stints]) => {
-    const merged = mergeStints(stints);
-    return { player: byKey.get(key), stints: merged, seconds: merged.reduce((sum, stint) => sum + (stint.end - stint.start), 0) };
+  const rows = [...intervalsByKey.entries()].map(([key, intervals]) => {
+    const stints = intervals.map(({ startSeconds, endSeconds }) => ({
+      start: startSeconds,
+      end: endSeconds,
+      startLabel: momentLabel(startSeconds, { isEnd: false }),
+      endLabel: momentLabel(endSeconds, { isEnd: true }),
+    }));
+    return {
+      player: byKey.get(key) ?? { personKey: key },
+      stints,
+      seconds: stints.reduce((sum, stint) => sum + (stint.end - stint.start), 0),
+    };
   });
   rows.sort(
     (left, right) =>
@@ -106,31 +57,32 @@ function sideRotations({ players, subEvents, gameSeconds, endLabel, hasUnknownPl
   }
   maxDifference = Math.round(maxDifference);
 
-  return { status: "ok", rows, maxDifference, matches: !approximate && maxDifference <= RECONCILIATION_TOLERANCE_SECONDS };
+  return { status: "ok", rows, maxDifference, matches: maxDifference <= RECONCILIATION_TOLERANCE_SECONDS };
 }
 
-// Rebuilds who was on the court when from the box-score starters and the substitution events. `playerStats` are both
-// teams' box-score rows; `events` are the play-by-play events in order.
-export function computeRotations({ events, playerStats }) {
-  const subEvents = events.filter((event) => event.playType === "IN" || event.playType === "OUT");
-  if (subEvents.length === 0) return { status: "empty" };
+// The minutes timeline from the pipeline's on-court intervals (`onCourt`, in elapsed game seconds). `playerStats` are
+// both teams' box-score rows: they name the players, say who started and give the minutes to reconcile against.
+export function computeRotations({ onCourt, playerStats, gameSeconds }) {
+  if (onCourt.length === 0) return { status: "empty" };
 
-  const periodNumbers = events.map((event) => event.periodNumber).filter(Number.isInteger);
-  const lastPeriod = Math.max(1, ...periodNumbers);
-  const gameSeconds = periodStart(lastPeriod) + periodSeconds(lastPeriod);
+  const lastPeriod = (() => {
+    let number = 4;
+    while (periodStart(number) + periodSeconds(number) < gameSeconds) number += 1;
+    return number;
+  })();
   const periods = Array.from({ length: lastPeriod }, (_, index) => ({
     number: index + 1,
     start: periodStart(index + 1),
     length: periodSeconds(index + 1),
   }));
-  const endLabel = `${formatPeriod(lastPeriod)} 00:00`;
-  const knownKeys = new Set(playerStats.map((player) => player.personKey));
-  const hasUnknownPlayer = subEvents.some((event) => !knownKeys.has(event.personCode));
 
   const forSide = (side) =>
-    sideRotations({ players: playerStats.filter((player) => player.side === side), subEvents, gameSeconds, endLabel, hasUnknownPlayer });
+    sideRotations({
+      intervalsByKey: new Map(onCourt.filter((player) => player.side === side).map((player) => [player.personKey, player.intervals])),
+      players: playerStats.filter((player) => player.side === side),
+    });
 
-  return { status: "ok", gameSeconds, periods, sides: { local: forSide("local"), road: forSide("road") } };
+  return { status: "ok", gameSeconds: periodStart(lastPeriod) + periodSeconds(lastPeriod), periods, sides: { local: forSide("local"), road: forSide("road") } };
 }
 
 const MADE_FIELD_GOALS = { "2FGM": 2, "3FGM": 3 };

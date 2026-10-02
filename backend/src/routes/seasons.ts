@@ -25,6 +25,7 @@ import { getLatestStandingsRound, getStandings } from "../db/season-standings";
 import {
   getGameAdvanced,
   getGameFlow,
+  getGameLineups,
   getGameTeamFlow,
   getLineupRatings,
   getPerLeaders,
@@ -1041,6 +1042,19 @@ seasonRouter.get("/:seasonCode/games/:gameCode/team-flow", async (req, res) => {
   }
   const teams = await getGameTeamFlow(season.seasonCode, gameCode);
   res.json({ available: teams.length > 0, teams });
+});
+
+// Each player's on-court intervals and the game's five-man units, straight from the pipeline's per-game tables.
+seasonRouter.get("/:seasonCode/games/:gameCode/lineups", async (req, res) => {
+  const season = await requestedSeason(req, res);
+  if (!season) return;
+  const gameCode = requestedGameCode(req.params.gameCode, res);
+  if (gameCode === null) return;
+  if (!await getGame(season.seasonCode, gameCode)) {
+    sendError(res, 404, "GAME_NOT_FOUND", "Game not found");
+    return;
+  }
+  res.json(await getGameLineups(season.seasonCode, gameCode));
 });
 
 seasonRouter.get("/:seasonCode/games/:gameCode/play-by-play", async (req, res) => {

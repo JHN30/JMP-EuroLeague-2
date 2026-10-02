@@ -503,6 +503,51 @@ export const gameTeamShotSplits = pgTable(
   gameTeamPrimaryKey,
 );
 
+// Elapsed game seconds: Q1 starts at 0, a quarter is 600 seconds and an overtime 300. A player has one row per
+// stretch on the court; a lineup stint is a stretch with the same ten players on the floor, listed once per side
+// with `players` (own five) and `opponent_players` as sorted person_keys joined by commas.
+export const gamePlayerOnCourt = pgTable(
+  "app_game_player_on_court",
+  {
+    competitionCode: text("competition_code").notNull(),
+    seasonCode: text("season_code").notNull(),
+    gameCode: integer("game_code").notNull(),
+    side: text("side").notNull(),
+    personKey: text("person_key").notNull(),
+    intervalOrdinal: integer("interval_ordinal").notNull(),
+    clubCode: text("club_code"),
+    startSeconds: integer("start_seconds"),
+    endSeconds: integer("end_seconds"),
+  },
+  (table) => [
+    primaryKey({ columns: [table.competitionCode, table.seasonCode, table.gameCode, table.side, table.personKey, table.intervalOrdinal] }),
+  ],
+);
+
+export const gameTeamLineupStints = pgTable(
+  "app_game_team_lineup_stints",
+  {
+    competitionCode: text("competition_code").notNull(),
+    seasonCode: text("season_code").notNull(),
+    gameCode: integer("game_code").notNull(),
+    side: text("side").notNull(),
+    stintOrdinal: integer("stint_ordinal").notNull(),
+    clubCode: text("club_code"),
+    opponentClubCode: text("opponent_club_code"),
+    startSeconds: integer("start_seconds"),
+    endSeconds: integer("end_seconds"),
+    players: text("players"),
+    opponentPlayers: text("opponent_players"),
+    possessionsFor: integer("possessions_for"),
+    possessionsAgainst: integer("possessions_against"),
+    pointsFor: integer("points_for"),
+    pointsAgainst: integer("points_against"),
+  },
+  (table) => [
+    primaryKey({ columns: [table.competitionCode, table.seasonCode, table.gameCode, table.side, table.stintOrdinal] }),
+  ],
+);
+
 export const gameTeamPossessions = pgTable(
   "app_game_team_possessions",
   {

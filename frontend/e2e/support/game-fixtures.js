@@ -115,6 +115,75 @@ export const NO_ADVANCED = { available: false, scope: "all", round: 2, minSeason
 // The team-flow response for a game without those tables (the default, so older tests see no extra rows).
 export const NO_TEAM_FLOW = { available: false, teams: [] };
 
+// The lineups response for a game without on-court rows (the default, so older tests see the empty states).
+export const NO_LINEUPS = { available: false, gameSeconds: 2400, onCourt: [], units: [] };
+
+// Box score for the rotation and lineup tests: five starters per team, a bench player, and (Team A) one player who
+// did not play. `overrides` changes the box-score minutes of A1 and A6 to test reconciliation.
+export function rosterBox(overrides = {}) {
+  const starter = (side, key, name, timePlayed) => player(side, key, name, { started: true, timePlayed });
+  return {
+    periodScores: BOX_SCORE.periodScores,
+    teamStats: BOX_SCORE.teamStats,
+    playerStats: [
+      starter("local", "A1", "ONE, AL", overrides.A1 ?? 2340),
+      starter("local", "A2", "TWO, ABE", 2700),
+      starter("local", "A3", "THREE, ART", 2700),
+      starter("local", "A4", "FOUR, ARI", 2700),
+      starter("local", "A5", "FIVE, ABBY", 2700),
+      player("local", "A6", "SIX, ABEL", { timePlayed: overrides.A6 ?? 360 }),
+      player("local", "A7", "SEVEN, AMY", { timePlayed: 0 }),
+      starter("road", "B1", "UNO, BO", 1500),
+      starter("road", "B2", "DOS, BEN", 2700),
+      starter("road", "B3", "TRES, BAZ", 2700),
+      starter("road", "B4", "CUATRO, BEA", 2700),
+      starter("road", "B5", "CINCO, BIA", 2700),
+      player("road", "B6", "SEIS, BRI", { timePlayed: 1200 }),
+    ],
+  };
+}
+
+const onCourtOf = (side, clubCode, personKey, ...intervals) => ({
+  side,
+  clubCode,
+  personKey,
+  intervals: intervals.map(([startSeconds, endSeconds]) => ({ startSeconds, endSeconds })),
+});
+
+const unitOf = (side, clubCode, players, seconds, stints, totals) => {
+  const { possessionsFor, possessionsAgainst, pointsFor, pointsAgainst, netRating } = totals;
+  return { side, clubCode, players, seconds, stints, possessionsFor, possessionsAgainst, pointsFor, pointsAgainst, plusMinus: pointsFor - pointsAgainst, netRating };
+};
+
+// Pipeline lineups matching `rosterBox()`: a game with one overtime (2,700 seconds). A1 sits from Q1 06:00 to the start
+// of Q2 and A6 takes that spot; B1 is replaced by B6 at Q3 05:00. Team A's third unit has no possessions, so its ratings
+// are null; the units do not add up to the whole game and are not sorted, as the API returns them.
+export const LINEUPS = {
+  available: true,
+  gameSeconds: 2700,
+  onCourt: [
+    onCourtOf("local", "A", "A1", [0, 240], [600, 2700]),
+    onCourtOf("local", "A", "A2", [0, 2700]),
+    onCourtOf("local", "A", "A3", [0, 2700]),
+    onCourtOf("local", "A", "A4", [0, 2700]),
+    onCourtOf("local", "A", "A5", [0, 2700]),
+    onCourtOf("local", "A", "A6", [240, 600]),
+    onCourtOf("road", "B", "B1", [0, 1500]),
+    onCourtOf("road", "B", "B2", [0, 2700]),
+    onCourtOf("road", "B", "B3", [0, 2700]),
+    onCourtOf("road", "B", "B4", [0, 2700]),
+    onCourtOf("road", "B", "B5", [0, 2700]),
+    onCourtOf("road", "B", "B6", [1500, 2700]),
+  ],
+  units: [
+    unitOf("local", "A", ["A1", "A2", "A3", "A4", "A5"], 1500, 4, { possessionsFor: 60, possessionsAgainst: 58, pointsFor: 50, pointsAgainst: 40, netRating: 14.37 }),
+    unitOf("local", "A", ["A2", "A3", "A4", "A5", "A6"], 180, 1, { possessionsFor: 14, possessionsAgainst: 14, pointsFor: 12, pointsAgainst: 15, netRating: -21.43 }),
+    unitOf("local", "A", ["A1", "A2", "A3", "A5", "A6"], 30, 1, { possessionsFor: 0, possessionsAgainst: 0, pointsFor: 0, pointsAgainst: 0, netRating: null }),
+    unitOf("road", "B", ["B1", "B2", "B3", "B4", "B5"], 1500, 3, { possessionsFor: 58, possessionsAgainst: 60, pointsFor: 40, pointsAgainst: 50, netRating: -14.37 }),
+    unitOf("road", "B", ["B2", "B3", "B4", "B5", "B6"], 1200, 2, { possessionsFor: 40, possessionsAgainst: 40, pointsFor: 30, pointsAgainst: 30, netRating: 0 }),
+  ],
+};
+
 // Score flow, shot splits and counted possessions for Team A (local) and Team B (road); the clutch numbers are real.
 export const TEAM_FLOW = {
   available: true,
@@ -198,9 +267,10 @@ const UNPLAYED_BOX_SCORE = { periodScores: [], teamStats: [], playerStats: [] };
 // Mocks every API request the game page makes. Options: `requests` (collects requested paths), `played`,
 // `boxScore`, `boxScoreStatus`, `playByPlay` (response body), `playByPlayStatus` (use 500 to simulate a failure), and
 // `advanced` / `advancedStatus` for the game's advanced stats (default: none available), and `teamFlow` /
-// `teamFlowStatus` for its score flow, shot splits and possessions (default: none available).
+// `teamFlowStatus` for its score flow, shot splits and possessions (default: none available), and `lineups` /
+// `lineupsStatus` for its on-court intervals and five-man units (default: none available).
 export async function mockGameApi(page, options = {}) {
-  const { requests = [], played = true, boxScore = BOX_SCORE, boxScoreStatus = 200, playByPlay = { events: [] }, playByPlayStatus = 200, advanced = NO_ADVANCED, advancedStatus = 200, teamFlow = NO_TEAM_FLOW, teamFlowStatus = 200 } = options;
+  const { requests = [], played = true, boxScore = BOX_SCORE, boxScoreStatus = 200, playByPlay = { events: [] }, playByPlayStatus = 200, advanced = NO_ADVANCED, advancedStatus = 200, teamFlow = NO_TEAM_FLOW, teamFlowStatus = 200, lineups = NO_LINEUPS, lineupsStatus = 200 } = options;
   await page.route("**/api/**", async (route) => {
     const pathname = new URL(route.request().url()).pathname;
     requests.push(pathname);
@@ -238,6 +308,10 @@ export async function mockGameApi(page, options = {}) {
     }
     if (pathname === `/api/seasons/${SEASON}/games/1/team-flow`) {
       await route.fulfill({ status: teamFlowStatus, json: teamFlowStatus === 200 ? teamFlow : { error: "Mocked failure" } });
+      return;
+    }
+    if (pathname === `/api/seasons/${SEASON}/games/1/lineups`) {
+      await route.fulfill({ status: lineupsStatus, json: lineupsStatus === 200 ? lineups : { error: "Mocked failure" } });
       return;
     }
     if (pathname === `/api/seasons/${SEASON}/games/1/play-by-play`) {

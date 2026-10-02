@@ -4,7 +4,9 @@ import { db } from "./client";
 import { catalogRead } from "./season-catalog";
 import {
   gamePlayerAdvanced,
+  gamePlayerOnCourt,
   gameTeamAdvanced,
+  gameTeamLineupStints,
   gameTeamPossessions,
   gameTeamScoreFlow,
   gameTeamShotSplits,
@@ -485,4 +487,103 @@ export async function getGameTeamFlow(seasonCode: string, gameCode: number) {
       splits: without(splits.find((row) => row.side === side)),
       possessions: without(possessions.find((row) => row.side === side)),
     }));
+}
+
+const REGULATION_SECONDS = 2400;
+const OVERTIME_SECONDS = 300;
+
+type UnitTotals = {
+  side: string;
+  clubCode: string;
+  players: string[];
+  seconds: number;
+  stints: number;
+  possessionsFor: number;
+  possessionsAgainst: number;
+  pointsFor: number;
+  pointsAgainst: number;
+};
+
+const twoDecimals = (value: number) => Math.round(value * 100) / 100;
+
+// Points per 100 possessions, or null when there were no possessions.
+const per100 = (points: number, possessions: number) => (possessions > 0 ? (100 * points) / possessions : null);
+
+// Each player's on-court intervals and the game's lineup stints rolled up by five-man unit, both read as the pipeline
+// published them. A unit is the sorted person_keys of one side; its totals sum every stint of that unit.
+export async function getGameLineups(seasonCode: string, gameCode: number) {
+  const scopeOf = (table: { competitionCode: AnyPgColumn; seasonCode: AnyPgColumn; gameCode: AnyPgColumn }) =>
+    and(eq(table.competitionCode, COMPETITION_CODE), eq(table.seasonCode, seasonCode), eq(table.gameCode, gameCode));
+  const [intervals, stints] = await Promise.all([
+    catalogRead(() =>
+      db.select().from(gamePlayerOnCourt).where(scopeOf(gamePlayerOnCourt))
+        .orderBy(asc(gamePlayerOnCourt.side), asc(gamePlayerOnCourt.personKey), asc(gamePlayerOnCourt.intervalOrdinal)),
+    ),
+    catalogRead(() => db.select().from(gameTeamLineupStints).where(scopeOf(gameTeamLineupStints))),
+  ]);
+
+  const onCourt = new Map<string, {
+    side: string;
+    clubCode: string | null;
+    personKey: string;
+    intervals: { startSeconds: number; endSeconds: number }[];
+  }>();
+  let lastSecond = 0;
+  for (const row of intervals) {
+    if (row.startSeconds === null || row.endSeconds === null) continue;
+    const key = `${row.side}|${row.personKey}`;
+    let player = onCourt.get(key);
+    if (!player) {
+      player = { side: row.side, clubCode: row.clubCode, personKey: row.personKey, intervals: [] };
+      onCourt.set(key, player);
+    }
+    player.intervals.push({ startSeconds: row.startSeconds, endSeconds: row.endSeconds });
+    lastSecond = Math.max(lastSecond, row.endSeconds);
+  }
+
+  const units = new Map<string, UnitTotals>();
+  for (const row of stints) {
+    if (row.players === null || row.startSeconds === null || row.endSeconds === null) continue;
+    const key = `${row.side}|${row.players}`;
+    let unit = units.get(key);
+    if (!unit) {
+      unit = {
+        side: row.side,
+        clubCode: row.clubCode ?? "",
+        players: row.players.split(","),
+        seconds: 0,
+        stints: 0,
+        possessionsFor: 0,
+        possessionsAgainst: 0,
+        pointsFor: 0,
+        pointsAgainst: 0,
+      };
+      units.set(key, unit);
+    }
+    unit.seconds += row.endSeconds - row.startSeconds;
+    unit.stints += 1;
+    unit.possessionsFor += row.possessionsFor ?? 0;
+    unit.possessionsAgainst += row.possessionsAgainst ?? 0;
+    unit.pointsFor += row.pointsFor ?? 0;
+    unit.pointsAgainst += row.pointsAgainst ?? 0;
+    lastSecond = Math.max(lastSecond, row.endSeconds);
+  }
+
+  const overtimes = lastSecond > REGULATION_SECONDS ? Math.ceil((lastSecond - REGULATION_SECONDS) / OVERTIME_SECONDS) : 0;
+  return {
+    available: onCourt.size > 0 || units.size > 0,
+    gameSeconds: REGULATION_SECONDS + overtimes * OVERTIME_SECONDS,
+    onCourt: [...onCourt.values()],
+    units: [...units.values()].map((unit) => {
+      const offensive = per100(unit.pointsFor, unit.possessionsFor);
+      const defensive = per100(unit.pointsAgainst, unit.possessionsAgainst);
+      return {
+        ...unit,
+        plusMinus: unit.pointsFor - unit.pointsAgainst,
+        offensiveRating: offensive === null ? null : twoDecimals(offensive),
+        defensiveRating: defensive === null ? null : twoDecimals(defensive),
+        netRating: offensive === null || defensive === null ? null : twoDecimals(offensive - defensive),
+      };
+    }),
+  };
 }

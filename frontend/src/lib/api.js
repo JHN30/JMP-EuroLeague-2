@@ -32,6 +32,11 @@ export async function getGameTeamFlow(seasonCode, gameCode) {
   return data;
 }
 
+export async function getGameLineups(seasonCode, gameCode) {
+  const { data } = await api.get(`/seasons/${seasonCode}/games/${gameCode}/lineups`);
+  return data;
+}
+
 export async function getPlayByPlay(seasonCode, gameCode) {
   const { data } = await api.get(`/seasons/${seasonCode}/games/${gameCode}/play-by-play`);
   return data;

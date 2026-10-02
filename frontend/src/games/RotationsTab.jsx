@@ -6,8 +6,9 @@ import { formatMinutes } from "../lib/format";
 import { sectionContainer, sectionItem } from "../lib/motion";
 import Panel from "../lib/Panel";
 import PanelHeader from "../lib/PanelHeader";
+import LineupsSection from "./LineupsSection";
 import PlayerLink from "./PlayerLink";
-import { RECONCILIATION_TOLERANCE_SECONDS, computeConnections, computeRotations } from "./rotations";
+import { computeConnections, computeRotations } from "./rotations";
 import TeamLabel from "./TeamLabel";
 
 const GRID = "grid grid-cols-[7rem_minmax(0,1fr)_3rem] items-center gap-2 sm:grid-cols-[11rem_minmax(0,1fr)_3.5rem] sm:gap-3";
@@ -15,13 +16,7 @@ const GRID = "grid grid-cols-[7rem_minmax(0,1fr)_3rem] items-center gap-2 sm:gri
 const percent = (seconds, total) => `${(seconds / total) * 100}%`;
 
 function ReconciliationBadge({ side }) {
-  let text = "Matches the box score";
-  if (!side.matches) {
-    text =
-      side.maxDifference > RECONCILIATION_TOLERANCE_SECONDS
-        ? `Approximate · up to ${side.maxDifference} s off the box score`
-        : "Approximate · some substitutions couldn't be placed";
-  }
+  const text = side.matches ? "Matches the box score" : `Approximate · up to ${side.maxDifference} s off the box score`;
   return <span className={`stat-badge ${side.matches ? "stat-badge-success" : "stat-badge-warning"}`}>{text}</span>;
 }
 
@@ -34,7 +29,7 @@ function TeamTimeline({ team, side, periods, gameSeconds, seasonCode }) {
       </div>
 
       {side.status !== "ok" ? (
-        <p className="muted text-sm">Starting lineup isn't available for this game.</p>
+        <p className="muted text-sm">On-court times aren't available for this team.</p>
       ) : (
         <>
           <div className={`${GRID} mb-1`} aria-hidden="true">
@@ -82,17 +77,24 @@ function TeamTimeline({ team, side, periods, gameSeconds, seasonCode }) {
   );
 }
 
-// Its own states, so a box-score problem never hides the connections below it (added in a later step).
-function TimelineSection({ game, seasonCode, boxScoreQuery, playByPlayQuery }) {
-  const events = playByPlayQuery.data?.events;
+// Reads the pipeline's on-court intervals and the box score; it never waits on the play-by-play.
+function TimelineSection({ game, seasonCode, boxScoreQuery, lineupsQuery }) {
+  const onCourt = lineupsQuery.data?.onCourt;
+  const gameSeconds = lineupsQuery.data?.gameSeconds;
   const playerStats = boxScoreQuery.data?.playerStats;
-  const rotations = useMemo(() => (events && playerStats ? computeRotations({ events, playerStats }) : null), [events, playerStats]);
+  const rotations = useMemo(
+    () => (onCourt && playerStats ? computeRotations({ onCourt, playerStats, gameSeconds }) : null),
+    [onCourt, playerStats, gameSeconds],
+  );
 
+  if (lineupsQuery.isError) {
+    return <AsyncState status="error" message="Could not load rotations." onRetry={() => lineupsQuery.refetch()} />;
+  }
   if (boxScoreQuery.isError) {
     return <AsyncState status="error" message="Could not load the box score for rotations." onRetry={() => boxScoreQuery.refetch()} />;
   }
   if (!rotations) return <AsyncState status="loading" label="Loading rotations" compact />;
-  if (rotations.status === "empty") return <EmptyText>Not enough play-by-play yet to build rotations.</EmptyText>;
+  if (rotations.status === "empty") return <EmptyText>Rotations aren't available for this game yet.</EmptyText>;
 
   return (
     <div className="flex flex-col gap-4">
@@ -145,7 +147,7 @@ function TeamConnections({ team, connections, seasonCode }) {
   );
 }
 
-// Needs only the play-by-play, so it never waits on the box score.
+// Needs only the play-by-play, so it never waits on the box score or the lineups.
 function ConnectionsSection({ game, seasonCode, playByPlayQuery }) {
   const events = playByPlayQuery.data?.events;
   const connections = useMemo(
@@ -156,6 +158,9 @@ function ConnectionsSection({ game, seasonCode, playByPlayQuery }) {
     [events, game.localTeam?.clubCode, game.roadTeam?.clubCode],
   );
 
+  if (playByPlayQuery.isError) {
+    return <AsyncState status="error" message="Could not load assist connections." onRetry={() => playByPlayQuery.refetch()} />;
+  }
   if (!connections) return <AsyncState status="loading" label="Loading assist connections" compact />;
   return (
     <div className="grid gap-4 md:grid-cols-2">
@@ -165,26 +170,28 @@ function ConnectionsSection({ game, seasonCode, playByPlayQuery }) {
   );
 }
 
-// Who was on the court and when, and who scored off whose assists, both built from the play-by-play.
-export default function RotationsTab({ game, seasonCode, boxScoreQuery, playByPlayQuery }) {
+// Who was on the court and when and which five-man units played together come from the pipeline; who scored off whose
+// assists is built from the play-by-play. Each section loads, fails and retries on its own.
+export default function RotationsTab({ game, seasonCode, boxScoreQuery, playByPlayQuery, lineupsQuery }) {
   if (!game.played) {
     return <EmptyText>Rotations aren't available until this game is played.</EmptyText>;
-  }
-  if (playByPlayQuery.isLoading) return <AsyncState status="loading" label="Loading rotations" />;
-  if (playByPlayQuery.isError) {
-    return <AsyncState status="error" message="Could not load rotations." onRetry={() => playByPlayQuery.refetch()} />;
   }
 
   return (
     <motion.div className="flex flex-col gap-6" variants={sectionContainer} initial="hidden" animate="show">
       <motion.section variants={sectionItem}>
         <PanelHeader kicker="ROTATIONS" title="Minutes on the court" />
-        <TimelineSection game={game} seasonCode={seasonCode} boxScoreQuery={boxScoreQuery} playByPlayQuery={playByPlayQuery} />
+        <TimelineSection game={game} seasonCode={seasonCode} boxScoreQuery={boxScoreQuery} lineupsQuery={lineupsQuery} />
       </motion.section>
 
       <motion.section variants={sectionItem}>
         <PanelHeader kicker="CONNECTIONS" title="Assist connections" />
         <ConnectionsSection game={game} seasonCode={seasonCode} playByPlayQuery={playByPlayQuery} />
+      </motion.section>
+
+      <motion.section variants={sectionItem}>
+        <PanelHeader kicker="LINEUPS" title="Five-man units" />
+        <LineupsSection game={game} seasonCode={seasonCode} boxScoreQuery={boxScoreQuery} lineupsQuery={lineupsQuery} />
       </motion.section>
     </motion.div>
   );

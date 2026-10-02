@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { motion } from "motion/react";
 import { useParams } from "react-router";
-import { getBoxScore, getGame, getGameAdvanced, getGameTeamFlow, getPlayByPlay, getShots } from "../lib/api";
+import { getBoxScore, getGame, getGameAdvanced, getGameLineups, getGameTeamFlow, getPlayByPlay, getShots } from "../lib/api";
 import AsyncState from "../lib/AsyncState";
 import ComparisonRow from "../lib/ComparisonRow";
 import EmptyText from "../lib/EmptyText";
@@ -1166,6 +1166,14 @@ export default function GameDetailPage() {
     retry: false,
   });
 
+  // The pipeline's on-court intervals and five-man units feed the Rotations tab; the connections there use the play-by-play.
+  const lineupsQuery = useQuery({
+    queryKey: ["game-lineups", seasonCode, gameCode],
+    queryFn: () => getGameLineups(seasonCode, gameCode),
+    enabled: gameQuery.isSuccess && game?.played === true && tab === "rotations",
+    retry: false,
+  });
+
   const shotsQuery = useQuery({
     queryKey: ["shots", seasonCode, gameCode],
     queryFn: () => getShots(seasonCode, gameCode),
@@ -1262,7 +1270,7 @@ export default function GameDetailPage() {
           )
         ) : null}
 
-        {tab === "rotations" ? <RotationsTab game={game} seasonCode={seasonCode} boxScoreQuery={boxScoreQuery} playByPlayQuery={playByPlayQuery} /> : null}
+        {tab === "rotations" ? <RotationsTab game={game} seasonCode={seasonCode} boxScoreQuery={boxScoreQuery} playByPlayQuery={playByPlayQuery} lineupsQuery={lineupsQuery} /> : null}
 
         {tab === "game-flow" ? (
           !game.played ? (

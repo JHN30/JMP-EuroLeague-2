@@ -25,10 +25,13 @@ The 16 Gold source tables publish to `public.app_<source>`:
 `app_coverage_seasons`, `app_coverage_games`,
 `app_records_player_seasons`, `app_records_single_games`,
 `app_records_team_seasons`, `app_postseason_series`, `app_players`, and
-`app_club_identities`.
+`app_club_identities`. The 12 tables of features 26-29 (30g) and the two per-game tables
+`app_game_player_advanced` and `app_game_team_advanced` (30h) the four `app_game_team_*`
+per-game play-by-play tables (30i) and `app_game_player_on_court`, `app_game_team_lineup_stints` and
+`app_game_stat_gaps` (30j) make 47 targets.
 
 The three record tables and two identity tables replace all rows for the
-selected competition. The other 21 tables replace one selected season. One
+selected competition. The other 42 tables replace one selected season. One
 Neon transaction covers all selected tables. The publisher verifies exact
 post-copy counts and refuses a scope below 90% of its previous row count unless
 `--allow-shrink` is explicit. `app_play_by_play` and `app_shots` copy only changed
@@ -91,7 +94,7 @@ completes the primary key.
 | `game_period_scores` | `game_code`, `side`, `period_number` | One quarter or overtime score. |
 | `game_player_stats` | `game_code`, `side`, `person_key` | One player's game box score. |
 | `game_team_stats` | `game_code`, `side`, `stats_kind` | One team's box score row or total. |
-| `game_stat_gaps` | `game_code`, `stat_name` | A missing or unrecorded game measure; `*` means no box score. |
+| `game_stat_gaps` | `game_code`, `stat_name` | A missing or unrecorded game measure; `*` means no box score. Gold copy published as `public.app_game_stat_gaps` (30j); it has no rows from E2012 on, so it is empty for E2025 and E2026. |
 | `play_by_play` | `game_code`, `period`, `event_ordinal` | One live event. |
 | `shots` | `game_code`, `shot_ordinal` | One shot attempt. |
 | `season_player_stats_traditional` | `phase_code`, `mode`, `entry_ordinal` | One player entry in a v3 traditional feed. |
@@ -116,7 +119,8 @@ completes the primary key.
 game with a full box score) and `game_player_advanced` (`game_code`, `side`,
 `person_key`; one row per player box score) are computed by
 `postgres_etl/advanced.py` from Silver only. They are not loaded from Bronze,
-not part of Gold or Neon, and carry the same `load_id` and `loaded_at` columns.
+carry the same `load_id` and `loaded_at` columns. Gold projects both as
+`gold.game_team_advanced` and `gold.game_player_advanced` (see below).
 Ratios are fractions (0.512); NULL means a needed measure was missing or a
 denominator was zero. Forfeits (`game_stat_gaps` `*`) and unplayed games have
 no rows.
@@ -138,6 +142,28 @@ no rows.
 | `usage_pct`, `assist_pct`, `orb_pct`, `drb_pct`, `trb_pct`, `steal_pct`, `block_pct` (player) | Basketball-Reference forms using `seconds_played` and the club's official `total` row; NULL for zero minutes. `steal_pct` uses the game's possessions, `block_pct` the opponent's two-point attempts |
 | `tov_pct`, `efg_pct`, `true_shooting_pct` (player) | Same forms as the club columns, from the player's own line |
 
+Published to Neon as `public.app_game_player_advanced` / `public.app_game_team_advanced`
+(E2025 and E2026) once the reviewed 30h migration is applied. Build:
+`python gold_etl/main.py -sc <seasons> -tb game_team_advanced game_player_advanced`.
+The Gold tables drop `load_id` and `loaded_at`; the team table also drops
+`opponent_club_code`, `phase_code` and `round_number`. Keys: `competition_code`,
+`season_code`, `game_code`, `side` (plus `person_key` for players). The player table adds
+`club_code`, `seconds_played` and three game PER columns:
+
+| Column | Meaning |
+| --- | --- |
+| `game_uper` | Hollinger's unadjusted PER per minute from that game's box-score line only, with the team's assist ratio for that game and league constants (factor, VOP, DRB%) summed over every counted game of the game's phase scope (`RS`, `PI`, `PO`, `FF`, ...) through the game's round, exactly as `player_round_ratings` |
+| `game_aper` | `game_uper` x league pace (same scope, through the round) / the game's own team pace |
+| `game_per` | `game_aper` x 15 / the seconds-weighted mean `game_aper` of the games in the same scope and round, so the league mean is 15 per scope and round |
+
+NULL when `seconds_played` is 0 or missing, an input is missing or a denominator is zero;
+there is no minutes cutoff, so a few minutes can give an extreme value. Zero-minute rows keep
+Silver's `game_score` but have NULL rates and PER. Season PER is not an average of game PER:
+use `player_round_ratings` (last round of the season). A player's first game ties `player_round_ratings.per`
+(scope `RS`, round 1) exactly; `--quality-only` checks the round-1 ties against the round tables
+(to 0.00001, since those divide rounded sums), the league mean, row shape and null handling, and
+warns where a percentage is below 0 or above 2.
+
 These are box-score estimates. Counted play-by-play possessions sit next to them in
 `game_team_possessions` (below) and never replace them.
 
@@ -146,7 +172,7 @@ These are box-score estimates. Counted play-by-play possessions sit next to them
 Built by `python postgres_etl/possessions.py -sc <seasons>` from `play_by_play`, `games`
 and `game_team_advanced` (E2007 onward; earlier seasons have no play-by-play and no
 rows). Extra key `game_code`, `side`; one row per club per played game with events and a
-`game_team_advanced` row. Same provenance columns; not in Gold or Neon.
+`game_team_advanced` row. Same provenance columns. Gold copy `gold.game_team_possessions` (without the provenance columns) is published to Neon as `public.app_game_team_possessions` (E2025 and E2026) once the reviewed 30i migration is applied.
 
 | Column | Meaning |
 | --- | --- |
@@ -184,8 +210,7 @@ estimate by more than 10% (16 rows across E2007-E2026: 7 in E2007 and 9 in E2009
 
 Built by `python postgres_etl/score_flow.py -sc <seasons>` from `play_by_play` and `games`
 (E2007 onward; same rows as `game_team_possessions`). Extra key `game_code`, `side`; one row
-per club per played game whose events carry a running score. Same provenance columns; not in
-Gold or Neon.
+per club per played game whose events carry a running score. Same provenance columns. Gold copy `gold.game_team_score_flow` (without the provenance columns) is published to Neon as `public.app_game_team_score_flow` (E2025 and E2026) once the reviewed 30i migration is applied.
 
 | Column | Meaning |
 | --- | --- |
@@ -211,7 +236,7 @@ a fresh derivation and warns when a final score differs from `games` (none found
 
 Built by `python postgres_etl/shot_splits.py -sc <seasons>` from `games`, `shots` and
 `play_by_play` (E2007 onward; same rows as `game_team_possessions`). Extra key `game_code`,
-`side`. Same provenance columns; not in Gold or Neon.
+`side`. Same provenance columns. Gold copy `gold.game_team_shot_splits` (without the provenance columns) is published to Neon as `public.app_game_team_shot_splits` (E2025 and E2026) once the reviewed 30i migration is applied.
 
 | Column | Meaning |
 | --- | --- |
@@ -233,7 +258,7 @@ points differ from `games` (none found).
 
 Built by `python postgres_etl/shot_zones.py -sc <seasons>` from `games` and `shots`
 (E2007 onward). Extra key `game_code`, `side`, `zone`; columns `club_code`, `attempts`,
-`made`, `points`. Field goals only: `2FGM`, `3FGM`, `LAYUPMD`, `DUNK` made and `2FGA`, `3FGA`,
+`made`, `points`. Gold copy `gold.game_team_shot_zones` (without the provenance columns) is published to Neon as `public.app_game_team_shot_zones` (E2025 and E2026) once the reviewed 30i migration is applied. Field goals only: `2FGM`, `3FGM`, `LAYUPMD`, `DUNK` made and `2FGA`, `3FGA`,
 `LAYUPATT`, `2FGAB`, `3FGAB` missed (E2008-E2014 use the layup, dunk and blocked types; 19a
 has the same list). Free throws and shots without a zone code are left out, and a team has a
 row only for zones it shot from. Zone totals equal the box score's field goals made in every
@@ -261,7 +286,7 @@ games.
 Built by `python postgres_etl/on_court.py -sc <seasons>` from `games`, `game_player_stats` and
 `play_by_play` (E2007 onward). Key `game_code`, `side`, `person_key`, `interval_ordinal`
 (the player's stretches counted from 1 in time order); columns `club_code`, `start_seconds` and
-`end_seconds` (elapsed game seconds). It is the base of the lineup features 29b-29d.
+`end_seconds` (elapsed game seconds). It is the base of the lineup features 29b-29d. Gold copy `gold.game_player_on_court` (without the provenance columns) is published to Neon as `public.app_game_player_on_court` (E2025 and E2026) once the reviewed 30j migration is applied.
 
 A side starts with the players whose `started` flag is set. An `IN` adds a player, an `OUT`
 removes one, in event order (period, overtime, `event_ordinal`); players carry across periods;
@@ -295,7 +320,7 @@ the box score's `seconds_played`.
 Built by `python postgres_etl/lineups.py -sc <seasons>` from `games`, `game_player_stats` and
 `play_by_play` (E2007 onward), right after `game_player_on_court`. Key `game_code`, `side`,
 `stint_ordinal` (counted from 1 over the stored stints of the game); two rows per stint, one
-from each team's side.
+from each team's side. Gold copy `gold.game_team_lineup_stints` (without the provenance columns) is published to Neon as `public.app_game_team_lineup_stints` (E2025 and E2026) once the reviewed 30j migration is applied.
 
 | Column | Meaning |
 | --- | --- |
@@ -471,7 +496,10 @@ removed. A player stats row is one entry in a category, phase, and mode feed,
 not a unique person for the season. `accumulated` and `perGame` feeds may have
 different populations. The API can return stale or partial feeds; the downloader
 keeps the stronger stored response and the load quality report flags missing or
-partial phase/mode feeds. Live `player_code` is the upstream ID while
+partial phase/mode feeds. The same holds for round standings: an answer with fewer
+clubs or games played than the stored one is kept out, and Gold `--quality-only`
+warns when the five standings feeds of a round disagree on games played or won
+(the API caches each feed on its own clock). Live `player_code` is the upstream ID while
 `person_code` is the matched person key; join on `person_code`.
 
 ## Local Gold source tables
@@ -488,6 +516,15 @@ non-`PS` API rows; feature 30b owns derived `PS` rows in traditional and misc
 Gold tables, and a source rerun leaves those rows in place. Advanced and scoring
 have no derived `PS` rows. The other 12 Silver tables and `silver.load_log`
 are not copied by 30a.
+
+Nine per-game tables were added later, all named like their Silver sources and published to
+Neon as `public.app_<name>` for E2025 and E2026. Seven are straight copies with the same
+columns, types, NULLs and primary keys, again without `load_id` and `loaded_at`: `game_team_possessions`, `game_team_score_flow`, `game_team_shot_splits` and
+`game_team_shot_zones` (30i), and `game_player_on_court`, `game_team_lineup_stints` and
+`game_stat_gaps` (30j). Two are projections of Silver's per-game advanced tables with the
+published column set; `game_player_advanced` also adds game PER (30h): `game_player_advanced`
+and `game_team_advanced`. Each is defined in its own section below (see "Derived per-game
+advanced tables" and the `game_team_*` and `game_player_on_court` sections).
 
 `python gold_etl/main.py -sc all` builds all locally loaded Silver seasons.
 `--dry-run` reports Silver source and derived row counts without Gold writes;
@@ -916,7 +953,7 @@ player_round_win_shares` from `silver.game_player_stats` and the same counted ga
 | `club_code`, `player_name`, `games_played`, `seconds_played` | Latest club and name, appearances and cumulative seconds through the round |
 | `off_win_shares` | (Points produced - 0.92 x league points per possession x individual possessions) / marginal points per win, Basketball-Reference's method |
 | `def_win_shares` | Minutes share x team possessions x (1.08 x league points per possession - individual defensive rating / 100) / marginal points per win; the defensive rating uses stops and the stop percentage |
-| `win_shares`, `win_shares_per_48` | `off_win_shares + def_win_shares`, and `win_shares` x 48 / minutes played |
+| `win_shares`, `win_shares_per_40` | `off_win_shares + def_win_shares`, and `win_shares` x 40 / minutes played (a EuroLeague game is 40 minutes; the league mean is about 0.100) |
 
 Marginal points per win = 0.32 x league points per team game x (the player's team pace
 over the games the player played / league pace). Player, club and opponent totals are

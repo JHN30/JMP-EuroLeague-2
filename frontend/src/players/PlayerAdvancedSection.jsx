@@ -21,7 +21,7 @@ const RAPM_MIN_SECONDS = 20 * 60;
 const TREND_METRICS = [
   { key: "per", label: "PER", digits: 1 },
   { key: "winShares", label: "Win Shares", digits: 2 },
-  { key: "winSharesPer48", label: "Win Shares / 48", digits: 3 },
+  { key: "winSharesPer40", label: "Win Shares / 40", digits: 3 },
   { key: "usgPct", label: "USG%", digits: 1, percent: true },
 ];
 
@@ -99,7 +99,7 @@ function SeasonTiles({ rounds }) {
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
         <MetricTile label="PER" value={formatDecimal(latest.per)} hint="League mean is 15" />
         <MetricTile label="Win Shares" value={formatDecimal(latest.winShares, 2)} />
-        <MetricTile label="WS / 48" value={formatDecimal(latest.winSharesPer48, 3)} />
+        <MetricTile label="WS / 40" value={formatDecimal(latest.winSharesPer40, 3)} />
         <MetricTile label="USG%" value={formatFractionPercent(latest.usgPct)} />
         <MetricTile label="Games" value={latest.gamesPlayed} />
         <MetricTile label="Minutes" value={formatDecimal(minutes(latest.secondsPlayed), 0)} />

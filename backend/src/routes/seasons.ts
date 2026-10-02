@@ -23,6 +23,7 @@ import { getBoxScore, getGame, getGames, getPhaseResults, getPlayByPlay, getPlay
 import { getCoverage } from "../db/season-coverage";
 import { getLatestStandingsRound, getStandings } from "../db/season-standings";
 import {
+  getGameAdvanced,
   getGameFlow,
   getLineupRatings,
   getPerLeaders,
@@ -32,6 +33,7 @@ import {
   getPlayerRoundRatings,
   getPlayerRoundStats,
   getPlayerRoundWinShares,
+  getPlayersSeasonToDate,
   getPlayerStatsScopes,
   getStandingsStats,
   getStatsRounds,
@@ -315,13 +317,13 @@ seasonRouter.get("/:seasonCode/advanced/standings", async (req, res) => {
   });
 });
 
-const ADVANCED_LEADER_METRICS = ["per", "winSharesPer48", "rapm", "onOff"];
+const ADVANCED_LEADER_METRICS = ["per", "winSharesPer40", "rapm", "onOff"];
 // Default minimum minutes (on court for RAPM and on/off) per metric in a full season. Early in a season nobody has
 // that many, so the default drops to a small floor and the response says the season is still early.
-const LEADER_DEFAULT_MIN_MINUTES: Record<string, number> = { per: 100, winSharesPer48: 100, rapm: 500, onOff: 300 };
+const LEADER_DEFAULT_MIN_MINUTES: Record<string, number> = { per: 100, winSharesPer40: 100, rapm: 500, onOff: 300 };
 const EARLY_SEASON_MIN_MINUTES = 20;
 
-// One leaderboard of the advanced player metrics. PER and WS/48 read each player's cumulative row at the
+// One leaderboard of the advanced player metrics. PER and WS/40 read each player's cumulative row at the
 // scope's latest round; on/off reads the scope; RAPM is a whole-season table, so its scope is always "all".
 seasonRouter.get("/:seasonCode/advanced/leaders", async (req, res) => {
   const season = await requestedSeason(req, res);
@@ -366,7 +368,7 @@ seasonRouter.get("/:seasonCode/advanced/leaders", async (req, res) => {
 
   let round: number | null = null;
   let entries: Record<string, unknown>[];
-  if (metric === "per" || metric === "winSharesPer48") {
+  if (metric === "per" || metric === "winSharesPer40") {
     const rounds = await getStatsRounds(season.seasonCode, scope);
     round = rounds[rounds.length - 1] ?? null;
     if (round === null) {
@@ -383,7 +385,7 @@ seasonRouter.get("/:seasonCode/advanced/leaders", async (req, res) => {
       const rows = await getWinShareLeaders(season.seasonCode, scope, round, minSeconds, limit);
       entries = rows.map((row) => ({
         personKey: row.personKey, playerName: row.playerName, ...club(row.clubCode),
-        games: row.gamesPlayed, seconds: row.secondsPlayed, value: row.winSharesPer48, winShares: row.winShares,
+        games: row.gamesPlayed, seconds: row.secondsPlayed, value: row.winSharesPer40, winShares: row.winShares,
       }));
     }
   } else if (metric === "rapm") {
@@ -811,7 +813,7 @@ seasonRouter.get("/:seasonCode/players/:personKey/advanced", async (req, res) =>
         usgPct: row.usgPct,
         per: rating?.per ?? null,
         winShares: shares?.winShares ?? null,
-        winSharesPer48: shares?.winSharesPer48 ?? null,
+        winSharesPer40: shares?.winSharesPer40 ?? null,
       };
     }),
     onOff: onOff.map((row) => ({
@@ -943,6 +945,56 @@ seasonRouter.get("/:seasonCode/games/:gameCode/box-score", async (req, res) => {
     return;
   }
   res.json(await getBoxScore(season.seasonCode, gameCode));
+});
+
+// Season-to-date values come from the `all` scope at the game's own round. They are hidden (null) while the
+// player's cumulative minutes are under the same minimum the advanced leaders use.
+const GAME_SEASON_SCOPE = "all";
+
+seasonRouter.get("/:seasonCode/games/:gameCode/advanced", async (req, res) => {
+  const season = await requestedSeason(req, res);
+  if (!season) return;
+  const gameCode = requestedGameCode(req.params.gameCode, res);
+  if (gameCode === null) return;
+  const game = await getGame(season.seasonCode, gameCode);
+  if (!game) {
+    sendError(res, 404, "GAME_NOT_FOUND", "Game not found");
+    return;
+  }
+  const round = game.roundNumber;
+  const minSeasonMinutes = round !== null && round < EARLY_SEASON_ROUNDS ? EARLY_SEASON_MIN_MINUTES : LEADER_DEFAULT_MIN_MINUTES.per;
+  const { teams, players } = await getGameAdvanced(season.seasonCode, gameCode);
+  if (teams.length === 0 && players.length === 0) {
+    res.json({ available: false, scope: GAME_SEASON_SCOPE, round, minSeasonMinutes, teams: [], players: [] });
+    return;
+  }
+
+  const seasonToDate = round === null
+    ? new Map()
+    : await getPlayersSeasonToDate(season.seasonCode, round, players.map((row) => row.personKey));
+  res.json({
+    available: true,
+    scope: GAME_SEASON_SCOPE,
+    round,
+    minSeasonMinutes,
+    teams: teams.map(({ competitionCode: _competition, seasonCode: _season, gameCode: _game, ...row }) => row),
+    players: players.map(({ competitionCode: _competition, seasonCode: _season, gameCode: _game, ...row }) => {
+      const cumulative = seasonToDate.get(row.personKey);
+      const hidden = !cumulative || cumulative.secondsPlayed === null || cumulative.secondsPlayed < minSeasonMinutes * 60;
+      return {
+        ...row,
+        season: cumulative
+          ? {
+              secondsPlayed: cumulative.secondsPlayed,
+              hidden,
+              per: hidden ? null : cumulative.per,
+              usgPct: hidden ? null : cumulative.usgPct,
+              winShares: hidden ? null : cumulative.winShares,
+            }
+          : null,
+      };
+    }),
+  });
 });
 
 seasonRouter.get("/:seasonCode/games/:gameCode/play-by-play", async (req, res) => {

@@ -1,23 +1,26 @@
 import { formatCount, formatMissing, formatPercentage } from "../lib/format";
 import { compareByName, hasMinutes } from "./gameUtils";
 
-// The one place that names the "best player" ranking metric: today PIR. When the per-game PER ships with
-// `app_game_player_advanced`, change this object (and the data the rows carry), not the card that shows it.
-export const BEST_PLAYER_METRIC = { label: "PIR", value: (row) => row.valuation };
+// The one place that names the "best player" ranking metric. Game PER comes from `app_game_player_advanced` and is
+// read from `row.advanced` (see `attachAdvanced`); a game without advanced data falls back to PIR.
+export const PIR_METRIC = { label: "PIR", digits: 0, value: (row) => row.valuation };
+export const PER_METRIC = { label: "PER", digits: 1, value: (row) => row.advanced?.gamePer };
+
+export function bestPlayerMetric(advanced) {
+  return advanced?.available === true ? PER_METRIC : PIR_METRIC;
+}
 
 // Fewer minutes than this and a big number says little, so a player must have played at least 10 minutes.
 export const MIN_BEST_PLAYER_SECONDS = 600;
 
 // Highest metric value among players with enough minutes. Ties go to more points, then more minutes, then name.
 // Returns null when nobody on the team is eligible (including a box score with no minutes at all).
-export function pickBestPlayer(rows) {
-  const eligible = rows.filter(
-    (row) => row.timePlayed >= MIN_BEST_PLAYER_SECONDS && Number.isFinite(BEST_PLAYER_METRIC.value(row)),
-  );
+export function pickBestPlayer(rows, metric = PIR_METRIC) {
+  const eligible = rows.filter((row) => row.timePlayed >= MIN_BEST_PLAYER_SECONDS && Number.isFinite(metric.value(row)));
   if (eligible.length === 0) return null;
   return [...eligible].sort(
     (left, right) =>
-      BEST_PLAYER_METRIC.value(right) - BEST_PLAYER_METRIC.value(left) ||
+      metric.value(right) - metric.value(left) ||
       (right.points ?? 0) - (left.points ?? 0) ||
       right.timePlayed - left.timePlayed ||
       compareByName(left, right),

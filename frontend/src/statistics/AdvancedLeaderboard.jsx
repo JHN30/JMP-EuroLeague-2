@@ -25,10 +25,10 @@ const METRICS = {
     sample: "Minutes played",
     note: "League mean is 15 within the scope and round.",
   },
-  winSharesPer48: {
-    label: "Win Shares / 48",
-    title: "Win Shares per 48 minutes",
-    valueLabel: "WS/48",
+  winSharesPer40: {
+    label: "Win Shares / 40",
+    title: "Win Shares per 40 minutes",
+    valueLabel: "WS/40",
     format: (entry) => formatDecimal(entry.value, 3),
     extras: [{ label: "WS", render: (entry) => formatDecimal(entry.winShares, 2) }],
     sample: "Minutes played",

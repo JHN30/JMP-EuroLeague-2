@@ -3,14 +3,15 @@ import { motion } from "motion/react";
 import AsyncState from "../lib/AsyncState";
 import ComparisonRow from "../lib/ComparisonRow";
 import EmptyText from "../lib/EmptyText";
-import { formatCount, formatMissing } from "../lib/format";
+import { formatCount, formatDecimal, formatMissing } from "../lib/format";
 import { sectionContainer, sectionItem } from "../lib/motion";
 import Panel from "../lib/Panel";
 import PanelHeader from "../lib/PanelHeader";
 import { PeriodTable, ScoreFlowChart } from "./gameFlow";
 import { computeGameFlow } from "./gameFlowData";
 import { teamName } from "./gameUtils";
-import { BEST_PLAYER_METRIC, gameLeaders, keyStatRows, pickBestPlayer } from "./overview";
+import { attachAdvanced } from "./AdvancedBoxScore";
+import { bestPlayerMetric, gameLeaders, keyStatRows, pickBestPlayer } from "./overview";
 import PlayerLink from "./PlayerLink";
 import TeamLabel from "./TeamLabel";
 
@@ -29,7 +30,7 @@ function Headshot({ player }) {
   );
 }
 
-function StandoutCard({ team, player, seasonCode }) {
+function StandoutCard({ team, player, metric, seasonCode }) {
   return (
     <Panel className="p-4" role="article" aria-label={`${teamName(team)} best player`}>
       <TeamLabel team={team} />
@@ -47,7 +48,7 @@ function StandoutCard({ team, player, seasonCode }) {
               {formatCount(player.points)} PTS · {formatCount(player.totalRebounds)} REB · {formatCount(player.assistances)} AST
             </p>
             <span className="badge badge-primary badge-sm mt-2 tabular-nums">
-              {BEST_PLAYER_METRIC.label} {formatCount(BEST_PLAYER_METRIC.value(player))}
+              {metric.label} {formatDecimal(metric.value(player), metric.digits)}
             </span>
           </div>
         </div>
@@ -109,7 +110,7 @@ function FlowSection({ game, playByPlayQuery }) {
 }
 
 // The game summary: line score, standouts, leaders, key stats, and a compact score flow.
-export default function OverviewTab({ game, seasonCode, boxScoreQuery, playByPlayQuery }) {
+export default function OverviewTab({ game, seasonCode, boxScoreQuery, playByPlayQuery, advancedQuery }) {
   if (!game.played) {
     return <EmptyText>Overview isn't available until this game is played.</EmptyText>;
   }
@@ -119,8 +120,11 @@ export default function OverviewTab({ game, seasonCode, boxScoreQuery, playByPla
   }
 
   const boxScore = boxScoreQuery.data;
-  const localRows = boxScore.playerStats.filter((row) => row.side === "local");
-  const roadRows = boxScore.playerStats.filter((row) => row.side === "road");
+  // Game PER when the game has advanced rows, otherwise PIR. A failed advanced request just means PIR.
+  const metric = bestPlayerMetric(advancedQuery.data);
+  const rankedStats = advancedQuery.data?.available === true ? attachAdvanced(boxScore, advancedQuery.data).playerStats : boxScore.playerStats;
+  const localRows = rankedStats.filter((row) => row.side === "local");
+  const roadRows = rankedStats.filter((row) => row.side === "road");
   const hasPlayers = boxScore.playerStats.length > 0;
   const totalFor = (side) => boxScore.teamStats.find((row) => row.side === side && row.statsKind === "total");
   const localTotal = totalFor("local");
@@ -135,10 +139,12 @@ export default function OverviewTab({ game, seasonCode, boxScoreQuery, playByPla
 
       <motion.section variants={sectionItem}>
         <PanelHeader kicker="STANDOUTS" title="Best player on each team" />
-        {hasPlayers ? (
+        {advancedQuery.isLoading ? (
+          <AsyncState status="loading" label="Loading the best players" compact />
+        ) : hasPlayers ? (
           <div className="grid gap-4 sm:grid-cols-2">
-            <StandoutCard team={game.localTeam} player={pickBestPlayer(localRows)} seasonCode={seasonCode} />
-            <StandoutCard team={game.roadTeam} player={pickBestPlayer(roadRows)} seasonCode={seasonCode} />
+            <StandoutCard team={game.localTeam} player={pickBestPlayer(localRows, metric)} metric={metric} seasonCode={seasonCode} />
+            <StandoutCard team={game.roadTeam} player={pickBestPlayer(roadRows, metric)} metric={metric} seasonCode={seasonCode} />
           </div>
         ) : (
           <EmptyText>Player statistics aren't available for this game yet.</EmptyText>

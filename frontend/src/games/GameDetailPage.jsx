@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { motion } from "motion/react";
 import { useParams } from "react-router";
-import { getBoxScore, getGame, getPlayByPlay, getShots } from "../lib/api";
+import { getBoxScore, getGame, getGameAdvanced, getPlayByPlay, getShots } from "../lib/api";
 import AsyncState from "../lib/AsyncState";
 import EmptyText from "../lib/EmptyText";
 import {
@@ -30,6 +30,7 @@ import { AnimatedBody, AnimatedRow } from "../standings/motionTable";
 import { compareByName, hasMinutes, isStarter, teamName } from "./gameUtils";
 import { PeriodTable, ScoreFlowChart } from "./gameFlow";
 import { computeGameFlow, momentLabel, withRunningScore } from "./gameFlowData";
+import { advancedColumns, attachAdvanced } from "./AdvancedBoxScore";
 import OverviewTab from "./OverviewTab";
 import PlayerLink from "./PlayerLink";
 import RotationsTab from "./RotationsTab";
@@ -108,19 +109,26 @@ function orderRoster(rows) {
 }
 
 // The game-high per column, over players of both teams who played. A column with no positive value has no high.
-function computeGameHighs(playerStats) {
+// A column or header group that opens a new group gets a dividing line down the whole table.
+const groupDivider = (item) => (item.groupStart ? " col-group-start" : "");
+
+function highValueOf(column, row) {
+  return column.highValue ? column.highValue(row) : row[column.highKey];
+}
+
+function computeGameHighs(playerStats, columns) {
   const highs = {};
   const playedRows = playerStats.filter(hasMinutes);
-  for (const { highKey } of BOX_SCORE_COLUMNS) {
-    if (!highKey) continue;
-    const values = playedRows.map((row) => row[highKey]).filter((value) => Number.isFinite(value));
+  for (const column of columns) {
+    if (!column.highKey && !column.highValue) continue;
+    const values = playedRows.map((row) => highValueOf(column, row)).filter((value) => Number.isFinite(value));
     const max = values.length > 0 ? Math.max(...values) : 0;
-    highs[highKey] = max > 0 ? max : null;
+    highs[column.label] = max > 0 ? max : null;
   }
   return highs;
 }
 
-function BoxScoreTable({ players, teamTotal, team, won, seasonCode, gameHighs }) {
+function BoxScoreTable({ players, teamTotal, team, won, seasonCode, gameHighs, columns, groups }) {
   const rows = players.filter((row) => row.side === teamTotal?.side);
   const { played, didNotPlay } = orderRoster(rows);
   const name = teamName(team);
@@ -150,11 +158,21 @@ function BoxScoreTable({ players, teamTotal, team, won, seasonCode, gameHighs })
         <Panel className="overflow-x-auto overscroll-x-contain p-2">
           <table className="data-table-sticky table table-sm hover">
             <thead>
+              {groups ? (
+                <tr>
+                  <th />
+                  {groups.map((group) => (
+                    <th key={group.label} colSpan={group.span} className={`text-center text-xs font-semibold uppercase tracking-wide${groupDivider(group)}`}>
+                      {group.label}
+                    </th>
+                  ))}
+                </tr>
+              ) : null}
               <tr>
                 <th>Player</th>
-                {BOX_SCORE_COLUMNS.map(({ label }) => (
-                  <th key={label} className="num text-center">
-                    <HeaderTip tip={STAT_TIPS[label]}>{label}</HeaderTip>
+                {columns.map((column) => (
+                  <th key={column.key ?? column.label} className={`num text-center${groupDivider(column)}`}>
+                    <HeaderTip tip={column.tip ?? STAT_TIPS[column.label]}>{column.label}</HeaderTip>
                   </th>
                 ))}
               </tr>
@@ -192,11 +210,12 @@ function BoxScoreTable({ players, teamTotal, team, won, seasonCode, gameHighs })
                       </div>
                     </div>
                   </td>
-                  {BOX_SCORE_COLUMNS.map(({ label, render, highKey }) => {
-                    const isHigh = highKey && gameHighs[highKey] != null && player[highKey] === gameHighs[highKey];
+                  {columns.map((column) => {
+                    const high = gameHighs[column.label];
+                    const isHigh = high != null && highValueOf(column, player) === high;
                     return (
-                      <td key={label} className={`num text-center tabular-nums${isHigh ? " font-bold" : ""}`}>
-                        {render(player)}
+                      <td key={column.key ?? column.label} className={`num text-center tabular-nums${isHigh ? " font-bold" : ""}${groupDivider(column)}`}>
+                        {column.render(player)}
                       </td>
                     );
                   })}
@@ -206,9 +225,9 @@ function BoxScoreTable({ players, teamTotal, team, won, seasonCode, gameHighs })
             <tfoot>
               <tr className="font-bold">
                 <td>Total</td>
-                {BOX_SCORE_COLUMNS.map(({ label, render }) => (
-                  <td key={label} className="num text-center tabular-nums">
-                    {render(teamTotal)}
+                {columns.map((column) => (
+                  <td key={column.key ?? column.label} className={`num text-center tabular-nums${groupDivider(column)}`}>
+                    {column.render(teamTotal)}
                   </td>
                 ))}
               </tr>
@@ -231,28 +250,50 @@ function BoxScoreTable({ players, teamTotal, team, won, seasonCode, gameHighs })
   );
 }
 
-function BoxScoreTab({ boxScore, game, seasonCode, localWon, roadWon }) {
-  const gameHighs = computeGameHighs(boxScore.playerStats);
-  const totalFor = (side) => boxScore.teamStats.find((row) => row.side === side && row.statsKind === "total");
+const BOX_SCORE_VIEWS = [
+  { key: "traditional", label: "Traditional" },
+  { key: "advanced", label: "Advanced" },
+];
+
+function BoxScoreTab({ boxScore, game, seasonCode, localWon, roadWon, advancedQuery }) {
+  const [view, setView] = useState("traditional");
+  const advanced = view === "advanced" ? advancedQuery.data : null;
+  const showAdvanced = advanced?.available === true;
+  const advancedView = useMemo(
+    () => (showAdvanced ? advancedColumns({ round: advanced.round, minSeasonMinutes: advanced.minSeasonMinutes }) : null),
+    [showAdvanced, advanced],
+  );
+  const shown = showAdvanced ? attachAdvanced(boxScore, advanced) : boxScore;
+  const columns = advancedView?.columns ?? BOX_SCORE_COLUMNS;
+  const gameHighs = computeGameHighs(shown.playerStats, columns);
+  const totalFor = (side) => shown.teamStats.find((row) => row.side === side && row.statsKind === "total");
 
   return (
     <motion.div className="flex flex-col gap-6" variants={sectionContainer} initial="hidden" animate="show">
-      <BoxScoreTable
-        players={boxScore.playerStats}
-        teamTotal={totalFor("local")}
-        team={game.localTeam}
-        won={localWon}
-        seasonCode={seasonCode}
-        gameHighs={gameHighs}
-      />
-      <BoxScoreTable
-        players={boxScore.playerStats}
-        teamTotal={totalFor("road")}
-        team={game.roadTeam}
-        won={roadWon}
-        seasonCode={seasonCode}
-        gameHighs={gameHighs}
-      />
+      <TabStrip ariaLabel="Box score view" panelId="box-score-tables" activeKey={view} onChange={setView} className="w-fit" tabs={BOX_SCORE_VIEWS} />
+      <div id="box-score-tables" className="flex flex-col gap-6">
+        {view === "advanced" && advancedQuery.isLoading ? (
+          <AsyncState status="loading" label="Loading advanced stats" />
+        ) : view === "advanced" && advancedQuery.isError ? (
+          <AsyncState status="error" message="Could not load advanced stats." onRetry={() => advancedQuery.refetch()} />
+        ) : view === "advanced" && !showAdvanced ? (
+          <EmptyText>Advanced stats are not available for this game yet.</EmptyText>
+        ) : (
+          ["local", "road"].map((side) => (
+            <BoxScoreTable
+              key={side}
+              players={shown.playerStats}
+              teamTotal={totalFor(side)}
+              team={side === "local" ? game.localTeam : game.roadTeam}
+              won={side === "local" ? localWon : roadWon}
+              seasonCode={seasonCode}
+              gameHighs={gameHighs}
+              columns={columns}
+              groups={advancedView?.groups}
+            />
+          ))
+        )}
+      </div>
     </motion.div>
   );
 }
@@ -1085,6 +1126,14 @@ export default function GameDetailPage() {
     enabled: gameQuery.isSuccess && game?.played === true && (tab === "overview" || tab === "play-by-play" || tab === "game-flow" || tab === "rotations"),
   });
 
+  // Advanced stats only decorate the box score and the best-player card: a failure here never hides either.
+  const advancedQuery = useQuery({
+    queryKey: ["game-advanced", seasonCode, gameCode],
+    queryFn: () => getGameAdvanced(seasonCode, gameCode),
+    enabled: gameQuery.isSuccess && game?.played === true && (tab === "overview" || tab === "box-score"),
+    retry: false,
+  });
+
   const shotsQuery = useQuery({
     queryKey: ["shots", seasonCode, gameCode],
     queryFn: () => getShots(seasonCode, gameCode),
@@ -1162,7 +1211,7 @@ export default function GameDetailPage() {
 
       <TabPanel id="game-detail-panel" focusKey={tab} scroll={false}>
         <motion.div key={tab} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.25 }}>
-        {tab === "overview" ? <OverviewTab game={game} seasonCode={seasonCode} boxScoreQuery={boxScoreQuery} playByPlayQuery={playByPlayQuery} /> : null}
+        {tab === "overview" ? <OverviewTab game={game} seasonCode={seasonCode} boxScoreQuery={boxScoreQuery} playByPlayQuery={playByPlayQuery} advancedQuery={advancedQuery} /> : null}
 
         {tab === "box-score" ? (
           boxScoreQuery.isLoading ? (
@@ -1176,6 +1225,7 @@ export default function GameDetailPage() {
               seasonCode={seasonCode}
               localWon={localWon}
               roadWon={roadWon}
+              advancedQuery={advancedQuery}
             />
           )
         ) : null}

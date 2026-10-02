@@ -246,7 +246,7 @@ export const playerRoundWinShares = pgTable(
     offWinShares: measure("off_win_shares"),
     defWinShares: measure("def_win_shares"),
     winShares: measure("win_shares"),
-    winSharesPer48: measure("win_shares_per_48"),
+    winSharesPer40: measure("win_shares_per_40"),
   },
   playerRoundPrimaryKey,
 );
@@ -384,4 +384,65 @@ export const playerRapm = pgTable(
     rapm: measure("rapm"),
   },
   (table) => [primaryKey({ columns: [table.competitionCode, table.seasonCode, table.scope, table.personKey] })],
+);
+
+// Per-game advanced tables (feature 30h). Ratios are fractions. Zero-minute players have NULL rates and NULL
+// PER; `game_per` has no minutes cutoff, so a short appearance can be extreme and the page applies its own.
+export const gamePlayerAdvanced = pgTable(
+  "app_game_player_advanced",
+  {
+    competitionCode: text("competition_code").notNull(),
+    seasonCode: text("season_code").notNull(),
+    gameCode: integer("game_code").notNull(),
+    side: text("side").notNull(),
+    personKey: text("person_key").notNull(),
+    clubCode: text("club_code").notNull(),
+    secondsPlayed: measure("seconds_played"),
+    gameScore: measure("game_score"),
+    usagePct: measure("usage_pct"),
+    assistPct: measure("assist_pct"),
+    orbPct: measure("orb_pct"),
+    drbPct: measure("drb_pct"),
+    trbPct: measure("trb_pct"),
+    stealPct: measure("steal_pct"),
+    blockPct: measure("block_pct"),
+    tovPct: measure("tov_pct"),
+    efgPct: measure("efg_pct"),
+    trueShootingPct: measure("true_shooting_pct"),
+    gameUper: measure("game_uper"),
+    gameAper: measure("game_aper"),
+    gamePer: measure("game_per"),
+  },
+  (table) => [
+    primaryKey({ columns: [table.competitionCode, table.seasonCode, table.gameCode, table.side, table.personKey] }),
+  ],
+);
+
+export const gameTeamAdvanced = pgTable(
+  "app_game_team_advanced",
+  {
+    competitionCode: text("competition_code").notNull(),
+    seasonCode: text("season_code").notNull(),
+    gameCode: integer("game_code").notNull(),
+    side: text("side").notNull(),
+    clubCode: text("club_code").notNull(),
+    gameMinutes: measure("game_minutes"),
+    ownPossessionsEstimate: measure("own_possessions_estimate"),
+    possessions: measure("possessions"),
+    pace: measure("pace"),
+    offensiveRating: measure("offensive_rating"),
+    defensiveRating: measure("defensive_rating"),
+    netRating: measure("net_rating"),
+    efgPct: measure("efg_pct"),
+    oppEfgPct: measure("opp_efg_pct"),
+    tovPct: measure("tov_pct"),
+    oppTovPct: measure("opp_tov_pct"),
+    orbPct: measure("orb_pct"),
+    drbPct: measure("drb_pct"),
+    ftRate: measure("ft_rate"),
+    oppFtRate: measure("opp_ft_rate"),
+    trueShootingPct: measure("true_shooting_pct"),
+    assistRatio: measure("assist_ratio"),
+  },
+  (table) => [primaryKey({ columns: [table.competitionCode, table.seasonCode, table.gameCode, table.side] })],
 );

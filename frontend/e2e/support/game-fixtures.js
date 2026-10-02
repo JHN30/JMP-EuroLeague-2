@@ -109,12 +109,50 @@ export const BOX_SCORE = {
   ],
 };
 
+// The advanced response for a game without advanced rows (the default, so older tests keep their PIR best player).
+export const NO_ADVANCED = { available: false, scope: "all", round: 2, minSeasonMinutes: 20, teams: [], players: [] };
+
+function advancedPlayer(side, personKey, secondsPlayed, gamePer, overrides) {
+  return {
+    side, personKey, clubCode: side === "local" ? "A" : "B", secondsPlayed, gameScore: 10, usagePct: 0.2, assistPct: 0.1,
+    orbPct: 0.05, drbPct: 0.15, trbPct: 0.1, stealPct: 0.02, blockPct: 0.01, tovPct: 0.1, efgPct: 0.5, trueShootingPct: 0.55,
+    gameUper: 0.6, gameAper: 0.6, gamePer, season: { secondsPlayed: 12000, hidden: false, per: 15, usgPct: 0.2, winShares: 1 },
+    ...overrides,
+  };
+}
+
+// Advanced rows for the four players of BOX_SCORE who played. A-BENCH has the best game PER (the box score's best
+// PIR is A-STARTER), A-STARTER has a season PER, A-BENCH a season sample that is too small, B-STARTER no season row.
+export const ADVANCED = {
+  available: true,
+  scope: "all",
+  round: 2,
+  minSeasonMinutes: 20,
+  teams: ["local", "road"].map((side) => ({
+    side, clubCode: side === "local" ? "A" : "B", possessions: 70, pace: 70, offensiveRating: 114, defensiveRating: 100, netRating: 14,
+    efgPct: side === "local" ? 0.59 : 0.5, oppEfgPct: 0.5, tovPct: 0.12, oppTovPct: 0.16, orbPct: 0.3, drbPct: 0.7, ftRate: 0.2, oppFtRate: 0.2,
+    trueShootingPct: side === "local" ? 0.62 : 0.55, assistRatio: 0.5, gameMinutes: 40, ownPossessionsEstimate: 70,
+  })),
+  players: [
+    advancedPlayer("local", "A-STARTER", 900, 20.1, {
+      gameScore: 21.4, trueShootingPct: 0.6, efgPct: 0.65, usagePct: 0.3,
+      season: { secondsPlayed: 12000, hidden: false, per: 17.34, usgPct: 0.221, winShares: 1.25 },
+    }),
+    advancedPlayer("local", "A-BENCH", 1500, 24, {
+      gameScore: 9.2, season: { secondsPlayed: 600, hidden: true, per: null, usgPct: null, winShares: null },
+    }),
+    advancedPlayer("road", "B-STARTER", 1700, 31.5, { gameScore: 28.1, usagePct: null, season: null }),
+    advancedPlayer("road", "B-BENCH", 600, 12, { gameScore: 4.3 }),
+  ],
+};
+
 const UNPLAYED_BOX_SCORE = { periodScores: [], teamStats: [], playerStats: [] };
 
 // Mocks every API request the game page makes. Options: `requests` (collects requested paths), `played`,
-// `boxScore`, `boxScoreStatus`, `playByPlay` (response body), and `playByPlayStatus` (use 500 to simulate a failure).
+// `boxScore`, `boxScoreStatus`, `playByPlay` (response body), `playByPlayStatus` (use 500 to simulate a failure), and
+// `advanced` / `advancedStatus` for the game's advanced stats (default: none available).
 export async function mockGameApi(page, options = {}) {
-  const { requests = [], played = true, boxScore = BOX_SCORE, boxScoreStatus = 200, playByPlay = { events: [] }, playByPlayStatus = 200 } = options;
+  const { requests = [], played = true, boxScore = BOX_SCORE, boxScoreStatus = 200, playByPlay = { events: [] }, playByPlayStatus = 200, advanced = NO_ADVANCED, advancedStatus = 200 } = options;
   await page.route("**/api/**", async (route) => {
     const pathname = new URL(route.request().url()).pathname;
     requests.push(pathname);
@@ -144,6 +182,10 @@ export async function mockGameApi(page, options = {}) {
         status: boxScoreStatus,
         json: boxScoreStatus !== 200 ? { error: "Mocked failure" } : played ? boxScore : UNPLAYED_BOX_SCORE,
       });
+      return;
+    }
+    if (pathname === `/api/seasons/${SEASON}/games/1/advanced`) {
+      await route.fulfill({ status: advancedStatus, json: advancedStatus === 200 ? advanced : { error: "Mocked failure" } });
       return;
     }
     if (pathname === `/api/seasons/${SEASON}/games/1/play-by-play`) {

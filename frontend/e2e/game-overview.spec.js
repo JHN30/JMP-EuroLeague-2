@@ -1,5 +1,5 @@
 import { test, expect } from "@playwright/test";
-import { BOX_SCORE, SEASON, mockGameApi, player } from "./support/game-fixtures";
+import { ADVANCED, BOX_SCORE, SEASON, mockGameApi, player } from "./support/game-fixtures";
 
 test("the game page opens on the Overview tab with a line score and totals", async ({ page }) => {
   await mockGameApi(page);
@@ -67,6 +67,26 @@ const RULES_BOX_SCORE = {
     player("road", "B-NULL", "NULL, NIA", { timePlayed: null, valuation: 25 }),
   ],
 };
+
+test("the best player is chosen by game PER when the game has advanced stats", async ({ page }) => {
+  await mockGameApi(page, { advanced: ADVANCED });
+  await page.goto(`/${SEASON}/games/1`);
+
+  // PIR would pick STARTER, SAM (25); game PER picks BENCH, BO (24.0 against 20.1).
+  const teamABest = page.getByRole("article", { name: "Team A best player" });
+  await expect(teamABest.getByRole("link", { name: "BENCH, BO" })).toBeVisible();
+  await expect(teamABest).toContainText("PER 24.0");
+  await expect(teamABest).not.toContainText("PIR");
+  await expect(page.getByRole("article", { name: "Team B best player" })).toContainText("PER 31.5");
+});
+
+test("a failed advanced request leaves the PIR best player in place", async ({ page }) => {
+  await mockGameApi(page, { advancedStatus: 500 });
+  await page.goto(`/${SEASON}/games/1`);
+
+  await expect(page.getByRole("article", { name: "Team A best player" })).toContainText("PIR 25");
+  await expect(page.getByRole("alert")).toHaveCount(0);
+});
 
 test("best player and leader rules: 10-minute minimum, tie-breaks, and teams with no eligible player", async ({ page }) => {
   await mockGameApi(page, { boxScore: RULES_BOX_SCORE });

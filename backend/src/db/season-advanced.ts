@@ -3,6 +3,8 @@ import type { AnyPgColumn } from "drizzle-orm/pg-core";
 import { db } from "./client";
 import { catalogRead } from "./season-catalog";
 import {
+  gamePlayerAdvanced,
+  gameTeamAdvanced,
   lineupRatings,
   playerOnOff,
   playerRapm,
@@ -34,6 +36,8 @@ export type TeamShotZoneStatsRow = typeof teamShotZoneStats.$inferSelect;
 export type PlayerOnOffRow = typeof playerOnOff.$inferSelect;
 export type LineupRatingsRow = typeof lineupRatings.$inferSelect;
 export type PlayerRapmRow = typeof playerRapm.$inferSelect;
+export type GamePlayerAdvancedRow = typeof gamePlayerAdvanced.$inferSelect;
+export type GameTeamAdvancedRow = typeof gameTeamAdvanced.$inferSelect;
 
 type ScopedTable = { competitionCode: AnyPgColumn; seasonCode: AnyPgColumn; scope: AnyPgColumn };
 
@@ -195,7 +199,7 @@ export async function getWinShareLeaders(
         eq(playerRoundWinShares.roundNumber, round),
         gte(playerRoundWinShares.secondsPlayed, minSeconds),
       ))
-      .orderBy(nullsLast(playerRoundWinShares.winSharesPer48), asc(playerRoundWinShares.personKey))
+      .orderBy(nullsLast(playerRoundWinShares.winSharesPer40), asc(playerRoundWinShares.personKey))
       .limit(limit),
   );
 }
@@ -321,4 +325,87 @@ export async function getPlayerRapm(seasonCode: string, filter: PlayerRapmFilter
       .orderBy(nullsLast(playerRapm.rapm), asc(playerRapm.personKey))
       .limit(filter.limit),
   );
+}
+
+// Both sides of one game, as the pipeline published them. No rows means the game has no advanced data.
+export async function getGameAdvanced(
+  seasonCode: string,
+  gameCode: number,
+): Promise<{ teams: GameTeamAdvancedRow[]; players: GamePlayerAdvancedRow[] }> {
+  const [teams, players] = await Promise.all([
+    catalogRead(() =>
+      db.select()
+        .from(gameTeamAdvanced)
+        .where(and(
+          eq(gameTeamAdvanced.competitionCode, COMPETITION_CODE),
+          eq(gameTeamAdvanced.seasonCode, seasonCode),
+          eq(gameTeamAdvanced.gameCode, gameCode),
+        ))
+        .orderBy(asc(gameTeamAdvanced.side)),
+    ),
+    catalogRead(() =>
+      db.select()
+        .from(gamePlayerAdvanced)
+        .where(and(
+          eq(gamePlayerAdvanced.competitionCode, COMPETITION_CODE),
+          eq(gamePlayerAdvanced.seasonCode, seasonCode),
+          eq(gamePlayerAdvanced.gameCode, gameCode),
+        ))
+        .orderBy(asc(gamePlayerAdvanced.side), asc(gamePlayerAdvanced.personKey)),
+    ),
+  ]);
+  return { teams, players };
+}
+
+export type PlayerSeasonToDate = {
+  secondsPlayed: number | null;
+  per: number | null;
+  usgPct: number | null;
+  winShares: number | null;
+};
+
+// Season-to-date PER, USG% and Win Shares for some players: their cumulative row at one round of the `all`
+// scope (round numbers run across phases). A player with no row at that round is left out of the map.
+export async function getPlayersSeasonToDate(
+  seasonCode: string,
+  roundNumber: number,
+  personKeys: string[],
+): Promise<Map<string, PlayerSeasonToDate>> {
+  const result = new Map<string, PlayerSeasonToDate>();
+  if (personKeys.length === 0) return result;
+  const roundScope = (table: typeof playerRoundRatings | typeof playerRoundStats | typeof playerRoundWinShares) =>
+    and(
+      ...inScope(table, seasonCode, "all"),
+      eq(table.roundNumber, roundNumber),
+      inArray(table.personKey, personKeys),
+    );
+  const [ratings, stats, winShares] = await Promise.all([
+    catalogRead(() =>
+      db.select({ personKey: playerRoundRatings.personKey, secondsPlayed: playerRoundRatings.secondsPlayed, per: playerRoundRatings.per })
+        .from(playerRoundRatings)
+        .where(roundScope(playerRoundRatings)),
+    ),
+    catalogRead(() =>
+      db.select({ personKey: playerRoundStats.personKey, secondsPlayed: playerRoundStats.secondsPlayed, usgPct: playerRoundStats.usgPct })
+        .from(playerRoundStats)
+        .where(roundScope(playerRoundStats)),
+    ),
+    catalogRead(() =>
+      db.select({ personKey: playerRoundWinShares.personKey, secondsPlayed: playerRoundWinShares.secondsPlayed, winShares: playerRoundWinShares.winShares })
+        .from(playerRoundWinShares)
+        .where(roundScope(playerRoundWinShares)),
+    ),
+  ]);
+  const entry = (personKey: string) => {
+    let current = result.get(personKey);
+    if (!current) {
+      current = { secondsPlayed: null, per: null, usgPct: null, winShares: null };
+      result.set(personKey, current);
+    }
+    return current;
+  };
+  for (const row of ratings) Object.assign(entry(row.personKey), { per: row.per, secondsPlayed: row.secondsPlayed });
+  for (const row of stats) Object.assign(entry(row.personKey), { usgPct: row.usgPct, secondsPlayed: row.secondsPlayed });
+  for (const row of winShares) Object.assign(entry(row.personKey), { winShares: row.winShares, secondsPlayed: row.secondsPlayed });
+  return result;
 }

@@ -14,12 +14,11 @@ import {
 } from "../lib/api";
 import AsyncState from "../lib/AsyncState";
 import EmptyText from "../lib/EmptyText";
-import { formatCount, formatDateTime, formatPerGame, formatPercentage } from "../lib/format";
+import { formatDateTime, formatPerGame } from "../lib/format";
 import { barFill, cardHover, listContainer, listItem } from "../lib/motion";
 import Panel from "../lib/Panel";
 import PageHeader from "../lib/PageHeader";
 import PanelHeader from "../lib/PanelHeader";
-import SeasonShootingChart from "../lib/SeasonShootingChart";
 import { formatStatValue } from "../lib/statsFields";
 import { TabPanel, TabStrip } from "../lib/TabStrip";
 import { useDocumentTitle } from "../lib/useDocumentTitle";
@@ -29,6 +28,7 @@ import { barWidthScale } from "../statistics/statBarScale";
 import TeamAdvancedSection from "./TeamAdvancedSection";
 import TeamLeagueProfile from "./TeamLeagueProfile";
 import TeamQuickCompare from "./TeamQuickCompare";
+import TeamShootingSection from "./TeamShootingSection";
 import TeamStatisticsSection from "./TeamStatisticsSection";
 import { advancedScopeForPhase, ordinal } from "./teamLeague";
 import TrendChart from "../comparisons/TrendChart";
@@ -422,100 +422,6 @@ function OverviewSection({ seasonCode, clubCode, team, phaseCode, standingsQuery
   );
 }
 
-function pct(made, attempted) {
-  if (made == null || attempted == null || attempted === 0) return null;
-  return (made / attempted) * 100;
-}
-
-function shootingSplit(sums, madeKey, attemptedKey) {
-  const made = sums[madeKey];
-  const attempted = sums[attemptedKey];
-  if (made == null || attempted == null) return formatCount(null);
-  return `${formatCount(made)}-${formatCount(attempted)} (${formatPercentage(pct(made, attempted))})`;
-}
-
-function ShootingSection({ teamStatsSummaryQuery, seasonCode, phaseCode, team, games }) {
-  const [presentation, setPresentation] = useState("heatmap");
-  const [gameSegment, setGameSegment] = useState("all");
-  const [result, setResult] = useState("all");
-
-  if (teamStatsSummaryQuery.isPending) return <AsyncState status="loading" label="Loading shooting splits" />;
-  if (teamStatsSummaryQuery.isError) {
-    return (
-      <AsyncState
-        status="error"
-        message="Could not load shooting splits."
-        onRetry={() => teamStatsSummaryQuery.refetch()}
-      />
-    );
-  }
-  const { gamesPlayed, own, opponent: opp } = teamStatsSummaryQuery.data;
-  if (!gamesPlayed) {
-    return <EmptyText>This club did not play any games in the selected phase.</EmptyText>;
-  }
-
-  const splits = [
-    ["2PT", "fieldGoalsMade2", "fieldGoalsAttempted2"],
-    ["3PT", "fieldGoalsMade3", "fieldGoalsAttempted3"],
-    ["FT", "freeThrowsMade", "freeThrowsAttempted"],
-  ];
-
-  const playedGames = games.filter(
-    (game) => game.phaseCode === phaseCode && game.played && game.localScore != null && game.roadScore != null,
-  );
-
-  return (
-    <div className="flex flex-col gap-6">
-      <Panel className="overflow-x-auto overscroll-x-contain p-2">
-        <table className="table">
-          <thead>
-            <tr>
-              <th>Splits</th>
-              {splits.map(([label]) => (
-                <th key={label}>{label}</th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            <tr>
-              <td className="font-medium">This team</td>
-              {splits.map(([label, made, attempted]) => (
-                <td key={label} className="tabular-nums">
-                  {shootingSplit(own, made, attempted)}
-                </td>
-              ))}
-            </tr>
-            <tr>
-              <td className="font-medium">Allowed</td>
-              {splits.map(([label, made, attempted]) => (
-                <td key={label} className="tabular-nums">
-                  {shootingSplit(opp, made, attempted)}
-                </td>
-              ))}
-            </tr>
-          </tbody>
-        </table>
-      </Panel>
-
-      <Panel className="p-4">
-        <SeasonShootingChart
-          seasonCode={seasonCode}
-          playedGames={playedGames}
-          ownerFilter={(shot) => shot.clubCode === team.clubCode}
-          team={team}
-          subjectLabel="Team"
-          presentation={presentation}
-          onPresentationChange={setPresentation}
-          gameSegment={gameSegment}
-          onGameSegmentChange={setGameSegment}
-          result={result}
-          onResultChange={setResult}
-        />
-      </Panel>
-    </div>
-  );
-}
-
 const ROLLING_WINDOW = 5;
 
 function rollingAverage(values, window) {
@@ -851,7 +757,7 @@ export default function TeamPage() {
   const teamStatsSummaryQuery = useQuery({
     queryKey: ["team-stats-summary", seasonCode, clubCode, phaseCode],
     queryFn: () => getTeamStatsSummary(seasonCode, clubCode, phaseCode),
-    enabled: teamQuery.isSuccess && Boolean(phaseCode) && (section === "statistics" || section === "shooting"),
+    enabled: teamQuery.isSuccess && Boolean(phaseCode) && section === "statistics",
   });
 
   if (teamQuery.isLoading) return <AsyncState status="loading" label="Loading the team" />;
@@ -929,8 +835,8 @@ export default function TeamPage() {
             teamStatsSummaryQuery={teamStatsSummaryQuery}
           />
         ) : section === "shooting" ? (
-          <ShootingSection
-            teamStatsSummaryQuery={teamStatsSummaryQuery}
+          <TeamShootingSection
+            key={`${seasonCode}-${clubCode}-${phaseCode}`}
             seasonCode={seasonCode}
             phaseCode={phaseCode}
             team={team}

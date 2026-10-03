@@ -30,6 +30,8 @@ every such change so it can be found later.
 
 - [team-statistics-tab-versus-opponents-and-league-ranks.md](team-statistics-tab-versus-opponents-and-league-ranks.md): Statistics tab as club-versus-opponents rows with league ranks, a league-wide team-stats endpoint, and the animated Overview comparison switch
 
+- [team-shooting-tab-sides-zones-and-style.md](team-shooting-tab-sides-zones-and-style.md): Shooting tab with a team and opponents shot map, a ranked zone table and a points-by-situation panel
+
 ## Data and platform
 
 - [read-renamed-app-neon-tables.md](read-renamed-app-neon-tables.md)

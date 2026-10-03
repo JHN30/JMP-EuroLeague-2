@@ -124,6 +124,10 @@ function ZoneFills({ stats, lineColor }) {
   );
 }
 
+// The label is about 235 units long once rotated, so it is centred this far from the strip's top edge to stay inside it,
+// clear of the zone chip in the middle of the strip.
+const BACKCOURT_LABEL_OFFSET = 175;
+
 // The strip outside the half-court line that stands for shots taken past it.
 function BackcourtStrip({ stat, lineColor }) {
   const filled = stat && stat.attempts > 0;
@@ -145,14 +149,14 @@ function BackcourtStrip({ stat, lineColor }) {
       </rect>
       <text
         x={STRIP_LEFT + STRIP_WIDTH / 2}
-        y={-COURT.halfWidth + 90}
+        y={-COURT.halfWidth + BACKCOURT_LABEL_OFFSET}
         textAnchor="middle"
         dominantBaseline="middle"
         fill={lineColor}
         opacity={0.55}
         fontSize={34}
         fontWeight={700}
-        transform={`rotate(90 ${STRIP_LEFT + STRIP_WIDTH / 2} ${-COURT.halfWidth + 90})`}
+        transform={`rotate(90 ${STRIP_LEFT + STRIP_WIDTH / 2} ${-COURT.halfWidth + BACKCOURT_LABEL_OFFSET})`}
         style={{ letterSpacing: "0.1em" }}
       >
         BACKCOURT
@@ -207,6 +211,8 @@ function useSvgThemeColors(svgRef) {
         line: style.getPropertyValue("--color-base-content").trim(),
         primary: style.getPropertyValue("--color-primary").trim(),
         secondary: style.getPropertyValue("--color-secondary").trim(),
+        success: style.getPropertyValue("--color-success").trim(),
+        error: style.getPropertyValue("--color-error").trim(),
       });
     }
     readColors();
@@ -219,8 +225,9 @@ function useSvgThemeColors(svgRef) {
 }
 
 // `mode="markers"` plots individual shots; `mode="heatmap"` shades each zone by its FG% (more opaque is better) and
-// labels it with made/attempts. Shots without a usable location are not drawn.
-export default function ShootingCourt({ shots, teams, mode = "markers", ariaLabel }) {
+// labels it with made/attempts. Shots without a usable location are not drawn. Markers take their team's colour; with
+// `resultColors` (for a chart of one team's shots) makes are green and misses red instead.
+export default function ShootingCourt({ shots, teams, mode = "markers", ariaLabel, maxWidth = MAX_WIDTH, resultColors = false }) {
   const svgRef = useRef(null);
   const colors = useSvgThemeColors(svgRef);
   const teamColor = (clubCode) => {
@@ -236,7 +243,7 @@ export default function ShootingCourt({ shots, teams, mode = "markers", ariaLabe
       role="img"
       aria-label={ariaLabel}
       className="mx-auto h-auto w-full"
-      style={{ maxWidth: MAX_WIDTH }}
+      style={{ maxWidth }}
     >
       {colors ? (
         <>
@@ -246,11 +253,16 @@ export default function ShootingCourt({ shots, teams, mode = "markers", ariaLabe
           <BackcourtStrip stat={zoneStats?.find((stat) => stat.zone === "Backcourt")} lineColor={colors.line} />
           {zoneStats ? <ZoneChips stats={zoneStats} /> : null}
           {mode === "markers"
-            ? shots.filter(hasLocation).map((shot) => (
+            ? shots.filter(hasLocation).map((shot, index) => (
+                // The ordinal only counts within one game, and a season chart holds many.
                 <ShotMarker
-                  key={shot.shotOrdinal}
+                  key={`${index}-${shot.shotOrdinal}`}
                   shot={shot}
-                  color={teamColor(shot.clubCode) ?? colors.line}
+                  color={
+                    resultColors
+                      ? (shot.actionCode.endsWith("M") ? colors.success : colors.error)
+                      : (teamColor(shot.clubCode) ?? colors.line)
+                  }
                 />
               ))
             : null}

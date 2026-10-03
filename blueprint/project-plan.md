@@ -54,7 +54,7 @@ Core Phase 1 data includes:
 - Play-in, playoff, and Final Four matchup relationships/results
 - Precomputed team-season statistics, coverage summaries, and postseason series from the pipeline's `app_*` tables
 - Advanced statistics from the pipeline's `app_*` advanced tables (`E2025` and `E2026` only): round-by-round team and player ratings, win shares, splits, on/off, lineups, RAPM, and shot-zone and play-by-play team stats. These are read as published; the API does not recompute them.
-- Per-game advanced statistics for players and teams from `app_game_player_advanced` and `app_game_team_advanced`, which the project owner will publish to Neon. Until they exist, nothing on the Game Detail page may recompute them in the API or frontend.
+- Per-game advanced statistics for players and teams, published to Neon by the project owner for `E2025` and `E2026`: `app_game_player_advanced`, `app_game_team_advanced`, `app_game_team_score_flow`, `app_game_team_shot_splits`, `app_game_team_possessions`, `app_game_team_shot_zones`, `app_game_player_on_court`, and `app_game_team_lineup_stints`. These are read as published; the Game Detail page does not recompute them in the API or frontend.
 - Data-quality annotations or correction flags that are safe and useful to show in the UI
 
 Data rules:

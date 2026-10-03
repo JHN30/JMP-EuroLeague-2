@@ -34,6 +34,8 @@ every such change so it can be found later.
 
 - [team-advanced-tab-ratings-splits-flow-and-lineups.md](team-advanced-tab-ratings-splits-flow-and-lineups.md): Advanced tab with a two-line ratings chart, split cards, game-flow bars and lineup cards with headshots and a 100-else-50 possessions minimum
 
+- [team-roster-tab-position-cards.md](team-roster-tab-position-cards.md): Roster tab moved after Statistics, with position groups of player cards, a facts strip and a Cards/Table switch
+
 ## Data and platform
 
 - [read-renamed-app-neon-tables.md](read-renamed-app-neon-tables.md)

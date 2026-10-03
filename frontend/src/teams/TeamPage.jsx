@@ -8,6 +8,7 @@ import {
   getSeasonStandings,
   getTeam,
   getTeamGames,
+  getTeamCoaches,
   getTeamRoster,
   getTeamStatsSummary,
 } from "../lib/api";
@@ -18,15 +19,13 @@ import { barFill, cardHover, listContainer, listItem } from "../lib/motion";
 import Panel from "../lib/Panel";
 import PageHeader from "../lib/PageHeader";
 import PanelHeader from "../lib/PanelHeader";
-import { formatStatValue } from "../lib/statsFields";
 import { TabPanel, TabStrip } from "../lib/TabStrip";
 import { useDocumentTitle } from "../lib/useDocumentTitle";
 import { usePhaseParam } from "../lib/usePhaseParam";
-import StatBarCell from "../statistics/StatBarCell";
-import { barWidthScale } from "../statistics/statBarScale";
 import TeamAdvancedSection from "./TeamAdvancedSection";
 import TeamLeagueProfile from "./TeamLeagueProfile";
 import TeamQuickCompare from "./TeamQuickCompare";
+import TeamRosterSection from "./TeamRosterSection";
 import TeamShootingSection from "./TeamShootingSection";
 import TeamStatisticsSection from "./TeamStatisticsSection";
 import { fetchTeamRosterStats } from "./teamRosterStats";
@@ -472,103 +471,6 @@ function TrendsSection({ games, phaseCode, clubCode }) {
   );
 }
 
-function RosterSection({ rosterQuery, rosterStatsQuery, seasonCode }) {
-  if (rosterQuery.isPending) return <AsyncState status="loading" label="Loading the roster" />;
-  if (rosterQuery.isError) {
-    return <AsyncState status="error" message="Could not load the roster." onRetry={() => rosterQuery.refetch()} />;
-  }
-  const registrations = rosterQuery.data.registrations ?? [];
-  if (registrations.length === 0) {
-    return <EmptyText>Roster not available yet.</EmptyText>;
-  }
-  if (rosterStatsQuery.isPending) return <AsyncState status="loading" label="Loading roster statistics" />;
-  if (rosterStatsQuery.isError) {
-    return <AsyncState status="error" message="Could not load roster statistics." onRetry={() => rosterStatsQuery.refetch()} />;
-  }
-
-  const statsByPersonKey = rosterStatsQuery.data ?? new Map();
-  const barScale = barWidthScale(
-    registrations.map((entry) =>
-      statNumber(statsByPersonKey.get(entry.player?.personKey)?.traditional?.pointsScored),
-    ),
-  );
-
-  return (
-    <Panel className="overflow-x-auto overscroll-x-contain p-2">
-      <table className="data-table-sticky table">
-        <thead>
-          <tr>
-            <th>Player</th>
-            <th>Position</th>
-            <th>GP</th>
-            <th>MIN</th>
-            <th>PTS</th>
-            <th>REB</th>
-            <th>AST</th>
-            <th>PIR</th>
-          </tr>
-        </thead>
-        <tbody>
-          {registrations.map((entry) => {
-            const stats = entry.player ? statsByPersonKey.get(entry.player.personKey) : undefined;
-            const traditional = stats?.traditional;
-            const pts = statNumber(traditional?.pointsScored);
-            const isFormer = entry.active === false;
-            return (
-              <tr key={entry.registrationKey}>
-                <td>
-                  <div className="flex min-w-0 items-center gap-2">
-                    <span className="w-6 flex-none text-center text-xs text-base-content/60">
-                      {entry.dorsal ?? "-"}
-                    </span>
-                    {stats?.playerImageUrl ? (
-                      <img
-                        src={stats.playerImageUrl}
-                        alt=""
-                        className="aspect-3/4 h-8 w-auto flex-none object-contain object-bottom"
-                        onError={(event) => {
-                          event.currentTarget.style.display = "none";
-                        }}
-                      />
-                    ) : null}
-                    <div className="min-w-0">
-                      <div className="flex items-center gap-1">
-                        {entry.player ? (
-                          <Link
-                            to={`/${seasonCode}/players/${entry.player.personKey}`}
-                            className="link link-hover max-w-32 truncate sm:max-w-48"
-                            title={entry.player.name ?? "TBD"}
-                          >
-                            {entry.player.name ?? "TBD"}
-                          </Link>
-                        ) : (
-                          <span className="max-w-32 truncate sm:max-w-48">TBD</span>
-                        )}
-                        {isFormer ? <span className="badge badge-ghost badge-xs">Former</span> : null}
-                      </div>
-                    </div>
-                  </div>
-                </td>
-                <td>{entry.positionName ?? "-"}</td>
-                <td>{traditional?.gamesPlayed ?? "-"}</td>
-                <td>{formatStatValue("minutesPlayed", traditional?.minutesPlayed)}</td>
-                <StatBarCell widthPct={barScale(pts)}>
-                  <span className="text-primary font-semibold tabular-nums">
-                    {formatStatValue("pointsScored", traditional?.pointsScored)}
-                  </span>
-                </StatBarCell>
-                <td>{traditional?.totalRebounds ?? "-"}</td>
-                <td>{traditional?.assists ?? "-"}</td>
-                <td>{traditional?.pir ?? "-"}</td>
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
-    </Panel>
-  );
-}
-
 const GAMES_FILTERS = [
   { key: "all", label: "All" },
   { key: "results", label: "Results" },
@@ -682,10 +584,10 @@ function GamesSection({ gamesQuery, clubCode }) {
 const SECTIONS = [
   { key: "overview", label: "Overview" },
   { key: "statistics", label: "Statistics" },
+  { key: "roster", label: "Roster" },
   { key: "shooting", label: "Shooting" },
   { key: "advanced", label: "Advanced" },
   { key: "trends", label: "Trends" },
-  { key: "roster", label: "Roster" },
   { key: "games", label: "Games" },
 ];
 
@@ -719,6 +621,12 @@ export default function TeamPage() {
     queryKey: ["team-roster", seasonCode, clubCode],
     queryFn: () => getTeamRoster(seasonCode, clubCode, { limit: ROSTER_LIMIT }),
     enabled: teamQuery.isSuccess,
+  });
+
+  const coachesQuery = useQuery({
+    queryKey: ["team-coaches", seasonCode, clubCode],
+    queryFn: () => getTeamCoaches(seasonCode, clubCode),
+    enabled: teamQuery.isSuccess && section === "roster",
   });
 
   const rosterStatsQuery = useQuery({
@@ -831,7 +739,12 @@ export default function TeamPage() {
         ) : section === "trends" ? (
           <TrendsSection games={games} phaseCode={phaseCode} clubCode={clubCode} />
         ) : section === "roster" ? (
-          <RosterSection rosterQuery={rosterQuery} rosterStatsQuery={rosterStatsQuery} seasonCode={seasonCode} />
+          <TeamRosterSection
+            rosterQuery={rosterQuery}
+            rosterStatsQuery={rosterStatsQuery}
+            coachesQuery={coachesQuery}
+            seasonCode={seasonCode}
+          />
         ) : (
           <GamesSection gamesQuery={gamesQuery} clubCode={clubCode} />
         )}

@@ -124,6 +124,11 @@ export async function getTeamRoster(seasonCode, clubCode, { limit, offset } = {}
   return data;
 }
 
+export async function getTeamCoaches(seasonCode, clubCode) {
+  const { data } = await api.get(`/seasons/${seasonCode}/teams/${clubCode}/coaches`);
+  return data;
+}
+
 export async function getTeamGames(seasonCode, clubCode, { limit, offset, status, order } = {}) {
   const { data } = await api.get(`/seasons/${seasonCode}/teams/${clubCode}/games`, {
     params: { limit, offset, status, order },

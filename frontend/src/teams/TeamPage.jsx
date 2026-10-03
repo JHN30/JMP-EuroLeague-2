@@ -15,6 +15,7 @@ import {
 import AsyncState from "../lib/AsyncState";
 import EmptyText from "../lib/EmptyText";
 import { formatDateTime, formatPerGame } from "../lib/format";
+import HomeAwayIcon from "../lib/HomeAwayIcon";
 import { barFill, cardHover, listContainer, listItem } from "../lib/motion";
 import Panel from "../lib/Panel";
 import PageHeader from "../lib/PageHeader";
@@ -23,6 +24,7 @@ import { TabPanel, TabStrip } from "../lib/TabStrip";
 import { useDocumentTitle } from "../lib/useDocumentTitle";
 import { usePhaseParam } from "../lib/usePhaseParam";
 import TeamAdvancedSection from "./TeamAdvancedSection";
+import TeamGamesSection from "./TeamGamesSection";
 import TeamLeagueProfile from "./TeamLeagueProfile";
 import TeamQuickCompare from "./TeamQuickCompare";
 import TeamRosterSection from "./TeamRosterSection";
@@ -30,7 +32,6 @@ import TeamShootingSection from "./TeamShootingSection";
 import TeamStatisticsSection from "./TeamStatisticsSection";
 import { fetchTeamRosterStats } from "./teamRosterStats";
 import { advancedScopeForPhase, ordinal } from "./teamLeague";
-import TrendChart from "../comparisons/TrendChart";
 
 const MotionLink = motion.create(Link);
 
@@ -58,7 +59,8 @@ function NextGameChip({ nextGame, clubCode }) {
   return (
     <div className="next-chip ml-auto text-right">
       <span className="tag text-primary block text-xs font-bold uppercase tracking-wide">Next game</span>
-      <span className="val block font-semibold">
+      <span className="val flex items-center justify-end gap-1.5 font-semibold">
+        <HomeAwayIcon home={home} className="h-4 w-4 text-base-content/60" />
         {home ? "vs" : "@"} {teamLabel(team)}
       </span>
       <span className="sub muted block text-sm">{formatDateTime(nextGame.scheduledAt)}</span>
@@ -85,8 +87,11 @@ function GameLinkRow({ seasonCode, game, clubCode, children }) {
         <span className="muted w-16 flex-none truncate text-xs font-bold uppercase tracking-wide">
           {gameRoundLabel(game)}
         </span>
-        <span className="min-w-0 flex-1 truncate font-semibold">
-          {home ? "vs" : "@"} {teamLabel(team)}
+        <span className="flex min-w-0 flex-1 items-center gap-1.5 font-semibold">
+          <HomeAwayIcon home={home} className="h-4 w-4 text-base-content/60" />
+          <span className="truncate">
+            {home ? "vs" : "@"} {teamLabel(team)}
+          </span>
         </span>
         {children}
       </Link>
@@ -400,185 +405,10 @@ function OverviewSection({ seasonCode, clubCode, team, phaseCode, standingsQuery
   );
 }
 
-const ROLLING_WINDOW = 5;
-
-function rollingAverage(values, window) {
-  return values.map((_, index) => {
-    const start = Math.max(0, index - window + 1);
-    const slice = values.slice(start, index + 1);
-    return slice.reduce((sum, value) => sum + value, 0) / slice.length;
-  });
-}
-
-const TREND_METRICS = [
-  { key: "scored", label: "Points scored" },
-  { key: "allowed", label: "Points allowed" },
-  { key: "margin", label: "Margin" },
-];
-
-function TrendsSection({ games, phaseCode, clubCode }) {
-  const [metric, setMetric] = useState("scored");
-
-  const played = games
-    .filter((game) => game.phaseCode === phaseCode && game.played && game.localScore != null && game.roadScore != null)
-    .slice()
-    .sort((a, b) => new Date(a.scheduledAt) - new Date(b.scheduledAt));
-
-  if (played.length < 2) {
-    return <EmptyText>Not enough played games yet in this phase to chart trends.</EmptyText>;
-  }
-
-  const labels = played.map((game) => (game.roundNumber != null ? `R${game.roundNumber}` : formatDateTime(game.scheduledAt)));
-  const scored = played.map((game) => {
-    const { home } = opponent(game, clubCode);
-    return home ? game.localScore : game.roadScore;
-  });
-  const allowed = played.map((game) => {
-    const { home } = opponent(game, clubCode);
-    return home ? game.roadScore : game.localScore;
-  });
-  const margin = scored.map((value, index) => value - allowed[index]);
-
-  const seriesByMetric = { scored, allowed, margin };
-  const values = seriesByMetric[metric];
-  const activeLabel = TREND_METRICS.find((entry) => entry.key === metric).label;
-
-  return (
-    <div className="flex flex-col gap-4">
-      <label className="flex w-fit items-center gap-2 text-sm">
-        Metric
-        <select
-          className="select select-sm select-bordered"
-          value={metric}
-          onChange={(event) => setMetric(event.target.value)}
-        >
-          {TREND_METRICS.map((entry) => (
-            <option key={entry.key} value={entry.key}>
-              {entry.label}
-            </option>
-          ))}
-        </select>
-      </label>
-      <TrendChart
-        title={activeLabel}
-        labels={labels}
-        series={[
-          { label: activeLabel, points: values },
-          { label: `${ROLLING_WINDOW}-game average`, points: rollingAverage(values, ROLLING_WINDOW) },
-        ]}
-      />
-    </div>
-  );
-}
-
-const GAMES_FILTERS = [
-  { key: "all", label: "All" },
-  { key: "results", label: "Results" },
-  { key: "scheduled", label: "Scheduled" },
-  { key: "wins", label: "Wins" },
-  { key: "losses", label: "Losses" },
-];
-
 function gameResult(game, clubCode) {
   if (!game.played || game.localScore == null || game.roadScore == null) return null;
   const { home } = opponent(game, clubCode);
   return (home ? game.localScore > game.roadScore : game.roadScore > game.localScore) ? "win" : "loss";
-}
-
-function filterAndOrderGames(games, clubCode, filter) {
-  if (filter === "scheduled") {
-    return games.filter((game) => !game.played).sort((a, b) => new Date(a.scheduledAt) - new Date(b.scheduledAt));
-  }
-  if (filter === "results") {
-    return games.filter((game) => game.played).sort((a, b) => new Date(b.scheduledAt) - new Date(a.scheduledAt));
-  }
-  if (filter === "wins" || filter === "losses") {
-    const want = filter === "wins" ? "win" : "loss";
-    return games
-      .filter((game) => gameResult(game, clubCode) === want)
-      .sort((a, b) => new Date(b.scheduledAt) - new Date(a.scheduledAt));
-  }
-  const scheduled = games.filter((game) => !game.played).sort((a, b) => new Date(a.scheduledAt) - new Date(b.scheduledAt));
-  const results = games.filter((game) => game.played).sort((a, b) => new Date(b.scheduledAt) - new Date(a.scheduledAt));
-  return [...scheduled, ...results];
-}
-
-function GamesSection({ gamesQuery, clubCode }) {
-  const [filter, setFilter] = useState("all");
-
-  if (gamesQuery.isPending) return <AsyncState status="loading" label="Loading the games" />;
-  if (gamesQuery.isError) {
-    return <AsyncState status="error" message="Could not load the games." onRetry={() => gamesQuery.refetch()} />;
-  }
-  const allGames = gamesQuery.data.games ?? [];
-  if (allGames.length === 0) {
-    return <EmptyText>No games scheduled yet.</EmptyText>;
-  }
-  const games = filterAndOrderGames(allGames, clubCode, filter);
-
-  return (
-    <div className="flex flex-col gap-3">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <label className="flex items-center gap-2 text-sm">
-          Filter
-          <select
-            className="select select-sm select-bordered"
-            value={filter}
-            onChange={(event) => setFilter(event.target.value)}
-          >
-            {GAMES_FILTERS.map((entry) => (
-              <option key={entry.key} value={entry.key}>
-                {entry.label}
-              </option>
-            ))}
-          </select>
-        </label>
-        <span className="muted text-xs">
-          {filter === "scheduled"
-            ? "Nearest fixtures first"
-            : filter === "all"
-              ? "Nearest fixtures first · newest results first"
-              : "Newest results first"}
-        </span>
-      </div>
-      {games.length === 0 ? (
-        <EmptyText>No games match this filter.</EmptyText>
-      ) : (
-      <Panel className="p-4">
-      <ul>
-        {games.map((game) => {
-          const { team, home } = opponent(game, clubCode);
-          const hasScores = game.localScore != null && game.roadScore != null;
-          const teamWon = game.played && hasScores && (home ? game.localScore > game.roadScore : game.roadScore > game.localScore);
-          const teamLost = game.played && hasScores && (home ? game.roadScore > game.localScore : game.localScore > game.roadScore);
-          return (
-            <li key={game.gameCode} className="flex items-center justify-between gap-4 border-b border-base-300 py-2 last:border-0">
-              <div className="flex flex-col">
-                <span>
-                  {home ? "vs" : "@"} {teamLabel(team)}
-                </span>
-                <span className="muted text-sm">
-                  {game.roundName ?? (game.roundNumber ? `Round ${game.roundNumber}` : game.phaseName)} ·{" "}
-                  {formatDateTime(game.scheduledAt)}
-                </span>
-              </div>
-              {game.played ? (
-                <span
-                  className={`stat-badge tabular-nums ${teamWon ? "stat-badge-positive" : teamLost ? "stat-badge-negative" : "stat-badge-neutral"}`}
-                >
-                  {game.localScore ?? "-"}-{game.roadScore ?? "-"}
-                </span>
-              ) : (
-                <span className="muted text-sm">Not yet played</span>
-              )}
-            </li>
-          );
-        })}
-      </ul>
-      </Panel>
-      )}
-    </div>
-  );
 }
 
 const SECTIONS = [
@@ -587,7 +417,6 @@ const SECTIONS = [
   { key: "roster", label: "Roster" },
   { key: "shooting", label: "Shooting" },
   { key: "advanced", label: "Advanced" },
-  { key: "trends", label: "Trends" },
   { key: "games", label: "Games" },
 ];
 
@@ -736,8 +565,6 @@ export default function TeamPage() {
             clubCode={clubCode}
             onOpenShooting={() => setSection("shooting")}
           />
-        ) : section === "trends" ? (
-          <TrendsSection games={games} phaseCode={phaseCode} clubCode={clubCode} />
         ) : section === "roster" ? (
           <TeamRosterSection
             rosterQuery={rosterQuery}
@@ -746,7 +573,7 @@ export default function TeamPage() {
             seasonCode={seasonCode}
           />
         ) : (
-          <GamesSection gamesQuery={gamesQuery} clubCode={clubCode} />
+          <TeamGamesSection gamesQuery={gamesQuery} seasonCode={seasonCode} clubCode={clubCode} />
         )}
       </TabPanel>
     </div>

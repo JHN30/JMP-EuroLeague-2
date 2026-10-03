@@ -31,7 +31,9 @@ different.
     panels. Regular season uses the `RS` scope, every other phase the `PS` scope.
   - Recent form (last five results) and Upcoming games (next five fixtures) are compact
     one-line rows, and each row links to its game page (`/:season/games/:gameCode`). The score
-    is shown club-first, so an away win reads "86-84 Win" and not the home-first "84-86".
+    is shown club-first, so an away win reads "86-84 Win" and not the home-first "84-86". Each row
+    also carries a house (home) or plane (away) icon beside its "vs" or "@", as does the header's
+    next-game chip (the shared `HomeAwayIcon`, added with the Games tab).
     Five rows each is about 670px against the comparison panel's 736px, so they fit.
   - A small "Upcoming games" panel sits under Recent form so the left
     column is not left empty beside the taller comparison. The last panel in that column

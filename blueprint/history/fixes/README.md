@@ -36,6 +36,10 @@ every such change so it can be found later.
 
 - [team-roster-tab-position-cards.md](team-roster-tab-position-cards.md): Roster tab moved after Statistics, with position groups of player cards, a facts strip and a Cards/Table switch
 
+- [team-trends-tab-removed.md](team-trends-tab-removed.md): the redundant Trends tab removed, and the team stats browser test updated for the rebuilt tabs
+
+- [team-games-tab-margin-strip-and-two-columns.md](team-games-tab-margin-strip-and-two-columns.md): Games tab with a win/loss margin strip, upcoming and results columns, and opponent crests
+
 ## Data and platform
 
 - [read-renamed-app-neon-tables.md](read-renamed-app-neon-tables.md)

@@ -16,6 +16,7 @@ import {
   getPlayerRegistrations,
   getPlayers,
   getTeam,
+  getTeamCoaches,
   getTeamRoster,
   getTeams,
 } from "../db/season-identities";
@@ -583,6 +584,22 @@ seasonRouter.get("/:seasonCode/teams/:clubCode/roster", async (req, res) => {
   if (!page) return;
   const result = await getTeamRoster(season.seasonCode, clubCode, page.limit, page.offset);
   res.json({ registrations: result.items, pagination: { ...page, hasMore: result.hasMore } });
+});
+
+// The head coach and assistants, for the roster page. Staff come from the same registrations as players.
+seasonRouter.get("/:seasonCode/teams/:clubCode/coaches", async (req, res) => {
+  const season = await requestedSeason(req, res);
+  if (!season) return;
+  const clubCode = req.params.clubCode;
+  if (!validIdentity(clubCode)) {
+    sendError(res, 400, "INVALID_TEAM_CODE", "Invalid team code");
+    return;
+  }
+  if (!await getTeam(season.seasonCode, clubCode)) {
+    sendError(res, 404, "TEAM_NOT_FOUND", "Team not found");
+    return;
+  }
+  res.json({ coaches: await getTeamCoaches(season.seasonCode, clubCode) });
 });
 
 seasonRouter.get("/:seasonCode/teams/:clubCode/games", async (req, res) => {

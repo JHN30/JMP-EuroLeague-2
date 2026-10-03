@@ -1,4 +1,4 @@
-import { and, asc, eq, exists, ilike, isNull, or, sql } from "drizzle-orm";
+import { and, asc, eq, exists, ilike, inArray, isNull, or, sql } from "drizzle-orm";
 import { db } from "./client";
 import { catalogRead } from "./season-catalog";
 import { clubs, people, registrations } from "./season-schema";
@@ -170,6 +170,48 @@ export async function getTeamRoster(
     items: rows.slice(0, limit).map((row) => ({ ...row.registration, player: row.player })),
     hasMore: rows.length > limit,
   };
+}
+
+// The feed's coaching roles in registrations: E is the head coach and A an assistant (its own spelling is "Assitant").
+const HEAD_COACH_ROLE_CODE = "E";
+const ASSISTANT_COACH_ROLE_CODE = "A";
+
+export type Coach = {
+  personKey: string;
+  name: string | null;
+  countryCode: string | null;
+  roleCode: string;
+};
+
+// A club's current head coach and assistants, the head coach first, then the assistants by name. Staff have no photo or
+// height in the data, only a name and a nationality.
+export async function getTeamCoaches(seasonCode: string, clubCode: string): Promise<Coach[]> {
+  const rows = await catalogRead(() =>
+    db.select({
+      personKey: registrations.personKey,
+      roleCode: registrations.roleCode,
+      name: people.name,
+      countryCode: people.countryCode,
+    })
+      .from(registrations)
+      .leftJoin(people, and(
+        eq(people.competitionCode, registrations.competitionCode),
+        eq(people.seasonCode, registrations.seasonCode),
+        eq(people.personKey, registrations.personKey),
+      ))
+      .where(and(
+        eq(registrations.competitionCode, COMPETITION_CODE),
+        eq(registrations.seasonCode, seasonCode),
+        eq(registrations.clubCode, clubCode),
+        inArray(registrations.roleCode, [HEAD_COACH_ROLE_CODE, ASSISTANT_COACH_ROLE_CODE]),
+        or(eq(registrations.active, true), isNull(registrations.active)),
+      ))
+      .orderBy(asc(registrations.roleCode), asc(people.name), asc(registrations.personKey)),
+  );
+  // "A" sorts before "E", so put the head coach first explicitly.
+  return rows
+    .filter((row): row is typeof row & { roleCode: string } => row.roleCode !== null)
+    .sort((a, b) => Number(b.roleCode === HEAD_COACH_ROLE_CODE) - Number(a.roleCode === HEAD_COACH_ROLE_CODE));
 }
 
 export async function getPlayerRegistrations(

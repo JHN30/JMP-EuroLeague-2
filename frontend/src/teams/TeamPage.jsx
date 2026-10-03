@@ -88,12 +88,40 @@ function NextGameChip({ nextGame, clubCode }) {
   );
 }
 
-function RecentFormList({ games, clubCode }) {
+const FORM_LIST_LIMIT = 5;
+const UPCOMING_LIMIT = 5;
+
+function gameRoundLabel(game) {
+  return game.roundName ?? (game.roundNumber ? `Round ${game.roundNumber}` : game.phaseName);
+}
+
+// One compact line that opens the game: round, opponent, then whatever ends the line (a result or a tip-off time).
+function GameLinkRow({ seasonCode, game, clubCode, children }) {
+  const { team, home } = opponent(game, clubCode);
+  return (
+    <li className="flex flex-1">
+      <Link
+        to={`/${seasonCode}/games/${game.gameCode}`}
+        className="flex w-full items-center gap-3 rounded-field border border-base-300 bg-base-200 px-3 py-2 text-sm transition-colors hover:border-primary"
+      >
+        <span className="muted w-16 flex-none truncate text-xs font-bold uppercase tracking-wide">
+          {gameRoundLabel(game)}
+        </span>
+        <span className="min-w-0 flex-1 truncate font-semibold">
+          {home ? "vs" : "@"} {teamLabel(team)}
+        </span>
+        {children}
+      </Link>
+    </li>
+  );
+}
+
+function RecentFormList({ seasonCode, games, clubCode }) {
   const recent = games
     .filter((game) => game.played)
     .slice()
     .reverse()
-    .slice(0, 5);
+    .slice(0, FORM_LIST_LIMIT);
 
   return (
     <Panel as="section" className="flex flex-col p-4">
@@ -103,29 +131,24 @@ function RecentFormList({ games, clubCode }) {
       ) : (
         <ul className="flex flex-1 flex-col gap-2">
           {recent.map((game) => {
-            const { team, home } = opponent(game, clubCode);
+            const { home } = opponent(game, clubCode);
             const hasScores = game.localScore != null && game.roadScore != null;
-            const won = hasScores && (home ? game.localScore > game.roadScore : game.roadScore > game.localScore);
+            const clubScore = home ? game.localScore : game.roadScore;
+            const opponentScore = home ? game.roadScore : game.localScore;
+            const won = hasScores && clubScore > opponentScore;
             return (
-              <li
-                key={game.gameCode}
-                className="flex flex-1 flex-col justify-center rounded-field border border-base-300 bg-base-200 p-3"
-              >
-                <div className="mb-1 flex items-center justify-between text-xs font-bold uppercase tracking-wide">
-                  <span className="muted">
-                    {game.roundName ?? (game.roundNumber ? `Round ${game.roundNumber}` : game.phaseName)}
-                  </span>
-                  <span className={won ? "text-success" : "text-error"}>{won ? "Win" : "Loss"}</span>
-                </div>
-                <div className="flex items-center justify-between text-sm font-semibold">
-                  <span>
-                    {home ? "vs" : "@"} {teamLabel(team)}
-                  </span>
-                  <span className="tabular-nums">
-                    {game.localScore ?? "-"}-{game.roadScore ?? "-"}
-                  </span>
-                </div>
-              </li>
+              <GameLinkRow key={game.gameCode} seasonCode={seasonCode} game={game} clubCode={clubCode}>
+                {hasScores ? (
+                  <>
+                    <span className={`flex-none text-xs font-bold uppercase tracking-wide ${won ? "text-success" : "text-error"}`}>
+                      {won ? "Win" : "Loss"}
+                    </span>
+                    <span className="w-14 flex-none text-right font-semibold tabular-nums">
+                      {clubScore}-{opponentScore}
+                    </span>
+                  </>
+                ) : null}
+              </GameLinkRow>
             );
           })}
         </ul>
@@ -134,9 +157,7 @@ function RecentFormList({ games, clubCode }) {
   );
 }
 
-const UPCOMING_LIMIT = 3;
-
-function UpcomingGamesList({ games, clubCode }) {
+function UpcomingGamesList({ seasonCode, games, clubCode }) {
   const upcoming = games.filter((game) => !game.played).slice(0, UPCOMING_LIMIT);
   if (upcoming.length === 0) return null;
 
@@ -144,25 +165,11 @@ function UpcomingGamesList({ games, clubCode }) {
     <Panel as="section" className="flex flex-col p-4">
       <PanelHeader kicker="FIXTURES" title="Upcoming games" />
       <ul className="flex flex-1 flex-col gap-2">
-        {upcoming.map((game) => {
-          const { team, home } = opponent(game, clubCode);
-          return (
-            <li
-              key={game.gameCode}
-              className="flex flex-1 flex-col justify-center rounded-field border border-base-300 bg-base-200 p-3"
-            >
-              <div className="muted mb-1 text-xs font-bold uppercase tracking-wide">
-                {game.roundName ?? (game.roundNumber ? `Round ${game.roundNumber}` : game.phaseName)}
-              </div>
-              <div className="flex items-center justify-between gap-3 text-sm font-semibold">
-                <span>
-                  {home ? "vs" : "@"} {teamLabel(team)}
-                </span>
-                <span className="muted tabular-nums">{formatDateTime(game.scheduledAt)}</span>
-              </div>
-            </li>
-          );
-        })}
+        {upcoming.map((game) => (
+          <GameLinkRow key={game.gameCode} seasonCode={seasonCode} game={game} clubCode={clubCode}>
+            <span className="muted flex-none text-xs tabular-nums sm:text-sm">{formatDateTime(game.scheduledAt)}</span>
+          </GameLinkRow>
+        ))}
       </ul>
     </Panel>
   );
@@ -399,8 +406,8 @@ function OverviewSection({ seasonCode, clubCode, team, phaseCode, standingsQuery
       <div className="grid gap-6 lg:grid-cols-2">
         {/* The last panel here grows to the comparison's height, so the two columns end together. */}
         <div className="flex flex-col gap-6 *:last:flex-1">
-          <RecentFormList games={games} clubCode={clubCode} />
-          <UpcomingGamesList games={games} clubCode={clubCode} />
+          <RecentFormList seasonCode={seasonCode} games={games} clubCode={clubCode} />
+          <UpcomingGamesList seasonCode={seasonCode} games={games} clubCode={clubCode} />
         </div>
         <TeamQuickCompare
           seasonCode={seasonCode}

@@ -29,7 +29,11 @@ different.
     phones, 2 from `sm`, 4 from `2xl`.
   - The Overview now loads the league-wide advanced standings once and feeds the two new
     panels. Regular season uses the `RS` scope, every other phase the `PS` scope.
-  - A small "Upcoming games" panel (next three fixtures) sits under Recent form so the left
+  - Recent form (last five results) and Upcoming games (next five fixtures) are compact
+    one-line rows, and each row links to its game page (`/:season/games/:gameCode`). The score
+    is shown club-first, so an away win reads "86-84 Win" and not the home-first "84-86".
+    Five rows each is about 670px against the comparison panel's 736px, so they fit.
+  - A small "Upcoming games" panel sits under Recent form so the left
     column is not left empty beside the taller comparison. The last panel in that column
   grows to the comparison's height and spreads its rows evenly, so the two columns end on
   the same line (checked with a fixture-less club too, where Recent form is the last panel).

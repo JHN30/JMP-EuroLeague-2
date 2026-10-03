@@ -1596,3 +1596,29 @@ button {
     color-mix(in srgb, var(--color-success) 52%, var(--color-base-100))
   );
 }
+
+/* shooting court: zones recolour smoothly when a filter changes, labels and shot markers ease in */
+@media (prefers-reduced-motion: no-preference) {
+  .court-zone {
+    transition: fill 0.4s ease;
+  }
+  .court-chip {
+    animation: court-fade-in 0.35s ease both;
+  }
+  .court-marker {
+    transform-box: fill-box;
+    transform-origin: center;
+    animation: court-marker-in 0.32s cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+}
+@keyframes court-fade-in {
+  from {
+    opacity: 0;
+  }
+}
+@keyframes court-marker-in {
+  from {
+    opacity: 0;
+    transform: scale(0.3);
+  }
+}

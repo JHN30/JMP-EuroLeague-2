@@ -28,6 +28,14 @@ dropdowns, a plain text zone list in fixed order, and only the club's own shots.
     misses red (`resultColors` on `ShootingCourt` and `ShootingLegend`, opt-in so the game
     page's two-team chart still colours by team). The Game segment label is inline and kept on
     one line, and all four controls share one centre line.
+  - Animation when options change (added after the first commit): on the court, heatmap zones
+    blend to their new colour, zone labels fade in again when their numbers change, and shot
+    markers pop in on a short stagger (never more than about half a second) whenever the plotted
+    set changes; the heatmap/markers switch fades the new view in. In the panels, the four cards
+    ease their new value in, table bars slide to the new width, rows glide when the order changes,
+    and switching Team/Opponents replays the entrance. The court effects are CSS in `index.css`
+    (`court-zone`, `court-chip`, `court-marker`) and sit behind `prefers-reduced-motion`, so they
+    also apply to the court on the game and Player pages.
   - The court is capped at 46rem and sits beside the tables; its box stretches to the height of
     the right column, so both columns end on the same line. One column below `xl`.
   - **Zones** table: only zones that were shot from, most used first, with a dot coloured by

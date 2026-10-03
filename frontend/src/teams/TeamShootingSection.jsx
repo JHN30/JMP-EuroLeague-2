@@ -8,7 +8,7 @@ import EmptyText from "../lib/EmptyText";
 import { formatCount, formatPercentage } from "../lib/format";
 import HeaderTip from "../lib/HeaderTip";
 import HeatmapLegend from "../lib/HeatmapLegend";
-import { barFill, listContainer, listItem } from "../lib/motion";
+import { EASE_OUT, listContainer, listItem } from "../lib/motion";
 import Panel from "../lib/Panel";
 import PanelHeader from "../lib/PanelHeader";
 import ShootingCourt from "../lib/ShootingCourt";
@@ -62,7 +62,16 @@ function MetricCard({ label, value, detail }) {
   return (
     <Panel className="p-3 text-center">
       <p className="eyebrow mb-1">{label}</p>
-      <p className="text-xl font-semibold">{value}</p>
+      {/* Keyed by the value, so a changed number eases in instead of swapping. */}
+      <motion.p
+        key={value}
+        className="text-xl font-semibold"
+        initial={{ opacity: 0, y: 6 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.3, ease: EASE_OUT }}
+      >
+        {value}
+      </motion.p>
       {detail ? <p className="muted text-xs">{detail}</p> : null}
     </Panel>
   );
@@ -95,23 +104,26 @@ function BreakdownTable({ firstColumn, shareHeader = "Share", columns, rows, dot
           <motion.li
             key={row.key}
             variants={listItem}
+            layout="position"
             className={`${TABLE_GRID} gap-y-1 border-b border-base-300 py-2 text-sm last:border-0`}
           >
             <span className={NAME_CELL}>
               {dotValue ? (
                 <span
                   aria-hidden="true"
-                  className="h-2.5 w-2.5 flex-none rounded-full ring-1 ring-base-content/20"
+                  className="h-2.5 w-2.5 flex-none rounded-full ring-1 ring-base-content/20 transition-colors duration-300"
                   style={{ backgroundColor: efficiencyRamp(dotValue(row)) }}
                 />
               ) : null}
               <span className="truncate">{row.tip ? <HeaderTip tip={row.tip}>{row.label}</HeaderTip> : row.label}</span>
             </span>
             <div aria-hidden="true" className="h-2 min-w-0 overflow-hidden rounded-full bg-base-300">
+              {/* Grows from nothing on arrival and slides to the new width when a filter changes. */}
               <motion.div
-                className="h-full origin-left rounded-full bg-primary"
-                style={{ width: `${(row.share / biggest) * 100}%` }}
-                {...barFill}
+                className="h-full rounded-full bg-primary"
+                initial={{ width: 0 }}
+                animate={{ width: `${(row.share / biggest) * 100}%` }}
+                transition={{ duration: 0.5, ease: EASE_OUT }}
               />
             </div>
             <span className="text-right tabular-nums">{Math.round(row.share * 100)}%</span>
@@ -293,15 +305,25 @@ export default function TeamShootingSection({ seasonCode, phaseCode, team, games
         ) : (
           <div className="grid gap-4 xl:grid-cols-[minmax(0,46rem)_minmax(0,1fr)]">
             <div className="flex flex-col justify-center gap-3 rounded-field border border-base-300 bg-base-100/60 p-3">
-              <ShootingCourt
-                shots={courtShots}
-                teams={[{ clubCode: "SIDE" }]}
-                mode={presentation}
-                resultColors
-                maxWidth={COURT_MAX_WIDTH}
-                ariaLabel={`${sideLabel} shot locations: ${formatCount(filtered.length)} attempts`}
-              />
-              {presentation === "heatmap" ? <HeatmapLegend /> : <ShootingLegend teams={[]} resultColors />}
+              {/* Switching between heatmap and markers fades the new view in; filters inside a view animate in the court. */}
+              <motion.div
+                key={presentation}
+                className="flex flex-col gap-3"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ duration: 0.3 }}
+              >
+                <ShootingCourt
+                  shots={courtShots}
+                  teams={[{ clubCode: "SIDE" }]}
+                  mode={presentation}
+                  resultColors
+                  replayKey={`${side}-${gameSegment}-${activeResult}`}
+                  maxWidth={COURT_MAX_WIDTH}
+                  ariaLabel={`${sideLabel} shot locations: ${formatCount(filtered.length)} attempts`}
+                />
+                {presentation === "heatmap" ? <HeatmapLegend /> : <ShootingLegend teams={[]} resultColors />}
+              </motion.div>
             </div>
             <div className="flex flex-col gap-4">
               <ZonesPanel key={`zones-${side}`} rows={zoneRows(filtered)} side={side} />

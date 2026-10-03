@@ -63,6 +63,16 @@ function CourtMarkings({ lineColor }) {
   );
 }
 
+// Markers pop in one after another, but never over more than about half a second however many there are.
+const MARKER_STAGGER_MS = 3;
+const MARKER_STAGGER_LIMIT = 160;
+
+function markerSetKey(shots) {
+  const first = shots[0];
+  const last = shots.at(-1);
+  return `${shots.length}-${first?.clubCode}-${first?.shotOrdinal}-${last?.shotOrdinal}`;
+}
+
 const metres = (centimetres) => (centimetres / 100).toFixed(1);
 
 function shotTitle(shot, made, isThree, zone) {
@@ -79,14 +89,14 @@ function shotTitle(shot, made, isThree, zone) {
   return parts.join(" · ");
 }
 
-function ShotMarker({ shot, color }) {
+function ShotMarker({ shot, color, delay }) {
   const { x, y } = plotPosition(Number(shot.coordX), Number(shot.coordY));
   const isThree = isThreePointer(shot);
   const made = shot.actionCode === "2FGM" || shot.actionCode === "3FGM";
   const zone = shotZone(shot);
 
   return (
-    <g data-zone={zone}>
+    <g data-zone={zone} className="court-marker" style={{ animationDelay: `${delay}ms` }}>
       <title>{shotTitle(shot, made, isThree, zone)}</title>
       {made ? (
         <circle cx={x} cy={y} r={16} fill={color} stroke="var(--color-base-100)" strokeWidth={2} />
@@ -112,6 +122,7 @@ function ZoneFills({ stats, lineColor }) {
         ZONE_SHAPES[stat.zone] ? (
           <path
             key={stat.zone}
+            className="court-zone"
             d={ZONE_SHAPES[stat.zone]}
             data-zone={stat.attempts > 0 ? stat.zone : undefined}
             fill={stat.attempts > 0 ? efficiencyRamp((stat.made / stat.attempts) * 100) : "none"}
@@ -173,7 +184,7 @@ function ZoneChip({ x, y, stat }) {
   const lineTwo = `${((stat.made / stat.attempts) * 100).toFixed(0)}%`;
   const width = Math.max(lineOne.length * 17, lineTwo.length * 20, 52) + 16;
   return (
-    <g pointerEvents="none">
+    <g pointerEvents="none" className="court-chip">
       <rect x={x - width / 2} y={y - CHIP_HEIGHT / 2} width={width} height={CHIP_HEIGHT} rx={10} fill="rgba(15, 23, 42, 0.74)" />
       <text x={x} y={y - 18} textAnchor="middle" dominantBaseline="middle" fill="#fff" fontSize={28}>
         {lineOne}
@@ -192,7 +203,8 @@ function ZoneChips({ stats }) {
         if (stat.attempts === 0) return null;
         const point =
           stat.zone === "Backcourt" ? { x: STRIP_LEFT + STRIP_WIDTH / 2, y: 0 } : toScreen(...(ZONE_LABEL_POINTS[stat.zone] ?? []));
-        return <ZoneChip key={stat.zone} x={point.x} y={point.y} stat={stat} />;
+        // Keyed by the numbers too, so a zone whose numbers changed fades in again.
+        return <ZoneChip key={`${stat.zone}-${stat.made}-${stat.attempts}`} x={point.x} y={point.y} stat={stat} />;
       })}
     </g>
   );
@@ -227,7 +239,7 @@ function useSvgThemeColors(svgRef) {
 // `mode="markers"` plots individual shots; `mode="heatmap"` shades each zone by its FG% (more opaque is better) and
 // labels it with made/attempts. Shots without a usable location are not drawn. Markers take their team's colour; with
 // `resultColors` (for a chart of one team's shots) makes are green and misses red instead.
-export default function ShootingCourt({ shots, teams, mode = "markers", ariaLabel, maxWidth = MAX_WIDTH, resultColors = false }) {
+export default function ShootingCourt({ shots, teams, mode = "markers", ariaLabel, maxWidth = MAX_WIDTH, resultColors = false, replayKey = "" }) {
   const svgRef = useRef(null);
   const colors = useSvgThemeColors(svgRef);
   const teamColor = (clubCode) => {
@@ -252,20 +264,24 @@ export default function ShootingCourt({ shots, teams, mode = "markers", ariaLabe
           <CourtMarkings lineColor={colors.line} />
           <BackcourtStrip stat={zoneStats?.find((stat) => stat.zone === "Backcourt")} lineColor={colors.line} />
           {zoneStats ? <ZoneChips stats={zoneStats} /> : null}
-          {mode === "markers"
-            ? shots.filter(hasLocation).map((shot, index) => (
+          {mode === "markers" ? (
+            // Keyed by what is plotted, so a different set (a new filter or side) remounts and pops in again.
+            <g key={`${replayKey}-${markerSetKey(shots)}`}>
+              {shots.filter(hasLocation).map((shot, index) => (
                 // The ordinal only counts within one game, and a season chart holds many.
                 <ShotMarker
                   key={`${index}-${shot.shotOrdinal}`}
                   shot={shot}
+                  delay={Math.min(index, MARKER_STAGGER_LIMIT) * MARKER_STAGGER_MS}
                   color={
                     resultColors
                       ? (shot.actionCode.endsWith("M") ? colors.success : colors.error)
                       : (teamColor(shot.clubCode) ?? colors.line)
                   }
                 />
-              ))
-            : null}
+              ))}
+            </g>
+          ) : null}
         </>
       ) : null}
     </svg>

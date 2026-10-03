@@ -1,7 +1,9 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { motion } from "motion/react";
 import { Link, useParams } from "react-router";
 import {
+  getAdvancedStandings,
   getLeaderStats,
   getPhases,
   getSeasonStandings,
@@ -11,10 +13,9 @@ import {
   getTeamStatsSummary,
 } from "../lib/api";
 import AsyncState from "../lib/AsyncState";
-import CompactMetric from "../lib/CompactMetric";
 import EmptyText from "../lib/EmptyText";
 import { formatCount, formatDateTime, formatPerGame, formatPercentage } from "../lib/format";
-import HeaderStats from "../lib/HeaderStats";
+import { barFill, cardHover, listContainer, listItem } from "../lib/motion";
 import Panel from "../lib/Panel";
 import PageHeader from "../lib/PageHeader";
 import PanelHeader from "../lib/PanelHeader";
@@ -26,8 +27,12 @@ import { usePhaseParam } from "../lib/usePhaseParam";
 import StatBarCell from "../statistics/StatBarCell";
 import { barWidthScale } from "../statistics/statBarScale";
 import TeamAdvancedSection from "./TeamAdvancedSection";
-import TeamTrendChart from "./TeamTrendChart";
+import TeamLeagueProfile from "./TeamLeagueProfile";
+import TeamQuickCompare from "./TeamQuickCompare";
+import { advancedScopeForPhase, ordinal } from "./teamLeague";
 import TrendChart from "../comparisons/TrendChart";
+
+const MotionLink = motion.create(Link);
 
 const ROSTER_LIMIT = 100;
 const GAMES_LIMIT = 100;
@@ -82,35 +87,6 @@ function NextGameChip({ nextGame, clubCode }) {
   );
 }
 
-function OverviewKpiStrip({ standingsQuery, clubCode }) {
-  if (standingsQuery.isPending) return <AsyncState status="loading" label="Loading team KPIs" />;
-  if (standingsQuery.isError) {
-    return <AsyncState status="error" message="Could not load team KPIs." onRetry={() => standingsQuery.refetch()} />;
-  }
-  const entry = standingsQuery.data.standings.find((row) => row.clubCode === clubCode);
-  const basic = entry?.basic;
-  if (!basic || !basic.gamesPlayed) {
-    return <EmptyText>Team KPIs not available yet for this phase.</EmptyText>;
-  }
-  const gp = basic.gamesPlayed;
-  const perGame = (total) => formatPerGame(total != null ? total / gp : null);
-  const perGameSigned = (total) => {
-    if (total == null) return formatPerGame(null);
-    const value = total / gp;
-    return value > 0 ? `+${formatPerGame(value)}` : formatPerGame(value);
-  };
-
-  return (
-    <HeaderStats>
-      <CompactMetric value={perGame(basic.pointsFor)} label="Points for/game" />
-      <CompactMetric value={perGame(basic.pointsAgainst)} label="Points against/game" />
-      <CompactMetric value={perGameSigned(basic.pointsDifference)} label="Point diff/game" />
-      <CompactMetric value={basic.winPercentage ?? "-"} label="Win %" />
-      <CompactMetric value={gp} label="Games played" />
-    </HeaderStats>
-  );
-}
-
 function RecentFormList({ games, clubCode }) {
   const recent = games
     .filter((game) => game.played)
@@ -119,18 +95,21 @@ function RecentFormList({ games, clubCode }) {
     .slice(0, 5);
 
   return (
-    <Panel as="section" className="p-4">
+    <Panel as="section" className="flex flex-col p-4">
       <PanelHeader kicker="FORM" title="Recent form" />
       {recent.length === 0 ? (
         <EmptyText>No played games yet.</EmptyText>
       ) : (
-        <ul className="flex flex-col gap-2">
+        <ul className="flex flex-1 flex-col gap-2">
           {recent.map((game) => {
             const { team, home } = opponent(game, clubCode);
             const hasScores = game.localScore != null && game.roadScore != null;
             const won = hasScores && (home ? game.localScore > game.roadScore : game.roadScore > game.localScore);
             return (
-              <li key={game.gameCode} className="rounded-field border border-base-300 bg-base-200 p-3">
+              <li
+                key={game.gameCode}
+                className="flex flex-1 flex-col justify-center rounded-field border border-base-300 bg-base-200 p-3"
+              >
                 <div className="mb-1 flex items-center justify-between text-xs font-bold uppercase tracking-wide">
                   <span className="muted">
                     {game.roundName ?? (game.roundNumber ? `Round ${game.roundNumber}` : game.phaseName)}
@@ -154,41 +133,36 @@ function RecentFormList({ games, clubCode }) {
   );
 }
 
-function CompareShortcuts({ seasonCode, clubCode, nextGame, standingsQuery }) {
-  const standings = standingsQuery.data?.standings ?? [];
-  const nextOpponent = nextGame ? opponent(nextGame, clubCode).team : null;
+const UPCOMING_LIMIT = 3;
 
-  const leaderEntry = standings.find((row) => row.basic?.position === 1);
-  const leaderIsSelf = leaderEntry?.clubCode === clubCode;
-  const leaderTarget = leaderIsSelf ? standings.find((row) => row.basic?.position === 2) : leaderEntry;
-
-  const links = [];
-  if (nextOpponent?.clubCode) {
-    links.push({ clubCode: nextOpponent.clubCode, label: `vs ${teamLabel(nextOpponent)}` });
-  }
-  if (leaderTarget && leaderTarget.clubCode !== clubCode && leaderTarget.clubCode !== nextOpponent?.clubCode) {
-    links.push({
-      clubCode: leaderTarget.clubCode,
-      label: `vs ${leaderTarget.clubName ?? leaderTarget.clubCode} (league leader)`,
-    });
-  }
-
-  if (links.length === 0) return null;
+function UpcomingGamesList({ games, clubCode }) {
+  const upcoming = games.filter((game) => !game.played).slice(0, UPCOMING_LIMIT);
+  if (upcoming.length === 0) return null;
 
   return (
-    <Panel as="section" className="p-4">
-      <PanelHeader kicker="SHORTCUTS" title="Compare" />
-      <div className="flex flex-col gap-2">
-        {links.map((link) => (
-          <Link
-            key={link.clubCode}
-            to={`/${seasonCode}/comparisons?teamA=${encodeURIComponent(clubCode)}&teamB=${encodeURIComponent(link.clubCode)}`}
-            className="link link-hover rounded-field border border-base-300 bg-base-200 p-3 text-sm font-semibold"
-          >
-            {link.label}
-          </Link>
-        ))}
-      </div>
+    <Panel as="section" className="flex flex-col p-4">
+      <PanelHeader kicker="FIXTURES" title="Upcoming games" />
+      <ul className="flex flex-1 flex-col gap-2">
+        {upcoming.map((game) => {
+          const { team, home } = opponent(game, clubCode);
+          return (
+            <li
+              key={game.gameCode}
+              className="flex flex-1 flex-col justify-center rounded-field border border-base-300 bg-base-200 p-3"
+            >
+              <div className="muted mb-1 text-xs font-bold uppercase tracking-wide">
+                {game.roundName ?? (game.roundNumber ? `Round ${game.roundNumber}` : game.phaseName)}
+              </div>
+              <div className="flex items-center justify-between gap-3 text-sm font-semibold">
+                <span>
+                  {home ? "vs" : "@"} {teamLabel(team)}
+                </span>
+                <span className="muted tabular-nums">{formatDateTime(game.scheduledAt)}</span>
+              </div>
+            </li>
+          );
+        })}
+      </ul>
     </Panel>
   );
 }
@@ -214,7 +188,33 @@ function currentStreak(phaseGames, clubCode) {
   return { won: first, count };
 }
 
-function PhaseTiles({ standingsQuery, clubCode, phaseGames }) {
+const FORM_PILL_COUNT = 5;
+
+// A horizontal bar filled to `share` (0-1) from the left, drawn with the shared bar-fill motion.
+function ShareBar({ share, fillClass, trackClass }) {
+  return (
+    <div aria-hidden="true" className={`h-2.5 w-full overflow-hidden rounded-full ${trackClass}`}>
+      <motion.div
+        className={`h-full origin-left rounded-full ${fillClass}`}
+        style={{ width: `${Math.min(100, Math.max(0, share * 100))}%` }}
+        {...barFill}
+      />
+    </div>
+  );
+}
+
+function SnapshotFact({ label, value }) {
+  return (
+    <div className="flex flex-col">
+      <span className="muted text-xs font-bold uppercase tracking-wide">{label}</span>
+      <span className="font-semibold tabular-nums">{value}</span>
+    </div>
+  );
+}
+
+// The phase at a glance in one panel: the record as a win/loss bar with the last results and streak, points for and
+// against as paired bars, and the remaining facts in a single row.
+function TeamSnapshot({ standingsQuery, clubCode, phaseGames }) {
   if (standingsQuery.isPending) return <AsyncState status="loading" label="Loading the phase record" />;
   if (standingsQuery.isError) {
     return <AsyncState status="error" message="Could not load the phase record." onRetry={() => standingsQuery.refetch()} />;
@@ -225,37 +225,94 @@ function PhaseTiles({ standingsQuery, clubCode, phaseGames }) {
     return <EmptyText>No record yet for this phase.</EmptyText>;
   }
 
+  const gp = basic.gamesPlayed;
+  const winShare = (basic.gamesWon ?? 0) / gp;
   const streak = currentStreak(phaseGames, clubCode);
+  const form = phaseGames
+    .filter((game) => game.played && game.localScore != null && game.roadScore != null)
+    .sort((a, b) => new Date(a.scheduledAt) - new Date(b.scheduledAt))
+    .slice(-FORM_PILL_COUNT)
+    .map((game) => gameResult(game, clubCode));
   const gamesRemaining = phaseGames.filter((game) => !game.played).length;
-  const diffPerGame = basic.pointsDifference != null ? basic.pointsDifference / basic.gamesPlayed : null;
 
-  const tiles = [
-    ["Record", `${basic.gamesWon ?? "-"}-${basic.gamesLost ?? "-"}`],
-    ["Home", basic.homeRecord ?? "-"],
-    ["Away", basic.awayRecord ?? "-"],
-    ["Win %", basic.winPercentage ?? "-"],
-    ["Point diff/game", diffPerGame != null ? (diffPerGame > 0 ? `+${formatPerGame(diffPerGame)}` : formatPerGame(diffPerGame)) : "-"],
-    ["Current streak", streak ? `${streak.won ? "W" : "L"}${streak.count}` : "-"],
-    ["Games remaining", gamesRemaining],
-  ];
+  const pointsFor = basic.pointsFor != null ? basic.pointsFor / gp : null;
+  const pointsAgainst = basic.pointsAgainst != null ? basic.pointsAgainst / gp : null;
+  const diff = pointsFor != null && pointsAgainst != null ? pointsFor - pointsAgainst : null;
+  const scale = Math.max(pointsFor ?? 0, pointsAgainst ?? 0) || 1;
+  const diffText = diff == null ? "-" : `${diff > 0 ? "+" : ""}${formatPerGame(diff)}`;
 
   return (
-    <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-      {tiles.map(([label, value]) => (
-        <Panel key={label} className="p-3">
-          <span className="block text-lg font-semibold">{value}</span>
-          <span className="muted text-xs font-bold uppercase tracking-wide">{label}</span>
-        </Panel>
-      ))}
-    </div>
+    <Panel as="section" aria-label="Phase snapshot" className="p-5">
+      <div className="grid gap-6 lg:grid-cols-2 lg:gap-10">
+        <div>
+          <div className="mb-2 flex items-end justify-between gap-3">
+            <div className="flex items-baseline gap-3">
+              <span className="text-4xl font-black tracking-tight tabular-nums">
+                {basic.gamesWon ?? "-"}-{basic.gamesLost ?? "-"}
+              </span>
+              <span className="muted text-sm">{basic.winPercentage != null ? `${basic.winPercentage}% wins` : "Record"}</span>
+            </div>
+            {streak ? (
+              <span className={`stat-badge ${streak.won ? "stat-badge-positive" : "stat-badge-negative"}`}>
+                {streak.won ? "W" : "L"}
+                {streak.count} streak
+              </span>
+            ) : null}
+          </div>
+          <ShareBar share={winShare} fillClass="bg-success" trackClass="bg-error/25" />
+          <div className="mt-3 flex items-center gap-3">
+            <span className="muted text-xs font-bold uppercase tracking-wide">Last {form.length}</span>
+            <span className="form-track" role="img" aria-label={`Last results, oldest first: ${form.map((r) => (r === "win" ? "win" : "loss")).join(", ")}`}>
+              {form.map((result, index) => (
+                <span key={index} className={`form-pill ${result === "win" ? "w" : "l"}`}>
+                  {result === "win" ? "W" : "L"}
+                </span>
+              ))}
+            </span>
+          </div>
+        </div>
+
+        <div>
+          <div className="mb-2 flex items-baseline justify-between gap-3">
+            <span className="muted text-xs font-bold uppercase tracking-wide">Points per game</span>
+            <span className={`stat-badge ${diff == null ? "stat-badge-neutral" : diff >= 0 ? "stat-badge-positive" : "stat-badge-negative"}`}>
+              {diffText} diff
+            </span>
+          </div>
+          <div className="flex flex-col gap-2">
+            <div className="grid grid-cols-[4.5rem_1fr_3rem] items-center gap-3 text-sm">
+              <span className="muted">Scored</span>
+              <ShareBar share={(pointsFor ?? 0) / scale} fillClass="bg-primary" trackClass="bg-base-300" />
+              <span className="text-right font-semibold tabular-nums">{formatPerGame(pointsFor)}</span>
+            </div>
+            <div className="grid grid-cols-[4.5rem_1fr_3rem] items-center gap-3 text-sm">
+              <span className="muted">Allowed</span>
+              <ShareBar share={(pointsAgainst ?? 0) / scale} fillClass="bg-base-content/50" trackClass="bg-base-300" />
+              <span className="text-right font-semibold tabular-nums">{formatPerGame(pointsAgainst)}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="mt-5 flex flex-wrap gap-x-8 gap-y-3 border-t border-base-300 pt-4">
+        <SnapshotFact
+          label="League position"
+          value={basic.position != null ? `${ordinal(basic.position)} of ${standingsQuery.data.standings.length}` : "-"}
+        />
+        <SnapshotFact label="Home" value={basic.homeRecord ?? "-"} />
+        <SnapshotFact label="Away" value={basic.awayRecord ?? "-"} />
+        <SnapshotFact label="Played" value={gp} />
+        <SnapshotFact label="Remaining" value={gamesRemaining} />
+      </div>
+    </Panel>
   );
 }
 
 const LEADER_CATEGORIES = [
-  { key: "pointsScored", label: "Points" },
-  { key: "totalRebounds", label: "Rebounds" },
-  { key: "assists", label: "Assists" },
-  { key: "pir", label: "PIR" },
+  { key: "pointsScored", label: "Points per game" },
+  { key: "totalRebounds", label: "Rebounds per game" },
+  { key: "assists", label: "Assists per game" },
+  { key: "pir", label: "PIR per game" },
 ];
 
 function TeamLeaders({ seasonCode, rosterStatsQuery }) {
@@ -269,48 +326,88 @@ function TeamLeaders({ seasonCode, rosterStatsQuery }) {
   }
 
   return (
-    <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+    <motion.div
+      className="team-leaders-grid grid grid-cols-1 gap-3 sm:grid-cols-2 2xl:grid-cols-4"
+      variants={listContainer}
+      initial="hidden"
+      animate="show"
+    >
       {LEADER_CATEGORIES.map((category) => {
         const ranked = players
           .map((player) => ({ player, value: statNumber(player.traditional?.[category.key]) }))
           .filter((row) => row.value != null)
           .sort((a, b) => b.value - a.value);
         const leader = ranked[0];
+        if (!leader) {
+          return (
+            <div key={category.key} className="kpi-chip">
+              <div className="kpi-chip-body">
+                <span className="label">{category.label}</span>
+                <span className="muted">-</span>
+              </div>
+            </div>
+          );
+        }
         return (
-          <Panel key={category.key} className="p-3">
-            {leader ? (
-              <Link to={`/${seasonCode}/players/${leader.player.personKey}`} className="link link-hover">
-                <span className="block font-semibold">{leader.player.playerName ?? leader.player.personKey}</span>
-                <span className="text-primary text-lg font-bold tabular-nums">{formatPerGame(leader.value)}</span>
-              </Link>
-            ) : (
-              <span className="muted">-</span>
-            )}
-            <span className="muted block text-xs font-bold uppercase tracking-wide">{category.label} leader</span>
-          </Panel>
+          <MotionLink
+            key={category.key}
+            to={`/${seasonCode}/players/${leader.player.personKey}`}
+            className="kpi-chip kpi-chip-link"
+            variants={listItem}
+            {...cardHover}
+          >
+            <div className="kpi-chip-body">
+              <span className="label">{category.label}</span>
+              <span className="name">{leader.player.playerName ?? leader.player.personKey}</span>
+              <span className="value">{formatPerGame(leader.value)}</span>
+            </div>
+            {leader.player.playerImageUrl ? (
+              <img
+                src={leader.player.playerImageUrl}
+                alt=""
+                className="kpi-chip-image"
+                onError={(event) => {
+                  event.currentTarget.style.display = "none";
+                }}
+              />
+            ) : null}
+          </MotionLink>
         );
       })}
-    </div>
+    </motion.div>
   );
 }
 
-function OverviewSection({ seasonCode, clubCode, phaseCode, standingsQuery, rosterStatsQuery, games }) {
+function OverviewSection({ seasonCode, clubCode, team, phaseCode, standingsQuery, rosterStatsQuery, games }) {
   const nextGame = games.find((game) => !game.played) ?? null;
+  const nextOpponent = nextGame ? opponent(nextGame, clubCode).team : null;
   const phaseGames = games.filter((game) => game.phaseCode === phaseCode);
+
+  // One league-wide fetch feeds both the league profile and the quick comparison.
+  const scope = advancedScopeForPhase(phaseCode);
+  const advancedQuery = useQuery({
+    queryKey: ["advanced-standings-team-overview", seasonCode, scope],
+    queryFn: () => getAdvancedStandings(seasonCode, { scope }),
+  });
 
   return (
     <div className="flex flex-col gap-6">
-      <OverviewKpiStrip standingsQuery={standingsQuery} clubCode={clubCode} />
-      <PhaseTiles standingsQuery={standingsQuery} clubCode={clubCode} phaseGames={phaseGames} />
+      <TeamSnapshot standingsQuery={standingsQuery} clubCode={clubCode} phaseGames={phaseGames} />
       <TeamLeaders seasonCode={seasonCode} rosterStatsQuery={rosterStatsQuery} />
-      <TeamTrendChart games={games} clubCode={clubCode} />
-      <div className="grid gap-6 sm:grid-cols-2">
-        <RecentFormList games={games} clubCode={clubCode} />
-        <CompareShortcuts
+      <TeamLeagueProfile advancedQuery={advancedQuery} clubCode={clubCode} team={team} />
+      <div className="grid gap-6 lg:grid-cols-2">
+        {/* The last panel here grows to the comparison's height, so the two columns end together. */}
+        <div className="flex flex-col gap-6 *:last:flex-1">
+          <RecentFormList games={games} clubCode={clubCode} />
+          <UpcomingGamesList games={games} clubCode={clubCode} />
+        </div>
+        <TeamQuickCompare
           seasonCode={seasonCode}
           clubCode={clubCode}
-          nextGame={nextGame}
+          team={team}
+          nextOpponent={nextOpponent}
           standingsQuery={standingsQuery}
+          advancedQuery={advancedQuery}
         />
       </div>
     </div>
@@ -904,6 +1001,7 @@ export default function TeamPage() {
             <OverviewSection
               seasonCode={seasonCode}
               clubCode={clubCode}
+              team={team}
               phaseCode={phaseCode}
               standingsQuery={standingsQuery}
               rosterStatsQuery={rosterStatsQuery}

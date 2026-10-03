@@ -8,7 +8,7 @@ function Track({ width, position, anchor, title }) {
     <div className="relative">
       <div className="h-1.5 w-full overflow-hidden rounded-full bg-base-300">
         <div
-          className={`h-full rounded-full bg-current${anchor === "end" ? " ml-auto" : ""}`}
+          className={`h-full rounded-full bg-current ${anchor === "end" ? "ml-auto" : ""}`}
           style={{ width: `${width}%` }}
         />
       </div>

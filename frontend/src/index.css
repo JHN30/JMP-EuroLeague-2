@@ -1060,12 +1060,14 @@ button {
 .kpi-strip-4 .kpi-chip,
 .leaders-row .kpi-chip,
 .season-leaders-grid .kpi-chip,
+.team-leaders-grid .kpi-chip,
 .season-hero-kpis .kpi-chip {
   padding: 1.5rem 1.35rem;
 }
 .kpi-strip-4 .kpi-chip-image,
 .leaders-row .kpi-chip-image,
 .season-leaders-grid .kpi-chip-image,
+.team-leaders-grid .kpi-chip-image,
 .season-hero-kpis .kpi-chip-image {
   height: 8.5rem;
   max-width: 8rem;
@@ -1074,12 +1076,14 @@ button {
 .kpi-strip-4 .kpi-chip .name,
 .leaders-row .kpi-chip .name,
 .season-leaders-grid .kpi-chip .name,
+.team-leaders-grid .kpi-chip .name,
 .season-hero-kpis .kpi-chip .name {
   font-size: 1rem;
 }
 .kpi-strip-4 .kpi-chip .value,
 .leaders-row .kpi-chip .value,
 .season-leaders-grid .kpi-chip .value,
+.team-leaders-grid .kpi-chip .value,
 .season-hero-kpis .kpi-chip .value {
   font-size: 1.7rem;
 }

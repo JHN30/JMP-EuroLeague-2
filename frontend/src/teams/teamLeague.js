@@ -13,6 +13,14 @@ export function ordinal(number) {
   return `${number}${{ 1: "st", 2: "nd", 3: "rd" }[number % 10] ?? "th"}`;
 }
 
+// A third of the league is "top", a third "bottom"; the colours for a rank's bar and its text.
+export function rankTier({ rank, of }) {
+  const third = Math.ceil(of / 3);
+  if (rank <= third) return { bar: "bg-success", text: "text-success" };
+  if (rank > of - third) return { bar: "bg-error", text: "text-error" };
+  return { bar: "bg-base-content/40", text: "muted" };
+}
+
 // Competition ranking (1, 2, 2, 4): clubs on the same value share a rank. Null when the club has no value.
 export function rankOf(rows, clubCode, field, higherIsBetter) {
   const own = rows.find((row) => row.clubCode === clubCode)?.[field];

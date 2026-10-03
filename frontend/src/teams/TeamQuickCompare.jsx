@@ -1,8 +1,10 @@
 import { useState } from "react";
+import { motion } from "motion/react";
 import { Link } from "react-router";
 import AsyncState from "../lib/AsyncState";
 import ComparisonRow from "../lib/ComparisonRow";
 import EmptyText from "../lib/EmptyText";
+import { listContainer, listItem } from "../lib/motion";
 import Panel from "../lib/Panel";
 import PanelHeader from "../lib/PanelHeader";
 import { TabPanel, TabStrip } from "../lib/TabStrip";
@@ -111,25 +113,29 @@ export default function TeamQuickCompare({ seasonCode, clubCode, team, nextOppon
       )}
       <TabPanel id="team-compare-panel" focusKey={active.key} scroll={false}>
         {own && other ? (
-          <>
-            <div className="mb-1 grid grid-cols-2 gap-4">
+          // Keyed by the chosen opponent, so each switch replays the entrance instead of swapping numbers in place.
+          <motion.div key={active.key} variants={listContainer} initial="hidden" animate="show">
+            <motion.div variants={listItem} className="mb-1 grid grid-cols-2 gap-4">
               <div className="flex justify-end">
                 <ClubLabel club={self} />
               </div>
               <ClubLabel club={active.club} />
-            </div>
+            </motion.div>
             {COMPARE_ROWS.map(({ field, format, ...row }) => (
               <ComparisonRow
                 key={row.label}
                 {...row}
+                animated
                 rawA={own[field]}
                 rawB={other[field]}
                 displayA={format(own[field])}
                 displayB={format(other[field])}
               />
             ))}
-            <p className="muted mt-3 text-sm">Ratings are per 100 possessions. The highlighted side has the edge.</p>
-          </>
+            <motion.p variants={listItem} className="muted mt-3 text-sm">
+              Ratings are per 100 possessions. The highlighted side has the edge.
+            </motion.p>
+          </motion.div>
         ) : (
           <EmptyText>Advanced numbers for this comparison aren&apos;t available yet in this phase.</EmptyText>
         )}

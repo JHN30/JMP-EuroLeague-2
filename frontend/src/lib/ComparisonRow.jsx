@@ -1,15 +1,20 @@
+import { motion } from "motion/react";
 import { comparisonBand, markerPosition, winnerSide } from "./comparisonMath";
 import HeaderTip from "./HeaderTip";
+import { barFill, listItem } from "./motion";
 
 // A bar with an optional tick at `position` (a percentage from the bar's anchored end). The tick carries a title and
-// the caller prints the same value as text, so the tick is never the only carrier of the information.
-function Track({ width, position, anchor, title }) {
+// the caller prints the same value as text, so the tick is never the only carrier of the information. `animated` grows
+// the bar from its anchored end.
+function Track({ width, position, anchor, title, animated }) {
+  const Fill = animated ? motion.div : "div";
   return (
     <div className="relative">
       <div className="h-1.5 w-full overflow-hidden rounded-full bg-base-300">
-        <div
+        <Fill
           className={`h-full rounded-full bg-current ${anchor === "end" ? "ml-auto" : ""}`}
-          style={{ width: `${width}%` }}
+          style={animated ? { width: `${width}%`, originX: anchor === "end" ? 1 : 0 } : { width: `${width}%` }}
+          {...(animated ? barFill : {})}
         />
       </div>
       {position === null ? null : (
@@ -25,7 +30,8 @@ function Track({ width, position, anchor, title }) {
 }
 
 // Optional: `tip` (a hover tip on the label), `markerA`/`markerB` (raw values drawn as ticks, for example a season
-// average) and `avgA`/`avgB` (their printed text, shown under the bar).
+// average) and `avgA`/`avgB` (their printed text, shown under the bar). `animated` makes the row take part in a
+// staggered entrance (it must sit inside a motion parent using the list variants) and grows its bars.
 export default function ComparisonRow({
   label,
   rawA,
@@ -38,14 +44,19 @@ export default function ComparisonRow({
   markerB = null,
   avgA = null,
   avgB = null,
+  animated = false,
 }) {
   const winner = winnerSide(rawA, rawB, direction);
   const { widthA, widthB } = comparisonBand(rawA, rawB);
   const aMissing = rawA === null || rawA === undefined;
   const bMissing = rawB === null || rawB === undefined;
+  const Root = animated ? motion.div : "div";
 
   return (
-    <div className="flex flex-1 flex-col justify-center border-b border-base-300 py-3 last:border-0">
+    <Root
+      className="flex flex-1 flex-col justify-center border-b border-base-300 py-3 last:border-0"
+      {...(animated ? { variants: listItem } : {})}
+    >
       <div className="mb-2 text-center">
         <span className="text-xs font-bold tracking-wide uppercase">
           {tip ? <HeaderTip tip={tip}>{label}</HeaderTip> : label}
@@ -62,6 +73,7 @@ export default function ComparisonRow({
             position={aMissing ? null : markerPosition(markerA, rawA, rawB)}
             anchor="start"
             title={avgA ?? undefined}
+            animated={animated}
           />
           {avgA ? <div className="muted mt-1 text-right text-xs tabular-nums">{avgA}</div> : null}
         </div>
@@ -72,10 +84,11 @@ export default function ComparisonRow({
             position={bMissing ? null : markerPosition(markerB, rawA, rawB)}
             anchor="end"
             title={avgB ?? undefined}
+            animated={animated}
           />
           {avgB ? <div className="muted mt-1 text-left text-xs tabular-nums">{avgB}</div> : null}
         </div>
       </div>
-    </div>
+    </Root>
   );
 }

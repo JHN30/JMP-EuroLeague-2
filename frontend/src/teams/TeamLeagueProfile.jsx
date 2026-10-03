@@ -5,18 +5,10 @@ import HeaderTip from "../lib/HeaderTip";
 import { barFill } from "../lib/motion";
 import Panel from "../lib/Panel";
 import PanelHeader from "../lib/PanelHeader";
-import { ordinal, PROFILE_GROUPS, rankOf } from "./teamLeague";
-
-// A third of the league is "top", a third "bottom".
-function tierFor({ rank, of }) {
-  const third = Math.ceil(of / 3);
-  if (rank <= third) return { bar: "bg-success", text: "text-success" };
-  if (rank > of - third) return { bar: "bg-error", text: "text-error" };
-  return { bar: "bg-base-content/40", text: "muted" };
-}
+import { ordinal, PROFILE_GROUPS, rankOf, rankTier } from "./teamLeague";
 
 function ProfileRow({ metric, own, standing }) {
-  const tier = tierFor(standing);
+  const tier = rankTier(standing);
   // Best in the league fills the bar; last place leaves a sliver so it still reads as a bar.
   const fill = Math.max(5, ((standing.of - standing.rank + 1) / standing.of) * 100);
 

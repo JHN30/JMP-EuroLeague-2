@@ -581,60 +581,93 @@ export type TeamStatsSummary = {
   opponent: MeasureSums;
 };
 
+const teamStatsColumns = {
+  phaseCode: teamSeasonStats.phaseCode,
+  gamesPlayed: teamSeasonStats.gamesPlayed,
+  own: {
+    points: teamSeasonStats.ownPoints,
+    fieldGoalsMade2: teamSeasonStats.ownFieldGoalsMade2,
+    fieldGoalsAttempted2: teamSeasonStats.ownFieldGoalsAttempted2,
+    fieldGoalsMade3: teamSeasonStats.ownFieldGoalsMade3,
+    fieldGoalsAttempted3: teamSeasonStats.ownFieldGoalsAttempted3,
+    freeThrowsMade: teamSeasonStats.ownFreeThrowsMade,
+    freeThrowsAttempted: teamSeasonStats.ownFreeThrowsAttempted,
+    fieldGoalsMadeTotal: teamSeasonStats.ownFieldGoalsMadeTotal,
+    fieldGoalsAttemptedTotal: teamSeasonStats.ownFieldGoalsAttemptedTotal,
+    totalRebounds: teamSeasonStats.ownTotalRebounds,
+    defensiveRebounds: teamSeasonStats.ownDefensiveRebounds,
+    offensiveRebounds: teamSeasonStats.ownOffensiveRebounds,
+    assistances: teamSeasonStats.ownAssistances,
+    steals: teamSeasonStats.ownSteals,
+    turnovers: teamSeasonStats.ownTurnovers,
+    blocksFavour: teamSeasonStats.ownBlocksFavour,
+    blocksAgainst: teamSeasonStats.ownBlocksAgainst,
+    foulsCommited: teamSeasonStats.ownFoulsCommited,
+    foulsReceived: teamSeasonStats.ownFoulsReceived,
+    valuation: teamSeasonStats.ownValuation,
+  },
+  opponent: {
+    points: teamSeasonStats.oppPoints,
+    fieldGoalsMade2: teamSeasonStats.oppFieldGoalsMade2,
+    fieldGoalsAttempted2: teamSeasonStats.oppFieldGoalsAttempted2,
+    fieldGoalsMade3: teamSeasonStats.oppFieldGoalsMade3,
+    fieldGoalsAttempted3: teamSeasonStats.oppFieldGoalsAttempted3,
+    freeThrowsMade: teamSeasonStats.oppFreeThrowsMade,
+    freeThrowsAttempted: teamSeasonStats.oppFreeThrowsAttempted,
+    fieldGoalsMadeTotal: teamSeasonStats.oppFieldGoalsMadeTotal,
+    fieldGoalsAttemptedTotal: teamSeasonStats.oppFieldGoalsAttemptedTotal,
+    totalRebounds: teamSeasonStats.oppTotalRebounds,
+    defensiveRebounds: teamSeasonStats.oppDefensiveRebounds,
+    offensiveRebounds: teamSeasonStats.oppOffensiveRebounds,
+    assistances: teamSeasonStats.oppAssistances,
+    steals: teamSeasonStats.oppSteals,
+    turnovers: teamSeasonStats.oppTurnovers,
+    blocksFavour: teamSeasonStats.oppBlocksFavour,
+    blocksAgainst: teamSeasonStats.oppBlocksAgainst,
+    foulsCommited: teamSeasonStats.oppFoulsCommited,
+    foulsReceived: teamSeasonStats.oppFoulsReceived,
+    valuation: teamSeasonStats.oppValuation,
+  },
+};
+
+// Every club's season totals for a phase, so one request can rank a club against the league. Clubs with no games in the
+// phase are left out.
+export type LeagueTeamStats = {
+  phaseCode: string;
+  teams: Array<{ clubCode: string; gamesPlayed: number; own: MeasureSums; opponent: MeasureSums }>;
+};
+
+export async function getLeagueTeamStats(seasonCode: string, phaseCode: string): Promise<LeagueTeamStats> {
+  const rows = await catalogRead(() =>
+    db.select({ clubCode: teamSeasonStats.clubCode, ...teamStatsColumns })
+      .from(teamSeasonStats)
+      .where(and(
+        eq(teamSeasonStats.competitionCode, COMPETITION_CODE),
+        eq(teamSeasonStats.seasonCode, seasonCode),
+        eq(teamSeasonStats.phaseCode, phaseCode),
+      )),
+  );
+
+  return {
+    phaseCode,
+    teams: rows
+      .filter((row) => row.gamesPlayed > 0)
+      .map((row) => ({
+        clubCode: row.clubCode,
+        gamesPlayed: row.gamesPlayed,
+        own: numericMeasures(row.own),
+        opponent: numericMeasures(row.opponent),
+      })),
+  };
+}
+
 export async function getTeamStatsSummary(
   seasonCode: string,
   phaseCode: string,
   clubCode: string,
 ): Promise<TeamStatsSummary> {
   const rows = await catalogRead(() =>
-    db.select({
-      phaseCode: teamSeasonStats.phaseCode,
-      gamesPlayed: teamSeasonStats.gamesPlayed,
-      own: {
-        points: teamSeasonStats.ownPoints,
-        fieldGoalsMade2: teamSeasonStats.ownFieldGoalsMade2,
-        fieldGoalsAttempted2: teamSeasonStats.ownFieldGoalsAttempted2,
-        fieldGoalsMade3: teamSeasonStats.ownFieldGoalsMade3,
-        fieldGoalsAttempted3: teamSeasonStats.ownFieldGoalsAttempted3,
-        freeThrowsMade: teamSeasonStats.ownFreeThrowsMade,
-        freeThrowsAttempted: teamSeasonStats.ownFreeThrowsAttempted,
-        fieldGoalsMadeTotal: teamSeasonStats.ownFieldGoalsMadeTotal,
-        fieldGoalsAttemptedTotal: teamSeasonStats.ownFieldGoalsAttemptedTotal,
-        totalRebounds: teamSeasonStats.ownTotalRebounds,
-        defensiveRebounds: teamSeasonStats.ownDefensiveRebounds,
-        offensiveRebounds: teamSeasonStats.ownOffensiveRebounds,
-        assistances: teamSeasonStats.ownAssistances,
-        steals: teamSeasonStats.ownSteals,
-        turnovers: teamSeasonStats.ownTurnovers,
-        blocksFavour: teamSeasonStats.ownBlocksFavour,
-        blocksAgainst: teamSeasonStats.ownBlocksAgainst,
-        foulsCommited: teamSeasonStats.ownFoulsCommited,
-        foulsReceived: teamSeasonStats.ownFoulsReceived,
-        valuation: teamSeasonStats.ownValuation,
-      },
-      opponent: {
-        points: teamSeasonStats.oppPoints,
-        fieldGoalsMade2: teamSeasonStats.oppFieldGoalsMade2,
-        fieldGoalsAttempted2: teamSeasonStats.oppFieldGoalsAttempted2,
-        fieldGoalsMade3: teamSeasonStats.oppFieldGoalsMade3,
-        fieldGoalsAttempted3: teamSeasonStats.oppFieldGoalsAttempted3,
-        freeThrowsMade: teamSeasonStats.oppFreeThrowsMade,
-        freeThrowsAttempted: teamSeasonStats.oppFreeThrowsAttempted,
-        fieldGoalsMadeTotal: teamSeasonStats.oppFieldGoalsMadeTotal,
-        fieldGoalsAttemptedTotal: teamSeasonStats.oppFieldGoalsAttemptedTotal,
-        totalRebounds: teamSeasonStats.oppTotalRebounds,
-        defensiveRebounds: teamSeasonStats.oppDefensiveRebounds,
-        offensiveRebounds: teamSeasonStats.oppOffensiveRebounds,
-        assistances: teamSeasonStats.oppAssistances,
-        steals: teamSeasonStats.oppSteals,
-        turnovers: teamSeasonStats.oppTurnovers,
-        blocksFavour: teamSeasonStats.oppBlocksFavour,
-        blocksAgainst: teamSeasonStats.oppBlocksAgainst,
-        foulsCommited: teamSeasonStats.oppFoulsCommited,
-        foulsReceived: teamSeasonStats.oppFoulsReceived,
-        valuation: teamSeasonStats.oppValuation,
-      },
-    })
+    db.select(teamStatsColumns)
       .from(teamSeasonStats)
       .where(and(
         eq(teamSeasonStats.competitionCode, COMPETITION_CODE),

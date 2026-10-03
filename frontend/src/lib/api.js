@@ -138,6 +138,13 @@ export async function getTeamStatsSummary(seasonCode, clubCode, phase) {
   return data;
 }
 
+export async function getLeagueTeamStats(seasonCode, phase) {
+  const { data } = await api.get(`/seasons/${seasonCode}/team-stats`, {
+    params: { phase },
+  });
+  return data;
+}
+
 export async function getTeamAdvanced(seasonCode, clubCode, { scope } = {}) {
   const { data } = await api.get(`/seasons/${seasonCode}/teams/${clubCode}/advanced`, {
     params: { scope },

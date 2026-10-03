@@ -28,6 +28,8 @@ every such change so it can be found later.
 - [teams-page-animations.md](teams-page-animations.md): staggered card entrance, crest pop and hover lift on the club grid
 - [team-overview-leaders-comparison-and-league-profile.md](team-overview-leaders-comparison-and-league-profile.md): snapshot panel, photo leaders, quick comparison and league ranking profile on a team's Overview
 
+- [team-statistics-tab-versus-opponents-and-league-ranks.md](team-statistics-tab-versus-opponents-and-league-ranks.md): Statistics tab as club-versus-opponents rows with league ranks, a league-wide team-stats endpoint, and the animated Overview comparison switch
+
 ## Data and platform
 
 - [read-renamed-app-neon-tables.md](read-renamed-app-neon-tables.md)

@@ -29,6 +29,7 @@ import { barWidthScale } from "../statistics/statBarScale";
 import TeamAdvancedSection from "./TeamAdvancedSection";
 import TeamLeagueProfile from "./TeamLeagueProfile";
 import TeamQuickCompare from "./TeamQuickCompare";
+import TeamStatisticsSection from "./TeamStatisticsSection";
 import { advancedScopeForPhase, ordinal } from "./teamLeague";
 import TrendChart from "../comparisons/TrendChart";
 
@@ -419,107 +420,11 @@ function pct(made, attempted) {
   return (made / attempted) * 100;
 }
 
-function sumIfPresent(...values) {
-  if (values.some((value) => value == null)) return null;
-  return values.reduce((total, value) => total + value, 0);
-}
-
-function divideIfPresent(numerator, denominator) {
-  if (numerator == null || denominator == null || denominator === 0) return null;
-  return numerator / denominator;
-}
-
 function shootingSplit(sums, madeKey, attemptedKey) {
   const made = sums[madeKey];
   const attempted = sums[attemptedKey];
   if (made == null || attempted == null) return formatCount(null);
   return `${formatCount(made)}-${formatCount(attempted)} (${formatPercentage(pct(made, attempted))})`;
-}
-
-function MetricTile({ label, value }) {
-  return (
-    <Panel className="p-3">
-      <span className="block text-lg font-semibold tabular-nums">{value}</span>
-      <span className="muted text-xs font-bold uppercase tracking-wide">{label}</span>
-    </Panel>
-  );
-}
-
-function MetricGroup({ title, rows }) {
-  return (
-    <div>
-      <h3 className="mb-2 font-semibold">{title}</h3>
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-        {rows.map(([label, value]) => (
-          <MetricTile key={label} label={label} value={value} />
-        ))}
-      </div>
-    </div>
-  );
-}
-
-function traditionalRows(sums, gp) {
-  const perGame = (key) => formatPerGame(divideIfPresent(sums[key], gp));
-  return [
-    ["Points", perGame("points")],
-    ["Rebounds", perGame("totalRebounds")],
-    ["Off. rebounds", perGame("offensiveRebounds")],
-    ["Def. rebounds", perGame("defensiveRebounds")],
-    ["Assists", perGame("assistances")],
-    ["Steals", perGame("steals")],
-    ["Blocks", perGame("blocksFavour")],
-    ["Turnovers", perGame("turnovers")],
-    ["Fouls committed", perGame("foulsCommited")],
-    ["PIR", perGame("valuation")],
-    ["2PT %", formatPercentage(pct(sums.fieldGoalsMade2, sums.fieldGoalsAttempted2))],
-    ["3PT %", formatPercentage(pct(sums.fieldGoalsMade3, sums.fieldGoalsAttempted3))],
-    ["FT %", formatPercentage(pct(sums.freeThrowsMade, sums.freeThrowsAttempted))],
-  ];
-}
-
-function StatisticsSection({ teamStatsSummaryQuery }) {
-  if (teamStatsSummaryQuery.isPending) return <AsyncState status="loading" label="Loading team statistics" />;
-  if (teamStatsSummaryQuery.isError) {
-    return (
-      <AsyncState
-        status="error"
-        message="Could not load team statistics."
-        onRetry={() => teamStatsSummaryQuery.refetch()}
-      />
-    );
-  }
-  const { gamesPlayed, own, opponent: opp } = teamStatsSummaryQuery.data;
-  if (!gamesPlayed) {
-    return <EmptyText>This club did not play any games in the selected phase.</EmptyText>;
-  }
-
-  const eFgMade = own.fieldGoalsMade3 == null
-    ? null
-    : sumIfPresent(own.fieldGoalsMadeTotal, 0.5 * own.fieldGoalsMade3);
-  const eFg = pct(eFgMade, own.fieldGoalsAttemptedTotal);
-  const tsAttempts = own.freeThrowsAttempted == null
-    ? null
-    : sumIfPresent(own.fieldGoalsAttemptedTotal, 0.44 * own.freeThrowsAttempted);
-  const trueShooting = pct(own.points, tsAttempts == null ? null : 2 * tsAttempts);
-  const advancedRows = [
-    ["eFG %", formatPercentage(eFg)],
-    ["True shooting %", formatPercentage(trueShooting)],
-    ["Assist/turnover", formatPerGame(divideIfPresent(own.assistances, own.turnovers))],
-    ["Off. rebound %", formatPercentage(pct(own.offensiveRebounds, sumIfPresent(own.offensiveRebounds, opp.defensiveRebounds)))],
-    ["Def. rebound %", formatPercentage(pct(own.defensiveRebounds, sumIfPresent(own.defensiveRebounds, opp.offensiveRebounds)))],
-    ["Free throw rate", formatPercentage(pct(own.freeThrowsAttempted, own.fieldGoalsAttemptedTotal))],
-  ];
-
-  return (
-    <div className="flex flex-col gap-6">
-      <p className="muted text-sm">
-        Scoped to the phase selected above - switching it changes every number in this tab.
-      </p>
-      <MetricGroup title="Traditional" rows={traditionalRows(own, gamesPlayed)} />
-      <MetricGroup title="Advanced" rows={advancedRows} />
-      <MetricGroup title="Opponent" rows={traditionalRows(opp, gamesPlayed)} />
-    </div>
-  );
 }
 
 function ShootingSection({ teamStatsSummaryQuery, seasonCode, phaseCode, team, games }) {
@@ -1009,7 +914,13 @@ export default function TeamPage() {
             />
           )
         ) : section === "statistics" ? (
-          <StatisticsSection teamStatsSummaryQuery={teamStatsSummaryQuery} />
+          <TeamStatisticsSection
+            seasonCode={seasonCode}
+            phaseCode={phaseCode}
+            clubCode={clubCode}
+            team={team}
+            teamStatsSummaryQuery={teamStatsSummaryQuery}
+          />
         ) : section === "shooting" ? (
           <ShootingSection
             teamStatsSummaryQuery={teamStatsSummaryQuery}

@@ -32,6 +32,8 @@ every such change so it can be found later.
 
 - [team-shooting-tab-sides-zones-and-style.md](team-shooting-tab-sides-zones-and-style.md): Shooting tab with a team and opponents shot map, a ranked zone table and a points-by-situation panel
 
+- [team-advanced-tab-ratings-splits-flow-and-lineups.md](team-advanced-tab-ratings-splits-flow-and-lineups.md): Advanced tab with a two-line ratings chart, split cards, game-flow bars and lineup cards with headshots and a 100-else-50 possessions minimum
+
 ## Data and platform
 
 - [read-renamed-app-neon-tables.md](read-renamed-app-neon-tables.md)

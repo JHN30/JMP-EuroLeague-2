@@ -4,7 +4,6 @@ import { motion } from "motion/react";
 import { Link, useParams } from "react-router";
 import {
   getAdvancedStandings,
-  getLeaderStats,
   getPhases,
   getSeasonStandings,
   getTeam,
@@ -30,6 +29,7 @@ import TeamLeagueProfile from "./TeamLeagueProfile";
 import TeamQuickCompare from "./TeamQuickCompare";
 import TeamShootingSection from "./TeamShootingSection";
 import TeamStatisticsSection from "./TeamStatisticsSection";
+import { fetchTeamRosterStats } from "./teamRosterStats";
 import { advancedScopeForPhase, ordinal } from "./teamLeague";
 import TrendChart from "../comparisons/TrendChart";
 
@@ -37,8 +37,6 @@ const MotionLink = motion.create(Link);
 
 const ROSTER_LIMIT = 100;
 const GAMES_LIMIT = 100;
-const ROSTER_STATS_PAGE_LIMIT = 100;
-const ROSTER_STATS_MAX_PAGES = 5;
 
 function teamLabel(team) {
   return team?.abbreviatedName ?? team?.name ?? "TBD";
@@ -47,25 +45,6 @@ function teamLabel(team) {
 function opponent(game, clubCode) {
   const home = game.localTeam?.clubCode === clubCode;
   return { team: home ? game.roadTeam : game.localTeam, home };
-}
-
-async function fetchTeamRosterStats(seasonCode, phaseCode, clubCode) {
-  const byPersonKey = new Map();
-  let offset = 0;
-  for (let page = 0; page < ROSTER_STATS_MAX_PAGES; page += 1) {
-    const data = await getLeaderStats(seasonCode, {
-      phase: phaseCode,
-      mode: "perGame",
-      limit: ROSTER_STATS_PAGE_LIMIT,
-      offset,
-    });
-    for (const player of data.players) {
-      if (player.clubCode === clubCode) byPersonKey.set(player.personKey, player);
-    }
-    if (!data.pagination.hasMore) break;
-    offset += ROSTER_STATS_PAGE_LIMIT;
-  }
-  return byPersonKey;
 }
 
 function statNumber(raw) {
@@ -843,7 +822,12 @@ export default function TeamPage() {
             games={games}
           />
         ) : section === "advanced" ? (
-          <TeamAdvancedSection key={`${seasonCode}-${clubCode}`} seasonCode={seasonCode} clubCode={clubCode} />
+          <TeamAdvancedSection
+            key={`${seasonCode}-${clubCode}`}
+            seasonCode={seasonCode}
+            clubCode={clubCode}
+            onOpenShooting={() => setSection("shooting")}
+          />
         ) : section === "trends" ? (
           <TrendsSection games={games} phaseCode={phaseCode} clubCode={clubCode} />
         ) : section === "roster" ? (

@@ -45,9 +45,15 @@ the same rule the feed follows) and `qualified`. The 2023 season was imported as
   rows are level with a left-column row; the leaderboard shows 222 by default and 335 on "All players"; Jones'
   Statistics, Overview and Season by season tabs show his per-game numbers with the notice.
 
+## A bug found in review (mine, not the database's)
+
+The API first showed the advanced, scoring and misc groups empty for every calculated player (421 rows), and the
+database was wrongly blamed: its rows were complete in all four tables. `getSeasonStats` left-joins those three
+groups, and Drizzle drops a whole left-joined group when the first selected column is null; each group started with
+`player_ranking`, which is null on calculated rows. The groups now start with `entry_ordinal` (part of the primary
+key). Checked afterwards on all 3,476 rows of every season, phase and mode: none is missing a group, and Jones'
+Statistics tab has no dashes.
+
 ## Known gaps
 
-- For the 113 calculated players the database filled only the traditional per-game row: the advanced, scoring and
-  misc per-game rows are missing, so their TS%, eFG%, rebound %, ratios, shot and point mix, wins and double-doubles
-  show a dash (the accumulated rows have them). Reported to the database owner.
 - The per-game table also now has combined phases `PS` and `all` the app does not use for these tabs.

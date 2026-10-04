@@ -137,9 +137,11 @@ const traditionalFields = {
   pir: seasonStatsTraditional.pir,
 };
 
+// In a left-joined group the first field must never be null: Drizzle drops the whole group when it is, and
+// playerRanking is null on the rows the pipeline calculated. entryOrdinal is part of the primary key, so it never is.
 const advancedFields = {
-  playerRanking: seasonStatsAdvanced.playerRanking,
   entryOrdinal: seasonStatsAdvanced.entryOrdinal,
+  playerRanking: seasonStatsAdvanced.playerRanking,
   gamesPlayed: seasonStatsAdvanced.gamesPlayed,
   minutesPlayed: seasonStatsAdvanced.minutesPlayed,
   effectiveFieldGoalPercentage: seasonStatsAdvanced.effectiveFieldGoalPercentage,
@@ -157,8 +159,8 @@ const advancedFields = {
 };
 
 const scoringFields = {
-  playerRanking: seasonStatsScoring.playerRanking,
   entryOrdinal: seasonStatsScoring.entryOrdinal,
+  playerRanking: seasonStatsScoring.playerRanking,
   gamesPlayed: seasonStatsScoring.gamesPlayed,
   gamesStarted: seasonStatsScoring.gamesStarted,
   twoPointAttemptsShare: seasonStatsScoring.twoPointAttemptsShare,
@@ -175,8 +177,8 @@ const scoringFields = {
 };
 
 const miscFields = {
-  playerRanking: seasonStatsMisc.playerRanking,
   entryOrdinal: seasonStatsMisc.entryOrdinal,
+  playerRanking: seasonStatsMisc.playerRanking,
   gamesPlayed: seasonStatsMisc.gamesPlayed,
   gamesStarted: seasonStatsMisc.gamesStarted,
   wins: seasonStatsMisc.wins,

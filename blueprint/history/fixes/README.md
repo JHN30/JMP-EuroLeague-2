@@ -52,6 +52,8 @@ every such change so it can be found later.
 
 - [qualified-players-calculated-stats-and-2023.md](qualified-players-calculated-stats-and-2023.md): the database's calculated per-game rows and qualified flag used by leaderboards and ranks, a minimum-games default, a level Statistics tab, and the 2023 season
 
+- [player-advanced-tab-ranked-ratings-on-off-and-rapm.md](player-advanced-tab-ranked-ratings-on-off-and-rapm.md): Advanced tab with ranked ratings, a compact trend, on/off bars and a RAPM bar, and the player's advanced ranks in the API
+
 ## Data and platform
 
 - [read-renamed-app-neon-tables.md](read-renamed-app-neon-tables.md)

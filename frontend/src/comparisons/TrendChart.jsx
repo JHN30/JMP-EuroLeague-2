@@ -23,7 +23,8 @@ function useActiveTheme() {
   return theme;
 }
 
-export default function TrendChart({ title, labels, series }) {
+// `collapseTable` folds the round-by-round table (one row per round) behind a toggle, for a long season.
+export default function TrendChart({ title, labels, series, collapseTable = false }) {
   const canvasRef = useRef(null);
   const chartRef = useRef(null);
   const theme = useActiveTheme();
@@ -85,28 +86,56 @@ export default function TrendChart({ title, labels, series }) {
         />
         </div>
       </div>
-      <div className="mt-4 overflow-x-auto overscroll-x-contain">
-        <table className="table">
-          <thead>
-            <tr>
-              <th>Round</th>
-              {series.map((entry, seriesIndex) => (
-                <th key={seriesIndex}>{entry.label}</th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {labels.map((label, index) => (
-              <tr key={label}>
-                <td>{label}</td>
+      {collapseTable ? (
+        <details className="mt-4">
+          <summary className="cursor-pointer text-sm font-semibold">Show the round-by-round numbers</summary>
+        <div className="mt-4 overflow-x-auto overscroll-x-contain">
+          <table className="table">
+            <thead>
+              <tr>
+                <th>Round</th>
                 {series.map((entry, seriesIndex) => (
-                  <td key={seriesIndex}>{entry.points[index] ?? "-"}</td>
+                  <th key={seriesIndex}>{entry.label}</th>
                 ))}
               </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+            </thead>
+            <tbody>
+              {labels.map((label, index) => (
+                <tr key={label}>
+                  <td>{label}</td>
+                  {series.map((entry, seriesIndex) => (
+                    <td key={seriesIndex}>{entry.points[index] ?? "-"}</td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+          </details>
+      ) : (
+        <div className="mt-4 overflow-x-auto overscroll-x-contain">
+          <table className="table">
+            <thead>
+              <tr>
+                <th>Round</th>
+                {series.map((entry, seriesIndex) => (
+                  <th key={seriesIndex}>{entry.label}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {labels.map((label, index) => (
+                <tr key={label}>
+                  <td>{label}</td>
+                  {series.map((entry, seriesIndex) => (
+                    <td key={seriesIndex}>{entry.points[index] ?? "-"}</td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        )}
     </Panel>
   );
 }

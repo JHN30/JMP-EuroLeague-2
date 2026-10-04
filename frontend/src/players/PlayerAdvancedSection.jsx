@@ -272,7 +272,7 @@ export default function PlayerAdvancedSection({ seasonCode, personKey }) {
         className="w-fit"
         tabs={scopes.map((code) => ({ key: code, label: SCOPE_LABELS[code] ?? code }))}
       />
-      <TabPanel id="player-advanced-panel" focusKey={activeScope}>
+      <TabPanel id="player-advanced-panel" focusKey={activeScope} scroll={false}>
         <div className="flex flex-col gap-8">
           <SeasonTiles rounds={rounds} />
           <RoundTrend key={activeScope} rounds={rounds} />

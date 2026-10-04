@@ -19,6 +19,12 @@ export const listContainer = {
   show: { transition: { staggerChildren: 0.05, delayChildren: 0.02 } },
 };
 
+// A page of dozens of cards: a tighter stagger so the last one still lands inside a second.
+export const denseListContainer = {
+  hidden: {},
+  show: { transition: { staggerChildren: 0.02, delayChildren: 0.02 } },
+};
+
 export const listItem = {
   hidden: { opacity: 0, y: 10 },
   show: { opacity: 1, y: 0, transition: { duration: 0.3, ease: EASE_OUT } },

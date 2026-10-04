@@ -636,7 +636,7 @@ export default function PlayerPage() {
             { key: "games", label: "Games" },
           ]}
         />
-        <TabPanel id="player-detail-panel" focusKey={section}>
+        <TabPanel id="player-detail-panel" focusKey={section} scroll={false}>
           {section === "overview" ? (
             <OverviewSection leaderboardQuery={leaderboardQuery} personKey={personKey} />
           ) : section === "seasons" ? (
@@ -662,7 +662,7 @@ export default function PlayerPage() {
                   tabs={STATS_MODES.map((option) => ({ key: option.value, label: option.label }))}
                 />
               </div>
-              <TabPanel id="player-stats-panel" focusKey={`${phaseCode}-${mode}`}>
+              <TabPanel id="player-stats-panel" focusKey={`${phaseCode}-${mode}`} scroll={false}>
                 <SeasonStatsSection statsQuery={statsQuery} />
               </TabPanel>
             </>

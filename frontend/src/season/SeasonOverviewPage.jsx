@@ -9,6 +9,7 @@ import { cardHover, listContainer, listItem, sectionContainer, sectionItem } fro
 import Panel from "../lib/Panel";
 import PanelHeader from "../lib/PanelHeader";
 import PageHeader from "../lib/PageHeader";
+import RevealImage from "../lib/RevealImage";
 import { useDocumentTitle } from "../lib/useDocumentTitle";
 import { useCurrentPhaseCode } from "../lib/useCurrentPhaseCode";
 import { thinAxisLabels } from "../lib/chartHelpers";
@@ -432,14 +433,7 @@ function LeaderCard({ seasonCode, category, phaseCode }) {
         <span className="value">{leader.traditional[category.key] ?? "-"}</span>
       </div>
       {leader.playerImageUrl ? (
-        <img
-          src={leader.playerImageUrl}
-          alt=""
-          className="kpi-chip-image"
-          onError={(event) => {
-            event.currentTarget.style.display = "none";
-          }}
-        />
+        <RevealImage src={leader.playerImageUrl} effect="wipe" className="kpi-chip-image" />
       ) : null}
     </MotionLink>
   );

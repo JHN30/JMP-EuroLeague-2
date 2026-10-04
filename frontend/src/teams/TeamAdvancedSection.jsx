@@ -498,7 +498,7 @@ export default function TeamAdvancedSection({ seasonCode, clubCode, onOpenShooti
         className="w-fit"
         tabs={scopes.map((code) => ({ key: code, label: SCOPE_LABELS[code] ?? code }))}
       />
-      <TabPanel id="team-advanced-panel" focusKey={activeScope}>
+      <TabPanel id="team-advanced-panel" focusKey={activeScope} scroll={false}>
         <motion.div key={activeScope} className="flex flex-col gap-8" variants={sectionContainer} initial="hidden" animate="show">
           <motion.div variants={sectionItem}>
             <RatingsCard trend={trend} />

@@ -20,6 +20,7 @@ import { barFill, cardHover, listContainer, listItem } from "../lib/motion";
 import Panel from "../lib/Panel";
 import PageHeader from "../lib/PageHeader";
 import PanelHeader from "../lib/PanelHeader";
+import RevealImage from "../lib/RevealImage";
 import { TabPanel, TabStrip } from "../lib/TabStrip";
 import { useDocumentTitle } from "../lib/useDocumentTitle";
 import { usePhaseParam } from "../lib/usePhaseParam";
@@ -353,14 +354,7 @@ function TeamLeaders({ seasonCode, rosterStatsQuery }) {
               <span className="value">{formatPerGame(leader.value)}</span>
             </div>
             {leader.player.playerImageUrl ? (
-              <img
-                src={leader.player.playerImageUrl}
-                alt=""
-                className="kpi-chip-image"
-                onError={(event) => {
-                  event.currentTarget.style.display = "none";
-                }}
-              />
+              <RevealImage src={leader.player.playerImageUrl} effect="wipe" className="kpi-chip-image" />
             ) : null}
           </MotionLink>
         );
@@ -495,7 +489,7 @@ export default function TeamPage() {
       <PageHeader
         kicker="CLUB"
         title={team.name ?? team.abbreviatedName ?? team.clubCode}
-        media={team.crestUrl ? <img src={team.crestUrl} alt="" className="h-16 w-16 object-contain" /> : null}
+        media={team.crestUrl ? <RevealImage src={team.crestUrl} className="h-16 w-16 object-contain" /> : null}
         description={
           <p className="muted">
             {team.abbreviatedName ?? team.clubCode} · {team.countryCode ?? "-"}
@@ -525,7 +519,7 @@ export default function TeamPage() {
         tabs={SECTIONS}
       />
 
-      <TabPanel id="team-panel" focusKey={`${phaseCode}-${section}`}>
+      <TabPanel id="team-panel" focusKey={`${phaseCode}-${section}`} scroll={false}>
         {section === "overview" ? (
           gamesQuery.isPending ? (
             <AsyncState status="loading" label="Loading this team's games" />

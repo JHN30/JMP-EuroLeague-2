@@ -6,6 +6,8 @@ import EmptyText from "../lib/EmptyText";
 import { formatDecimal, formatPerGame } from "../lib/format";
 import { EASE_OUT, cardHover, listContainer, listItem } from "../lib/motion";
 import Panel from "../lib/Panel";
+import PlayerPortrait from "../lib/PlayerPortrait";
+import { nameParts } from "../lib/playerName";
 import { formatStatValue } from "../lib/statsFields";
 import { TabPanel, TabStrip } from "../lib/TabStrip";
 import StatBarCell from "../statistics/StatBarCell";
@@ -26,12 +28,6 @@ function statNumber(raw) {
   if (raw === null || raw === undefined) return null;
   const num = Number(raw);
   return Number.isNaN(num) ? null : num;
-}
-
-// "LAUVERGNE, JOFFREY" -> { last: "LAUVERGNE", first: "JOFFREY" }
-function nameParts(fullName) {
-  const [last = "", first = ""] = (fullName ?? "TBD").split(",").map((part) => part.trim());
-  return { last, first };
 }
 
 function jerseyNumber(entry) {
@@ -89,37 +85,6 @@ function RosterFacts({ registrations, statsByPersonKey }) {
   );
 }
 
-// Stands in for a portrait the feed does not have (a player who has not played, and every coach).
-function Silhouette() {
-  return (
-    <svg viewBox="0 0 100 130" aria-hidden="true" className="absolute inset-x-0 bottom-0 h-full w-full text-base-content opacity-20">
-      <circle cx="50" cy="44" r="21" fill="currentColor" />
-      <path d="M8 130 C8 94 28 80 50 80 C72 80 92 94 92 130 Z" fill="currentColor" />
-    </svg>
-  );
-}
-
-// The portrait when there is one and it loads, otherwise only the silhouette, never the two together.
-function Portrait({ imageUrl }) {
-  const [failedUrl, setFailedUrl] = useState(null);
-  const showPhoto = Boolean(imageUrl) && failedUrl !== imageUrl;
-
-  return (
-    <div className="relative w-24 flex-none overflow-hidden bg-neutral sm:w-28">
-      {showPhoto ? (
-        <img
-          src={imageUrl}
-          alt=""
-          className="absolute inset-0 h-full w-full object-cover object-top transition-transform duration-300 group-hover:scale-105"
-          onError={() => setFailedUrl(imageUrl)}
-        />
-      ) : (
-        <Silhouette />
-      )}
-    </div>
-  );
-}
-
 function RosterCard({ entry, stats, seasonCode }) {
   const { last, first } = nameParts(entry.player?.name);
   const traditional = stats?.traditional;
@@ -133,7 +98,7 @@ function RosterCard({ entry, stats, seasonCode }) {
 
   const body = (
     <>
-      <Portrait imageUrl={stats?.playerImageUrl} />
+      <PlayerPortrait imageUrl={stats?.playerImageUrl} />
       <div className="flex min-w-0 flex-1 flex-col justify-center gap-1.5 px-4 py-3">
         <div className="flex items-start justify-between gap-2">
           <div className="min-w-0">
@@ -202,7 +167,7 @@ function CoachCard({ coach }) {
       className="flex min-h-34 overflow-hidden rounded-box border border-base-300 bg-base-100"
       variants={listItem}
     >
-      <Portrait imageUrl={null} />
+      <PlayerPortrait imageUrl={null} />
       <div className="flex min-w-0 flex-1 flex-col justify-center gap-1.5 px-4 py-3">
         <p className="muted truncate text-[0.7rem] font-bold uppercase tracking-[0.18em]">{first}</p>
         <p className="truncate text-lg font-extrabold uppercase leading-tight">{last}</p>

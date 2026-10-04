@@ -1,7 +1,7 @@
 import { and, asc, eq, exists, ilike, inArray, isNull, or, sql } from "drizzle-orm";
 import { db } from "./client";
 import { catalogRead } from "./season-catalog";
-import { clubs, people, registrations } from "./season-schema";
+import { clubs, people, registrations, seasonStatsTraditional } from "./season-schema";
 
 const COMPETITION_CODE = "E";
 const PLAYER_ROLE_CODE = "J";
@@ -23,6 +23,17 @@ export type Player = {
   jerseyName: string | null;
   countryCode: string | null;
   heightCm: number | null;
+};
+
+// A directory entry: the player plus what the card shows beside the name. The photo exists only for a player who has
+// played (it comes from the season statistics), and the club is the one on his current registration.
+export type PlayerListEntry = Player & {
+  imageUrl: string | null;
+  clubCode: string | null;
+  clubName: string | null;
+  crestUrl: string | null;
+  dorsal: string | null;
+  positionName: string | null;
 };
 
 export type Registration = {
@@ -111,11 +122,11 @@ export async function getPlayers(
   limit: number,
   offset: number,
   search?: string,
-): Promise<CountedPage<Player>> {
+): Promise<CountedPage<PlayerListEntry>> {
   const scope = search
     ? and(playerScope(seasonCode), or(ilike(people.name, `%${search}%`), ilike(people.jerseyName, `%${search}%`))!)
     : playerScope(seasonCode);
-  const [rows, countRows] = await Promise.all([
+  const [pageRows, countRows] = await Promise.all([
     catalogRead(() =>
       db.select(playerFields)
         .from(people)
@@ -128,7 +139,85 @@ export async function getPlayers(
       db.select({ count: sql<number>`count(*)::int` }).from(people).where(scope),
     ),
   ]);
-  return { items: rows.slice(0, limit), hasMore: rows.length > limit, total: countRows[0]?.count ?? 0 };
+  const players = pageRows.slice(0, limit);
+  const details = await getPlayerListDetails(seasonCode, players.map((player) => player.personKey));
+  return {
+    items: players.map((player) => ({
+      ...player,
+      imageUrl: details.images.get(player.personKey) ?? null,
+      clubCode: details.registrations.get(player.personKey)?.clubCode ?? null,
+      clubName: details.registrations.get(player.personKey)?.clubName ?? null,
+      crestUrl: details.registrations.get(player.personKey)?.crestUrl ?? null,
+      dorsal: details.registrations.get(player.personKey)?.dorsal ?? null,
+      positionName: details.registrations.get(player.personKey)?.positionName ?? null,
+    })),
+    hasMore: pageRows.length > limit,
+    total: countRows[0]?.count ?? 0,
+  };
+}
+
+// Two small lookups for one page of players: each one's current registration (the active one, else the first by sort
+// order) with its club, and a photo from the season statistics (the same picture in every phase and mode).
+async function getPlayerListDetails(seasonCode: string, personKeys: string[]) {
+  const registrationsByPerson = new Map<
+    string,
+    { clubCode: string | null; clubName: string | null; crestUrl: string | null; dorsal: string | null; positionName: string | null }
+  >();
+  const images = new Map<string, string>();
+  if (personKeys.length === 0) return { registrations: registrationsByPerson, images };
+
+  const [registrationRows, imageRows] = await Promise.all([
+    catalogRead(() =>
+      db.select({
+        personKey: registrations.personKey,
+        active: registrations.active,
+        clubCode: registrations.clubCode,
+        clubName: clubs.name,
+        crestUrl: clubs.crestUrl,
+        dorsal: registrations.dorsal,
+        positionName: registrations.positionName,
+      })
+        .from(registrations)
+        .leftJoin(clubs, and(
+          eq(clubs.competitionCode, registrations.competitionCode),
+          eq(clubs.seasonCode, registrations.seasonCode),
+          eq(clubs.clubCode, registrations.clubCode),
+        ))
+        .where(and(
+          eq(registrations.competitionCode, COMPETITION_CODE),
+          eq(registrations.seasonCode, seasonCode),
+          eq(registrations.roleCode, PLAYER_ROLE_CODE),
+          inArray(registrations.personKey, personKeys),
+        ))
+        .orderBy(asc(registrations.sortOrder), asc(registrations.registrationKey)),
+    ),
+    catalogRead(() =>
+      db.selectDistinct({
+        personKey: seasonStatsTraditional.personKey,
+        imageUrl: seasonStatsTraditional.playerImageUrl,
+      })
+        .from(seasonStatsTraditional)
+        .where(and(
+          eq(seasonStatsTraditional.competitionCode, COMPETITION_CODE),
+          eq(seasonStatsTraditional.seasonCode, seasonCode),
+          inArray(seasonStatsTraditional.personKey, personKeys),
+          sql`${seasonStatsTraditional.playerImageUrl} is not null`,
+        )),
+    ),
+  ]);
+
+  // Rows come in sort order, so the first one seen is the fallback and an active one replaces it.
+  const activeSeen = new Set<string>();
+  for (const { personKey, active, ...rest } of registrationRows) {
+    if (!registrationsByPerson.has(personKey) || (active === true && !activeSeen.has(personKey))) {
+      registrationsByPerson.set(personKey, rest);
+    }
+    if (active === true) activeSeen.add(personKey);
+  }
+  for (const { personKey, imageUrl } of imageRows) {
+    if (imageUrl && !images.has(personKey)) images.set(personKey, imageUrl);
+  }
+  return { registrations: registrationsByPerson, images };
 }
 
 export async function getPlayer(seasonCode: string, personKey: string): Promise<Player | null> {

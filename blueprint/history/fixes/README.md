@@ -40,6 +40,10 @@ every such change so it can be found later.
 
 - [team-games-tab-margin-strip-and-two-columns.md](team-games-tab-margin-strip-and-two-columns.md): Games tab with a win/loss margin strip, upcoming and results columns, and opponent crests
 
+- [players-page-photo-cards.md](players-page-photo-cards.md): Players directory rebuilt as photo cards with club, number and position, and a staggered entrance
+
+- [image-reveal-and-tab-scroll-jump.md](image-reveal-and-tab-scroll-jump.md): pictures reveal as they load (shimmer, wipe, pop), and tab changes no longer scroll the team and player pages
+
 ## Data and platform
 
 - [read-renamed-app-neon-tables.md](read-renamed-app-neon-tables.md)

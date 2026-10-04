@@ -4,7 +4,8 @@ import { Link, useParams } from "react-router";
 import { getSeasonTeams } from "../lib/api";
 import AsyncState from "../lib/AsyncState";
 import EmptyText from "../lib/EmptyText";
-import { cardHover, centerPop, listContainer, listItem } from "../lib/motion";
+import { cardHover, listContainer, listItem } from "../lib/motion";
+import RevealImage from "../lib/RevealImage";
 import PageHeader from "../lib/PageHeader";
 import { useDocumentTitle } from "../lib/useDocumentTitle";
 
@@ -48,12 +49,7 @@ export default function TeamsPage() {
               >
                 <div className="card-body flex-row items-center gap-3 p-4">
                   {team.crestUrl ? (
-                    <motion.img
-                      src={team.crestUrl}
-                      alt=""
-                      className="h-10 w-10 object-contain"
-                      variants={centerPop}
-                    />
+                    <RevealImage src={team.crestUrl} className="h-10 w-10 object-contain" />
                   ) : null}
                   <div>
                     <p className="font-semibold">{team.name ?? team.abbreviatedName ?? team.clubCode}</p>

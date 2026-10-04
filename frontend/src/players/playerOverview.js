@@ -30,15 +30,19 @@ export const PROFILE_AXES = [
 // Competition ranking (1, 2, 2, 4) of one player on one stat, highest first (lowest first when `lowerIsBetter`).
 // With `qualifiedOnly` the pool is the players who meet the season and phase minimum of games (the database says who
 // does), so a player with two games does not top a per-game table. `rank` is null for a player without a value, or
-// one outside the pool; `unqualified` says it was the minimum that kept them out.
-export function rankPlayer(players, personKey, { group, field, lowerIsBetter = false }, { qualifiedOnly = false } = {}) {
+// one outside the pool; `unqualified` says it was the minimum that kept them out. With `rankUnqualified` such a player
+// is instead placed among the qualified players (where they would rank), still flagged `unqualified`.
+export function rankPlayer(players, personKey, { group, field, lowerIsBetter = false }, { qualifiedOnly = false, rankUnqualified = false } = {}) {
   const pool = qualifiedOnly ? players.filter((player) => player.qualified !== false) : players;
   const own = players.find((player) => player.personKey === personKey);
   const value = statNumber(own?.[group]?.[field]);
   const valued = pool.map((player) => statNumber(player[group]?.[field])).filter((number) => number !== null);
   if (value === null) return { value: null, rank: null, of: valued.length, percentile: null };
-  if (qualifiedOnly && own.qualified === false) return { value, rank: null, of: valued.length, percentile: null, unqualified: true };
+  const unqualified = qualifiedOnly && own.qualified === false;
+  if (unqualified && !rankUnqualified) return { value, rank: null, of: valued.length, percentile: null, unqualified: true };
+  // An unqualified player is not in the pool, so they are counted in on top of it.
+  const total = valued.length + (unqualified ? 1 : 0);
   const rank = valued.filter((number) => (lowerIsBetter ? number < value : number > value)).length + 1;
-  const percentile = valued.length > 1 ? Math.round(((valued.length - rank) / (valued.length - 1)) * 100) : 100;
-  return { value, rank, of: valued.length, percentile };
+  const percentile = total > 1 ? Math.round(((total - rank) / (total - 1)) * 100) : 100;
+  return { value, rank, of: total, percentile, ...(unqualified ? { unqualified: true } : {}) };
 }

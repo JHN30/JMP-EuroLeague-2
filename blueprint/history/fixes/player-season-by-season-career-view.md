@@ -45,9 +45,12 @@ Everything is built for any number of seasons; with two it already works, with m
   steals, blocks, PIR, 2P/3P/FT percentages, TS% from points over shots used, and the points mix). Starts and
   age are not in a game log, so they show a dash. Such rows carry a "from games" badge.
 
-- **Profile by season, seasons without a rank** (found in review): a season outside the league's minimum games has no
-  percentiles, so it had no outline and the radar silently dropped it (Carlik Jones' 15-game 2025-26). A line under
-  the chart now names each season left out and why, for example "2025-26 (15 games, the league ranks from 20)".
+- **Profile by season draws every season** (found in review): a season under the league's minimum games has no rank, and
+  the radar first dropped it silently (Carlik Jones' 15-game 2025-26). On this tab only, such a season is now drawn
+  anyway, dashed, with its percentiles measured as where the player would rank among that season's qualified players
+  (`rankPlayer` with `rankUnqualified`), and a note under the chart gives each dashed season's games and reason: under
+  the league's minimum, or a very small sample (fewer than 10 games). The Overview and every other tab still rank
+  qualified players only.
 
 ## Verify
 

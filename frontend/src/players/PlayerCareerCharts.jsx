@@ -9,7 +9,7 @@ import Panel from "../lib/Panel";
 import PanelHeader from "../lib/PanelHeader";
 import { themeColor, useActiveTheme } from "../lib/useActiveTheme";
 import { ordinal } from "../teams/teamLeague";
-import { changeFrom } from "./careerData";
+import { changeFrom, SMALL_SAMPLE_GAMES } from "./careerData";
 import { fetchLeagueLeaderboard, leaderboardQueryKey } from "./leagueLeaderboard";
 import { PROFILE_AXES, rankPlayer } from "./playerOverview";
 
@@ -223,14 +223,20 @@ export function ProfileComparison({ cards, personKey }) {
     if (!show || queries.some((query) => !query.data)) return [];
     return cards
       .map((card, index) => {
-        const percentiles = PROFILE_AXES.map((axis) => rankPlayer(queries[index].data, personKey, axis, { qualifiedOnly: true }).percentile);
+        const percentiles = PROFILE_AXES.map((axis) => rankPlayer(queries[index].data, personKey, axis, { qualifiedOnly: true, rankUnqualified: true }).percentile);
         const games = Number(card.entry?.traditional?.gamesPlayed);
-        const small = Number.isFinite(games) && games < 10;
+        // Under the league's minimum (or just very few games) the percentiles are a guide, not a ranking: dashed.
+        const limited = card.entry?.qualified === false || (Number.isFinite(games) && games < SMALL_SAMPLE_GAMES);
         return {
-          label: small ? `${card.label} (${games} GP)` : card.label,
+          label: limited ? `${card.label} (${games} GP)` : card.label,
           cardIndex: index,
+          note: !limited
+            ? null
+            : card.entry?.qualified === false
+              ? `${card.label}: ${games} games, under the ${card.entry.minGames} the league ranks from, so this shows where they would rank among that season's qualified players`
+              : `${card.label}: ${games} games, a very small sample`,
           percentiles,
-          small,
+          small: limited,
           colourVariable: colourVariable(cards.length - 1 - index),
         };
       })
@@ -239,14 +245,10 @@ export function ProfileComparison({ cards, personKey }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [show, cards, personKey, dataKey]);
 
-  // A season outside the minimum games has no percentiles, so it has no outline; say so instead of dropping it silently.
+  // Seasons drawn dashed (under the league's minimum games, or very few games), and seasons with no statistics at all.
   const drawn = new Set(series.map((entry) => entry.cardIndex));
-  const leftOut = series.length === 0 ? [] : cards.filter((_, index) => !drawn.has(index)).map((card) => {
-    const games = Number(card.entry?.traditional?.gamesPlayed);
-    return card.entry?.qualified === false
-      ? `${card.label} (${games} games, the league ranks from ${card.entry.minGames})`
-      : `${card.label} (no statistics)`;
-  });
+  const dashedNotes = series.map((entry) => entry.note).filter(Boolean);
+  const notDrawn = series.length === 0 ? [] : cards.filter((_, index) => !drawn.has(index)).map((card) => `${card.label} (no statistics)`);
 
   return (
     <Panel className="p-4">
@@ -267,8 +269,13 @@ export function ProfileComparison({ cards, personKey }) {
       ) : (
         <>
           <OverlayRadar series={series} />
-          <p className="muted mt-2 text-xs">A dashed outline is a season with fewer than 10 games. Click a season in the legend to hide it.</p>
-          {leftOut.length > 0 ? <p className="muted mt-1 text-xs">Not drawn, too few games to be ranked: {leftOut.join("; ")}.</p> : null}
+          <p className="muted mt-2 text-xs">Click a season in the legend to hide it.</p>
+          {dashedNotes.length > 0 ? (
+            <p className="muted mt-1 text-xs">
+              <span className="font-semibold">Dashed outline: a season with few games, a guide more than a ranking.</span> {dashedNotes.join("; ")}.
+            </p>
+          ) : null}
+          {notDrawn.length > 0 ? <p className="muted mt-1 text-xs">Not drawn: {notDrawn.join("; ")}.</p> : null}
         </>
       )}
     </Panel>

@@ -18,7 +18,7 @@ function leaderboardRows(offset, limit) {
   }));
 }
 
-test("defers a player game log and requests player pages in blocks of 36", async ({ page }) => {
+test("loads a player game log once for the Overview form and the Games tab, and requests player pages in blocks of 36", async ({ page }) => {
   let gameLogRequests = 0;
   let roundRequests = 0;
   const playerPageRequests = [];
@@ -146,8 +146,10 @@ test("defers a player game log and requests player pages in blocks of 36", async
 
   await page.goto(`/${SEASON}/players/player-1`);
   await expect(page.getByRole("tab", { name: "Statistics", exact: true })).toBeVisible();
-  expect(gameLogRequests).toBe(0);
+  // The Overview shows recent form, so the log is read once on arrival...
+  await expect.poll(() => gameLogRequests).toBe(1);
 
+  // ...and the Games tab reuses it instead of asking again.
   await page.getByRole("tab", { name: "Games", exact: true }).click();
   await expect(page.getByText("No game log available yet.")).toBeVisible();
   expect(gameLogRequests).toBe(1);

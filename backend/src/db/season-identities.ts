@@ -80,7 +80,7 @@ const registrationFields = {
 };
 
 function playerScope(seasonCode: string) {
-  // The live E2025/E2026 registration role J is "Player"; other roles are staff.
+  // The live registration role J is "Player"; other roles are staff.
   return and(
     eq(people.competitionCode, COMPETITION_CODE),
     eq(people.seasonCode, seasonCode),
@@ -142,17 +142,21 @@ export async function getPlayers(
   const players = pageRows.slice(0, limit);
   const details = await getPlayerListDetails(seasonCode, players.map((player) => player.personKey));
   return {
-    items: players.map((player) => ({
-      ...player,
-      imageUrl: details.images.get(player.personKey) ?? null,
-      clubCode: details.registrations.get(player.personKey)?.clubCode ?? null,
-      clubName: details.registrations.get(player.personKey)?.clubName ?? null,
-      crestUrl: details.registrations.get(player.personKey)?.crestUrl ?? null,
-      dorsal: details.registrations.get(player.personKey)?.dorsal ?? null,
-      positionName: details.registrations.get(player.personKey)?.positionName ?? null,
-    })),
+    items: players.map((player) => ({ ...player, ...listEntryDetails(details, player.personKey) })),
     hasMore: pageRows.length > limit,
     total: countRows[0]?.count ?? 0,
+  };
+}
+
+function listEntryDetails(details: Awaited<ReturnType<typeof getPlayerListDetails>>, personKey: string) {
+  const registration = details.registrations.get(personKey);
+  return {
+    imageUrl: details.images.get(personKey) ?? null,
+    clubCode: registration?.clubCode ?? null,
+    clubName: registration?.clubName ?? null,
+    crestUrl: registration?.crestUrl ?? null,
+    dorsal: registration?.dorsal ?? null,
+    positionName: registration?.positionName ?? null,
   };
 }
 
@@ -220,14 +224,17 @@ async function getPlayerListDetails(seasonCode: string, personKeys: string[]) {
   return { registrations: registrationsByPerson, images };
 }
 
-export async function getPlayer(seasonCode: string, personKey: string): Promise<Player | null> {
+export async function getPlayer(seasonCode: string, personKey: string): Promise<PlayerListEntry | null> {
   const rows = await catalogRead(() =>
     db.select(playerFields)
       .from(people)
       .where(and(playerScope(seasonCode), eq(people.personKey, personKey)))
       .limit(1),
   );
-  return rows[0] ?? null;
+  const player = rows[0];
+  if (!player) return null;
+  const details = await getPlayerListDetails(seasonCode, [personKey]);
+  return { ...player, ...listEntryDetails(details, personKey) };
 }
 
 export async function getTeamRoster(

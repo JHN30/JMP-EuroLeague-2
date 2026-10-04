@@ -228,6 +228,7 @@ export function ProfileComparison({ cards, personKey }) {
         const small = Number.isFinite(games) && games < 10;
         return {
           label: small ? `${card.label} (${games} GP)` : card.label,
+          cardIndex: index,
           percentiles,
           small,
           colourVariable: colourVariable(cards.length - 1 - index),
@@ -237,6 +238,15 @@ export function ProfileComparison({ cards, personKey }) {
     // The queries array is a new object every render; their data timestamps say when anything changed.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [show, cards, personKey, dataKey]);
+
+  // A season outside the minimum games has no percentiles, so it has no outline; say so instead of dropping it silently.
+  const drawn = new Set(series.map((entry) => entry.cardIndex));
+  const leftOut = series.length === 0 ? [] : cards.filter((_, index) => !drawn.has(index)).map((card) => {
+    const games = Number(card.entry?.traditional?.gamesPlayed);
+    return card.entry?.qualified === false
+      ? `${card.label} (${games} games, the league ranks from ${card.entry.minGames})`
+      : `${card.label} (no statistics)`;
+  });
 
   return (
     <Panel className="p-4">
@@ -258,6 +268,7 @@ export function ProfileComparison({ cards, personKey }) {
         <>
           <OverlayRadar series={series} />
           <p className="muted mt-2 text-xs">A dashed outline is a season with fewer than 10 games. Click a season in the legend to hide it.</p>
+          {leftOut.length > 0 ? <p className="muted mt-1 text-xs">Not drawn, too few games to be ranked: {leftOut.join("; ")}.</p> : null}
         </>
       )}
     </Panel>

@@ -1,6 +1,6 @@
 import { boolean, customType, integer, pgTable, primaryKey, text, type AnyPgColumn } from "drizzle-orm/pg-core";
 
-// The pipeline's advanced tables (feature 30g), read-only and filled for E2025 and E2026 only.
+// The pipeline's advanced tables (feature 30g), read-only and filled for E2024, E2025 and E2026.
 // NUMERIC columns come back from pg as strings, so they are decoded to numbers here; NULL stays
 // null (missing input or a zero denominator). Percentages are fractions, ratings are per 100 possessions.
 const measure = customType<{ data: number; driverData: string }>({

@@ -312,7 +312,8 @@ function TeamLeaders({ seasonCode, rosterStatsQuery }) {
   if (rosterStatsQuery.isError) {
     return <AsyncState status="error" message="Could not load team leaders." onRetry={() => rosterStatsQuery.refetch()} />;
   }
-  const players = [...(rosterStatsQuery.data?.values() ?? [])];
+  // A team's leaders are among players who meet the league's minimum games, not someone with two big games.
+  const players = [...(rosterStatsQuery.data?.values() ?? [])].filter((player) => player.qualified !== false);
   if (players.length === 0) {
     return <EmptyText>No statistics recorded yet for this phase.</EmptyText>;
   }

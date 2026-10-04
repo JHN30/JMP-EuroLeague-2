@@ -23,7 +23,7 @@ function StatLeaderCard({ seasonCode, category, phaseCode }) {
   const query = useQuery({
     queryKey: ["leader-stats", seasonCode, phaseCode, "perGame", category.key],
     queryFn: () =>
-      getLeaderStats(seasonCode, { phase: phaseCode, mode: "perGame", sort: category.key, order: "desc", limit: 1 }),
+      getLeaderStats(seasonCode, { phase: phaseCode, mode: "perGame", sort: category.key, order: "desc", limit: 1, qualified: true }),
   });
   const leader = query.data?.players[0] ?? null;
 

@@ -50,7 +50,7 @@ import {
   getTeamStatsScopes,
   getWinShareLeaders,
 } from "../db/season-advanced";
-import { getSeasonStats, SORTABLE_STATS_FIELDS, type SortableStatsField } from "../db/season-stats";
+import { getSeasonStats, SORTABLE_STATS_FIELDS, type SortableStatsField, type StatsFilters } from "../db/season-stats";
 import { gamePlayerStats, gameTeamStats, games } from "../db/season-schema";
 
 export const seasonRouter = Router();
@@ -157,6 +157,28 @@ function requestedStatsMode(req: Request, res: Response): string | null {
     return null;
   }
   return value;
+}
+
+// ?qualified=true keeps only players who meet the minimum games; ?minGames=N keeps players with at least N games.
+function requestedStatsFilters(req: Request, res: Response): StatsFilters | null {
+  const filters: StatsFilters = {};
+  const { qualified, minGames } = req.query;
+  if (qualified !== undefined) {
+    if (qualified !== "true" && qualified !== "false") {
+      sendError(res, 400, "INVALID_QUERY", "Invalid qualified filter");
+      return null;
+    }
+    filters.qualified = qualified === "true";
+  }
+  if (minGames !== undefined) {
+    const parsed = typeof minGames === "string" && /^\d{1,3}$/.test(minGames) ? Number(minGames) : NaN;
+    if (!Number.isInteger(parsed) || parsed < 1) {
+      sendError(res, 400, "INVALID_QUERY", "Invalid minimum games");
+      return null;
+    }
+    filters.minGames = parsed;
+  }
+  return filters;
 }
 
 function requestedStatsSort(req: Request, res: Response): string | undefined | null {
@@ -438,6 +460,8 @@ seasonRouter.get("/:seasonCode/season-stats", async (req, res) => {
   if (sort === null) return;
   const order = requestedStatsOrder(req, res);
   if (order === null) return;
+  const filters = requestedStatsFilters(req, res);
+  if (filters === null) return;
   const result = await getSeasonStats(
     season.seasonCode,
     phase,
@@ -447,6 +471,7 @@ seasonRouter.get("/:seasonCode/season-stats", async (req, res) => {
     personKey,
     sort as SortableStatsField | undefined,
     order,
+    filters,
   );
   res.json({ phase, mode, players: result.items, pagination: { ...page, hasMore: result.hasMore, total: result.total } });
 });

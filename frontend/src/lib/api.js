@@ -100,9 +100,11 @@ export async function getAdvancedLeaders(seasonCode, { metric, scope, minMinutes
   return data;
 }
 
-export async function getLeaderStats(seasonCode, { phase, mode, limit, offset, sort, order } = {}) {
+// `qualified: true` keeps only players who meet the season and phase minimum of games (a leaderboard's default);
+// `minGames` keeps players with at least that many games instead.
+export async function getLeaderStats(seasonCode, { phase, mode, limit, offset, sort, order, qualified, minGames } = {}) {
   const { data } = await api.get(`/seasons/${seasonCode}/season-stats`, {
-    params: { phase, mode, limit, offset, sort, order },
+    params: { phase, mode, limit, offset, sort, order, qualified, minGames },
   });
   return data;
 }

@@ -24,7 +24,7 @@ import {
   teamShotZoneStats,
 } from "./season-advanced-schema";
 
-// Read-only access to the advanced tables. They exist for E2025 and E2026 only; callers pass a supported season.
+// Read-only access to the advanced tables. They are filled for every supported season (E2024 onward); callers pass a supported season.
 // Round tables are cumulative (a row is the state after round_number), so nothing here sums across rounds or scopes.
 const COMPETITION_CODE = "E";
 const RAPM_SCOPE = "all";
@@ -239,7 +239,7 @@ export type GameFlowRow = Pick<
   "clubCode" | "games" | "timeLeadingSeconds" | "timeTrailingSeconds" | "timeTiedSeconds" | "leadChangesPerGame" | "largestLead"
 >;
 
-// Time spent leading, tied and trailing for every club in a scope (play-by-play based, so E2025 and E2026 only).
+// Time spent leading, tied and trailing for every club in a scope (play-by-play based).
 export async function getGameFlow(seasonCode: string, scope: string): Promise<GameFlowRow[]> {
   return catalogRead(() =>
     db.select({

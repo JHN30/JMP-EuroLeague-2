@@ -27,7 +27,9 @@ import { barWidthScale } from "./statBarScale";
 const PAGE_SIZE = 25;
 const LEADERBOARD_PAGE_LIMIT = 100;
 const LEADERBOARD_MAX_PAGES = 5;
-const MIN_GAMES_OPTIONS = [0, 5, 10, 15];
+// With no minGames in the URL a leaderboard keeps the players the database flags as qualified (they meet the minimum
+// games for the season and phase); these options replace that with a fixed number of games, 1 being everyone.
+const MIN_GAMES_OPTIONS = [1, 5, 10, 15];
 const RATE_GROUPS = new Set(["advanced", "scoring"]);
 
 async function fetchFullPlayerLeaderboard(seasonCode, phaseCode, mode, sort, order) {
@@ -300,10 +302,11 @@ function PlayerLeaderboard({ seasonCode, phaseCode }) {
   const group = metricGroupFor(metric);
   const metricLabel = metricLabelFor(metric);
   const allPlayers = statsQuery.data ?? [];
+  const phaseMinGames = allPlayers[0]?.minGames ?? null;
   const withGames =
     minGames > 0
       ? allPlayers.filter((player) => (statNumber(player.traditional?.gamesPlayed) ?? 0) >= minGames)
-      : allPlayers;
+      : allPlayers.filter((player) => player.qualified !== false);
   const ranked = rankPlayers(withGames, group, metric);
   const visible = search
     ? ranked.filter((row) => (row.player.playerName ?? "").toLowerCase().includes(search.toLowerCase()))
@@ -368,9 +371,10 @@ function PlayerLeaderboard({ seasonCode, phaseCode }) {
           value={String(minGames)}
           onChange={(event) => handleMinGamesChange(event.target.value)}
         >
+          <option value="0">{phaseMinGames ? `Qualified (${phaseMinGames}+ games)` : "Qualified players"}</option>
           {MIN_GAMES_OPTIONS.map((value) => (
             <option key={value} value={value}>
-              {value === 0 ? "No minimum" : `${value}+ games`}
+              {value === 1 ? "All players" : `${value}+ games`}
             </option>
           ))}
         </LabelledSelect>

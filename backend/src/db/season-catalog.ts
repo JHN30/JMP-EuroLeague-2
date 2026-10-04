@@ -3,7 +3,7 @@ import { db } from "./client";
 import { games, rounds, seasons } from "./season-schema";
 
 const COMPETITION_CODE = "E";
-export const SUPPORTED_SEASONS = ["E2025", "E2026"] as const;
+export const SUPPORTED_SEASONS = ["E2023", "E2024", "E2025", "E2026"] as const;
 
 export type Season = {
   seasonCode: string;

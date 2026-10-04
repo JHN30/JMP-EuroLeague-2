@@ -445,6 +445,11 @@ function statsIdentityColumns() {
     clubTvCodes: text("club_tv_codes"),
     clubImageUrl: text("club_image_url"),
     playerRanking: integer("player_ranking"),
+    // Rows the pipeline derived for players the feed leaves out (see is_calculated), the games a player needs to be
+    // listed on a leaderboard in this season and phase, and whether this player has them.
+    isCalculated: boolean("is_calculated"),
+    minGames: integer("min_games"),
+    qualified: boolean("qualified"),
   };
 }
 

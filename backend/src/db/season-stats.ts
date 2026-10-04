@@ -96,6 +96,9 @@ export type StatsEntry = {
   playerName: string | null;
   playerAge: number | null;
   playerImageUrl: string | null;
+  isCalculated: boolean | null;
+  minGames: number | null;
+  qualified: boolean | null;
   clubName: string | null;
   clubTvCodes: string | null;
   clubImageUrl: string | null;
@@ -224,6 +227,10 @@ const SORTABLE_FIELDS = {
 export const SORTABLE_STATS_FIELDS = Object.keys(SORTABLE_FIELDS);
 export type SortableStatsField = keyof typeof SORTABLE_FIELDS;
 
+// Which players a leaderboard keeps. `qualified` keeps the players who meet the season and phase minimum of games;
+// `minGames` keeps players with at least that many games instead (it wins when both are given).
+export type StatsFilters = { qualified?: boolean; minGames?: number };
+
 export async function getSeasonStats(
   seasonCode: string,
   phaseCode: string,
@@ -233,6 +240,7 @@ export async function getSeasonStats(
   personKey?: string,
   sort?: SortableStatsField,
   order: "asc" | "desc" = "asc",
+  filters: StatsFilters = {},
 ): Promise<Page<StatsEntry>> {
   const conditions = [
     eq(seasonStatsTraditional.competitionCode, COMPETITION_CODE),
@@ -241,6 +249,11 @@ export async function getSeasonStats(
     eq(seasonStatsTraditional.mode, mode),
   ];
   if (personKey !== undefined) conditions.push(eq(seasonStatsTraditional.personKey, personKey));
+  if (filters.minGames !== undefined) {
+    conditions.push(sql`${seasonStatsTraditional.gamesPlayed} >= ${filters.minGames}`);
+  } else if (filters.qualified) {
+    conditions.push(eq(seasonStatsTraditional.qualified, true));
+  }
 
   const sortColumn = sort !== undefined ? SORTABLE_FIELDS[sort] : undefined;
   const orderBy = sortColumn
@@ -258,6 +271,9 @@ export async function getSeasonStats(
         playerName: seasonStatsTraditional.playerName,
         playerAge: seasonStatsTraditional.playerAge,
         playerImageUrl: seasonStatsTraditional.playerImageUrl,
+        isCalculated: seasonStatsTraditional.isCalculated,
+        minGames: seasonStatsTraditional.minGames,
+        qualified: seasonStatsTraditional.qualified,
         clubName: seasonStatsTraditional.clubName,
         clubTvCodes: seasonStatsTraditional.clubTvCodes,
         clubImageUrl: seasonStatsTraditional.clubImageUrl,

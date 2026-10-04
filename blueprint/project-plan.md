@@ -4,8 +4,10 @@
 
 JMP Euroleague should give basketball fans one clear, fast place to explore EuroLeague seasons without searching across scattered pages or interpreting raw API data. The rebuilt application will turn the project's PostgreSQL data into understandable standings, schedules, results, team pages, player pages, leaderboards, comparisons, and postseason views.
 
-This is a new PERN implementation of the existing JMP Euroleague product. The immediate goal is to prove the architecture and user experience with two seasons before expanding the historical range. Phase 1 covers:
+This is a new PERN implementation of the existing JMP Euroleague product. The immediate goal is to prove the architecture and user experience with a few seasons before expanding the historical range. Phase 1 covers:
 
+- `E2023`: the 2023-24 season
+- `E2024`: the 2024-25 season
 - `E2025`: the 2025-26 season
 - `E2026`: the 2026-27 season
 
@@ -22,7 +24,7 @@ Users should not need an account or specialist analytics knowledge. The main exp
 
 ## 3. Features - What does the MVP need?
 
-- Global season selection for `E2025` and `E2026`
+- Global season selection for `E2023` to `E2026`
 - Home dashboard with standings, recent results, upcoming games, and statistical leaders
 - Official standings by available competition phase
 - Fixtures and completed results grouped by round
@@ -49,18 +51,19 @@ Core Phase 1 data includes:
 - Games, dates, venues, status, round/phase, home/away teams, and scores
 - Team game box scores and derived season aggregates already approved by the data pipeline
 - Player game box scores and derived season aggregates already approved by the data pipeline
+- Player season statistics: the league's per-game table lists only players above a minimum of games, so the pipeline derives the missing per-game rows from the accumulated ones (`is_calculated`) and gives every row the minimum games for its season and phase (`min_games`) and a `qualified` flag. Leaderboards and league ranks use qualified players by default; a player under the minimum keeps their numbers but has no rank.
 - Official standings records and available tie-break fields
 - Play-by-play events and shot locations where the pipeline supplies them
 - Play-in, playoff, and Final Four matchup relationships/results
 - Precomputed team-season statistics, coverage summaries, and postseason series from the pipeline's `app_*` tables
-- Advanced statistics from the pipeline's `app_*` advanced tables (`E2025` and `E2026` only): round-by-round team and player ratings, win shares, splits, on/off, lineups, RAPM, and shot-zone and play-by-play team stats. These are read as published; the API does not recompute them.
-- Per-game advanced statistics for players and teams, published to Neon by the project owner for `E2025` and `E2026`: `app_game_player_advanced`, `app_game_team_advanced`, `app_game_team_score_flow`, `app_game_team_shot_splits`, `app_game_team_possessions`, `app_game_team_shot_zones`, `app_game_player_on_court`, and `app_game_team_lineup_stints`. These are read as published; the Game Detail page does not recompute them in the API or frontend.
+- Advanced statistics from the pipeline's `app_*` advanced tables (`E2023` to `E2026`): round-by-round team and player ratings, win shares, splits, on/off, lineups, RAPM, and shot-zone and play-by-play team stats. These are read as published; the API does not recompute them.
+- Per-game advanced statistics for players and teams, published to Neon by the project owner for `E2023` to `E2026`: `app_game_player_advanced`, `app_game_team_advanced`, `app_game_team_score_flow`, `app_game_team_shot_splits`, `app_game_team_possessions`, `app_game_team_shot_zones`, `app_game_player_on_court`, and `app_game_team_lineup_stints`. These are read as published; the Game Detail page does not recompute them in the API or frontend.
 - Data-quality annotations or correction flags that are safe and useful to show in the UI
 
 Data rules:
 
 - Every season-dependent query must be scoped by both competition code and season code.
-- All current browsing, records, and player views remain limited to `E2025` and `E2026` until the intended historical seasons have been loaded and archive-wide records and careers are planned separately.
+- All current browsing, records, and player views remain limited to the loaded seasons, `E2023` to `E2026`, until further historical seasons have been loaded and archive-wide records are planned separately.
 - Keep scheduled, live/unknown, postponed/cancelled when supplied, and completed games distinct.
 - Treat `NULL` as unavailable; never silently convert missing statistics to zero.
 - Preserve stable source identifiers and use them for joins and URLs where appropriate.
@@ -152,7 +155,7 @@ Deployment rules:
 
 - Public, internet-facing, read-only analytics application
 - No authentication, profiles, roles, comments, or personal-user data in Phase 1
-- Phase 1 is EuroLeague-only and limited to `E2025` and `E2026`
+- Phase 1 is EuroLeague-only and limited to `E2023` to `E2026`
 - Current-season data may be incomplete and will change as games are played
 - Historical source data contains known gaps and anomalies; correctness includes exposing uncertainty rather than hiding it
 - Expected initial traffic and data volume are modest, but list endpoints should still use bounded responses, filters, and pagination where result sets can grow
@@ -166,7 +169,7 @@ Deployment rules:
 - JMP Rating calculations
 - Win-probability predictions and the Predictor page
 - Automated playoff simulations
-- Seasons earlier than `E2025`
+- Seasons earlier than `E2023`
 - Archive-wide records and player-career expansion until the intended historical seasons have been loaded
 - EuroCup, ABA League, NBA, or other competitions
 - User authentication and account recovery

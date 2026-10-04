@@ -4,32 +4,25 @@ import EmptyText from "../lib/EmptyText";
 import { formatCount, formatPercentage } from "../lib/format";
 import Panel from "../lib/Panel";
 import PanelHeader from "../lib/PanelHeader";
+import { nameParts, titleCase } from "../lib/playerName";
 import ShootingBreakdown from "../lib/ShootingBreakdown";
 import { PRESENTATION_TABS, RESULT_TABS, isMade, shootingLine, useSeasonShots } from "../lib/shootingData";
 import { GAME_SEGMENTS, RESULT_OPTIONS } from "../lib/shotFilters";
 import { situationRows, zoneRows } from "../lib/shotBreakdown";
 import { TabPanel, TabStrip } from "../lib/TabStrip";
 
-const PANEL_ID = "team-shooting-panel";
+const PANEL_ID = "player-shooting-panel";
 
-const SIDE_TABS = (name) => [
-  { key: "team", label: name },
-  { key: "opponents", label: "Opponents" },
-];
-
-// The club's shots (or its opponents' shots against it) on a half court, with the zones and game situations they come
-// from. The player Shooting tab is the same layout over one player's shots.
-export default function TeamShootingSection({ seasonCode, phaseCode, team, games }) {
-  const [side, setSide] = useState("team");
+// One player's shots on a half court, with the zones and game situations they come from: the team Shooting tab's layout
+// over a single player. `games` is the player's game log; their shots are picked out of each game's shot list.
+export default function PlayerShootingSection({ seasonCode, phaseCode, player, games, personKey }) {
   const [presentation, setPresentation] = useState("heatmap");
   const [gameSegment, setGameSegment] = useState("all");
   const [result, setResult] = useState("all");
 
-  const playedGames = games.filter(
-    (game) => game.phaseCode === phaseCode && game.played && game.localScore != null && game.roadScore != null,
-  );
+  const playedGames = games.filter((game) => game.phaseCode === phaseCode);
   const { loading, errored, mappedGames, shots, retry } = useSeasonShots(seasonCode, playedGames);
-  const name = team.abbreviatedName ?? team.name ?? team.clubCode;
+  const name = titleCase(nameParts(player.name ?? player.jerseyName ?? "Player").last);
 
   if (playedGames.length === 0) {
     return <EmptyText>No played games yet this phase to map shot locations from.</EmptyText>;
@@ -38,16 +31,14 @@ export default function TeamShootingSection({ seasonCode, phaseCode, team, games
     return <AsyncState status="loading" label={`Aggregating ${formatCount(playedGames.length)} shooting charts`} />;
   }
   if (errored) {
-    return <AsyncState status="error" message="Could not load season shot locations." onRetry={retry} />;
+    return <AsyncState status="error" message="Could not load this player's shot locations." onRetry={retry} />;
   }
 
   const segmentTest = GAME_SEGMENTS.find((segment) => segment.key === gameSegment)?.test ?? (() => true);
   // Makes and misses only mean something on the every-attempt view: on the heatmap a made-only zone is always 100%.
   const activeResult = presentation === "markers" ? result : "all";
   const resultTest = RESULT_OPTIONS.find((option) => option.key === activeResult)?.test ?? (() => true);
-  const filtered = shots.filter(
-    (shot) => (shot.clubCode === team.clubCode) === (side === "team") && segmentTest(shot) && resultTest(shot),
-  );
+  const filtered = shots.filter((shot) => shot.personCode === personKey && segmentTest(shot) && resultTest(shot));
 
   const twoPoint = filtered.filter((shot) => shot.actionCode.startsWith("2"));
   const threePoint = filtered.filter((shot) => shot.actionCode.startsWith("3"));
@@ -55,16 +46,14 @@ export default function TeamShootingSection({ seasonCode, phaseCode, team, games
   const effectiveFg =
     filtered.length === 0 ? null : ((made.length + 0.5 * made.filter((shot) => shot.actionCode.startsWith("3")).length) / filtered.length) * 100;
   const pointsPerShot = filtered.length === 0 ? null : made.reduce((sum, shot) => sum + (shot.points ?? 0), 0) / filtered.length;
-
-  const sideLabel = side === "team" ? name : "Opponents";
-  // The court colours shots by club; one colour is enough when only one side is shown.
+  // The court colours shots by club; one colour is enough for one player.
   const courtShots = filtered.map((shot) => ({ ...shot, clubCode: "SIDE" }));
 
   return (
     <Panel as="section" className="p-4">
       <PanelHeader
         kicker="SHOOTING"
-        title={side === "team" ? `Where ${name} shoots` : `Where opponents shoot against ${name}`}
+        title={`Where ${name} shoots`}
         trailing={
           <span className="stat-badge stat-badge-neutral">
             {formatCount(mappedGames)} games mapped · {formatCount(filtered.length)} attempts plotted
@@ -73,7 +62,6 @@ export default function TeamShootingSection({ seasonCode, phaseCode, team, games
       />
 
       <div className="mb-4 flex flex-wrap items-center gap-x-6 gap-y-3">
-        <TabStrip ariaLabel="Whose shots" panelId={PANEL_ID} activeKey={side} onChange={setSide} tabs={SIDE_TABS(name)} />
         <TabStrip ariaLabel="Presentation" panelId={PANEL_ID} activeKey={presentation} onChange={setPresentation} tabs={PRESENTATION_TABS} />
         {presentation === "markers" ? (
           <TabStrip ariaLabel="Result" panelId={PANEL_ID} activeKey={result} onChange={setResult} tabs={RESULT_TABS} />
@@ -94,13 +82,13 @@ export default function TeamShootingSection({ seasonCode, phaseCode, team, games
         </label>
       </div>
 
-      <TabPanel id={PANEL_ID} focusKey={`${side}-${presentation}-${activeResult}`} scroll={false}>
+      <TabPanel id={PANEL_ID} focusKey={`${presentation}-${activeResult}`} scroll={false}>
         <ShootingBreakdown
           shots={filtered}
           courtShots={courtShots}
           presentation={presentation}
-          replayKey={`${side}-${gameSegment}-${activeResult}`}
-          courtLabel={`${sideLabel} shot locations: ${formatCount(filtered.length)} attempts`}
+          replayKey={`${gameSegment}-${activeResult}`}
+          courtLabel={`${name} shot locations: ${formatCount(filtered.length)} attempts`}
           cards={[
             { label: "Field goals", value: shootingLine(filtered) },
             { label: "Two-pointers", value: shootingLine(twoPoint) },
@@ -113,10 +101,8 @@ export default function TeamShootingSection({ seasonCode, phaseCode, team, games
           ]}
           zoneRows={zoneRows(filtered)}
           situationRows={situationRows(filtered)}
-          zonesTitle={side === "team" ? "Where the shots come from" : "Where opponents shoot from"}
-          situationsTitle={side === "team" ? `How ${name} scores` : `How opponents score against ${name}`}
-          favorable={side === "team"}
-          resetKey={side}
+          zonesTitle="Where the shots come from"
+          situationsTitle={`How ${name} scores`}
         />
       </TabPanel>
     </Panel>

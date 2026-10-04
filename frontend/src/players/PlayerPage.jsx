@@ -12,7 +12,6 @@ import AsyncState from "../lib/AsyncState";
 import EmptyText from "../lib/EmptyText";
 import { formatDateTime, formatMinutes } from "../lib/format";
 import Panel from "../lib/Panel";
-import SeasonShootingChart from "../lib/SeasonShootingChart";
 import { TabPanel, TabStrip } from "../lib/TabStrip";
 import { useDocumentTitle } from "../lib/useDocumentTitle";
 import { usePhaseParam } from "../lib/usePhaseParam";
@@ -20,6 +19,7 @@ import PlayerAdvancedSection from "./PlayerAdvancedSection";
 import PlayerCareerSection from "./PlayerCareerSection";
 import PlayerHero from "./PlayerHero";
 import PlayerOverviewSection from "./PlayerOverviewSection";
+import PlayerShootingSection from "./PlayerShootingSection";
 import PlayerStatisticsSection from "./PlayerStatisticsSection";
 import { fetchLeagueLeaderboard, leaderboardQueryKey } from "./leagueLeaderboard";
 
@@ -87,45 +87,20 @@ function GameLogSection({ gamesQuery }) {
   );
 }
 
-function PlayerShootingSection({ seasonCode, phaseCode, player, registrationsQuery, gamesQuery, personKey }) {
-  const [presentation, setPresentation] = useState("heatmap");
-  const [gameSegment, setGameSegment] = useState("all");
-  const [result, setResult] = useState("all");
-
-  if (registrationsQuery.isPending || gamesQuery.isPending) {
-    return <AsyncState status="loading" label="Loading this player's shot locations" />;
+// The Shooting tab waits for the game log (every shot list is read per game) and then hands over to the shared layout.
+function PlayerShootingTab({ seasonCode, phaseCode, player, gamesQuery, personKey }) {
+  if (gamesQuery.isPending) return <AsyncState status="loading" label="Loading this player's shot locations" />;
+  if (gamesQuery.isError) {
+    return <AsyncState status="error" message="Could not load this player's shot locations." onRetry={() => gamesQuery.refetch()} />;
   }
-  if (registrationsQuery.isError || gamesQuery.isError) {
-    return (
-      <AsyncState
-        status="error"
-        message="Could not load this player's shot locations."
-        onRetry={() => {
-          registrationsQuery.refetch();
-          gamesQuery.refetch();
-        }}
-      />
-    );
-  }
-
-  const registrations = registrationsQuery.data.registrations ?? [];
-  const currentTeam = (registrations.find((entry) => entry.active !== false) ?? registrations[0])?.team ?? null;
-  const games = gamesQuery.data?.games ?? [];
-  const playedGames = games.filter((game) => game.phaseCode === phaseCode);
-
   return (
-    <SeasonShootingChart
+    <PlayerShootingSection
+      key={`${seasonCode}-${personKey}-${phaseCode}`}
       seasonCode={seasonCode}
-      playedGames={playedGames}
-      ownerFilter={(shot) => shot.personCode === personKey}
-      team={currentTeam}
-      subjectLabel={player.name ?? player.jerseyName ?? "Player"}
-      presentation={presentation}
-      onPresentationChange={setPresentation}
-      gameSegment={gameSegment}
-      onGameSegmentChange={setGameSegment}
-      result={result}
-      onResultChange={setResult}
+      phaseCode={phaseCode}
+      player={player}
+      games={gamesQuery.data?.games ?? []}
+      personKey={personKey}
     />
   );
 }
@@ -228,14 +203,7 @@ export default function PlayerPage() {
           ) : section === "advanced" ? (
             <PlayerAdvancedSection key={`${seasonCode}-${personKey}`} seasonCode={seasonCode} personKey={personKey} />
           ) : section === "shooting" ? (
-            <PlayerShootingSection
-              seasonCode={seasonCode}
-              phaseCode={phaseCode}
-              player={player}
-              registrationsQuery={registrationsQuery}
-              gamesQuery={gamesQuery}
-              personKey={personKey}
-            />
+            <PlayerShootingTab seasonCode={seasonCode} phaseCode={phaseCode} player={player} gamesQuery={gamesQuery} personKey={personKey} />
           ) : (
             <>
               <h2 className="mb-3 text-xl font-semibold">Game-by-game performance</h2>

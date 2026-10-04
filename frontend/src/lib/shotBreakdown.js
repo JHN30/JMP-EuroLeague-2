@@ -1,5 +1,5 @@
-// Numbers behind the team Shooting tab: the zone table, its hottest and coldest zones, and the game-situation groups.
-import { summarizeZones } from "../lib/shotZones";
+// Numbers behind the team and player Shooting tabs: the zone table, its hottest and coldest zones, and the game-situation groups.
+import { summarizeZones } from "./shotZones";
 
 const isMade = (shot) => shot.actionCode.endsWith("M");
 

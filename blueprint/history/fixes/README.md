@@ -54,6 +54,8 @@ every such change so it can be found later.
 
 - [player-advanced-tab-ranked-ratings-on-off-and-rapm.md](player-advanced-tab-ranked-ratings-on-off-and-rapm.md): Advanced tab with ranked ratings, a compact trend, on/off bars and a RAPM bar, and the player's advanced ranks in the API
 
+- [player-shooting-tab-like-the-team-tab.md](player-shooting-tab-like-the-team-tab.md): player Shooting tab in the team tab's layout (cards, zone heatmap, zone and scoring-style tables, no makes and misses on the heatmap), with the pieces shared by both tabs
+
 ## Data and platform
 
 - [read-renamed-app-neon-tables.md](read-renamed-app-neon-tables.md)

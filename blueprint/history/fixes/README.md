@@ -44,6 +44,14 @@ every such change so it can be found later.
 
 - [image-reveal-and-tab-scroll-jump.md](image-reveal-and-tab-scroll-jump.md): pictures reveal as they load (shimmer, wipe, pop), and tab changes no longer scroll the team and player pages
 
+- [player-overview-hero-form-and-shooting.md](player-overview-hero-form-and-shooting.md): player page hero header, and an Overview with a ranked season line, profile radar, recent form and shooting
+
+- [player-season-by-season-career-view.md](player-season-by-season-career-view.md): Season by season rebuilt as a career view (summary, season table with changes, trends, highs, role, clubs, profile by season)
+
+- [player-statistics-tab-ranked-stat-sheet.md](player-statistics-tab-ranked-stat-sheet.md): Statistics tab as a ranked stat sheet (about 40 rows, league rank and percentile bar on each, top-10 strip, per game by default)
+
+- [qualified-players-calculated-stats-and-2023.md](qualified-players-calculated-stats-and-2023.md): the database's calculated per-game rows and qualified flag used by leaderboards and ranks, a minimum-games default, a level Statistics tab, and the 2023 season
+
 ## Data and platform
 
 - [read-renamed-app-neon-tables.md](read-renamed-app-neon-tables.md)

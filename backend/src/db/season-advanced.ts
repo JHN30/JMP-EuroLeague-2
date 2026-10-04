@@ -189,6 +189,27 @@ export async function getPerLeaders(
   );
 }
 
+// Every player's running usage at one round with at least `minSeconds` played, for ranking a player's usage.
+export async function getUsageLeaders(
+  seasonCode: string,
+  scope: string,
+  round: number,
+  minSeconds: number,
+  limit: number,
+) {
+  return catalogRead(() =>
+    db.select({ personKey: playerRoundStats.personKey, usgPct: playerRoundStats.usgPct })
+      .from(playerRoundStats)
+      .where(and(
+        ...inScope(playerRoundStats, seasonCode, scope),
+        eq(playerRoundStats.roundNumber, round),
+        gte(playerRoundStats.secondsPlayed, minSeconds),
+      ))
+      .orderBy(nullsLast(playerRoundStats.usgPct), asc(playerRoundStats.personKey))
+      .limit(limit),
+  );
+}
+
 export async function getWinShareLeaders(
   seasonCode: string,
   scope: string,

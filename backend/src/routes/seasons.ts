@@ -30,6 +30,7 @@ import {
   getGameTeamFlow,
   getLineupRatings,
   getPerLeaders,
+  getUsageLeaders,
   getPlayerClubs,
   getPlayerOnOff,
   getPlayerRapm,
@@ -816,6 +817,75 @@ seasonRouter.get("/:seasonCode/players/:personKey", async (req, res) => {
 // A season with fewer rounds than this is still early: RAPM and on/off from it are too noisy to trust.
 const EARLY_SEASON_ROUNDS = 10;
 
+// Where one player stands on a metric among the players with enough minutes (the same minimum the leaderboards use):
+// the rank (1 is the highest value), the percentile (100 is the top) and the spread of the whole group, so a page can
+// say whether a value is good without guessing a scale. `rank` is null when the player has no value or too few minutes.
+type AdvancedRank = {
+  rank: number | null;
+  of: number;
+  value: number | null;
+  percentile: number | null;
+  spread: { p10: number; p25: number; p50: number; p75: number; p90: number } | null;
+  minMinutes: number;
+};
+
+function quantile(sorted: number[], fraction: number): number {
+  const position = (sorted.length - 1) * fraction;
+  const low = Math.floor(position);
+  const high = Math.ceil(position);
+  return sorted[low] + (sorted[high] - sorted[low]) * (position - low);
+}
+
+// `values` is the group, `own` the player's value in it (null when the player is not in the group).
+function rankAmong(values: number[], own: number | null, minMinutes: number): AdvancedRank {
+  const sorted = values.filter((value) => Number.isFinite(value)).sort((x, y) => x - y);
+  const spread = sorted.length > 0
+    ? { p10: quantile(sorted, 0.1), p25: quantile(sorted, 0.25), p50: quantile(sorted, 0.5), p75: quantile(sorted, 0.75), p90: quantile(sorted, 0.9) }
+    : null;
+  if (own === null || !Number.isFinite(own)) return { rank: null, of: sorted.length, value: null, percentile: null, spread, minMinutes };
+  const rank = sorted.filter((value) => value > own).length + 1;
+  const percentile = sorted.length > 1 ? Math.round(((sorted.length - rank) / (sorted.length - 1)) * 100) : 100;
+  return { rank, of: sorted.length, value: own, percentile, spread, minMinutes };
+}
+
+function rankPlayerIn(rows: { personKey: string; value: number | null }[], personKey: string, minMinutes: number): AdvancedRank {
+  const valued = rows.filter((row): row is { personKey: string; value: number } => row.value !== null && row.value !== undefined);
+  const own = valued.find((row) => row.personKey === personKey);
+  return rankAmong(valued.map((row) => Number(row.value)), own ? Number(own.value) : null, minMinutes);
+}
+
+// The player's rank on PER, Win Shares, Win Shares per 40, usage, RAPM and on/off net rating. PER, Win Shares and usage
+// are the scope's running totals after its last round; RAPM is a whole-season table, so it does not depend on the scope;
+// on/off uses the club the player spent most minutes with.
+async function getPlayerAdvancedRanks(seasonCode: string, scope: string, personKey: string, earlySeason: boolean) {
+  const minutesFor = (metric: string) => (earlySeason ? EARLY_SEASON_MIN_MINUTES : LEADER_DEFAULT_MIN_MINUTES[metric]);
+  const rounds = await getStatsRounds(seasonCode, scope);
+  const round = rounds[rounds.length - 1];
+  const everyone = 1000;
+  const [perRows, wsRows, usageRows, rapmRows, onOffRows] = await Promise.all([
+    round === undefined ? [] : getPerLeaders(seasonCode, scope, round, minutesFor("per") * 60, everyone),
+    round === undefined ? [] : getWinShareLeaders(seasonCode, scope, round, minutesFor("winSharesPer40") * 60, everyone),
+    round === undefined ? [] : getUsageLeaders(seasonCode, scope, round, minutesFor("per") * 60, everyone),
+    getPlayerRapm(seasonCode, { minSeconds: minutesFor("rapm") * 60, limit: everyone }),
+    getPlayerOnOff(seasonCode, scope, { minSeconds: minutesFor("onOff") * 60, limit: everyone }),
+  ]);
+  const ownOnOff = onOffRows
+    .filter((row) => row.personKey === personKey && row.netRatingDiff !== null)
+    .sort((x, y) => Number(y.onSeconds) - Number(x.onSeconds))[0];
+  return {
+    per: rankPlayerIn(perRows.map((row) => ({ personKey: row.personKey, value: row.per })), personKey, minutesFor("per")),
+    winShares: rankPlayerIn(wsRows.map((row) => ({ personKey: row.personKey, value: row.winShares })), personKey, minutesFor("winSharesPer40")),
+    winSharesPer40: rankPlayerIn(wsRows.map((row) => ({ personKey: row.personKey, value: row.winSharesPer40 })), personKey, minutesFor("winSharesPer40")),
+    usgPct: rankPlayerIn(usageRows.map((row) => ({ personKey: row.personKey, value: row.usgPct })), personKey, minutesFor("per")),
+    rapm: rankPlayerIn(rapmRows.map((row) => ({ personKey: row.personKey, value: row.rapm })), personKey, minutesFor("rapm")),
+    onOffNet: rankAmong(
+      onOffRows.map((row) => Number(row.netRatingDiff)).filter((value) => Number.isFinite(value)),
+      ownOnOff ? Number(ownOnOff.netRatingDiff) : null,
+      minutesFor("onOff"),
+    ),
+  };
+}
+
 // Round-by-round PER, Win Shares and USG% for one player in one scope, plus on/off (one row per club, so a
 // traded player has several) and the whole-season RAPM. Sample sizes come back with the values; the page
 // decides what to hide.
@@ -847,12 +917,13 @@ seasonRouter.get("/:seasonCode/players/:personKey/advanced", async (req, res) =>
     return;
   }
 
-  const [stats, ratings, winShares, onOff, teams] = await Promise.all([
+  const [stats, ratings, winShares, onOff, teams, ranks] = await Promise.all([
     getPlayerRoundStats(season.seasonCode, scope, personKey),
     getPlayerRoundRatings(season.seasonCode, scope, personKey),
     getPlayerRoundWinShares(season.seasonCode, scope, personKey),
     getPlayerOnOff(season.seasonCode, scope, { personKey, limit: 10 }),
     getTeams(season.seasonCode),
+    getPlayerAdvancedRanks(season.seasonCode, scope, personKey, base.earlySeason),
   ]);
   const ratingsByRound = new Map(ratings.map((row) => [row.roundNumber, row]));
   const winSharesByRound = new Map(winShares.map((row) => [row.roundNumber, row]));
@@ -860,6 +931,7 @@ seasonRouter.get("/:seasonCode/players/:personKey/advanced", async (req, res) =>
   res.json({
     ...base,
     scope,
+    ranks,
     rounds: stats.map((row) => {
       const rating = ratingsByRound.get(row.roundNumber);
       const shares = winSharesByRound.get(row.roundNumber);

@@ -77,3 +77,4 @@ every such change so it can be found later.
 - [unrounded-minutes-played-display.md](unrounded-minutes-played-display.md)
 - [win-shares-per-40-rename.md](win-shares-per-40-rename.md)
 - [leaders-page-rebuilt-around-category-cards.md](leaders-page-rebuilt-around-category-cards.md)
+- [compare-page-opens-on-the-upcoming-games.md](compare-page-opens-on-the-upcoming-games.md)

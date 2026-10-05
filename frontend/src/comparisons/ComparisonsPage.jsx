@@ -1,20 +1,19 @@
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { motion } from "motion/react";
 import { Link, useParams, useSearchParams } from "react-router";
 import AsyncState from "../lib/AsyncState";
-import CompactMetric from "../lib/CompactMetric";
-import EmptyText from "../lib/EmptyText";
-import { formatDateTime } from "../lib/format";
-import HeaderStats from "../lib/HeaderStats";
 import LabelledSelect from "../lib/LabelledSelect";
 import Panel from "../lib/Panel";
-import PanelHeader from "../lib/PanelHeader";
 import ComparisonRow from "../lib/ComparisonRow";
-import { winnerSide } from "../lib/comparisonMath";
+import { EASE_OUT, denseListContainer, listContainer, listItem } from "../lib/motion";
+import RevealImage from "../lib/RevealImage";
 import PageHeader from "../lib/PageHeader";
 import { useDocumentTitle } from "../lib/useDocumentTitle";
 import { usePhaseParam } from "../lib/usePhaseParam";
 import { TabPanel, TabStrip } from "../lib/TabStrip";
+import CompareFixtures, { GameContext } from "./CompareFixtures";
+import CompareRosters from "./CompareRosters";
 import {
   getPhases,
   getPlayer,
@@ -195,13 +194,15 @@ function TeamComparisonTable({ seasonCode, phaseCode, entityA, entityB }) {
 
   return (
     <Panel className="p-3">
-      <div className="mb-4 grid grid-cols-2 gap-4">
-        <TeamHeaderCell label={entityA.label} crestUrl={a?.crestUrl} />
-        <TeamHeaderCell label={entityB.label} crestUrl={b?.crestUrl} />
-      </div>
-      {TEAM_METRICS.map((metric) => (
+      <motion.div variants={listContainer} initial="hidden" animate="show">
+        <motion.div variants={listItem} className="mb-4 grid grid-cols-2 gap-4">
+          <TeamHeaderCell label={entityA.label} crestUrl={a?.crestUrl} />
+          <TeamHeaderCell label={entityB.label} crestUrl={b?.crestUrl} />
+        </motion.div>
+        {TEAM_METRICS.map((metric) => (
         <ComparisonRow
           key={metric.key}
+          animated
           label={metric.label}
           rawA={a?.basic?.[metric.key]}
           rawB={b?.basic?.[metric.key]}
@@ -209,7 +210,8 @@ function TeamComparisonTable({ seasonCode, phaseCode, entityA, entityB }) {
           displayB={b?.basic?.[metric.key] ?? "-"}
           direction={TEAM_METRIC_DIRECTIONS[metric.key]}
         />
-      ))}
+        ))}
+      </motion.div>
     </Panel>
   );
 }
@@ -217,16 +219,7 @@ function TeamComparisonTable({ seasonCode, phaseCode, entityA, entityB }) {
 function TeamHeaderCell({ label, crestUrl }) {
   return (
     <div className="text-center">
-      {crestUrl ? (
-        <img
-          src={crestUrl}
-          alt=""
-          className="mx-auto mb-1 h-12 w-12 object-contain"
-          onError={(event) => {
-            event.currentTarget.style.display = "none";
-          }}
-        />
-      ) : null}
+      {crestUrl ? <RevealImage src={crestUrl} className="mx-auto mb-1 h-12 w-12 object-contain" /> : null}
       <div className="font-semibold">{label}</div>
     </div>
   );
@@ -235,16 +228,7 @@ function TeamHeaderCell({ label, crestUrl }) {
 function PlayerHeaderCell({ label, imageUrl }) {
   return (
     <div className="text-center">
-      {imageUrl ? (
-        <img
-          src={imageUrl}
-          alt=""
-          className="mx-auto mb-1 aspect-3/4 h-12 w-auto object-contain object-bottom"
-          onError={(event) => {
-            event.currentTarget.style.display = "none";
-          }}
-        />
-      ) : null}
+      {imageUrl ? <RevealImage src={imageUrl} effect="wipe" className="mx-auto mb-1 aspect-3/4 h-12 w-auto object-contain object-bottom" /> : null}
       <div className="font-semibold">{label}</div>
     </div>
   );
@@ -281,21 +265,23 @@ function PlayerComparisonTable({ seasonCode, phaseCode, mode, entityA, entityB }
 
   return (
     <Panel className="p-3">
-      <div className="mb-4 grid grid-cols-2 gap-4">
-        <PlayerHeaderCell label={entityA.label} imageUrl={a?.playerImageUrl} />
-        <PlayerHeaderCell label={entityB.label} imageUrl={b?.playerImageUrl} />
-      </div>
-      {PLAYER_COMPARISON_ROWS.map((row) => {
+      <motion.div variants={denseListContainer} initial="hidden" animate="show">
+        <motion.div variants={listItem} className="mb-4 grid grid-cols-2 gap-4">
+          <PlayerHeaderCell label={entityA.label} imageUrl={a?.playerImageUrl} />
+          <PlayerHeaderCell label={entityB.label} imageUrl={b?.playerImageUrl} />
+        </motion.div>
+        {PLAYER_COMPARISON_ROWS.map((row) => {
         if (row.type === "header") {
           return (
-            <h3 key={row.key} className="bg-base-200 -mx-3 px-3 py-2 text-sm font-bold">
+            <motion.h3 key={row.key} variants={listItem} className="bg-base-200 -mx-3 px-3 py-2 text-sm font-bold">
               {row.label}
-            </h3>
+            </motion.h3>
           );
         }
         return (
           <ComparisonRow
             key={row.key}
+            animated
             label={row.label}
             rawA={a?.[row.group]?.[row.metricKey]}
             rawB={b?.[row.group]?.[row.metricKey]}
@@ -304,178 +290,9 @@ function PlayerComparisonTable({ seasonCode, phaseCode, mode, entityA, entityB }
             direction={PLAYER_METRIC_DIRECTIONS[row.metricKey]}
           />
         );
-      })}
+        })}
+      </motion.div>
     </Panel>
-  );
-}
-
-function headToHeadGames(games, phaseCode, opponentId) {
-  return games
-    .filter(
-      (game) =>
-        game.phaseCode === phaseCode &&
-        (game.localTeam?.clubCode === opponentId || game.roadTeam?.clubCode === opponentId),
-    )
-    .slice()
-    .sort((x, y) => (x.roundNumber ?? 0) - (y.roundNumber ?? 0));
-}
-
-function seriesRecord(matchups, aId) {
-  let winsA = 0;
-  let winsB = 0;
-  for (const game of matchups) {
-    if (!game.played || game.localScore == null || game.roadScore == null) continue;
-    const homeIsA = game.localTeam?.clubCode === aId;
-    const scoreA = homeIsA ? game.localScore : game.roadScore;
-    const scoreB = homeIsA ? game.roadScore : game.localScore;
-    if (scoreA > scoreB) winsA += 1;
-    else if (scoreB > scoreA) winsB += 1;
-  }
-  return { winsA, winsB };
-}
-
-function last10Form(games, clubCode) {
-  const played = games
-    .filter((game) => game.played && game.localScore != null && game.roadScore != null)
-    .slice(-10);
-  let wins = 0;
-  let diffSum = 0;
-  for (const game of played) {
-    const isHome = game.localTeam?.clubCode === clubCode;
-    const own = isHome ? game.localScore : game.roadScore;
-    const opp = isHome ? game.roadScore : game.localScore;
-    if (own > opp) wins += 1;
-    diffSum += own - opp;
-  }
-  return { played: played.length, wins, avgDiff: played.length ? diffSum / played.length : 0 };
-}
-
-function categoriesWon(standingsA, standingsB) {
-  let countA = 0;
-  let countB = 0;
-  for (const metric of TEAM_METRICS) {
-    const winner = winnerSide(standingsA?.basic?.[metric.key], standingsB?.basic?.[metric.key], TEAM_METRIC_DIRECTIONS[metric.key]);
-    if (winner === "a") countA += 1;
-    else if (winner === "b") countB += 1;
-  }
-  return { countA, countB };
-}
-
-function TeamSeriesSection({ seasonCode, phaseCode, entityA, entityB }) {
-  const gamesAQuery = useQuery({
-    queryKey: ["trend-games", seasonCode, "teams", entityA.id],
-    queryFn: () => getTeamGames(seasonCode, entityA.id, { limit: 100 }),
-  });
-
-  if (gamesAQuery.isPending) return <AsyncState status="loading" label="Loading the season series" />;
-  if (gamesAQuery.isError) {
-    return <AsyncState status="error" message="Could not load the season series." onRetry={() => gamesAQuery.refetch()} />;
-  }
-
-  const matchups = headToHeadGames(gamesAQuery.data.games ?? [], phaseCode, entityB.id);
-
-  return (
-    <Panel as="section" className="p-4">
-      <PanelHeader kicker="HEAD-TO-HEAD" title="Season series" />
-      {matchups.length === 0 ? (
-        <EmptyText>No matchups this phase yet.</EmptyText>
-      ) : (
-        <ul className="flex flex-col gap-2">
-          {matchups.map((game) => {
-            const homeIsA = game.localTeam?.clubCode === entityA.id;
-            const scoreA = homeIsA ? game.localScore : game.roadScore;
-            const scoreB = homeIsA ? game.roadScore : game.localScore;
-            const aWon = game.played && scoreA != null && scoreB != null && scoreA > scoreB;
-            const bWon = game.played && scoreA != null && scoreB != null && scoreB > scoreA;
-            return (
-              <li
-                key={game.gameCode}
-                className="flex items-center justify-between gap-4 border-b border-base-300 py-2 last:border-0"
-              >
-                <span className="muted text-sm">
-                  {game.roundName ?? (game.roundNumber ? `Round ${game.roundNumber}` : "")}
-                </span>
-                {game.played ? (
-                  <span className="flex items-center gap-2 text-sm font-semibold">
-                    <span className={aWon ? "font-bold underline" : ""}>{entityA.label}</span>
-                    <span className="tabular-nums">
-                      {scoreA ?? "-"}-{scoreB ?? "-"}
-                    </span>
-                    <span className={bWon ? "font-bold underline" : ""}>{entityB.label}</span>
-                  </span>
-                ) : (
-                  <span className="muted text-sm">{formatDateTime(game.scheduledAt)}</span>
-                )}
-              </li>
-            );
-          })}
-        </ul>
-      )}
-    </Panel>
-  );
-}
-
-function TeamVerdictStrip({ seasonCode, phaseCode, entityA, entityB, allTeams }) {
-  const standingsQuery = useQuery({
-    queryKey: ["standings", seasonCode, phaseCode],
-    queryFn: () => getSeasonStandings(seasonCode, phaseCode),
-    enabled: Boolean(phaseCode),
-  });
-  const gamesAQuery = useQuery({
-    queryKey: ["trend-games", seasonCode, "teams", entityA.id],
-    queryFn: () => getTeamGames(seasonCode, entityA.id, { limit: 100 }),
-  });
-  const gamesBQuery = useQuery({
-    queryKey: ["trend-games", seasonCode, "teams", entityB.id],
-    queryFn: () => getTeamGames(seasonCode, entityB.id, { limit: 100 }),
-  });
-
-  if (standingsQuery.isPending || gamesAQuery.isPending || gamesBQuery.isPending) return <AsyncState status="loading" label="Loading the comparison" />;
-  if (standingsQuery.isError || gamesAQuery.isError || gamesBQuery.isError) {
-    return (
-      <AsyncState status="error"
-        message="Could not load the verdict summary."
-        onRetry={() => {
-          standingsQuery.refetch();
-          gamesAQuery.refetch();
-          gamesBQuery.refetch();
-        }}
-      />
-    );
-  }
-
-  const standings = standingsQuery.data.standings ?? [];
-  const standingsA = standings.find((entry) => entry.clubCode === entityA.id);
-  const standingsB = standings.find((entry) => entry.clubCode === entityB.id);
-  const shortA = allTeams.find((team) => team.clubCode === entityA.id)?.abbreviatedName ?? entityA.label;
-  const shortB = allTeams.find((team) => team.clubCode === entityB.id)?.abbreviatedName ?? entityB.label;
-
-  const gamesA = gamesAQuery.data.games ?? [];
-  const gamesB = gamesBQuery.data.games ?? [];
-
-  const matchups = headToHeadGames(gamesA, phaseCode, entityB.id);
-  const { winsA, winsB } = seriesRecord(matchups, entityA.id);
-  const seriesValue =
-    winsA === winsB ? `${winsA}-${winsB}` : winsA > winsB ? `${shortA} ${winsA}-${winsB}` : `${shortB} ${winsB}-${winsA}`;
-
-  const { countA, countB } = categoriesWon(standingsA, standingsB);
-  const categoriesLabel =
-    countA === countB ? "Categories won · Even" : `Categories won · ${countA > countB ? shortA : shortB}`;
-
-  const formA = last10Form(gamesA, entityA.id);
-  const formB = last10Form(gamesB, entityB.id);
-  let formValue = "Even";
-  if (formA.played > 0 || formB.played > 0) {
-    if (formA.wins !== formB.wins) formValue = formA.wins > formB.wins ? shortA : shortB;
-    else if (formA.avgDiff !== formB.avgDiff) formValue = formA.avgDiff > formB.avgDiff ? shortA : shortB;
-  }
-
-  return (
-    <HeaderStats className="mb-6">
-      <CompactMetric value={seriesValue} label="Season series" />
-      <CompactMetric value={`${countA}-${countB}`} label={categoriesLabel} />
-      <CompactMetric value={formValue} label={<>Better recent form &middot; L10</>} />
-    </HeaderStats>
   );
 }
 
@@ -587,6 +404,7 @@ function ComparisonsBody({
   initialTeamB,
   initialPlayerA,
   initialPlayerB,
+  initialGame,
 }) {
   const [, setSearchParams] = useSearchParams();
   const [view, setView] = useState(initialView);
@@ -603,6 +421,8 @@ function ComparisonsBody({
     return team ? { id: team.clubCode, label: team.name ?? team.clubCode } : null;
   });
   const [copyLabel, setCopyLabel] = useState("Copy comparison link");
+  // The game the comparison was opened from (a pick on the upcoming-games panel), kept in the URL so the context survives a refresh.
+  const [gameCode, setGameCode] = useState(initialGame);
 
   // Resolve player entities named only by personKey in the URL (teams
   // resolve synchronously above from the already-loaded team list).
@@ -628,7 +448,7 @@ function ComparisonsBody({
   const effectiveEntityA = entityA ?? resolvedPlayerA;
   const effectiveEntityB = entityB ?? resolvedPlayerB;
 
-  function persistEntities(nextView, a, b) {
+  function persistEntities(nextView, a, b, fromGame = null) {
     setSearchParams(
       (params) => {
         const next = new URLSearchParams(params);
@@ -644,6 +464,7 @@ function ComparisonsBody({
           next.delete("teamA");
           next.delete("teamB");
         }
+        if (nextView === "teams" && fromGame) next.set("game", fromGame); else next.delete("game");
         return next;
       },
       { replace: true },
@@ -655,23 +476,49 @@ function ComparisonsBody({
     setSection("comparison");
     setEntityA(null);
     setEntityB(null);
+    setGameCode(null);
     persistEntities(value, null, null);
   }
 
   function handleSelectA(next) {
     setEntityA(next);
+    setGameCode(null);
     persistEntities(view, next, effectiveEntityB);
   }
 
   function handleSelectB(next) {
     setEntityB(next);
+    setGameCode(null);
     persistEntities(view, effectiveEntityA, next);
   }
 
   function handleSwap() {
     setEntityA(effectiveEntityB);
     setEntityB(effectiveEntityA);
+    setGameCode(null);
     persistEntities(view, effectiveEntityB, effectiveEntityA);
+  }
+
+  // A game picked on the upcoming-games panel: its home club is Team A, and the statistics follow the game's phase.
+  function handlePickGame(game) {
+    const asEntity = (team) => ({ id: team.clubCode, label: team.name ?? team.clubCode });
+    const home = asEntity(game.localTeam);
+    const road = asEntity(game.roadTeam);
+    setView("teams");
+    setSection("comparison");
+    setEntityA(home);
+    setEntityB(road);
+    setGameCode(game.gameCode);
+    if (game.phaseCode && game.phaseCode !== phaseCode && phases.some((phase) => phase.code === game.phaseCode)) handlePhaseChange(game.phaseCode);
+    persistEntities("teams", home, road, game.gameCode);
+  }
+
+  function handleBack() {
+    setEntityA(null);
+    setEntityB(null);
+    setGameCode(null);
+    setSection("comparison");
+    persistEntities(view, null, null);
   }
 
   function handleCopyLink() {
@@ -688,191 +535,136 @@ function ComparisonsBody({
     setMode("perGame");
   }
 
+  const bothSelected = Boolean(effectiveEntityA && effectiveEntityB);
+  const teamPickers = (
+    <div className="grid items-end gap-4 sm:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)]">
+      <TeamPicker label="Team A" allTeams={allTeams} teamsPending={false} selected={effectiveEntityA} excludeId={effectiveEntityB?.id} onSelect={handleSelectA} />
+      <button type="button" className="btn btn-outline btn-square btn-sm mx-auto" aria-label="Swap teams" disabled={!effectiveEntityA && !effectiveEntityB} onClick={handleSwap}>
+        &#8646;
+      </button>
+      <TeamPicker label="Team B" allTeams={allTeams} teamsPending={false} selected={effectiveEntityB} excludeId={effectiveEntityA?.id} onSelect={handleSelectB} />
+    </div>
+  );
+  const playerPickers = (
+    <div className="grid items-end gap-4 sm:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)]">
+      <PlayerPicker seasonCode={seasonCode} label="Player A" selected={effectiveEntityA} excludeId={effectiveEntityB?.id} onSelect={handleSelectA} />
+      <button type="button" className="btn btn-outline btn-square btn-sm mx-auto" aria-label="Swap players" disabled={!effectiveEntityA && !effectiveEntityB} onClick={handleSwap}>
+        &#8646;
+      </button>
+      <PlayerPicker seasonCode={seasonCode} label="Player B" selected={effectiveEntityB} excludeId={effectiveEntityA?.id} onSelect={handleSelectB} />
+    </div>
+  );
+
+  // Nothing chosen yet: the games of the coming round and the pickers for any two teams (or players).
+  if (!bothSelected) {
+    return (
+      <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3, ease: EASE_OUT }}>
+        <PageHeader kicker="HEAD-TO-HEAD" title="Compare" />
+        <TabStrip
+          ariaLabel="Comparison type"
+          level={1}
+          panelId="comparison-panel"
+          activeKey={view}
+          onChange={handleViewChange}
+          className="mb-6 w-fit"
+          tabs={[
+            { key: "teams", label: "Teams" },
+            { key: "players", label: "Players" },
+          ]}
+        />
+        <div id="comparison-panel" className="mb-6">
+          {view === "teams" ? (
+            <div className="flex flex-col gap-6">
+              <CompareFixtures seasonCode={seasonCode} onPick={handlePickGame} />
+              <Panel className="p-4">
+                <p className="eyebrow mb-0.5">ANY TWO TEAMS</p>
+                <h2 className="mb-3 text-lg font-bold">Compare any two teams</h2>
+                {teamPickers}
+              </Panel>
+            </div>
+          ) : (
+            playerPickers
+          )}
+        </div>
+      </motion.div>
+    );
+  }
+
+  // A comparison is open: only what it needs, the way back, the sections and the statistics phase.
+  const sections =
+    view === "teams"
+      ? [
+          { key: "comparison", label: "Comparison" },
+          { key: "rosters", label: "Rosters" },
+          { key: "trends", label: "Trends" },
+        ]
+      : [
+          { key: "comparison", label: "Comparison" },
+          { key: "trends", label: "Trends" },
+        ];
   return (
-    <div>
+    <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3, ease: EASE_OUT }}>
       <PageHeader kicker="HEAD-TO-HEAD" title="Compare">
-        {effectiveEntityA && effectiveEntityB ? (
-          <button type="button" className="btn btn-sm" onClick={handleCopyLink}>
-            {copyLabel}
-          </button>
-        ) : null}
+        <button type="button" className="btn btn-sm" onClick={handleCopyLink}>
+          {copyLabel}
+        </button>
       </PageHeader>
 
-      <div className="mb-6 flex flex-wrap gap-4">
-        <LabelledSelect
-          label="Comparison type"
-            value={view}
-            onChange={(event) => handleViewChange(event.target.value)}
+      <GameContext seasonCode={seasonCode} gameCode={gameCode} backLabel={view === "teams" ? "← Games" : "← Players"} onBack={handleBack}>
+        {view === "teams" ? (
+          <Link
+            to={`/${seasonCode}/comparisons/head-to-head?teamA=${encodeURIComponent(effectiveEntityA.id)}&teamB=${encodeURIComponent(effectiveEntityB.id)}`}
+            className="link link-hover text-sm"
           >
-            <option value="teams">Teams</option>
-            <option value="players">Players</option>
-        </LabelledSelect>
+            All-time head-to-head
+          </Link>
+        ) : null}
+      </GameContext>
 
-        <LabelledSelect
-          label="Phase"
-          ariaLabel="Comparison phase"
-            value={phaseCode ?? ""}
-            onChange={(event) => handlePhaseChange(event.target.value)}
-          >
+      <div className="mb-6 flex flex-wrap items-end justify-between gap-x-6 gap-y-3">
+        <TabStrip
+          ariaLabel="Comparison section"
+          level={1}
+          panelId="comparison-section-panel"
+          activeKey={section}
+          onChange={setSection}
+          className="w-fit"
+          tabs={sections}
+        />
+        <div className="flex flex-wrap items-end gap-3">
+          {view === "players" ? (
+            <LabelledSelect label="Player statistics" ariaLabel="Player comparison mode" value={mode} onChange={(event) => setMode(event.target.value)}>
+              <option value="accumulated">Accumulated</option>
+              <option value="perGame">Per game</option>
+            </LabelledSelect>
+          ) : null}
+          <LabelledSelect label="Phase" ariaLabel="Comparison phase" value={phaseCode ?? ""} onChange={(event) => handlePhaseChange(event.target.value)}>
             {phases.map((phase) => (
               <option key={phase.code} value={phase.code}>
                 {phase.name ?? phase.code}
               </option>
             ))}
-        </LabelledSelect>
+          </LabelledSelect>
+        </div>
       </div>
 
-      <div className="mb-6 grid items-end gap-4 sm:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)]">
-        {view === "teams" ? (
-          <>
-            <TeamPicker
-              label="Team A"
-              allTeams={allTeams}
-              teamsPending={false}
-              selected={effectiveEntityA}
-              excludeId={effectiveEntityB?.id}
-              onSelect={handleSelectA}
-            />
-            <button
-              type="button"
-              className="btn btn-outline btn-square btn-sm mx-auto"
-              aria-label="Swap teams"
-              disabled={!effectiveEntityA && !effectiveEntityB}
-              onClick={handleSwap}
-            >
-              &#8646;
-            </button>
-            <TeamPicker
-              label="Team B"
-              allTeams={allTeams}
-              teamsPending={false}
-              selected={effectiveEntityB}
-              excludeId={effectiveEntityA?.id}
-              onSelect={handleSelectB}
-            />
-          </>
+      <TabPanel id="comparison-section-panel" focusKey={section} scroll={false}>
+        {section === "comparison" ? (
+          view === "teams" ? (
+            <TeamComparisonTable seasonCode={seasonCode} phaseCode={phaseCode} entityA={effectiveEntityA} entityB={effectiveEntityB} />
+          ) : (
+            <PlayerComparisonTable seasonCode={seasonCode} phaseCode={phaseCode} mode={mode} entityA={effectiveEntityA} entityB={effectiveEntityB} />
+          )
+        ) : section === "rosters" ? (
+          <CompareRosters seasonCode={seasonCode} phaseCode={phaseCode} entityA={effectiveEntityA} entityB={effectiveEntityB} />
         ) : (
-          <>
-            <PlayerPicker
-              seasonCode={seasonCode}
-              label="Player A"
-              selected={effectiveEntityA}
-              excludeId={effectiveEntityB?.id}
-              onSelect={handleSelectA}
-            />
-            <button
-              type="button"
-              className="btn btn-outline btn-square btn-sm mx-auto"
-              aria-label="Swap players"
-              disabled={!effectiveEntityA && !effectiveEntityB}
-              onClick={handleSwap}
-            >
-              &#8646;
-            </button>
-            <PlayerPicker
-              seasonCode={seasonCode}
-              label="Player B"
-              selected={effectiveEntityB}
-              excludeId={effectiveEntityA?.id}
-              onSelect={handleSelectB}
-            />
-          </>
+          <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3, ease: EASE_OUT }}>
+            <h2 className="mb-3 text-xl font-semibold">Points scored trend</h2>
+            <TrendSection seasonCode={seasonCode} phaseCode={phaseCode} view={view} entityA={effectiveEntityA} entityB={effectiveEntityB} />
+          </motion.div>
         )}
-      </div>
-
-      {view === "players" ? (
-        <LabelledSelect
-          label="Player statistics"
-          ariaLabel="Player comparison mode"
-          labelClassName="mb-4"
-          className="w-fit"
-            value={mode}
-            onChange={(event) => setMode(event.target.value)}
-          >
-            <option value="accumulated">Accumulated</option>
-            <option value="perGame">Per game</option>
-        </LabelledSelect>
-      ) : null}
-
-      {effectiveEntityA && effectiveEntityB ? (
-        <section className="mb-8">
-          {view === "teams" ? (
-            <Link
-              to={`/${seasonCode}/comparisons/head-to-head?teamA=${encodeURIComponent(effectiveEntityA.id)}&teamB=${encodeURIComponent(effectiveEntityB.id)}`}
-              className="btn btn-outline btn-sm mb-4"
-            >
-              Head-to-head
-            </Link>
-          ) : null}
-          <TabStrip
-            ariaLabel="Comparison section"
-
-            level={1}
-            panelId="comparison-section-panel"
-            activeKey={section}
-            onChange={setSection}
-            className="mb-4 w-fit"
-            tabs={[
-              { key: "comparison", label: "Comparison" },
-              { key: "trends", label: "Trends" },
-            ]}
-          />
-          <TabPanel id="comparison-section-panel" focusKey={section}>
-            {section === "comparison" ? (
-              <>
-                {view === "teams" ? (
-                  <>
-                    <TeamVerdictStrip
-                      seasonCode={seasonCode}
-                      phaseCode={phaseCode}
-                      entityA={effectiveEntityA}
-                      entityB={effectiveEntityB}
-                      allTeams={allTeams}
-                    />
-                    <section className="mb-8">
-                      <TeamSeriesSection
-                        seasonCode={seasonCode}
-                        phaseCode={phaseCode}
-                        entityA={effectiveEntityA}
-                        entityB={effectiveEntityB}
-                      />
-                    </section>
-                  </>
-                ) : null}
-                <h2 className="mb-3 text-xl font-semibold">Comparison</h2>
-                {view === "teams" ? (
-                  <TeamComparisonTable
-                    seasonCode={seasonCode}
-                    phaseCode={phaseCode}
-                    entityA={effectiveEntityA}
-                    entityB={effectiveEntityB}
-                  />
-                ) : (
-                  <PlayerComparisonTable
-                    seasonCode={seasonCode}
-                    phaseCode={phaseCode}
-                    mode={mode}
-                    entityA={effectiveEntityA}
-                    entityB={effectiveEntityB}
-                  />
-                )}
-              </>
-            ) : (
-              <>
-                <h2 className="mb-3 text-xl font-semibold">Points scored trend</h2>
-                <TrendSection
-                  seasonCode={seasonCode}
-                  phaseCode={phaseCode}
-                  view={view}
-                  entityA={effectiveEntityA}
-                  entityB={effectiveEntityB}
-                />
-              </>
-            )}
-          </TabPanel>
-        </section>
-      ) : null}
-    </div>
+      </TabPanel>
+    </motion.div>
   );
 }
 
@@ -913,6 +705,7 @@ export default function ComparisonsPage() {
       initialTeamB={searchParams.get("teamB")}
       initialPlayerA={searchParams.get("playerA")}
       initialPlayerB={searchParams.get("playerB")}
+      initialGame={searchParams.get("game")}
     />
   );
 }

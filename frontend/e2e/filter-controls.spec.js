@@ -35,15 +35,14 @@ test("uses compact native selects for statistics and comparison filters", async 
   await sections.getByRole("link", { name: "Compare", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Compare", exact: true })).toBeVisible();
 
-  const comparisonType = page.getByLabel("Comparison type");
-  await expect(comparisonType).toHaveJSProperty("tagName", "SELECT");
-  const comparisonPhase = page.getByLabel("Comparison phase");
-  await expect(comparisonPhase).toHaveJSProperty("tagName", "SELECT");
-  await comparisonPhase.selectOption({ index: 0 });
-  await comparisonType.selectOption("players");
-  await expect(comparisonType).toHaveValue("players");
+  const comparisonType = page.getByRole("tablist", { name: "Comparison type" });
+  await comparisonType.getByRole("tab", { name: "Players", exact: true }).click();
+  await expect(comparisonType.getByRole("tab", { name: "Players", exact: true })).toHaveAttribute("aria-selected", "true");
   await expect(page.getByLabel("Player A")).toBeVisible();
 
+  // With two players chosen the comparison opens, with its own statistics mode.
+  const players = (await (await page.request.get("http://localhost:3000/api/seasons/E2025/players?limit=2")).json()).players;
+  await page.goto(`/E2025/comparisons?view=players&playerA=${players[0].personKey}&playerB=${players[1].personKey}`);
   const comparisonMode = page.getByLabel("Player comparison mode");
   await comparisonMode.selectOption("accumulated");
   await expect(comparisonMode).toHaveValue("accumulated");

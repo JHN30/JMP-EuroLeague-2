@@ -492,6 +492,7 @@ export default function TeamAdvancedSection({ seasonCode, clubCode, onOpenShooti
     <div className="flex flex-col gap-6">
       <TabStrip
         ariaLabel="Advanced stats scope"
+        level={2}
         panelId="team-advanced-panel"
         activeKey={activeScope}
         onChange={setScope}

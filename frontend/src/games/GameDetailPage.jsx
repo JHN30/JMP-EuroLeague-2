@@ -1148,7 +1148,7 @@ export default function GameDetailPage() {
         )}
       </PageHeader>
 
-      <TabStrip ariaLabel="Game detail" panelId="game-detail-panel" activeKey={tab} onChange={setTab} className="mb-4 w-fit" tabs={GAME_TABS} />
+      <TabStrip ariaLabel="Game detail" level={1} panelId="game-detail-panel" activeKey={tab} onChange={setTab} className="mb-4 w-fit" tabs={GAME_TABS} />
 
       <TabPanel id="game-detail-panel" focusKey={tab} scroll={false}>
         <motion.div key={tab} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.25 }}>

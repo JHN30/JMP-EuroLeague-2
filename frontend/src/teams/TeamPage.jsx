@@ -385,7 +385,7 @@ function OverviewSection({ seasonCode, clubCode, team, phaseCode, standingsQuery
       <TeamSnapshot standingsQuery={standingsQuery} teamStatsQuery={teamStatsQuery} clubCode={clubCode} phaseGames={phaseGames} />
       <TeamLeaders seasonCode={seasonCode} rosterStatsQuery={rosterStatsQuery} />
       <TeamLeagueProfile advancedQuery={advancedQuery} clubCode={clubCode} team={team} />
-      <div className="grid gap-6 lg:grid-cols-2">
+      <div className="grid grid-cols-[minmax(0,1fr)] gap-6 lg:grid-cols-2">
         {/* The last panel here grows to the comparison's height, so the two columns end together. */}
         <div className="flex flex-col gap-6 *:last:flex-1">
           <RecentFormList seasonCode={seasonCode} games={games} clubCode={clubCode} />
@@ -504,25 +504,26 @@ export default function TeamPage() {
         {gamesQuery.isSuccess ? <NextGameChip nextGame={nextGame} clubCode={clubCode} /> : null}
       </PageHeader>
 
-      {section === "advanced" ? null : (
-        <TabStrip
-          ariaLabel="Phase"
-          panelId="team-panel"
-          activeKey={phaseCode}
-          onChange={setPhaseCode}
-          className="mb-4 w-fit"
-          tabs={phases.map((phase) => ({ key: phase.code, label: phase.name ?? phase.code }))}
-        />
-      )}
-
       <TabStrip
         ariaLabel="Section"
+        level={1}
         panelId="team-panel"
         activeKey={section}
         onChange={setSection}
-        className="mb-6 w-fit"
+        className={`w-fit ${section === "advanced" ? "mb-6" : "mb-4"}`}
         tabs={SECTIONS}
       />
+      {section === "advanced" ? null : (
+        <TabStrip
+          ariaLabel="Phase"
+          level={2}
+          panelId="team-panel"
+          activeKey={phaseCode}
+          onChange={setPhaseCode}
+          className="mb-6 w-fit"
+          tabs={phases.map((phase) => ({ key: phase.code, label: phase.name ?? phase.code }))}
+        />
+      )}
 
       <TabPanel id="team-panel" focusKey={`${phaseCode}-${section}`} scroll={false}>
         {section === "overview" ? (

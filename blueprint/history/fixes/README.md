@@ -76,3 +76,4 @@ every such change so it can be found later.
 - [theme-switcher-never-switches.md](theme-switcher-never-switches.md)
 - [unrounded-minutes-played-display.md](unrounded-minutes-played-display.md)
 - [win-shares-per-40-rename.md](win-shares-per-40-rename.md)
+- [leaders-page-rebuilt-around-category-cards.md](leaders-page-rebuilt-around-category-cards.md)

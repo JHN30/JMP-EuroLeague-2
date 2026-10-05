@@ -12,7 +12,9 @@ function nextIndexFor(key, currentIndex, enabledCount) {
   return null;
 }
 
-export function TabStrip({ ariaLabel, tabs, activeKey, onChange, panelId, className = "" }) {
+// `level` sets how prominent the strip is: 1 for a page's main navigation, 2 for the filter under it, 3 (the default) for the
+// detail strips inside a section. The bigger the level's weight, the bigger the tabs.
+export function TabStrip({ ariaLabel, tabs, activeKey, onChange, panelId, level = 3, className = "" }) {
   const [focusedKey, setFocusedKey] = useState(activeKey);
   const [lastActiveKey, setLastActiveKey] = useState(activeKey);
   const buttonRefs = useRef({});
@@ -42,7 +44,7 @@ export function TabStrip({ ariaLabel, tabs, activeKey, onChange, panelId, classN
   }
 
   return (
-    <div role="tablist" aria-label={ariaLabel} className={`tabs tabs-boxed tabs-sm ${className}`}>
+    <div role="tablist" aria-label={ariaLabel} className={`tabs tab-level-${level} ${className}`}>
       {tabs.map((tab) => {
         const isActive = tab.key === activeKey;
         const isFocusable = tab.key === focusedKey;

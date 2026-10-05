@@ -103,6 +103,8 @@ export default function FixturesPage() {
 
       <TabStrip
         ariaLabel="Phase"
+
+        level={1}
         panelId="fixtures-panel"
         activeKey={phaseCode}
         onChange={handlePhaseChange}

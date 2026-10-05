@@ -198,13 +198,14 @@ export default function PlayerStatisticsSection({ seasonCode, personKey, phases,
       <div className="mb-4 flex flex-wrap items-center gap-4">
         <TabStrip
           ariaLabel="Phase"
+          level={2}
           panelId={PANEL_ID}
           activeKey={phaseCode}
           onChange={onPhaseChange}
           className="w-fit"
           tabs={phases.map((phase) => ({ key: phase.code, label: phase.name ?? phase.code }))}
         />
-        <TabStrip ariaLabel="Stats mode" panelId={PANEL_ID} activeKey={mode} onChange={setMode} className="w-fit" tabs={MODES} />
+        <TabStrip ariaLabel="Stats mode" level={2} panelId={PANEL_ID} activeKey={mode} onChange={setMode} className="w-fit" tabs={MODES} />
       </div>
       <TabPanel id={PANEL_ID} focusKey={`${phaseCode}-${mode}`} scroll={false}>
         {body}

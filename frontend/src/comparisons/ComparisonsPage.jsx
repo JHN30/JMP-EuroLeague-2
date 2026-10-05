@@ -806,6 +806,8 @@ function ComparisonsBody({
           ) : null}
           <TabStrip
             ariaLabel="Comparison section"
+
+            level={1}
             panelId="comparison-section-panel"
             activeKey={section}
             onChange={setSection}

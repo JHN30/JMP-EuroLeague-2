@@ -93,6 +93,8 @@ export default function StandingsPage() {
       {mode === "advanced" ? null : (
         <TabStrip
           ariaLabel="Phase"
+
+          level={1}
           panelId="standings-panel"
           activeKey={phaseCode}
           onChange={setPhaseCode}
@@ -133,6 +135,8 @@ export default function StandingsPage() {
 
             <TabStrip
               ariaLabel="Standings display"
+
+              level={2}
               panelId="standings-panel"
               activeKey={mode}
               onChange={setMode}

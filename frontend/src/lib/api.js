@@ -88,10 +88,19 @@ export async function getAdvancedStandings(seasonCode, { scope, round } = {}) {
   return data;
 }
 
-export async function getAdvancedLeaders(seasonCode, { metric, scope, minMinutes, limit } = {}) {
+// `offset` and `limit` page through the players who qualify (the response carries their `total`); `order: "asc"` ranks the
+// lowest first, for the stats where less is better.
+export async function getAdvancedLeaders(seasonCode, { metric, scope, minMinutes, limit, offset, order } = {}) {
   const { data } = await api.get(`/seasons/${seasonCode}/advanced/leaders`, {
-    params: { metric, scope, minMinutes, limit },
+    params: { metric, scope, minMinutes, limit, offset, order },
   });
+  return data;
+}
+
+// Every qualified player's per-game numbers over their last `games` games and over the phase, and their rank on each stat
+// now and before the latest round (hot right now, and who has moved).
+export async function getLeaderForm(seasonCode, { phase, games } = {}) {
+  const { data } = await api.get(`/seasons/${seasonCode}/leaders/form`, { params: { phase, games } });
   return data;
 }
 

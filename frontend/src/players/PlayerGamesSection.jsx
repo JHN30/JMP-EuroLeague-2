@@ -331,6 +331,7 @@ function PhaseSwitch({ phases, activeKey, onChange }) {
   return (
     <TabStrip
       ariaLabel="Phase"
+      level={2}
       panelId="player-games-panel"
       activeKey={activeKey}
       onChange={onChange}

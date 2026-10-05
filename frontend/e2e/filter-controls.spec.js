@@ -15,13 +15,14 @@ test("uses compact native selects for statistics and comparison filters", async 
   await sections.getByRole("link", { name: "Leaders", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Leaders" })).toBeVisible();
 
-  const statisticsPhase = page.getByLabel("Statistics phase");
-  await expect(statisticsPhase).toHaveJSProperty("tagName", "SELECT");
-  await statisticsPhase.selectOption({ index: 0 });
-  const playersScope = page.getByRole("group", { name: "Leaderboard scope" }).getByRole("button", { name: "Players", exact: true });
+  const statisticsPhase = page.getByRole("tablist", { name: "Statistics phase" });
+  await statisticsPhase.getByRole("tab").first().click();
+  const playersScope = page.getByRole("tablist", { name: "Leaderboard scope" }).getByRole("tab", { name: "Players", exact: true });
   await playersScope.click();
-  await expect(playersScope).toHaveAttribute("aria-pressed", "true");
+  await expect(playersScope).toHaveAttribute("aria-selected", "true");
 
+  // The landing shows category cards; the filters live on a full leaderboard.
+  await page.getByRole("button", { name: "See the full leaderboard" }).first().click();
   const playerMode = page.getByLabel("Player statistics mode");
   await expect(playerMode).toHaveJSProperty("tagName", "SELECT");
   await playerMode.selectOption("accumulated");

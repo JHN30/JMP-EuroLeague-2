@@ -478,6 +478,7 @@ export default function PlayerAdvancedSection({ seasonCode, personKey }) {
     <div className="flex flex-col gap-6">
       <TabStrip
         ariaLabel="Advanced stats scope"
+        level={2}
         panelId="player-advanced-panel"
         activeKey={activeScope}
         onChange={setScope}

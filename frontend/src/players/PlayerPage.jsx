@@ -110,6 +110,8 @@ export default function PlayerPage() {
       <section className="mb-8">
         <TabStrip
           ariaLabel="Player detail section"
+
+          level={1}
           panelId="player-detail-panel"
           activeKey={section}
           onChange={setSection}

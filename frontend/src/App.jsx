@@ -16,7 +16,7 @@ const TeamsPage = lazy(() => import("./teams/TeamsPage"));
 const TeamPage = lazy(() => import("./teams/TeamPage"));
 const PlayersPage = lazy(() => import("./players/PlayersPage"));
 const PlayerPage = lazy(() => import("./players/PlayerPage"));
-const StatisticsPage = lazy(() => import("./statistics/StatisticsPage"));
+const LeadersPage = lazy(() => import("./leaders/LeadersPage"));
 const ComparisonsPage = lazy(() => import("./comparisons/ComparisonsPage"));
 const HeadToHeadPage = lazy(() => import("./comparisons/HeadToHeadPage"));
 const RecordsPage = lazy(() => import("./records/RecordsPage"));
@@ -61,7 +61,7 @@ function App() {
             <Route path="teams/:clubCode" element={<TeamPage />} />
             <Route path="players" element={<PlayersPage />} />
             <Route path="players/:personKey" element={<PlayerPage />} />
-            <Route path="statistics" element={<StatisticsPage />} />
+            <Route path="statistics" element={<LeadersPage />} />
             <Route path="comparisons" element={<ComparisonsPage />} />
             <Route path="comparisons/head-to-head" element={<HeadToHeadPage />} />
             <Route path="records" element={<RecordsPage />} />

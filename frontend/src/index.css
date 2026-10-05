@@ -350,51 +350,6 @@ button {
   color: var(--color-rank-leader);
 }
 
-.coverage-grid {
-  display: grid;
-  gap: 0.5rem;
-  grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr));
-}
-.coverage-item {
-  display: grid;
-  grid-template-columns: 2rem minmax(0, 1fr) auto;
-  align-items: center;
-  gap: 0.5rem;
-  border: 1px solid var(--color-base-300);
-  border-radius: var(--radius-field);
-  background: color-mix(in srgb, var(--color-base-100) 60%, transparent);
-  padding: 0.65rem;
-}
-.coverage-icon {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 2rem;
-  min-height: 2rem;
-  border-radius: 999px;
-  background: color-mix(in srgb, var(--coverage-color) 18%, transparent);
-  color: var(--coverage-color);
-  font-size: 0.65rem;
-  font-weight: 800;
-}
-.coverage-available {
-  --coverage-color: var(--color-success);
-  border-color: color-mix(in srgb, var(--color-success) 45%, var(--color-base-300));
-}
-.coverage-partial,
-.coverage-incomplete {
-  --coverage-color: var(--color-warning);
-  border-color: color-mix(in srgb, var(--color-warning) 45%, var(--color-base-300));
-}
-.coverage-unavailable {
-  --coverage-color: var(--color-error);
-  border-color: color-mix(in srgb, var(--color-error) 45%, var(--color-base-300));
-}
-.coverage-notYetApplicable {
-  --coverage-color: var(--color-info);
-  border-color: color-mix(in srgb, var(--color-info) 45%, var(--color-base-300));
-}
-
 /* big stat callouts */
 .stat-callout {
   display: flex;
@@ -525,65 +480,6 @@ button {
   border-radius: 0.4rem;
   object-fit: contain;
   flex: none;
-}
-
-/* Spotlight - featured next game (dashboard) */
-.spotlight-body {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 1.5rem;
-  flex-wrap: wrap;
-}
-.spotlight-matchup {
-  display: flex;
-  align-items: center;
-  gap: 1.25rem;
-  flex: 1;
-  min-width: 16rem;
-}
-.spotlight-team {
-  display: flex;
-  align-items: center;
-  gap: 0.65rem;
-  flex: 1;
-}
-.spotlight-team.right {
-  flex-direction: row-reverse;
-  text-align: right;
-}
-.spotlight-name {
-  font-weight: 700;
-  font-size: 0.95rem;
-}
-.spotlight-record {
-  font-size: 0.76rem;
-  opacity: 0.75;
-  margin-top: 0.15rem;
-}
-.spotlight-vs {
-  font-size: 0.68rem;
-  font-weight: 900;
-  opacity: 0.5;
-  flex: none;
-}
-.spotlight-meta {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 0.3rem;
-  font-size: 0.8rem;
-  font-weight: 600;
-  flex: none;
-}
-@media (max-width: 639px) {
-  .spotlight-matchup {
-    min-width: 100%;
-  }
-  .spotlight-meta {
-    align-items: flex-start;
-    width: 100%;
-  }
 }
 
 /* Match cards - denser fixtures presentation (dashboard) */

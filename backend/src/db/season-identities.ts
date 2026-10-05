@@ -224,6 +224,12 @@ async function getPlayerListDetails(seasonCode: string, personKeys: string[]) {
   return { registrations: registrationsByPerson, images };
 }
 
+// The photo of each of these players (the season statistics are the only place the feed keeps one); a player who has not
+// played has none.
+export async function getPlayerImages(seasonCode: string, personKeys: string[]): Promise<Map<string, string>> {
+  return (await getPlayerListDetails(seasonCode, personKeys)).images;
+}
+
 export async function getPlayer(seasonCode: string, personKey: string): Promise<PlayerListEntry | null> {
   const rows = await catalogRead(() =>
     db.select(playerFields)

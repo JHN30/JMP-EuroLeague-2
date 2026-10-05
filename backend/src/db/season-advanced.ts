@@ -210,6 +210,58 @@ export async function getUsageLeaders(
   );
 }
 
+// The player round columns a leaderboard can rank, by metric key. Every one is a running value after the round, read at one
+// round only (see getPerLeaders). Rates (usage, shooting percentages, per-100 figures) are published, never recomputed here.
+export const ROUND_STAT_METRICS = {
+  pointsPer100: playerRoundStats.pointsPer100,
+  reboundsPer100: playerRoundStats.reboundsPer100,
+  assistsPer100: playerRoundStats.assistsPer100,
+  stealsPer100: playerRoundStats.stealsPer100,
+  blocksPer100: playerRoundStats.blocksPer100,
+  turnoversPer100: playerRoundStats.turnoversPer100,
+  usgPct: playerRoundStats.usgPct,
+  astPct: playerRoundStats.astPct,
+  trbPct: playerRoundStats.trbPct,
+  stlPct: playerRoundStats.stlPct,
+  blkPct: playerRoundStats.blkPct,
+  tovPct: playerRoundStats.tovPct,
+  tsPct: playerRoundStats.tsPct,
+  efgPct: playerRoundStats.efgPct,
+  pie: playerRoundStats.pie,
+  gameScoreAverage: playerRoundStats.gameScoreAverage,
+} as const;
+export type RoundStatMetric = keyof typeof ROUND_STAT_METRICS;
+
+export async function getRoundStatLeaders(
+  seasonCode: string,
+  scope: string,
+  round: number,
+  metric: RoundStatMetric,
+  minSeconds: number,
+  ascending: boolean,
+  limit: number,
+) {
+  const column = ROUND_STAT_METRICS[metric];
+  return catalogRead(() =>
+    db.select({
+      personKey: playerRoundStats.personKey,
+      playerName: playerRoundStats.playerName,
+      clubCode: playerRoundStats.clubCode,
+      gamesPlayed: playerRoundStats.gamesPlayed,
+      secondsPlayed: playerRoundStats.secondsPlayed,
+      value: column,
+    })
+      .from(playerRoundStats)
+      .where(and(
+        ...inScope(playerRoundStats, seasonCode, scope),
+        eq(playerRoundStats.roundNumber, round),
+        gte(playerRoundStats.secondsPlayed, minSeconds),
+      ))
+      .orderBy(ascending ? sql`${column} ASC NULLS LAST` : sql`${column} DESC NULLS LAST`, asc(playerRoundStats.personKey))
+      .limit(limit),
+  );
+}
+
 export async function getWinShareLeaders(
   seasonCode: string,
   scope: string,

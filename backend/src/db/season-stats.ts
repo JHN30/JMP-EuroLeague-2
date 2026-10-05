@@ -96,6 +96,7 @@ export type StatsEntry = {
   playerName: string | null;
   playerAge: number | null;
   playerImageUrl: string | null;
+  positionName: string | null;
   isCalculated: boolean | null;
   minGames: number | null;
   qualified: boolean | null;
@@ -204,6 +205,22 @@ const SORTABLE_FIELDS = {
   gamesPlayed: seasonStatsTraditional.gamesPlayed,
   minutesPlayed: seasonStatsTraditional.minutesPlayed,
   pointsScored: seasonStatsTraditional.pointsScored,
+  twoPointersMade: seasonStatsTraditional.twoPointersMade,
+  twoPointersPercentage: seasonStatsTraditional.twoPointersPercentage,
+  threePointersMade: seasonStatsTraditional.threePointersMade,
+  threePointersPercentage: seasonStatsTraditional.threePointersPercentage,
+  freeThrowsMade: seasonStatsTraditional.freeThrowsMade,
+  freeThrowsPercentage: seasonStatsTraditional.freeThrowsPercentage,
+  offensiveRebounds: seasonStatsTraditional.offensiveRebounds,
+  defensiveRebounds: seasonStatsTraditional.defensiveRebounds,
+  blocksAgainst: seasonStatsTraditional.blocksAgainst,
+  foulsCommited: seasonStatsTraditional.foulsCommited,
+  foulsDrawn: seasonStatsTraditional.foulsDrawn,
+  assistsRatio: seasonStatsAdvanced.assistsRatio,
+  turnoversRatio: seasonStatsAdvanced.turnoversRatio,
+  freeThrowsRate: seasonStatsAdvanced.freeThrowsRate,
+  offensiveReboundsPercentage: seasonStatsAdvanced.offensiveReboundsPercentage,
+  defensiveReboundsPercentage: seasonStatsAdvanced.defensiveReboundsPercentage,
   totalRebounds: seasonStatsTraditional.totalRebounds,
   assists: seasonStatsTraditional.assists,
   steals: seasonStatsTraditional.steals,
@@ -273,6 +290,11 @@ export async function getSeasonStats(
         playerName: seasonStatsTraditional.playerName,
         playerAge: seasonStatsTraditional.playerAge,
         playerImageUrl: seasonStatsTraditional.playerImageUrl,
+        // The position on the player's current registration (the active one, else the first by sort order).
+        positionName: sql<string | null>`(select r.position_name from app_registrations r
+          where r.competition_code = ${seasonStatsTraditional.competitionCode} and r.season_code = ${seasonStatsTraditional.seasonCode}
+            and r.person_key = ${seasonStatsTraditional.personKey} and r.role_code = 'J'
+          order by r.active desc nulls last, r.sort_order, r.registration_key limit 1)`,
         isCalculated: seasonStatsTraditional.isCalculated,
         minGames: seasonStatsTraditional.minGames,
         qualified: seasonStatsTraditional.qualified,

@@ -14,6 +14,7 @@ import {
 import {
   getPlayer,
   getPlayerRegistrations,
+  getPlayerImages,
   getPlayers,
   getTeam,
   getTeamCoaches,
@@ -30,6 +31,9 @@ import {
   getGameTeamFlow,
   getLineupRatings,
   getPerLeaders,
+  getRoundStatLeaders,
+  ROUND_STAT_METRICS,
+  type RoundStatMetric,
   getUsageLeaders,
   getPlayerClubs,
   getPlayerOnOff,
@@ -51,6 +55,7 @@ import {
   getTeamStatsScopes,
   getWinShareLeaders,
 } from "../db/season-advanced";
+import { getPlayerForm } from "../db/season-form";
 import { getSeasonStats, SORTABLE_STATS_FIELDS, type SortableStatsField, type StatsFilters } from "../db/season-stats";
 import { gamePlayerStats, gameTeamStats, games } from "../db/season-schema";
 
@@ -344,14 +349,19 @@ seasonRouter.get("/:seasonCode/advanced/standings", async (req, res) => {
   });
 });
 
-const ADVANCED_LEADER_METRICS = ["per", "winSharesPer40", "rapm", "onOff"];
+const ROUND_STAT_METRIC_KEYS = Object.keys(ROUND_STAT_METRICS);
+const ADVANCED_LEADER_METRICS = ["per", "winShares", "winSharesPer40", "rapm", "onOff", ...ROUND_STAT_METRIC_KEYS];
 // Default minimum minutes (on court for RAPM and on/off) per metric in a full season. Early in a season nobody has
-// that many, so the default drops to a small floor and the response says the season is still early.
+// that many, so the default drops to a small floor and the response says the season is still early. A metric not listed
+// here (the round-table rates) uses the PER default.
 const LEADER_DEFAULT_MIN_MINUTES: Record<string, number> = { per: 100, winSharesPer40: 100, rapm: 500, onOff: 300 };
 const EARLY_SEASON_MIN_MINUTES = 20;
+const LEADERS_EVERYONE = 1000;
 
-// One leaderboard of the advanced player metrics. PER and WS/40 read each player's cumulative row at the
-// scope's latest round; on/off reads the scope; RAPM is a whole-season table, so its scope is always "all".
+// One leaderboard of the advanced player metrics. PER, Win Shares and the round-table rates (per-100 figures, usage,
+// shooting and rebounding percentages, PIE, game score) read each player's cumulative row at the scope's latest round;
+// on/off reads the scope; RAPM is a whole-season table, so its scope is always "all". `total` is how many players qualify, and
+// `offset` and `limit` page through them; `order=asc` ranks the lowest first (fewest turnovers).
 seasonRouter.get("/:seasonCode/advanced/leaders", async (req, res) => {
   const season = await requestedSeason(req, res);
   if (!season) return;
@@ -362,6 +372,11 @@ seasonRouter.get("/:seasonCode/advanced/leaders", async (req, res) => {
   }
   const scopeValue = requestedAdvancedScope(req, res);
   if (scopeValue === null) return;
+  const order = req.query.order === undefined ? "desc" : req.query.order;
+  if (order !== "asc" && order !== "desc") {
+    sendError(res, 400, "INVALID_QUERY", "Invalid order");
+    return;
+  }
 
   const [available, allRounds, teams] = await Promise.all([
     getStatsScopes(season.seasonCode),
@@ -370,10 +385,11 @@ seasonRouter.get("/:seasonCode/advanced/leaders", async (req, res) => {
   ]);
   const scopes = ADVANCED_SCOPES.filter((code) => available.includes(code));
   const earlySeason = allRounds.length < EARLY_SEASON_ROUNDS;
-  const defaultMinMinutes = earlySeason ? EARLY_SEASON_MIN_MINUTES : LEADER_DEFAULT_MIN_MINUTES[metric];
+  const defaultMinMinutes = earlySeason ? EARLY_SEASON_MIN_MINUTES : (LEADER_DEFAULT_MIN_MINUTES[metric] ?? LEADER_DEFAULT_MIN_MINUTES.per);
   const minMinutes = pageParameter(req.query.minMinutes, defaultMinMinutes, 0, 3000);
   const limit = pageParameter(req.query.limit, 50, 1, 100);
-  if (minMinutes === null || limit === null) {
+  const offset = pageParameter(req.query.offset, 0, 0, 900);
+  if (minMinutes === null || limit === null || offset === null) {
     sendError(res, 400, "INVALID_QUERY", "Invalid leaderboard filter");
     return;
   }
@@ -381,7 +397,7 @@ seasonRouter.get("/:seasonCode/advanced/leaders", async (req, res) => {
   const scope = metric === "rapm" ? "all" : (scopeValue ?? scopes[0]);
   const base = { metric, scopes, earlySeason, roundsPlayed: allRounds.length, minMinutes, defaultMinMinutes };
   if (scope === undefined || !available.includes(scope)) {
-    res.json({ ...base, scope: scope ?? null, round: null, entries: [] });
+    res.json({ ...base, scope: scope ?? null, round: null, total: 0, entries: [] });
     return;
   }
 
@@ -392,48 +408,68 @@ seasonRouter.get("/:seasonCode/advanced/leaders", async (req, res) => {
     clubName: clubCode === null ? null : (clubs.get(clubCode)?.name ?? null),
     crestUrl: clubCode === null ? null : (clubs.get(clubCode)?.crestUrl ?? null),
   });
+  const page = <T,>(rows: T[]) => rows.slice(offset, offset + limit);
 
   let round: number | null = null;
+  let total = 0;
   let entries: Record<string, unknown>[];
-  if (metric === "per" || metric === "winSharesPer40") {
-    const rounds = await getStatsRounds(season.seasonCode, scope);
-    round = rounds[rounds.length - 1] ?? null;
-    if (round === null) {
-      res.json({ ...base, scope, round, entries: [] });
-      return;
-    }
-    if (metric === "per") {
-      const rows = await getPerLeaders(season.seasonCode, scope, round, minSeconds, limit);
-      entries = rows.map((row) => ({
-        personKey: row.personKey, playerName: row.playerName, ...club(row.clubCode),
-        games: row.gamesPlayed, seconds: row.secondsPlayed, value: row.per,
-      }));
-    } else {
-      const rows = await getWinShareLeaders(season.seasonCode, scope, round, minSeconds, limit);
-      entries = rows.map((row) => ({
-        personKey: row.personKey, playerName: row.playerName, ...club(row.clubCode),
-        games: row.gamesPlayed, seconds: row.secondsPlayed, value: row.winSharesPer40, winShares: row.winShares,
-      }));
-    }
-  } else if (metric === "rapm") {
-    const rows = await getPlayerRapm(season.seasonCode, { minSeconds, limit });
+  if (metric === "rapm") {
+    const rows = await getPlayerRapm(season.seasonCode, { minSeconds, limit: LEADERS_EVERYONE });
+    total = rows.length;
+    const shown = page(rows);
     const lastRound = allRounds[allRounds.length - 1];
     const playerClubs = lastRound === undefined
       ? new Map<string, string | null>()
-      : await getPlayerClubs(season.seasonCode, "all", lastRound, rows.map((row) => row.personKey));
-    entries = rows.map((row) => ({
+      : await getPlayerClubs(season.seasonCode, "all", lastRound, shown.map((row) => row.personKey));
+    entries = shown.map((row) => ({
       personKey: row.personKey, playerName: row.playerName, ...club(playerClubs.get(row.personKey) ?? null),
       games: null, seconds: row.seconds, value: row.rapm, offense: row.offense, defense: row.defense,
     }));
-  } else {
-    const rows = await getPlayerOnOff(season.seasonCode, scope, { minSeconds, limit });
-    entries = rows.map((row) => ({
+  } else if (metric === "onOff") {
+    const rows = await getPlayerOnOff(season.seasonCode, scope, { minSeconds, limit: LEADERS_EVERYONE });
+    total = rows.length;
+    entries = page(rows).map((row) => ({
       personKey: row.personKey, playerName: row.playerName, ...club(row.clubCode),
       games: row.games, seconds: row.onSeconds, value: row.netRatingDiff,
       onNetRating: row.onNetRating, offNetRating: row.offNetRating,
     }));
+  } else {
+    // PER, Win Shares and the round-table rates all read one round: the scope's latest.
+    const rounds = await getStatsRounds(season.seasonCode, scope);
+    round = rounds[rounds.length - 1] ?? null;
+    if (round === null) {
+      res.json({ ...base, scope, round, total: 0, entries: [] });
+      return;
+    }
+    if (metric === "per") {
+      const rows = await getPerLeaders(season.seasonCode, scope, round, minSeconds, LEADERS_EVERYONE);
+      total = rows.length;
+      entries = page(rows).map((row) => ({
+        personKey: row.personKey, playerName: row.playerName, ...club(row.clubCode),
+        games: row.gamesPlayed, seconds: row.secondsPlayed, value: row.per,
+      }));
+    } else if (metric === "winSharesPer40" || metric === "winShares") {
+      const rows = await getWinShareLeaders(season.seasonCode, scope, round, minSeconds, LEADERS_EVERYONE);
+      if (metric === "winShares") rows.sort((x, y) => Number(y.winShares ?? -Infinity) - Number(x.winShares ?? -Infinity));
+      total = rows.length;
+      entries = page(rows).map((row) => ({
+        personKey: row.personKey, playerName: row.playerName, ...club(row.clubCode),
+        games: row.gamesPlayed, seconds: row.secondsPlayed,
+        value: metric === "winShares" ? row.winShares : row.winSharesPer40,
+        winShares: row.winShares, winSharesPer40: row.winSharesPer40,
+      }));
+    } else {
+      const rows = await getRoundStatLeaders(season.seasonCode, scope, round, metric as RoundStatMetric, minSeconds, order === "asc", LEADERS_EVERYONE);
+      total = rows.length;
+      entries = page(rows).map((row) => ({
+        personKey: row.personKey, playerName: row.playerName, ...club(row.clubCode),
+        games: row.gamesPlayed, seconds: row.secondsPlayed, value: row.value,
+      }));
+    }
   }
-  res.json({ ...base, scope, round, entries });
+  // The advanced tables carry no photo, so each entry gets the one from the season statistics.
+  const images = await getPlayerImages(season.seasonCode, entries.map((entry) => String(entry.personKey)));
+  res.json({ ...base, scope, round, total, offset, entries: entries.map((entry) => ({ ...entry, imageUrl: images.get(String(entry.personKey)) ?? null })) });
 });
 
 function requestedPersonKeyFilter(req: Request, res: Response): string | undefined | null {
@@ -445,6 +481,27 @@ function requestedPersonKeyFilter(req: Request, res: Response): string | undefin
   }
   return value;
 }
+
+const FORM_PHASES = ["RS", "PI", "PO", "FF"];
+
+// Who is hot and who has moved: every qualified player's per-game numbers over their last N games and over the phase, and
+// their rank on each stat now and before the latest round. `games` is the length of "hot right now" (default 5).
+seasonRouter.get("/:seasonCode/leaders/form", async (req, res) => {
+  const season = await requestedSeason(req, res);
+  if (!season) return;
+  const phase = req.query.phase === undefined ? "RS" : req.query.phase;
+  if (typeof phase !== "string" || !FORM_PHASES.includes(phase)) {
+    sendError(res, 400, "INVALID_PHASE", "Invalid phase");
+    return;
+  }
+  const games = pageParameter(req.query.games, 5, 1, 20);
+  if (games === null) {
+    sendError(res, 400, "INVALID_QUERY", "Invalid number of games");
+    return;
+  }
+  const { lastRound, players } = await getPlayerForm(season.seasonCode, phase, games);
+  res.json({ phase, games, lastRound, players });
+});
 
 seasonRouter.get("/:seasonCode/season-stats", async (req, res) => {
   const season = await requestedSeason(req, res);

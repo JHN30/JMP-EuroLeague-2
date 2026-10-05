@@ -65,6 +65,7 @@ export function StandingsFooterBadges() {
       <span className="badge badge-outline badge-secondary badge-xs">Q</span>
       <span>= qualified for the next stage.</span>
       <span>Row order follows the official source standings.</span>
+      <span>PF, PA and DIFF count regulation time only, as in the official standings; overtime points are not included.</span>
     </div>
   );
 }

@@ -206,7 +206,7 @@ function SnapshotFact({ label, value }) {
 
 // The phase at a glance in one panel: the record as a win/loss bar with the last results and streak, points for and
 // against as paired bars, and the remaining facts in a single row.
-function TeamSnapshot({ standingsQuery, clubCode, phaseGames }) {
+function TeamSnapshot({ standingsQuery, teamStatsQuery, clubCode, phaseGames }) {
   if (standingsQuery.isPending) return <AsyncState status="loading" label="Loading the phase record" />;
   if (standingsQuery.isError) {
     return <AsyncState status="error" message="Could not load the phase record." onRetry={() => standingsQuery.refetch()} />;
@@ -227,8 +227,12 @@ function TeamSnapshot({ standingsQuery, clubCode, phaseGames }) {
     .map((game) => gameResult(game, clubCode));
   const gamesRemaining = phaseGames.filter((game) => !game.played).length;
 
-  const pointsFor = basic.pointsFor != null ? basic.pointsFor / gp : null;
-  const pointsAgainst = basic.pointsAgainst != null ? basic.pointsAgainst / gp : null;
+  // Points per game from the team totals, which count overtime like the Statistics tab; the standings' points are
+  // regulation time only.
+  const totals = teamStatsQuery.data;
+  const totalsGames = Number(totals?.gamesPlayed);
+  const pointsFor = totalsGames && totals.own?.points != null ? Number(totals.own.points) / totalsGames : null;
+  const pointsAgainst = totalsGames && totals.opponent?.points != null ? Number(totals.opponent.points) / totalsGames : null;
   const diff = pointsFor != null && pointsAgainst != null ? pointsFor - pointsAgainst : null;
   const scale = Math.max(pointsFor ?? 0, pointsAgainst ?? 0) || 1;
   const diffText = diff == null ? "-" : `${diff > 0 ? "+" : ""}${formatPerGame(diff)}`;
@@ -364,7 +368,7 @@ function TeamLeaders({ seasonCode, rosterStatsQuery }) {
   );
 }
 
-function OverviewSection({ seasonCode, clubCode, team, phaseCode, standingsQuery, rosterStatsQuery, games }) {
+function OverviewSection({ seasonCode, clubCode, team, phaseCode, standingsQuery, teamStatsQuery, rosterStatsQuery, games }) {
   const nextGame = games.find((game) => !game.played) ?? null;
   const nextOpponent = nextGame ? opponent(nextGame, clubCode).team : null;
   const phaseGames = games.filter((game) => game.phaseCode === phaseCode);
@@ -378,7 +382,7 @@ function OverviewSection({ seasonCode, clubCode, team, phaseCode, standingsQuery
 
   return (
     <div className="flex flex-col gap-6">
-      <TeamSnapshot standingsQuery={standingsQuery} clubCode={clubCode} phaseGames={phaseGames} />
+      <TeamSnapshot standingsQuery={standingsQuery} teamStatsQuery={teamStatsQuery} clubCode={clubCode} phaseGames={phaseGames} />
       <TeamLeaders seasonCode={seasonCode} rosterStatsQuery={rosterStatsQuery} />
       <TeamLeagueProfile advancedQuery={advancedQuery} clubCode={clubCode} team={team} />
       <div className="grid gap-6 lg:grid-cols-2">
@@ -468,7 +472,7 @@ export default function TeamPage() {
   const teamStatsSummaryQuery = useQuery({
     queryKey: ["team-stats-summary", seasonCode, clubCode, phaseCode],
     queryFn: () => getTeamStatsSummary(seasonCode, clubCode, phaseCode),
-    enabled: teamQuery.isSuccess && Boolean(phaseCode) && section === "statistics",
+    enabled: teamQuery.isSuccess && Boolean(phaseCode) && (section === "statistics" || section === "overview"),
   });
 
   if (teamQuery.isLoading) return <AsyncState status="loading" label="Loading the team" />;
@@ -533,6 +537,7 @@ export default function TeamPage() {
               team={team}
               phaseCode={phaseCode}
               standingsQuery={standingsQuery}
+              teamStatsQuery={teamStatsSummaryQuery}
               rosterStatsQuery={rosterStatsQuery}
               games={games}
             />

@@ -3,7 +3,7 @@ import { useQueries, useQuery } from "@tanstack/react-query";
 import { Chart } from "chart.js/auto";
 import { motion } from "motion/react";
 import { Link, useParams } from "react-router";
-import { getLeaderStats, getPhases, getSeasonGames, getSeasonStandings } from "../lib/api";
+import { getLeaderStats, getLeagueTeamStats, getPhases, getSeasonGames, getSeasonStandings } from "../lib/api";
 import AsyncState from "../lib/AsyncState";
 import { cardHover, listContainer, listItem, sectionContainer, sectionItem } from "../lib/motion";
 import Panel from "../lib/Panel";
@@ -61,7 +61,7 @@ async function fetchAllPlayedGames(seasonCode) {
   return all;
 }
 
-function SeasonHero({ champion, leader }) {
+function SeasonHero({ champion, leader, pointsPerGame }) {
   if (champion) {
     return (
       <Panel className="flex items-center gap-3 p-4">
@@ -80,8 +80,7 @@ function SeasonHero({ champion, leader }) {
     );
   }
 
-  const gamesPlayed = leader.basic?.gamesPlayed;
-  const ppg = gamesPlayed ? leader.basic.pointsFor / gamesPlayed : null;
+  const ppg = pointsPerGame;
 
   return (
     <div className="season-hero-kpis grid gap-4 sm:grid-cols-2">
@@ -657,6 +656,13 @@ export default function SeasonOverviewPage() {
     queryFn: () => getSeasonStandings(seasonCode, "RS"),
   });
   const leader = standingsQuery.data?.standings.find((entry) => entry.basic?.position === 1) ?? null;
+  // The leader's points per game from the team totals (overtime counted), not the standings' regulation-only points.
+  const leagueTeamStatsQuery = useQuery({
+    queryKey: ["league-team-stats", seasonCode, "RS"],
+    queryFn: () => getLeagueTeamStats(seasonCode, "RS"),
+  });
+  const leaderTotals = leagueTeamStatsQuery.data?.teams.find((team) => team.clubCode === leader?.clubCode);
+  const leaderPointsPerGame = leaderTotals?.gamesPlayed ? Number(leaderTotals.own?.points) / leaderTotals.gamesPlayed : null;
 
   const phaseSummaries = {};
   phases.forEach((phase, index) => {
@@ -716,7 +722,7 @@ export default function SeasonOverviewPage() {
       ) : (
         <>
           <motion.div variants={sectionItem}>
-            <SeasonHero champion={champion} leader={leader} />
+            <SeasonHero champion={champion} leader={leader} pointsPerGame={leaderPointsPerGame} />
           </motion.div>
           <motion.div variants={sectionItem}>
             <PhaseStory

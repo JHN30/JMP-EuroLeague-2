@@ -57,9 +57,12 @@ export default function FixturesPage() {
     queryKey: ["standings", seasonCode, "RS"],
     queryFn: () => getSeasonStandings(seasonCode, "RS"),
   });
+  // The record under each club is its regular-season record as it stands now (final once the season is over), the same on
+  // every round, as on the league's own site; how the season unfolded round by round is on the Standings race view.
   const standingByClubCode = new Map(
     phaseCode === "RS" ? (standingsQuery.data?.standings ?? []).map((entry) => [entry.clubCode, entry]) : [],
   );
+  const seasonOver = (standingsQuery.data?.standings ?? []).length > 0 && !(nextGameQuery.data?.games.length > 0);
 
   const games = gamesQuery.data?.games ?? [];
   const isResolvingRound = roundsQuery.isLoading || nextGameQuery.isLoading;
@@ -172,6 +175,11 @@ export default function FixturesPage() {
           <EmptyText>No games in this round yet.</EmptyText>
         ) : (
           <div className="fixture-box">
+            {phaseCode === "RS" && standingByClubCode.size > 0 ? (
+              <p className="muted mb-3 text-xs">
+                {seasonOver ? "The record under each club is its final regular-season record." : "The record under each club is its regular-season record so far."}
+              </p>
+            ) : null}
             <motion.div
               key={`${phaseCode}-${selectedRound}`}
               className="fixture-grid"

@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { motion } from "motion/react";
-import { useParams } from "react-router";
+import { Link, useParams } from "react-router";
 import { getAdvancedStandings, getGameFlow, getPhaseResults, getPhases, getSeasonStandings } from "../lib/api";
 import AsyncState from "../lib/AsyncState";
 import EmptyText from "../lib/EmptyText";
@@ -107,7 +107,18 @@ export default function StandingsPage() {
         ) : standingsQuery.isError ? (
           <AsyncState status="error" message="Could not load standings." onRetry={() => standingsQuery.refetch()} />
         ) : standings.length === 0 ? (
-          <EmptyText>Standings not available yet for this phase.</EmptyText>
+          phaseCode === "RS" ? (
+            <EmptyText>Standings not available yet for this phase.</EmptyText>
+          ) : (
+            // The play-in, playoffs and Final Four are knockouts: there is never a league table, whatever the state of the season.
+            <EmptyText>
+              This phase is a knockout, so it has no league table. The matchups and results are on the{" "}
+              <Link to={`/${seasonCode}/playoffs`} className="link link-primary">
+                Format page
+              </Link>
+              , and every game is under Games.
+            </EmptyText>
+          )
         ) : (
           <div className="flex flex-col gap-4">
             {mode === "advanced" ? null : (

@@ -56,6 +56,8 @@ every such change so it can be found later.
 
 - [player-shooting-tab-like-the-team-tab.md](player-shooting-tab-like-the-team-tab.md): player Shooting tab in the team tab's layout (cards, zone heatmap, zone and scoring-style tables, no makes and misses on the heatmap), with the pieces shared by both tabs
 
+- [home-overview-standings-games-data-audit.md](home-overview-standings-games-data-audit.md): data audit of Home, Overview, Standings and Games across all four seasons (overtime-inclusive points per game, round-accurate records on the Games page, the knockout standings message)
+
 - [player-games-tab-bars-splits-and-box-scores.md](player-games-tab-bars-splits-and-box-scores.md): player Games tab with a game-by-game bar chart (crests, home or away, win or loss), home, away, win and loss splits, and a fuller filterable box-score table
 
 ## Data and platform

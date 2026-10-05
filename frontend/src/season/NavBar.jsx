@@ -9,7 +9,7 @@ const TABS = [
   { label: "Players", path: "players" },
   { label: "Leaders", path: "statistics" },
   { label: "Compare", path: "comparisons" },
-  { label: "Format", path: "playoffs" },
+  { label: "Postseason", path: "postseason" },
 ];
 
 export default function NavBar() {

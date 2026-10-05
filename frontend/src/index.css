@@ -1612,3 +1612,37 @@ button {
 .board-row-link:hover {
   background: color-mix(in srgb, var(--color-base-content) 6%, transparent);
 }
+/* Postseason bracket: on a wide screen the matchups of one stage are joined to the next by lines. A cell with bk-out has a stub going
+   right; a cell with bk-in has the line that gathers the two stubs before it (they sit at a quarter and three quarters of its height)
+   and a stub into the card. The gap between columns is 2.25rem, half of it for each side. */
+.bk-cell {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+@media (min-width: 1024px) {
+  .bk-out::after {
+    content: "";
+    position: absolute;
+    left: 100%;
+    top: 50%;
+    width: 1.125rem;
+    border-top: 2px solid color-mix(in srgb, var(--color-base-content) 30%, transparent);
+  }
+  .bk-in::before {
+    content: "";
+    position: absolute;
+    left: -1.125rem;
+    top: 25%;
+    bottom: 25%;
+    border-left: 2px solid color-mix(in srgb, var(--color-base-content) 30%, transparent);
+  }
+  .bk-in > :first-child::before {
+    content: "";
+    position: absolute;
+    left: -1.125rem;
+    top: 50%;
+    width: 1.125rem;
+    border-top: 2px solid color-mix(in srgb, var(--color-base-content) 30%, transparent);
+  }
+}

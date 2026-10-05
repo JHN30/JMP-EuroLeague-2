@@ -14,15 +14,6 @@ export function phaseSortIndex(code) {
   return index === -1 ? PHASE_ORDER.length : index;
 }
 
-export function teamCountFromGames(games) {
-  const codes = new Set();
-  for (const game of games) {
-    if (game.localTeam?.clubCode) codes.add(game.localTeam.clubCode);
-    if (game.roadTeam?.clubCode) codes.add(game.roadTeam.clubCode);
-  }
-  return codes.size;
-}
-
 export function dateRangeLabel(firstDate, lastDate) {
   if (!firstDate) return null;
   const start = formatDate(firstDate);
@@ -38,9 +29,4 @@ export function isChampionshipLabel(label) {
   if (text.includes("semifinal") || text.includes("semi-final") || text.includes("semi final")) return false;
   if (text.includes("3rd") || text.includes("third") || text.includes("placement")) return false;
   return text.includes("final");
-}
-
-export function isPlacementLabel(label) {
-  const text = label.toLowerCase();
-  return text.includes("3rd") || text.includes("third") || text.includes("placement");
 }

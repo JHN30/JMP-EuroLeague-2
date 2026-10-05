@@ -20,7 +20,7 @@ const LeadersPage = lazy(() => import("./leaders/LeadersPage"));
 const ComparisonsPage = lazy(() => import("./comparisons/ComparisonsPage"));
 const HeadToHeadPage = lazy(() => import("./comparisons/HeadToHeadPage"));
 const RecordsPage = lazy(() => import("./records/RecordsPage"));
-const PlayoffsPage = lazy(() => import("./playoffs/PlayoffsPage"));
+const PostseasonPage = lazy(() => import("./postseason/PostseasonPage"));
 
 function DefaultSeasonRedirect() {
   const defaultSeasonQuery = useDefaultSeasonCode();
@@ -65,7 +65,8 @@ function App() {
             <Route path="comparisons" element={<ComparisonsPage />} />
             <Route path="comparisons/head-to-head" element={<HeadToHeadPage />} />
             <Route path="records" element={<RecordsPage />} />
-            <Route path="playoffs" element={<PlayoffsPage />} />
+            <Route path="postseason" element={<PostseasonPage />} />
+            <Route path="playoffs" element={<Navigate replace to="../postseason" relative="path" />} />
           </Route>
           <Route path="*" element={<NotFoundPage />} />
         </Routes>

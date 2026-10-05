@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { motion } from "motion/react";
 import { Link } from "react-router";
-import { getSeasonTeams, getTeamRoster } from "../lib/api";
+import { getSeasonTeams, getTeamPlayersAdvanced, getTeamRoster } from "../lib/api";
 import AsyncState from "../lib/AsyncState";
 import ComparisonRow from "../lib/ComparisonRow";
 import EmptyText from "../lib/EmptyText";
@@ -11,6 +11,8 @@ import Panel from "../lib/Panel";
 import RevealImage from "../lib/RevealImage";
 import { nameParts, titleCase } from "../lib/playerName";
 import { Avatar } from "../leaders/LeaderParts";
+import { formatAdvancedValue } from "../leaders/leaderData";
+import { advancedScopeForPhase } from "../teams/teamLeague";
 import { fetchTeamRosterStats } from "../teams/teamRosterStats";
 
 const ROSTER_LIMIT = 100;
@@ -104,6 +106,83 @@ function SummaryRows({ a, b, entityA, entityB, crestA, crestB }) {
   );
 }
 
+// ---- The most impactful players ----
+
+const IMPACT_SHOWN = 5;
+const IMPACT_COLUMNS = [
+  { key: "per", label: "PER", format: "decimal", tip: "Player efficiency rating; the league average is 15" },
+  { key: "winShares", label: "WS", format: "decimal2", tip: "Win Shares: how many of the team's wins the player is responsible for" },
+  { key: "winSharesPer40", label: "WS/40", format: "decimal3", tip: "Win Shares per 40 minutes; about 0.100 is average" },
+  { key: "usgPct", label: "USG%", format: "percent", tip: "Usage: the share of the team's possessions that end with the player" },
+  { key: "tsPct", label: "TS%", format: "percent", tip: "True shooting percentage" },
+  { key: "pie", label: "PIE", format: "pie", tip: "Player impact estimate" },
+];
+
+function ImpactTable({ seasonCode, entity, crestUrl, players, imageOf }) {
+  const top = players
+    .filter((player) => player.winShares !== null && player.winShares !== undefined)
+    .sort((x, y) => Number(y.winShares) - Number(x.winShares))
+    .slice(0, IMPACT_SHOWN);
+  const best = top.length ? Number(top[0].winShares) : 0;
+  return (
+    <Panel className="p-3">
+      <div className="mb-3 flex items-center gap-3">
+        {crestUrl ? <RevealImage src={crestUrl} className="h-9 w-9 flex-none object-contain" /> : null}
+        <div className="min-w-0">
+          <h3 className="truncate font-bold">{entity.label}</h3>
+          <p className="muted text-xs">Top {IMPACT_SHOWN} by Win Shares</p>
+        </div>
+      </div>
+      {top.length === 0 ? (
+        <p className="muted text-sm">No advanced numbers for this club yet.</p>
+      ) : (
+        <div className="overflow-x-auto overscroll-x-contain">
+          <table className="table table-sm w-full">
+            <thead>
+              <tr className="muted text-xs uppercase">
+                <th>Player</th>
+                {IMPACT_COLUMNS.map((column) => (
+                  <th key={column.key} className="text-right" title={column.tip}>
+                    {column.label}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <motion.tbody variants={tableBody} initial="hidden" animate="show">
+              {top.map((player) => {
+                const { last, first } = nameParts(player.playerName);
+                const name = (titleCase(first) + " " + titleCase(last)).trim();
+                return (
+                  <motion.tr key={player.personKey} variants={tableRow}>
+                    <td>
+                      <div className="flex min-w-0 items-center gap-2">
+                        <Avatar imageUrl={imageOf(player.personKey)} size="h-8 w-8" />
+                        <div className="min-w-0 flex-1">
+                          <Link to={"/" + seasonCode + "/players/" + player.personKey} className="block truncate font-semibold hover:underline">
+                            {name}
+                          </Link>
+                          <div aria-hidden="true" className="mt-1 h-1 w-24 overflow-hidden rounded-full bg-base-300">
+                            <div className="h-full rounded-full bg-primary" style={{ width: (best > 0 ? Math.max(6, (Number(player.winShares) / best) * 100) : 0) + "%" }} />
+                          </div>
+                        </div>
+                      </div>
+                    </td>
+                    {IMPACT_COLUMNS.map((column) => (
+                      <td key={column.key} className={"text-right tabular-nums " + (column.key === "winShares" ? "font-semibold" : "")}>
+                        {formatAdvancedValue(column, player[column.key])}
+                      </td>
+                    ))}
+                  </motion.tr>
+                );
+              })}
+            </motion.tbody>
+          </table>
+        </div>
+      )}
+    </Panel>
+  );
+}
+
 function RosterTable({ seasonCode, entity, crestUrl, rows }) {
   return (
     <Panel className="p-3">
@@ -185,6 +264,10 @@ export default function CompareRosters({ seasonCode, phaseCode, entityA, entityB
     enabled: Boolean(phaseCode),
   });
 
+  const scope = advancedScopeForPhase(phaseCode);
+  const impactA = useQuery({ queryKey: ["team-players-advanced", seasonCode, entityA.id, scope], queryFn: () => getTeamPlayersAdvanced(seasonCode, entityA.id, { scope }), enabled: Boolean(phaseCode) });
+  const impactB = useQuery({ queryKey: ["team-players-advanced", seasonCode, entityB.id, scope], queryFn: () => getTeamPlayersAdvanced(seasonCode, entityB.id, { scope }), enabled: Boolean(phaseCode) });
+
   const queries = [rosterA, rosterB, statsA, statsB];
   if (queries.some((query) => query.isPending)) return <AsyncState status="loading" label="Loading the rosters" />;
   if (queries.some((query) => query.isError)) {
@@ -199,11 +282,38 @@ export default function CompareRosters({ seasonCode, phaseCode, entityA, entityB
   const rowsB = buildRows(registrationsB, statsB.data);
   const crestOf = (id) => (teamsQuery.data?.teams ?? []).find((team) => team.clubCode === id)?.crestUrl;
 
+  const imageByKey = new Map([...rowsA, ...rowsB].map((row) => [row.personKey, row.imageUrl]));
+  const imageOf = (personKey) => imageByKey.get(personKey);
   return (
     <div className="flex flex-col gap-6">
       <Panel className="p-3">
         <SummaryRows a={summarize(rowsA)} b={summarize(rowsB)} entityA={entityA} entityB={entityB} crestA={crestOf(entityA.id)} crestB={crestOf(entityB.id)} />
       </Panel>
+      <section>
+        <div className="mb-3">
+          <p className="eyebrow mb-0.5">ADVANCED</p>
+          <h3 className="text-lg font-bold">Most impactful players</h3>
+          <p className="muted mt-1 text-sm">Running values after the latest round. Hover a column for what it means.</p>
+        </div>
+        {impactA.isPending || impactB.isPending ? (
+          <AsyncState status="loading" label="Loading the advanced numbers" inline />
+        ) : impactA.isError || impactB.isError ? (
+          <AsyncState
+            status="error"
+            message="Could not load the advanced numbers."
+            inline
+            onRetry={() => {
+              impactA.refetch();
+              impactB.refetch();
+            }}
+          />
+        ) : (
+          <div className="grid grid-cols-[minmax(0,1fr)] gap-4 xl:grid-cols-2">
+            <ImpactTable seasonCode={seasonCode} entity={entityA} crestUrl={crestOf(entityA.id)} players={impactA.data.players ?? []} imageOf={imageOf} />
+            <ImpactTable seasonCode={seasonCode} entity={entityB} crestUrl={crestOf(entityB.id)} players={impactB.data.players ?? []} imageOf={imageOf} />
+          </div>
+        )}
+      </section>
       <div className="grid grid-cols-[minmax(0,1fr)] gap-4 xl:grid-cols-2">
         <RosterTable seasonCode={seasonCode} entity={entityA} crestUrl={crestOf(entityA.id)} rows={rowsA} />
         <RosterTable seasonCode={seasonCode} entity={entityB} crestUrl={crestOf(entityB.id)} rows={rowsB} />

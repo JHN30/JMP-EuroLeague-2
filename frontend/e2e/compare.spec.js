@@ -32,7 +32,9 @@ test("Compare opens on the games of a round, and a game opens the comparison of 
   // The rosters of the two clubs are compared in their own section.
   await sections.getByRole("tab", { name: "Rosters" }).click();
   await expect(page.getByText("Points of the top 3 scorers")).toBeVisible();
-  await expect(page.getByRole("table")).toHaveCount(2);
+  // The most impactful players of each club, then both squads: four tables.
+  await expect(page.getByRole("heading", { name: "Most impactful players" })).toBeVisible();
+  await expect(page.getByRole("table")).toHaveCount(4);
 
   await page.getByRole("button", { name: "← Games" }).click();
   await expect(page.getByRole("heading", { name: "Compare any two teams" })).toBeVisible();
@@ -42,5 +44,30 @@ test("Compare opens on the games of a round, and a game opens the comparison of 
   await page.getByLabel("Team B").selectOption({ index: 2 });
   await expect(sections).toBeVisible();
 
+  expect(errors).toEqual([]);
+});
+
+test("two players open a comparison with a profile, advanced numbers and the way back", async ({ page }) => {
+  const errors = [];
+  page.on("console", (message) => {
+    if (message.type() === "error" && !message.text().startsWith("Failed to load resource")) errors.push(message.text());
+  });
+  const { players } = await (await page.request.get("http://localhost:3000/api/seasons/E2025/players?limit=2")).json();
+
+  await page.goto(`/E2025/comparisons?view=players&playerA=${players[0].personKey}&playerB=${players[1].personKey}`);
+  const sections = page.getByRole("tablist", { name: "Comparison section" });
+  await expect(sections.getByRole("tab", { name: "Overview" })).toHaveAttribute("aria-selected", "true");
+  await expect(page.getByRole("heading", { name: "Season line" })).toBeVisible();
+
+  await sections.getByRole("tab", { name: "Advanced" }).click();
+  await expect(page.getByText("Per 100 possessions", { exact: true })).toBeVisible();
+
+  await page.getByRole("button", { name: "← Players" }).click();
+  await expect(page.getByLabel("Player A")).toBeVisible();
+
+  // The player page offers the way in.
+  await page.goto(`/E2025/players/${players[0].personKey}`);
+  await page.getByRole("link", { name: "Compare with another player" }).click();
+  await expect(page).toHaveURL(/view=players&playerA=/);
   expect(errors).toEqual([]);
 });

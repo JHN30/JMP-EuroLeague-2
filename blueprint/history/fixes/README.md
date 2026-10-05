@@ -79,3 +79,5 @@ every such change so it can be found later.
 - [leaders-page-rebuilt-around-category-cards.md](leaders-page-rebuilt-around-category-cards.md)
 - [compare-page-opens-on-the-upcoming-games.md](compare-page-opens-on-the-upcoming-games.md)
 - [compare-teams-overview-and-statistics.md](compare-teams-overview-and-statistics.md)
+- [compare-players-overview-and-advanced.md](compare-players-overview-and-advanced.md)
+- [compare-trends-rosters-advanced-and-picker.md](compare-trends-rosters-advanced-and-picker.md)

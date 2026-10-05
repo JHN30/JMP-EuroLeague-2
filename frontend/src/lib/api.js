@@ -130,6 +130,13 @@ export async function getTeamRoster(seasonCode, clubCode, { limit, offset } = {}
   return data;
 }
 
+export async function getTeamPlayersAdvanced(seasonCode, clubCode, { scope } = {}) {
+  const { data } = await api.get(`/seasons/${seasonCode}/teams/${clubCode}/players-advanced`, {
+    params: { scope },
+  });
+  return data;
+}
+
 export async function getTeamCoaches(seasonCode, clubCode) {
   const { data } = await api.get(`/seasons/${seasonCode}/teams/${clubCode}/coaches`);
   return data;
@@ -182,9 +189,9 @@ export async function getPlayer(seasonCode, personKey) {
   return data;
 }
 
-export async function getPlayerAdvanced(seasonCode, personKey, { scope } = {}) {
+export async function getPlayerAdvanced(seasonCode, personKey, { scope, extended } = {}) {
   const { data } = await api.get(`/seasons/${seasonCode}/players/${personKey}/advanced`, {
-    params: { scope },
+    params: { scope, extended: extended ? "true" : undefined },
   });
   return data;
 }

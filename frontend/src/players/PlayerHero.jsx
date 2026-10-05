@@ -98,6 +98,11 @@ export default function PlayerHero({ player, registrations, stats, seasonCode })
           ) : null}
           {wins !== null && losses !== null ? <Fact label="Team record" value={`${wins}–${losses}`} sub="with the player" /> : null}
         </div>
+        <motion.div variants={sectionItem}>
+          <Link to={`/${seasonCode}/comparisons?view=players&playerA=${encodeURIComponent(player.personKey)}`} className="btn btn-outline btn-sm">
+            Compare with another player
+          </Link>
+        </motion.div>
       </motion.div>
     </Panel>
   );

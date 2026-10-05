@@ -179,6 +179,7 @@ test("loads a player game log once for the Overview form and the Games tab, and 
   expect(roundRequests).toBe(0);
 
   await page.getByRole("tab", { name: "Trends", exact: true }).click();
-  await expect(page.getByRole("img", { name: "Points scored per round: Team A vs Team B across rounds" })).toBeVisible();
-  expect(roundRequests).toBe(1);
+  // The clubs have played two games, too few to draw a trend, and the page never asks for the rounds.
+  await expect(page.getByText("Not enough games played in this phase to show a trend yet.")).toBeVisible();
+  expect(roundRequests).toBe(0);
 });

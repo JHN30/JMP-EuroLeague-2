@@ -1,5 +1,5 @@
-import { useMemo, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useState } from "react";
+import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { motion } from "motion/react";
 import { Link, useParams, useSearchParams } from "react-router";
 import AsyncState from "../lib/AsyncState";
@@ -10,24 +10,26 @@ import { EASE_OUT, denseListContainer, listItem } from "../lib/motion";
 import RevealImage from "../lib/RevealImage";
 import PageHeader from "../lib/PageHeader";
 import { useDocumentTitle } from "../lib/useDocumentTitle";
+import { useDebouncedValue } from "../lib/useDebouncedValue";
 import { usePhaseParam } from "../lib/usePhaseParam";
 import { TabPanel, TabStrip } from "../lib/TabStrip";
 import CompareFixtures, { GameContext } from "./CompareFixtures";
 import CompareRosters from "./CompareRosters";
+import ComparePlayerAdvanced from "./ComparePlayerAdvanced";
+import ComparePlayerOverview from "./ComparePlayerOverview";
 import CompareTeamOverview from "./CompareTeamOverview";
+import CompareTeamTrends from "./CompareTeamTrends";
+import ComparePlayerTrends from "./ComparePlayerTrends";
 import CompareTeamStats from "./CompareTeamStats";
 import {
+  getLeaderStats,
   getPhases,
   getPlayer,
-  getPlayerGames,
   getPlayerSeasonStats,
-  getRounds,
   getSeasonPlayers,
   getSeasonTeams,
-  getTeamGames,
 } from "../lib/api";
 import { PLAYER_METRIC_GROUPS, formatStatValue } from "../lib/statsFields";
-import TrendChart from "./TrendChart";
 
 const PLAYER_COMPARISON_ROWS = PLAYER_METRIC_GROUPS.flatMap((group) => [
   { type: "header", key: group.group, label: group.label },
@@ -66,8 +68,8 @@ const PLAYER_METRIC_DIRECTIONS = {
   tripleDoubles: "higher",
 };
 
-// A team comparison opens on its overview (the preview of the pairing); a player comparison on the numbers.
-const firstSection = (view) => (view === "teams" ? "overview" : "comparison");
+// A comparison opens on its overview, the preview of the pairing.
+const firstSection = () => "overview";
 
 function TeamPicker({ label, allTeams, teamsPending, selected, excludeId, onSelect }) {
   const teams = allTeams.filter((team) => team.clubCode !== excludeId);
@@ -98,21 +100,40 @@ function TeamPicker({ label, allTeams, teamsPending, selected, excludeId, onSele
   );
 }
 
+// A player search. Clicking into the box already offers the league's top scorers; typing narrows it to the names that match, once the
+// typing pauses.
 function PlayerPicker({ seasonCode, label, selected, excludeId, onSelect }) {
   const [search, setSearch] = useState("");
+  const [open, setOpen] = useState(false);
+  const typed = search.trim();
+  const debounced = useDebouncedValue(typed);
+  const searching = debounced.length > 0;
+
   const searchQuery = useQuery({
-    queryKey: ["player-picker-search", seasonCode, search],
-    queryFn: () => getSeasonPlayers(seasonCode, { search, limit: 8 }),
-    enabled: search.trim().length > 0,
+    queryKey: ["player-picker-search", seasonCode, debounced],
+    queryFn: () => getSeasonPlayers(seasonCode, { search: debounced, limit: 8 }),
+    enabled: open && searching,
+    placeholderData: keepPreviousData,
   });
-  const matches = (searchQuery.data?.players ?? []).filter((player) => player.personKey !== excludeId);
+  const suggestionQuery = useQuery({
+    queryKey: ["player-picker-top", seasonCode],
+    queryFn: () => getLeaderStats(seasonCode, { phase: "RS", mode: "perGame", sort: "pointsScored", order: "desc", limit: 9 }),
+    enabled: open && !searching,
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const choose = (personKey, name) => {
+    onSelect({ id: personKey, label: name ?? personKey });
+    setSearch("");
+    setOpen(false);
+  };
 
   if (selected) {
     return (
       <div>
         <span className="label">{label}</span>
-        <div className="flex items-center gap-2">
-          <span className="font-semibold">{selected.label}</span>
+        <div className="input input-bordered input-sm flex w-full items-center justify-between gap-2">
+          <span className="truncate font-semibold">{selected.label}</span>
           <button
             type="button"
             className="btn btn-xs"
@@ -128,8 +149,24 @@ function PlayerPicker({ seasonCode, label, selected, excludeId, onSelect }) {
     );
   }
 
+  const isSearchResult = typed.length > 0;
+  const rows = isSearchResult
+    ? (searchQuery.data?.players ?? []).map((player) => ({ key: player.personKey, name: player.name, sub: player.clubName }))
+    : (suggestionQuery.data?.players ?? []).map((player) => ({ key: player.personKey, name: player.playerName, sub: player.clubName }));
+  const visible = rows.filter((row) => row.key !== excludeId).slice(0, 8);
+  const waiting = isSearchResult ? typed !== debounced || searchQuery.isPending : suggestionQuery.isPending;
+  const showList = open && (isSearchResult || suggestionQuery.isPending || visible.length > 0);
+
   return (
-    <div>
+    <div
+      className="relative"
+      onBlur={(event) => {
+        if (!event.currentTarget.contains(event.relatedTarget)) setOpen(false);
+      }}
+      onKeyDown={(event) => {
+        if (event.key === "Escape") setOpen(false);
+      }}
+    >
       <label className="label" htmlFor={`player-picker-${label}`}>
         {label}
       </label>
@@ -137,28 +174,32 @@ function PlayerPicker({ seasonCode, label, selected, excludeId, onSelect }) {
         id={`player-picker-${label}`}
         type="search"
         placeholder="Search by name"
+        autoComplete="off"
         className="input input-bordered input-sm w-full"
         value={search}
-        onChange={(event) => setSearch(event.target.value)}
+        onFocus={() => setOpen(true)}
+        onChange={(event) => {
+          setSearch(event.target.value);
+          setOpen(true);
+        }}
       />
-      {search.trim().length > 0 ? (
-        <ul className="menu bg-base-200 rounded-box mt-1 max-h-48 flex-nowrap overflow-y-auto">
-          {searchQuery.isPending ? (
+      {showList ? (
+        <ul className="menu bg-base-200 rounded-box absolute inset-x-0 top-full z-20 mt-1 max-h-72 w-full flex-nowrap overflow-y-auto shadow-lg" aria-label={isSearchResult ? "Matching players" : "Top scorers"}>
+          {!isSearchResult ? <li className="menu-title text-xs">Top scorers</li> : null}
+          {waiting && visible.length === 0 ? (
             <li>
-              <span className="muted px-2 py-1 text-sm">Searching...</span>
+              <span className="muted px-2 py-1 text-sm">{isSearchResult ? "Searching..." : "Loading..."}</span>
             </li>
-          ) : matches.length === 0 ? (
+          ) : visible.length === 0 ? (
             <li>
               <span className="muted px-2 py-1 text-sm">No players match.</span>
             </li>
           ) : (
-            matches.map((player) => (
-              <li key={player.personKey}>
-                <button
-                  type="button"
-                  onClick={() => onSelect({ id: player.personKey, label: player.name ?? player.personKey })}
-                >
-                  {player.name ?? player.personKey}
+            visible.map((row) => (
+              <li key={row.key}>
+                <button type="button" onClick={() => choose(row.key, row.name)}>
+                  <span className="min-w-0 flex-1 truncate">{row.name ?? row.key}</span>
+                  {row.sub ? <span className="muted truncate text-xs">{row.sub}</span> : null}
                 </button>
               </li>
             ))
@@ -238,103 +279,6 @@ function PlayerComparisonTable({ seasonCode, phaseCode, mode, entityA, entityB }
       </motion.div>
     </Panel>
   );
-}
-
-function entityPoints(game, view, entityId) {
-  if (!game.played) return null;
-  if (view === "teams") {
-    if (game.localTeam?.clubCode === entityId) return game.localScore;
-    if (game.roadTeam?.clubCode === entityId) return game.roadScore;
-    return null;
-  }
-  return game.points !== null && game.points !== undefined ? Number(game.points) : null;
-}
-
-function buildRoundSeries(rounds, games, phaseCode, view, entityId) {
-  const byRound = new Map();
-  for (const game of games) {
-    if (game.phaseCode !== phaseCode) continue;
-    const value = entityPoints(game, view, entityId);
-    if (value !== null) byRound.set(game.roundNumber, value);
-  }
-  return rounds.map((round) => byRound.get(round.number) ?? null);
-}
-
-function TrendSection({ seasonCode, phaseCode, view, entityA, entityB }) {
-  const roundsQuery = useQuery({
-    queryKey: ["rounds", seasonCode, phaseCode],
-    queryFn: () => getRounds(seasonCode, phaseCode),
-    enabled: Boolean(phaseCode),
-  });
-  const gamesAQuery = useQuery({
-    queryKey: ["trend-games", seasonCode, view, entityA.id],
-    queryFn: () =>
-      view === "teams"
-        ? getTeamGames(seasonCode, entityA.id, { limit: 100 })
-        : getPlayerGames(seasonCode, entityA.id, { limit: 100 }),
-  });
-  const gamesBQuery = useQuery({
-    queryKey: ["trend-games", seasonCode, view, entityB.id],
-    queryFn: () =>
-      view === "teams"
-        ? getTeamGames(seasonCode, entityB.id, { limit: 100 })
-        : getPlayerGames(seasonCode, entityB.id, { limit: 100 }),
-  });
-
-  const dataReady = roundsQuery.isSuccess && gamesAQuery.isSuccess && gamesBQuery.isSuccess;
-
-  // buildRoundSeries and the labels/series it feeds into TrendChart are
-  // recomputed here only when the underlying query data or selection
-  // actually changes (react-query keeps `data` referentially stable across
-  // renders that don't refetch), so the chart below isn't torn down and
-  // rebuilt on every unrelated render of this page. Computed unconditionally,
-  // ahead of the loading/error returns below, because Hooks can't follow one.
-  const { labels, series, playedCountA, playedCountB } = useMemo(() => {
-    if (!dataReady) return { labels: [], series: [], playedCountA: 0, playedCountB: 0 };
-    const rounds = roundsQuery.data.rounds ?? [];
-    const seriesA = buildRoundSeries(rounds, gamesAQuery.data.games ?? [], phaseCode, view, entityA.id);
-    const seriesB = buildRoundSeries(rounds, gamesBQuery.data.games ?? [], phaseCode, view, entityB.id);
-    return {
-      labels: rounds.map((round) => round.name ?? `Round ${round.number}`),
-      series: [
-        { label: entityA.label, points: seriesA },
-        { label: entityB.label, points: seriesB },
-      ],
-      playedCountA: seriesA.filter((value) => value !== null).length,
-      playedCountB: seriesB.filter((value) => value !== null).length,
-    };
-  }, [
-    dataReady,
-    roundsQuery.data,
-    gamesAQuery.data,
-    gamesBQuery.data,
-    phaseCode,
-    view,
-    entityA.id,
-    entityA.label,
-    entityB.id,
-    entityB.label,
-  ]);
-
-  if (roundsQuery.isPending || gamesAQuery.isPending || gamesBQuery.isPending) return <AsyncState status="loading" label="Loading the trend" />;
-  if (roundsQuery.isError || gamesAQuery.isError || gamesBQuery.isError) {
-    return (
-      <AsyncState status="error"
-        message="Could not load the trend."
-        onRetry={() => {
-          roundsQuery.refetch();
-          gamesAQuery.refetch();
-          gamesBQuery.refetch();
-        }}
-      />
-    );
-  }
-
-  if (playedCountA < 2 || playedCountB < 2) {
-    return <p className="muted">Not enough played games to chart a trend yet.</p>;
-  }
-
-  return <TrendChart title="Points scored per round" labels={labels} series={series} />;
 }
 
 function ComparisonsBody({
@@ -481,18 +425,18 @@ function ComparisonsBody({
 
   const bothSelected = Boolean(effectiveEntityA && effectiveEntityB);
   const teamPickers = (
-    <div className="grid items-end gap-4 sm:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)]">
+    <div className="grid items-start gap-4 sm:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)]">
       <TeamPicker label="Team A" allTeams={allTeams} teamsPending={false} selected={effectiveEntityA} excludeId={effectiveEntityB?.id} onSelect={handleSelectA} />
-      <button type="button" className="btn btn-outline btn-square btn-sm mx-auto" aria-label="Swap teams" disabled={!effectiveEntityA && !effectiveEntityB} onClick={handleSwap}>
+      <button type="button" className="btn btn-outline btn-square btn-sm mx-auto sm:mt-7" aria-label="Swap teams" disabled={!effectiveEntityA && !effectiveEntityB} onClick={handleSwap}>
         &#8646;
       </button>
       <TeamPicker label="Team B" allTeams={allTeams} teamsPending={false} selected={effectiveEntityB} excludeId={effectiveEntityA?.id} onSelect={handleSelectB} />
     </div>
   );
   const playerPickers = (
-    <div className="grid items-end gap-4 sm:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)]">
+    <div className="grid items-start gap-4 sm:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)]">
       <PlayerPicker seasonCode={seasonCode} label="Player A" selected={effectiveEntityA} excludeId={effectiveEntityB?.id} onSelect={handleSelectA} />
-      <button type="button" className="btn btn-outline btn-square btn-sm mx-auto" aria-label="Swap players" disabled={!effectiveEntityA && !effectiveEntityB} onClick={handleSwap}>
+      <button type="button" className="btn btn-outline btn-square btn-sm mx-auto sm:mt-7" aria-label="Swap players" disabled={!effectiveEntityA && !effectiveEntityB} onClick={handleSwap}>
         &#8646;
       </button>
       <PlayerPicker seasonCode={seasonCode} label="Player B" selected={effectiveEntityB} excludeId={effectiveEntityA?.id} onSelect={handleSelectB} />
@@ -544,7 +488,9 @@ function ComparisonsBody({
           { key: "trends", label: "Trends" },
         ]
       : [
-          { key: "comparison", label: "Comparison" },
+          { key: "overview", label: "Overview" },
+          { key: "statistics", label: "Statistics" },
+          { key: "advanced", label: "Advanced" },
           { key: "trends", label: "Trends" },
         ];
   return (
@@ -577,7 +523,7 @@ function ComparisonsBody({
           tabs={sections}
         />
         <div className="flex flex-wrap items-end gap-3">
-          {view === "players" ? (
+          {view === "players" && section === "statistics" ? (
             <LabelledSelect label="Player statistics" ariaLabel="Player comparison mode" value={mode} onChange={(event) => setMode(event.target.value)}>
               <option value="accumulated">Accumulated</option>
               <option value="perGame">Per game</option>
@@ -595,18 +541,27 @@ function ComparisonsBody({
 
       <TabPanel id="comparison-section-panel" focusKey={section} scroll={false}>
         {section === "overview" ? (
-          <CompareTeamOverview seasonCode={seasonCode} phaseCode={phaseCode} entityA={effectiveEntityA} entityB={effectiveEntityB} hosted={Boolean(gameCode)} />
+          view === "teams" ? (
+            <CompareTeamOverview seasonCode={seasonCode} phaseCode={phaseCode} entityA={effectiveEntityA} entityB={effectiveEntityB} hosted={Boolean(gameCode)} />
+          ) : (
+            <ComparePlayerOverview seasonCode={seasonCode} phaseCode={phaseCode} entityA={effectiveEntityA} entityB={effectiveEntityB} />
+          )
         ) : section === "statistics" ? (
-          <CompareTeamStats seasonCode={seasonCode} phaseCode={phaseCode} entityA={effectiveEntityA} entityB={effectiveEntityB} />
-        ) : section === "comparison" ? (
-          <PlayerComparisonTable seasonCode={seasonCode} phaseCode={phaseCode} mode={mode} entityA={effectiveEntityA} entityB={effectiveEntityB} />
+          view === "teams" ? (
+            <CompareTeamStats seasonCode={seasonCode} phaseCode={phaseCode} entityA={effectiveEntityA} entityB={effectiveEntityB} />
+          ) : (
+            <PlayerComparisonTable seasonCode={seasonCode} phaseCode={phaseCode} mode={mode} entityA={effectiveEntityA} entityB={effectiveEntityB} />
+          )
+        ) : section === "advanced" ? (
+          <ComparePlayerAdvanced seasonCode={seasonCode} phaseCode={phaseCode} entityA={effectiveEntityA} entityB={effectiveEntityB} />
         ) : section === "rosters" ? (
           <CompareRosters seasonCode={seasonCode} phaseCode={phaseCode} entityA={effectiveEntityA} entityB={effectiveEntityB} />
         ) : (
-          <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3, ease: EASE_OUT }}>
-            <h2 className="mb-3 text-xl font-semibold">Points scored trend</h2>
-            <TrendSection seasonCode={seasonCode} phaseCode={phaseCode} view={view} entityA={effectiveEntityA} entityB={effectiveEntityB} />
-          </motion.div>
+          view === "teams" ? (
+            <CompareTeamTrends seasonCode={seasonCode} phaseCode={phaseCode} entityA={effectiveEntityA} entityB={effectiveEntityB} />
+          ) : (
+            <ComparePlayerTrends seasonCode={seasonCode} phaseCode={phaseCode} entityA={effectiveEntityA} entityB={effectiveEntityB} />
+          )
         )}
       </TabPanel>
     </motion.div>

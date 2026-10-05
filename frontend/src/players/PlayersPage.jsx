@@ -3,6 +3,7 @@ import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { motion } from "motion/react";
 import { Link, useParams } from "react-router";
 import { getSeasonPlayers } from "../lib/api";
+import { useDebouncedValue } from "../lib/useDebouncedValue";
 import AsyncState from "../lib/AsyncState";
 import EmptyText from "../lib/EmptyText";
 import { cardHover, denseListContainer, listItem } from "../lib/motion";
@@ -61,6 +62,8 @@ export default function PlayersPage() {
   const { seasonCode } = useParams();
   const [search, setSearch] = useState("");
   const [offset, setOffset] = useState(0);
+  // The list asks for a name once typing pauses, not for every key.
+  const debouncedSearch = useDebouncedValue(search);
   const summaryRef = useRef(null);
   const pageChanged = useRef(false);
 
@@ -75,8 +78,8 @@ export default function PlayersPage() {
   }
 
   const playersQuery = useQuery({
-    queryKey: ["players", seasonCode, search, offset],
-    queryFn: () => getSeasonPlayers(seasonCode, { search: search || undefined, limit: PAGE_SIZE, offset }),
+    queryKey: ["players", seasonCode, debouncedSearch, offset],
+    queryFn: () => getSeasonPlayers(seasonCode, { search: debouncedSearch || undefined, limit: PAGE_SIZE, offset }),
     // Typing or paging keeps the cards on screen until the next ones arrive, instead of flashing a spinner.
     placeholderData: keepPreviousData,
   });
@@ -108,7 +111,7 @@ export default function PlayersPage() {
       ) : playersQuery.isError ? (
         <AsyncState status="error" message="Could not load players." onRetry={() => playersQuery.refetch()} />
       ) : players.length === 0 ? (
-        <EmptyText>{search ? "No players match your search. Try a different name." : "No players available for this season."}</EmptyText>
+        <EmptyText>{debouncedSearch ? "No players match your search. Try a different name." : "No players available for this season."}</EmptyText>
       ) : (
         <>
           <p ref={summaryRef} className="muted mb-3 scroll-mt-24 text-sm">

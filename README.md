@@ -8,15 +8,15 @@
 
 ## Motivation
 
-My main goal was to create one clear, fast place to explore a EuroLeague season.
+My main goal was to create a clear and fun way to follow a EuroLeague season.
 
-Today, following a season means searching across scattered pages or interpreting raw data. The standings are in one place, the box scores in another, and the numbers that explain why a team or a player is good somewhere else entirely.
+Basketball produces a huge amount of data, but a table full of numbers rarely tells you who is actually playing well. Unless you already love statistics, it is hard to see what is going on.
 
-I wanted to build something that cuts through that.
+I wanted to present that data in a clear, concise, and understandable way, so that even someone who is not crazy about statistics can look at a page and see what is going on, who is good, and who is bad.
 
 I also wanted the statistics to be easy to read for everyone, even the advanced ones. A number should come with enough context (a league rank, a clear visual, a plain explanation) that you can tell at a glance whether it is good, average, or bad.
 
-Instead of jumping between pages, JMP EuroLeague puts the results, the statistics, and the context around them in one place. The goal is to give both myself and other fans an intuitive understanding of a season, from a single game to the road to the title, without needing to dig through endless data.
+JMP EuroLeague puts the results, the statistics, and the context around them in one place. The goal is to give both myself and other fans an intuitive understanding of a season, from a single game to the road to the title, without needing to dig through endless data.
 
 ---
 

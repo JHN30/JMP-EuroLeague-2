@@ -32,6 +32,8 @@ import {
   getLineupRatings,
   getPerLeaders,
   getRoundStatLeaders,
+  getRoundStatRows,
+  getClubPlayersAdvanced,
   ROUND_STAT_METRICS,
   type RoundStatMetric,
   getUsageLeaders,
@@ -751,6 +753,29 @@ function requestedAdvancedScope(req: Request, res: Response): string | undefined
   return value;
 }
 
+// The advanced figures of a club's players (PER, Win Shares, Win Shares per 40, usage, true shooting, PIE, game score) as they
+// stand after the scope's last round. The page decides which players are worth showing.
+seasonRouter.get("/:seasonCode/teams/:clubCode/players-advanced", async (req, res) => {
+  const season = await requestedSeason(req, res);
+  if (!season) return;
+  const clubCode = req.params.clubCode;
+  if (!validIdentity(clubCode)) {
+    sendError(res, 400, "INVALID_TEAM_CODE", "Invalid team code");
+    return;
+  }
+  const scopeValue = requestedAdvancedScope(req, res);
+  if (scopeValue === null) return;
+  if (!await getTeam(season.seasonCode, clubCode)) {
+    sendError(res, 404, "TEAM_NOT_FOUND", "Team not found");
+    return;
+  }
+  const scope = scopeValue ?? "RS";
+  const rounds = await getStatsRounds(season.seasonCode, scope);
+  const round = rounds[rounds.length - 1];
+  const players = round === undefined ? [] : await getClubPlayersAdvanced(season.seasonCode, scope, round, clubCode);
+  res.json({ scope, round: round ?? null, earlySeason: rounds.length < EARLY_SEASON_ROUNDS, players });
+});
+
 // Trend, splits, play-by-play and shot zones for one club in one scope. The trend is one point per round of
 // cumulative values (never summed); the splits are the state after the club's latest round in the scope.
 seasonRouter.get("/:seasonCode/teams/:clubCode/advanced", async (req, res) => {
@@ -894,13 +919,13 @@ function quantile(sorted: number[], fraction: number): number {
 }
 
 // `values` is the group, `own` the player's value in it (null when the player is not in the group).
-function rankAmong(values: number[], own: number | null, minMinutes: number): AdvancedRank {
+function rankAmong(values: number[], own: number | null, minMinutes: number, lowerIsBetter = false): AdvancedRank {
   const sorted = values.filter((value) => Number.isFinite(value)).sort((x, y) => x - y);
   const spread = sorted.length > 0
     ? { p10: quantile(sorted, 0.1), p25: quantile(sorted, 0.25), p50: quantile(sorted, 0.5), p75: quantile(sorted, 0.75), p90: quantile(sorted, 0.9) }
     : null;
   if (own === null || !Number.isFinite(own)) return { rank: null, of: sorted.length, value: null, percentile: null, spread, minMinutes };
-  const rank = sorted.filter((value) => value > own).length + 1;
+  const rank = sorted.filter((value) => (lowerIsBetter ? value < own : value > own)).length + 1;
   const percentile = sorted.length > 1 ? Math.round(((sorted.length - rank) / (sorted.length - 1)) * 100) : 100;
   return { rank, of: sorted.length, value: own, percentile, spread, minMinutes };
 }
@@ -943,6 +968,31 @@ async function getPlayerAdvancedRanks(seasonCode: string, scope: string, personK
   };
 }
 
+// Per-100 and rate figures that count against a player when high (turnovers) rank lowest first.
+const LOWER_IS_BETTER_ROUND_STATS = new Set(["turnoversPer100", "tovPct"]);
+
+// The player's per-100 and rate figures after the scope's last round and where each ranks among the players with enough
+// minutes. A value is returned for a player under the minimum too, only without a rank.
+async function getExtendedAdvanced(seasonCode: string, scope: string, personKey: string, earlySeason: boolean, own: Record<string, unknown> | undefined) {
+  const rounds = await getStatsRounds(seasonCode, scope);
+  const round = rounds[rounds.length - 1];
+  const minMinutes = earlySeason ? EARLY_SEASON_MIN_MINUTES : LEADER_DEFAULT_MIN_MINUTES.per;
+  const rows = round === undefined ? [] : await getRoundStatRows(seasonCode, scope, round, minMinutes * 60);
+  const values: Record<string, number | null> = {};
+  const ranks: Record<string, AdvancedRank> = {};
+  for (const key of ROUND_STAT_METRIC_KEYS) {
+    const raw = own?.[key];
+    values[key] = raw === null || raw === undefined || !Number.isFinite(Number(raw)) ? null : Number(raw);
+    const group = rows
+      .map((row) => (row as Record<string, unknown>)[key])
+      .filter((value) => value !== null && value !== undefined)
+      .map(Number);
+    const inGroup = rows.some((row) => row.personKey === personKey);
+    ranks[key] = rankAmong(group, inGroup ? values[key] : null, minMinutes, LOWER_IS_BETTER_ROUND_STATS.has(key));
+  }
+  return { values, ranks };
+}
+
 // Round-by-round PER, Win Shares and USG% for one player in one scope, plus on/off (one row per club, so a
 // traded player has several) and the whole-season RAPM. Sample sizes come back with the values; the page
 // decides what to hide.
@@ -982,6 +1032,10 @@ seasonRouter.get("/:seasonCode/players/:personKey/advanced", async (req, res) =>
     getTeams(season.seasonCode),
     getPlayerAdvancedRanks(season.seasonCode, scope, personKey, base.earlySeason),
   ]);
+  // With `extended=true`: the per-100 and rate figures (and their ranks) the player comparison reads.
+  const extended = req.query.extended === "true"
+    ? await getExtendedAdvanced(season.seasonCode, scope, personKey, base.earlySeason, stats[stats.length - 1] as unknown as Record<string, unknown> | undefined)
+    : undefined;
   const ratingsByRound = new Map(ratings.map((row) => [row.roundNumber, row]));
   const winSharesByRound = new Map(winShares.map((row) => [row.roundNumber, row]));
   const clubs = new Map(teams.map((team) => [team.clubCode, team]));
@@ -989,6 +1043,7 @@ seasonRouter.get("/:seasonCode/players/:personKey/advanced", async (req, res) =>
     ...base,
     scope,
     ranks,
+    ...(extended ? { extended } : {}),
     rounds: stats.map((row) => {
       const rating = ratingsByRound.get(row.roundNumber);
       const shares = winSharesByRound.get(row.roundNumber);

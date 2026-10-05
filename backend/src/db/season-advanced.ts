@@ -262,6 +262,79 @@ export async function getRoundStatLeaders(
   );
 }
 
+// Every player's published rate and per-100 columns after one round (those who played at least `minSeconds`), to rank one
+// player among them in memory.
+export async function getRoundStatRows(seasonCode: string, scope: string, round: number, minSeconds: number) {
+  return catalogRead(() =>
+    db.select({
+      personKey: playerRoundStats.personKey,
+      pointsPer100: playerRoundStats.pointsPer100,
+      reboundsPer100: playerRoundStats.reboundsPer100,
+      assistsPer100: playerRoundStats.assistsPer100,
+      stealsPer100: playerRoundStats.stealsPer100,
+      blocksPer100: playerRoundStats.blocksPer100,
+      turnoversPer100: playerRoundStats.turnoversPer100,
+      usgPct: playerRoundStats.usgPct,
+      astPct: playerRoundStats.astPct,
+      trbPct: playerRoundStats.trbPct,
+      stlPct: playerRoundStats.stlPct,
+      blkPct: playerRoundStats.blkPct,
+      tovPct: playerRoundStats.tovPct,
+      tsPct: playerRoundStats.tsPct,
+      efgPct: playerRoundStats.efgPct,
+      pie: playerRoundStats.pie,
+      gameScoreAverage: playerRoundStats.gameScoreAverage,
+    })
+      .from(playerRoundStats)
+      .where(and(
+        ...inScope(playerRoundStats, seasonCode, scope),
+        eq(playerRoundStats.roundNumber, round),
+        gte(playerRoundStats.secondsPlayed, minSeconds),
+      )),
+  );
+}
+
+// The advanced figures of every player of one club after one round: the round table's row for the club (usage, shooting,
+// PIE, game score) with each player's PER and Win Shares from their own tables, joined on the player key.
+export async function getClubPlayersAdvanced(seasonCode: string, scope: string, round: number, clubCode: string) {
+  const stats = await catalogRead(() =>
+    db.select({
+      personKey: playerRoundStats.personKey,
+      playerName: playerRoundStats.playerName,
+      gamesPlayed: playerRoundStats.gamesPlayed,
+      secondsPlayed: playerRoundStats.secondsPlayed,
+      usgPct: playerRoundStats.usgPct,
+      tsPct: playerRoundStats.tsPct,
+      pie: playerRoundStats.pie,
+      gameScoreAverage: playerRoundStats.gameScoreAverage,
+    })
+      .from(playerRoundStats)
+      .where(and(...inScope(playerRoundStats, seasonCode, scope), eq(playerRoundStats.roundNumber, round), eq(playerRoundStats.clubCode, clubCode))),
+  );
+  if (stats.length === 0) return [];
+  const keys = stats.map((row) => row.personKey);
+  const [ratings, shares] = await Promise.all([
+    catalogRead(() =>
+      db.select({ personKey: playerRoundRatings.personKey, per: playerRoundRatings.per })
+        .from(playerRoundRatings)
+        .where(and(...inScope(playerRoundRatings, seasonCode, scope), eq(playerRoundRatings.roundNumber, round), inArray(playerRoundRatings.personKey, keys))),
+    ),
+    catalogRead(() =>
+      db.select({ personKey: playerRoundWinShares.personKey, winShares: playerRoundWinShares.winShares, winSharesPer40: playerRoundWinShares.winSharesPer40 })
+        .from(playerRoundWinShares)
+        .where(and(...inScope(playerRoundWinShares, seasonCode, scope), eq(playerRoundWinShares.roundNumber, round), inArray(playerRoundWinShares.personKey, keys))),
+    ),
+  ]);
+  const perByKey = new Map(ratings.map((row) => [row.personKey, row.per]));
+  const sharesByKey = new Map(shares.map((row) => [row.personKey, row]));
+  return stats.map((row) => ({
+    ...row,
+    per: perByKey.get(row.personKey) ?? null,
+    winShares: sharesByKey.get(row.personKey)?.winShares ?? null,
+    winSharesPer40: sharesByKey.get(row.personKey)?.winSharesPer40 ?? null,
+  }));
+}
+
 export async function getWinShareLeaders(
   seasonCode: string,
   scope: string,

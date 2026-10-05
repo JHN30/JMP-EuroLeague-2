@@ -6,7 +6,7 @@ import AsyncState from "../lib/AsyncState";
 import LabelledSelect from "../lib/LabelledSelect";
 import Panel from "../lib/Panel";
 import ComparisonRow from "../lib/ComparisonRow";
-import { EASE_OUT, denseListContainer, listContainer, listItem } from "../lib/motion";
+import { EASE_OUT, denseListContainer, listItem } from "../lib/motion";
 import RevealImage from "../lib/RevealImage";
 import PageHeader from "../lib/PageHeader";
 import { useDocumentTitle } from "../lib/useDocumentTitle";
@@ -14,6 +14,8 @@ import { usePhaseParam } from "../lib/usePhaseParam";
 import { TabPanel, TabStrip } from "../lib/TabStrip";
 import CompareFixtures, { GameContext } from "./CompareFixtures";
 import CompareRosters from "./CompareRosters";
+import CompareTeamOverview from "./CompareTeamOverview";
+import CompareTeamStats from "./CompareTeamStats";
 import {
   getPhases,
   getPlayer,
@@ -21,11 +23,10 @@ import {
   getPlayerSeasonStats,
   getRounds,
   getSeasonPlayers,
-  getSeasonStandings,
   getSeasonTeams,
   getTeamGames,
 } from "../lib/api";
-import { PLAYER_METRIC_GROUPS, TEAM_METRICS, formatStatValue } from "../lib/statsFields";
+import { PLAYER_METRIC_GROUPS, formatStatValue } from "../lib/statsFields";
 import TrendChart from "./TrendChart";
 
 const PLAYER_COMPARISON_ROWS = PLAYER_METRIC_GROUPS.flatMap((group) => [
@@ -38,16 +39,6 @@ const PLAYER_COMPARISON_ROWS = PLAYER_METRIC_GROUPS.flatMap((group) => [
     label,
   })),
 ]);
-
-const TEAM_METRIC_DIRECTIONS = {
-  gamesPlayed: "neutral",
-  gamesWon: "higher",
-  gamesLost: "lower",
-  winPercentage: "higher",
-  pointsFor: "higher",
-  pointsAgainst: "lower",
-  pointsDifference: "higher",
-};
 
 const PLAYER_METRIC_DIRECTIONS = {
   pointsScored: "higher",
@@ -74,6 +65,9 @@ const PLAYER_METRIC_DIRECTIONS = {
   doubleDoubles: "higher",
   tripleDoubles: "higher",
 };
+
+// A team comparison opens on its overview (the preview of the pairing); a player comparison on the numbers.
+const firstSection = (view) => (view === "teams" ? "overview" : "comparison");
 
 function TeamPicker({ label, allTeams, teamsPending, selected, excludeId, onSelect }) {
   const teams = allTeams.filter((team) => team.clubCode !== excludeId);
@@ -171,56 +165,6 @@ function PlayerPicker({ seasonCode, label, selected, excludeId, onSelect }) {
           )}
         </ul>
       ) : null}
-    </div>
-  );
-}
-
-function TeamComparisonTable({ seasonCode, phaseCode, entityA, entityB }) {
-  const standingsQuery = useQuery({
-    queryKey: ["standings", seasonCode, phaseCode],
-    queryFn: () => getSeasonStandings(seasonCode, phaseCode),
-    enabled: Boolean(phaseCode) && Boolean(entityA) && Boolean(entityB),
-  });
-
-  if (!entityA || !entityB) return <p className="muted">Select two teams to compare.</p>;
-  if (standingsQuery.isPending) return <AsyncState status="loading" label="Loading the comparison" />;
-  if (standingsQuery.isError) {
-    return <AsyncState status="error" message="Could not load the comparison." onRetry={() => standingsQuery.refetch()} />;
-  }
-
-  const standings = standingsQuery.data.standings ?? [];
-  const a = standings.find((entry) => entry.clubCode === entityA.id);
-  const b = standings.find((entry) => entry.clubCode === entityB.id);
-
-  return (
-    <Panel className="p-3">
-      <motion.div variants={listContainer} initial="hidden" animate="show">
-        <motion.div variants={listItem} className="mb-4 grid grid-cols-2 gap-4">
-          <TeamHeaderCell label={entityA.label} crestUrl={a?.crestUrl} />
-          <TeamHeaderCell label={entityB.label} crestUrl={b?.crestUrl} />
-        </motion.div>
-        {TEAM_METRICS.map((metric) => (
-        <ComparisonRow
-          key={metric.key}
-          animated
-          label={metric.label}
-          rawA={a?.basic?.[metric.key]}
-          rawB={b?.basic?.[metric.key]}
-          displayA={a?.basic?.[metric.key] ?? "-"}
-          displayB={b?.basic?.[metric.key] ?? "-"}
-          direction={TEAM_METRIC_DIRECTIONS[metric.key]}
-        />
-        ))}
-      </motion.div>
-    </Panel>
-  );
-}
-
-function TeamHeaderCell({ label, crestUrl }) {
-  return (
-    <div className="text-center">
-      {crestUrl ? <RevealImage src={crestUrl} className="mx-auto mb-1 h-12 w-12 object-contain" /> : null}
-      <div className="font-semibold">{label}</div>
     </div>
   );
 }
@@ -408,7 +352,7 @@ function ComparisonsBody({
 }) {
   const [, setSearchParams] = useSearchParams();
   const [view, setView] = useState(initialView);
-  const [section, setSection] = useState("comparison");
+  const [section, setSection] = useState(firstSection(initialView));
   const [mode, setMode] = useState("perGame");
   const [entityA, setEntityA] = useState(() => {
     if (initialView !== "teams") return null;
@@ -473,7 +417,7 @@ function ComparisonsBody({
 
   function handleViewChange(value) {
     setView(value);
-    setSection("comparison");
+    setSection(firstSection(value));
     setEntityA(null);
     setEntityB(null);
     setGameCode(null);
@@ -505,7 +449,7 @@ function ComparisonsBody({
     const home = asEntity(game.localTeam);
     const road = asEntity(game.roadTeam);
     setView("teams");
-    setSection("comparison");
+    setSection(firstSection("teams"));
     setEntityA(home);
     setEntityB(road);
     setGameCode(game.gameCode);
@@ -517,7 +461,7 @@ function ComparisonsBody({
     setEntityA(null);
     setEntityB(null);
     setGameCode(null);
-    setSection("comparison");
+    setSection(firstSection(view));
     persistEntities(view, null, null);
   }
 
@@ -594,7 +538,8 @@ function ComparisonsBody({
   const sections =
     view === "teams"
       ? [
-          { key: "comparison", label: "Comparison" },
+          { key: "overview", label: "Overview" },
+          { key: "statistics", label: "Statistics" },
           { key: "rosters", label: "Rosters" },
           { key: "trends", label: "Trends" },
         ]
@@ -649,12 +594,12 @@ function ComparisonsBody({
       </div>
 
       <TabPanel id="comparison-section-panel" focusKey={section} scroll={false}>
-        {section === "comparison" ? (
-          view === "teams" ? (
-            <TeamComparisonTable seasonCode={seasonCode} phaseCode={phaseCode} entityA={effectiveEntityA} entityB={effectiveEntityB} />
-          ) : (
-            <PlayerComparisonTable seasonCode={seasonCode} phaseCode={phaseCode} mode={mode} entityA={effectiveEntityA} entityB={effectiveEntityB} />
-          )
+        {section === "overview" ? (
+          <CompareTeamOverview seasonCode={seasonCode} phaseCode={phaseCode} entityA={effectiveEntityA} entityB={effectiveEntityB} hosted={Boolean(gameCode)} />
+        ) : section === "statistics" ? (
+          <CompareTeamStats seasonCode={seasonCode} phaseCode={phaseCode} entityA={effectiveEntityA} entityB={effectiveEntityB} />
+        ) : section === "comparison" ? (
+          <PlayerComparisonTable seasonCode={seasonCode} phaseCode={phaseCode} mode={mode} entityA={effectiveEntityA} entityB={effectiveEntityB} />
         ) : section === "rosters" ? (
           <CompareRosters seasonCode={seasonCode} phaseCode={phaseCode} entityA={effectiveEntityA} entityB={effectiveEntityB} />
         ) : (

@@ -19,7 +19,13 @@ test("Compare opens on the games of a round, and a game opens the comparison of 
   await expect(page).toHaveURL(/teamA=.+&teamB=.+&game=|game=.+/);
   // The clutter is gone: no pickers or type tabs, just the sections.
   const sections = page.getByRole("tablist", { name: "Comparison section" });
-  await expect(sections.getByRole("tab", { name: "Comparison" })).toHaveAttribute("aria-selected", "true");
+  await expect(sections.getByRole("tab", { name: "Overview" })).toHaveAttribute("aria-selected", "true");
+  await expect(page.getByText("Where each club is stronger")).toBeVisible();
+
+  // The statistics put the two clubs side by side with their places in the league.
+  await sections.getByRole("tab", { name: "Statistics" }).click();
+  await expect(page.getByText(/Under each bar: the club/)).toBeVisible();
+  await expect(page.getByText(/^#\d+ of \d+$/).first()).toBeVisible();
   await expect(page.getByLabel("Team A")).toHaveCount(0);
   await expect(page.getByRole("tablist", { name: "Comparison type" })).toHaveCount(0);
 

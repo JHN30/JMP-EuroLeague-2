@@ -1,15 +1,5 @@
 import { formatMissing, formatPerGame, formatPercentage } from "./format";
 
-export const TEAM_METRICS = [
-  { key: "gamesPlayed", label: "GP" },
-  { key: "gamesWon", label: "W" },
-  { key: "gamesLost", label: "L" },
-  { key: "winPercentage", label: "PCT" },
-  { key: "pointsFor", label: "PF" },
-  { key: "pointsAgainst", label: "PA" },
-  { key: "pointsDifference", label: "DIFF" },
-];
-
 export const PLAYER_METRIC_GROUPS = [
   {
     label: "Traditional",

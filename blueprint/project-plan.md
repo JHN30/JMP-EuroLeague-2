@@ -31,10 +31,10 @@ Users should not need an account or specialist analytics knowledge. The main exp
 - Game detail and box-score views
 - Team directory and detailed team pages
 - Player search/directory and detailed player pages
-- Team and player statistical leaderboards
-- Team/player comparison and trend charts
-- Play-in, playoffs, and Final Four bracket/result views when data exists
-- Navigation that exposes the season-format view alongside the existing season-scoped pages
+- League leaders for players, teams and advanced statistics, opening on category cards with full leaderboards and filters
+- Team and player comparison: the coming round's games to start from, an overview, the full statistics, rosters, advanced numbers and trend charts
+- A Postseason page with the Play-In, Playoffs and Final Four bracket and results, a labelled projection of the bracket from the standings before it is played, the race for the places, and the champion once decided
+- Navigation that exposes the Postseason view alongside the existing season-scoped pages
 - Responsive loading, empty, unavailable, and error states for every data-driven page
 - Visible notes for known official corrections, anomalies, and incomplete current-season data
 
@@ -170,7 +170,8 @@ Deployment rules:
 - Win-probability predictions and the Predictor page
 - Automated playoff simulations
 - Seasons earlier than `E2023`
-- Archive-wide records and player-career expansion until the intended historical seasons have been loaded
+- Archive-wide records, player-career expansion and career or all-season leaders until the intended historical seasons have been loaded
+- Per-36 and per-30 player statistics (per-100 figures are published and shown)
 - EuroCup, ABA League, NBA, or other competitions
 - User authentication and account recovery
 - Favorites, notifications, social features, and user-generated content

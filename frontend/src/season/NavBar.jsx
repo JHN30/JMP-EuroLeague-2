@@ -1,14 +1,14 @@
 import { NavLink, useParams } from "react-router";
 
 const TABS = [
-  { label: "Home", path: "", end: true },
+  { label: "Home", path: "home" },
   { label: "Overview", path: "overview" },
   { label: "Standings", path: "standings" },
   { label: "Games", path: "games" },
   { label: "Teams", path: "teams" },
   { label: "Players", path: "players" },
-  { label: "Leaders", path: "statistics" },
-  { label: "Compare", path: "comparisons" },
+  { label: "Leaders", path: "leaders" },
+  { label: "Compare", path: "compare" },
   { label: "Postseason", path: "postseason" },
 ];
 
@@ -21,8 +21,7 @@ export default function NavBar() {
         {TABS.map((tab) => (
           <NavLink
             key={tab.label}
-            end={tab.end}
-            to={tab.path ? `/${seasonCode}/${tab.path}` : `/${seasonCode}`}
+            to={`/${seasonCode}/${tab.path}`}
             className={({ isActive }) => `tab font-semibold ${isActive ? "tab-active text-primary" : ""}`}
           >
             {tab.label}

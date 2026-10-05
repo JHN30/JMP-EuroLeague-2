@@ -256,7 +256,7 @@ function WatchPanel({ seasonCode, phaseCode, entityA, entityB }) {
       </div>
       {lead ? (
         <div className="mt-4">
-          <Link to={`/${seasonCode}/comparisons?view=players&playerA=${encodeURIComponent(lead[0].personKey)}&playerB=${encodeURIComponent(lead[1].personKey)}`} className="btn btn-outline btn-sm">
+          <Link to={`/${seasonCode}/compare?view=players&playerA=${encodeURIComponent(lead[0].personKey)}&playerB=${encodeURIComponent(lead[1].personKey)}`} className="btn btn-outline btn-sm">
             Compare {displayName(lead[0])} and {displayName(lead[1])}
           </Link>
         </div>

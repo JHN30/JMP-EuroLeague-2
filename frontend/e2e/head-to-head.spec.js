@@ -8,7 +8,7 @@ test("renders a cross-season head-to-head history", async ({ page }) => {
     if (/\/teams\/A\/games$/.test(url.pathname)) return route.fulfill({ json: { games: [{ gameCode: 1, played: true, localTeam: { clubCode: "A" }, roadTeam: { clubCode: "B" }, localScore: 80, roadScore: 70, roundNumber: 1, phaseCode: "RS", scheduledAt: "2025-01-01T18:00:00Z" }] } });
     return route.fulfill({ status: 404, json: {} });
   });
-  await page.goto("/2026/comparisons/head-to-head?teamA=A&teamB=B");
+  await page.goto("/2026/compare/head-to-head?teamA=A&teamB=B");
   await expect(page.getByRole("heading", { name: "Head-to-head" })).toBeVisible();
   await expect(page.getByText("2 completed meetings")).toBeVisible();
   await expect(page.getByRole("img", { name: "Meeting margin timeline from Team A perspective" })).toBeVisible();

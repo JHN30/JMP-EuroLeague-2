@@ -1,19 +1,26 @@
 {
-  "name": "JMP Euroleague",
-  "short_name": "JMP Euroleague",
+  "name": "JMP EuroLeague",
+  "short_name": "JMP EuroLeague",
+  "description": "Standings, games, teams, players, leaders, comparisons and the postseason bracket for EuroLeague seasons 2023-24 to 2026-27.",
+  "id": "/",
+  "start_url": "/",
+  "scope": "/",
+  "lang": "en",
+  "display": "standalone",
+  "theme_color": "#151517",
+  "background_color": "#151517",
   "icons": [
     {
       "src": "/android-chrome-192x192.png",
       "sizes": "192x192",
-      "type": "image/png"
+      "type": "image/png",
+      "purpose": "any"
     },
     {
       "src": "/android-chrome-512x512.png",
       "sizes": "512x512",
-      "type": "image/png"
+      "type": "image/png",
+      "purpose": "any"
     }
-  ],
-  "theme_color": "#151517",
-  "background_color": "#151517",
-  "display": "standalone"
+  ]
 }

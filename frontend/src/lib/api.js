@@ -1,8 +1,10 @@
 import api from "./axios";
+import { seasonSlug } from "./seasonSlug";
 
+// The seasons come back with the year as their code ("2026"), the same form the site's addresses and the API accept.
 export async function getSeasons() {
   const { data } = await api.get("/seasons");
-  return data;
+  return { ...data, seasons: data.seasons.map((season) => ({ ...season, seasonCode: seasonSlug(season.seasonCode) })) };
 }
 
 export async function getSeasonGames(seasonCode, { limit, offset, status, order, phase, round } = {}) {

@@ -41,8 +41,8 @@ test("uses compact native selects for statistics and comparison filters", async 
   await expect(page.getByLabel("Player A")).toBeVisible();
 
   // With two players chosen the comparison opens, with its own statistics mode.
-  const players = (await (await page.request.get("http://localhost:3000/api/seasons/E2025/players?limit=2")).json()).players;
-  await page.goto(`/E2025/comparisons?view=players&playerA=${players[0].personKey}&playerB=${players[1].personKey}`);
+  const players = (await (await page.request.get("http://localhost:3000/api/seasons/2025/players?limit=2")).json()).players;
+  await page.goto(`/2025/compare?view=players&playerA=${players[0].personKey}&playerB=${players[1].personKey}`);
   await page.getByRole("tab", { name: "Statistics" }).click();
   const comparisonMode = page.getByLabel("Player comparison mode");
   await comparisonMode.selectOption("accumulated");

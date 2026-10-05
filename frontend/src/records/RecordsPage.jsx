@@ -4,6 +4,8 @@ import { getPlayerSeasonRecords, getSingleGameRecords, getTeamSeasonRecords } fr
 import AsyncState from "../lib/AsyncState";
 import CompactFilterSelect from "../lib/CompactFilterSelect";
 import PageHeader from "../lib/PageHeader";
+import { seasonSlug } from "../lib/seasonSlug";
+import { useDocumentTitle } from "../lib/useDocumentTitle";
 import Panel from "../lib/Panel";
 import { useState } from "react";
 
@@ -11,6 +13,7 @@ const METRICS = [["pointsScored", "Points"], ["totalRebounds", "Rebounds"], ["as
 const SINGLE_GAME_METRICS = { pointsScored: "points", totalRebounds: "totalRebounds", assists: "assistances", pir: "valuation" };
 
 export default function RecordsPage() {
+  useDocumentTitle("Records");
   const { seasonCode } = useParams();
   const [metric, setMetric] = useState("pointsScored");
   const [recordType, setRecordType] = useState("player");
@@ -38,8 +41,8 @@ export default function RecordsPage() {
   const rowKey = (row) => `${row.seasonCode}-${row.personKey ?? row.clubCode}-${row.gameCode ?? "season"}`;
   const entityName = (row) => recordType === "team" ? row.clubName ?? row.clubCode : row.playerName;
   const entityPath = (row) => recordType === "team"
-    ? `/${row.seasonCode}/teams/${row.clubCode}`
-    : `/${row.seasonCode}/players/${row.personKey}`;
+    ? `/${seasonSlug(row.seasonCode)}/teams/${row.clubCode}`
+    : `/${seasonSlug(row.seasonCode)}/players/${row.personKey}`;
 
   return <div>
     <PageHeader kicker="ARCHIVE" title="Records" description={<p className="muted">Archive-to-date {recordType === "game" ? "single-game" : recordType === "team" ? "team-season" : "player-season"} records.</p>} />

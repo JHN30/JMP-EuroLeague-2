@@ -504,7 +504,7 @@ function ComparisonsBody({
       <GameContext seasonCode={seasonCode} gameCode={gameCode} backLabel={view === "teams" ? "← Games" : "← Players"} onBack={handleBack}>
         {view === "teams" ? (
           <Link
-            to={`/${seasonCode}/comparisons/head-to-head?teamA=${encodeURIComponent(effectiveEntityA.id)}&teamB=${encodeURIComponent(effectiveEntityB.id)}`}
+            to={`/${seasonCode}/compare/head-to-head?teamA=${encodeURIComponent(effectiveEntityA.id)}&teamB=${encodeURIComponent(effectiveEntityB.id)}`}
             className="link link-hover text-sm"
           >
             All-time head-to-head

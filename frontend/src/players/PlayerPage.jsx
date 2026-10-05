@@ -15,6 +15,7 @@ import { useDocumentTitle } from "../lib/useDocumentTitle";
 import { usePhaseParam } from "../lib/usePhaseParam";
 import PlayerAdvancedSection from "./PlayerAdvancedSection";
 import PlayerCareerSection from "./PlayerCareerSection";
+import { displayName } from "../lib/playerName";
 import PlayerHero from "./PlayerHero";
 import PlayerGamesSection from "./PlayerGamesSection";
 import PlayerOverviewSection from "./PlayerOverviewSection";
@@ -52,7 +53,7 @@ export default function PlayerPage() {
     retry: false,
   });
   const player = playerQuery.data?.player;
-  useDocumentTitle(player ? (player.name ?? player.jerseyName ?? player.personKey) : "Players");
+  useDocumentTitle(player ? displayName(player.name ?? player.jerseyName ?? player.personKey) : "Players");
 
   const registrationsQuery = useQuery({
     queryKey: ["player-registrations", seasonCode, personKey],

@@ -217,8 +217,10 @@ seasonRouter.use((req, res, next) => {
   next();
 });
 
+// A season is addressed by its code ("E2026") or by its year alone ("2026", which is what the site's addresses show).
 async function requestedSeason(req: Request, res: Response): Promise<Season | null> {
-  const seasonCode = req.params.seasonCode;
+  const requested = req.params.seasonCode;
+  const seasonCode = typeof requested === "string" && /^\d{4}$/.test(requested) ? "E" + requested : requested;
   if (typeof seasonCode !== "string" || !SUPPORTED_SEASONS.some((code) => code === seasonCode)) {
     sendError(res, 400, "INVALID_SEASON", "Unsupported season");
     return null;

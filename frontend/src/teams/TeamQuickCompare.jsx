@@ -92,7 +92,7 @@ export default function TeamQuickCompare({ seasonCode, clubCode, team, nextOppon
         title="Quick comparison"
         trailing={
           <Link
-            to={`/${seasonCode}/comparisons?teamA=${encodeURIComponent(clubCode)}&teamB=${encodeURIComponent(active.club.clubCode)}`}
+            to={`/${seasonCode}/compare?teamA=${encodeURIComponent(clubCode)}&teamB=${encodeURIComponent(active.club.clubCode)}`}
             className="panel-link whitespace-nowrap"
           >
             Full comparison →

@@ -1,6 +1,6 @@
 import { lazy } from "react";
 import { MotionConfig } from "motion/react";
-import { Navigate, Route, Routes } from "react-router";
+import { Navigate, Route, Routes, useLocation } from "react-router";
 import SeasonLayout from "./season/SeasonLayout";
 import AsyncState from "./lib/AsyncState";
 import NotFoundPage from "./NotFoundPage";
@@ -22,6 +22,12 @@ const HeadToHeadPage = lazy(() => import("./comparisons/HeadToHeadPage"));
 const RecordsPage = lazy(() => import("./records/RecordsPage"));
 const PostseasonPage = lazy(() => import("./postseason/PostseasonPage"));
 
+// An old address sent on to the page's current one, keeping the query string (a shared comparison or leaderboard link) and the hash.
+function RedirectTo({ to, relative = "path" }) {
+  const { search, hash } = useLocation();
+  return <Navigate replace to={{ pathname: to, search, hash }} relative={relative} />;
+}
+
 function DefaultSeasonRedirect() {
   const defaultSeasonQuery = useDefaultSeasonCode();
 
@@ -40,7 +46,7 @@ function DefaultSeasonRedirect() {
     );
   }
 
-  return <Navigate replace to={`/${defaultSeasonQuery.data}`} />;
+  return <Navigate replace to={`/${defaultSeasonQuery.data}/home`} />;
 }
 
 function App() {
@@ -52,7 +58,8 @@ function App() {
         <Routes>
           <Route path="/" element={<DefaultSeasonRedirect />} />
           <Route path="/:seasonCode" element={<SeasonLayout themePreference={themePreference} />}>
-            <Route index element={<Dashboard />} />
+            <Route index element={<RedirectTo to="home" relative="route" />} />
+            <Route path="home" element={<Dashboard />} />
             <Route path="overview" element={<SeasonOverviewPage />} />
             <Route path="standings" element={<StandingsPage />} />
             <Route path="games" element={<FixturesPage />} />
@@ -61,12 +68,15 @@ function App() {
             <Route path="teams/:clubCode" element={<TeamPage />} />
             <Route path="players" element={<PlayersPage />} />
             <Route path="players/:personKey" element={<PlayerPage />} />
-            <Route path="statistics" element={<LeadersPage />} />
-            <Route path="comparisons" element={<ComparisonsPage />} />
-            <Route path="comparisons/head-to-head" element={<HeadToHeadPage />} />
+            <Route path="leaders" element={<LeadersPage />} />
+            <Route path="compare" element={<ComparisonsPage />} />
+            <Route path="compare/head-to-head" element={<HeadToHeadPage />} />
+            <Route path="statistics" element={<RedirectTo to="../leaders" />} />
+            <Route path="comparisons" element={<RedirectTo to="../compare" />} />
+            <Route path="comparisons/head-to-head" element={<RedirectTo to="../../compare/head-to-head" />} />
             <Route path="records" element={<RecordsPage />} />
             <Route path="postseason" element={<PostseasonPage />} />
-            <Route path="playoffs" element={<Navigate replace to="../postseason" relative="path" />} />
+            <Route path="playoffs" element={<RedirectTo to="../postseason" />} />
           </Route>
           <Route path="*" element={<NotFoundPage />} />
         </Routes>

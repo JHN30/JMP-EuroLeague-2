@@ -10,9 +10,9 @@ function watchErrors(page) {
 
 test("a finished season shows its champion and the whole bracket, and a matchup opens its games", async ({ page }) => {
   const errors = watchErrors(page);
-  await page.goto("/E2025");
+  await page.goto("/2025");
   await page.getByRole("navigation", { name: "Sections" }).getByRole("link", { name: "Postseason", exact: true }).click();
-  await expect(page).toHaveURL(/\/E2025\/postseason$/);
+  await expect(page).toHaveURL(/\/2025\/postseason$/);
   await expect(page.getByRole("heading", { name: "Postseason", exact: true })).toBeVisible();
   await expect(page.getByText(/are the champions/)).toBeVisible();
 
@@ -26,14 +26,14 @@ test("a finished season shows its champion and the whole bracket, and a matchup 
   await expect(page.getByText("Game 1")).toBeVisible();
 
   // The old address still works.
-  await page.goto("/E2025/playoffs");
-  await expect(page).toHaveURL(/\/E2025\/postseason$/);
+  await page.goto("/2025/playoffs");
+  await expect(page).toHaveURL(/\/2025\/postseason$/);
   expect(errors).toEqual([]);
 });
 
 test("a season in progress shows a projected bracket and the race for it", async ({ page }) => {
   const errors = watchErrors(page);
-  await page.goto("/E2026/postseason");
+  await page.goto("/2026/postseason");
   await expect(page.getByText(/the bracket is a projection/)).toBeVisible();
   await expect(page.getByText("Projected").first()).toBeVisible();
   await expect(page.getByRole("heading", { name: "Race for the bracket" })).toBeVisible();
@@ -42,9 +42,9 @@ test("a season in progress shows a projected bracket and the race for it", async
 
 test("seasons with a third-place game and a smaller league render too", async ({ page }) => {
   const errors = watchErrors(page);
-  await page.goto("/E2024/postseason");
+  await page.goto("/2024/postseason");
   await expect(page.getByRole("group", { name: "Third place" })).toBeVisible();
-  await page.goto("/E2023/postseason");
+  await page.goto("/2023/postseason");
   await expect(page.getByText(/are the champions/)).toBeVisible();
   expect(errors).toEqual([]);
 });

@@ -6,7 +6,7 @@ test("Leaders opens on category cards, opens a full leaderboard and goes back", 
     if (message.type() === "error" && !message.text().startsWith("Failed to load resource")) errors.push(message.text());
   });
 
-  await page.goto("/E2025/statistics");
+  await page.goto("/2025/leaders");
   await expect(page.getByRole("heading", { name: "Points", exact: true })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Rebounds", exact: true })).toBeVisible();
 

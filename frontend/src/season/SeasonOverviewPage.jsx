@@ -472,7 +472,7 @@ function SeasonLeaders({ seasonCode }) {
         kicker="LEADERS"
         title={phasesToShow.length === 1 ? (PHASE_NAMES[phaseCode] ?? phaseCode) : "Statistical leaders"}
         trailing={
-          <Link to={`/${seasonCode}/statistics`} className="panel-link">
+          <Link to={`/${seasonCode}/leaders`} className="panel-link">
             Full leaderboards →
           </Link>
         }
@@ -610,7 +610,7 @@ function RoadToTitle({ champion, steps }) {
 
 export default function SeasonOverviewPage() {
   const { seasonCode } = useParams();
-  useDocumentTitle(`${formatSeasonLabel(seasonCode)} season overview`);
+  useDocumentTitle("Overview");
 
   const phasesQuery = useQuery({
     queryKey: ["phases", seasonCode],

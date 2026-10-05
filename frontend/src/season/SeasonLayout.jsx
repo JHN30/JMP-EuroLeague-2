@@ -2,6 +2,7 @@ import { Suspense } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Navigate, Outlet, useLocation, useParams } from "react-router";
 import { getSeasons } from "../lib/api";
+import { isLegacySeasonCode, seasonSlug } from "../lib/seasonSlug";
 import AsyncState from "../lib/AsyncState";
 import RouteErrorBoundary from "../ErrorBoundary";
 import { THEMES } from "../lib/useThemePreference";
@@ -48,8 +49,16 @@ export default function SeasonLayout({ themePreference }) {
   const { seasonCode } = useParams();
   const location = useLocation();
   const seasonsQuery = useQuery({ queryKey: ["seasons"], queryFn: getSeasons });
+  // An address from before the year-only form ("E2025") goes on to the year ("2025"), keeping the rest of the address.
+  const legacy = isLegacySeasonCode(seasonCode);
   const isSupported = seasonsQuery.data?.seasons.some((season) => season.seasonCode === seasonCode) ?? false;
-  const defaultSeasonQuery = useDefaultSeasonCode(seasonsQuery.isSuccess && !isSupported);
+  const defaultSeasonQuery = useDefaultSeasonCode(seasonsQuery.isSuccess && !isSupported && !legacy);
+
+  if (legacy) {
+    const segments = location.pathname.split("/");
+    segments[1] = seasonSlug(seasonCode);
+    return <Navigate replace to={{ pathname: segments.join("/"), search: location.search, hash: location.hash }} />;
+  }
 
   if (seasonsQuery.isLoading) return <AsyncState status="loading" label="Loading seasons" fullScreen />;
 

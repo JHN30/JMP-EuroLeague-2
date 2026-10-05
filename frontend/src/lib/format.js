@@ -94,7 +94,7 @@ export function formatRound(roundNumber) {
 }
 
 export function formatSeasonLabel(seasonCode) {
-  const match = /^[A-Za-z]+(\d{4})$/.exec(seasonCode ?? "");
+  const match = /^[A-Za-z]*(\d{4})$/.exec(seasonCode ?? "");
   if (!match) return seasonCode ?? EM_DASH;
   const startYear = Number(match[1]);
   const endYearSuffix = String((startYear + 1) % 100).padStart(2, "0");

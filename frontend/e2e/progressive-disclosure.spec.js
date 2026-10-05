@@ -164,7 +164,7 @@ test("loads a player game log once for the Overview form and the Games tab, and 
 
   // The player page's league comparison also reads the leaderboard; count only the Statistics page's requests.
   leaderboardRequests.length = 0;
-  await page.goto(`/${SEASON}/statistics?phase=RS&metric=pointsScored`);
+  await page.goto(`/${SEASON}/leaders?phase=RS&metric=pointsScored`);
   await expect(page.getByText("Showing 1-25 of 50 players")).toBeVisible();
   expect(leaderboardRequests).toEqual([{ offset: 0, limit: 100 }]);
 
@@ -172,7 +172,7 @@ test("loads a player game log once for the Overview form and the Games tab, and 
   await expect(page.getByText("Showing 26-50 of 50 players")).toBeVisible();
   expect(leaderboardRequests).toEqual([{ offset: 0, limit: 100 }]);
 
-  await page.goto(`/${SEASON}/comparisons?phase=RS`);
+  await page.goto(`/${SEASON}/compare?phase=RS`);
   await page.getByLabel("Team A").selectOption("A");
   await page.getByLabel("Team B").selectOption("B");
   await expect(page.getByRole("tab", { name: "Trends", exact: true })).toBeVisible();

@@ -7,7 +7,7 @@ test("Compare opens on the games of a round, and a game opens the comparison of 
   });
 
   // The current season has games still to play, so the coming round is on offer.
-  await page.goto("/E2026/comparisons");
+  await page.goto("/2026/compare");
   // The games panel comes first, and the pickers for any two teams sit under it.
   await expect(page.getByText("UPCOMING GAMES")).toBeVisible();
   await expect(page.getByRole("heading", { name: "Compare any two teams" })).toBeVisible();
@@ -52,9 +52,9 @@ test("two players open a comparison with a profile, advanced numbers and the way
   page.on("console", (message) => {
     if (message.type() === "error" && !message.text().startsWith("Failed to load resource")) errors.push(message.text());
   });
-  const { players } = await (await page.request.get("http://localhost:3000/api/seasons/E2025/players?limit=2")).json();
+  const { players } = await (await page.request.get("http://localhost:3000/api/seasons/2025/players?limit=2")).json();
 
-  await page.goto(`/E2025/comparisons?view=players&playerA=${players[0].personKey}&playerB=${players[1].personKey}`);
+  await page.goto(`/2025/compare?view=players&playerA=${players[0].personKey}&playerB=${players[1].personKey}`);
   const sections = page.getByRole("tablist", { name: "Comparison section" });
   await expect(sections.getByRole("tab", { name: "Overview" })).toHaveAttribute("aria-selected", "true");
   await expect(page.getByRole("heading", { name: "Season line" })).toBeVisible();
@@ -66,7 +66,7 @@ test("two players open a comparison with a profile, advanced numbers and the way
   await expect(page.getByLabel("Player A")).toBeVisible();
 
   // The player page offers the way in.
-  await page.goto(`/E2025/players/${players[0].personKey}`);
+  await page.goto(`/2025/players/${players[0].personKey}`);
   await page.getByRole("link", { name: "Compare with another player" }).click();
   await expect(page).toHaveURL(/view=players&playerA=/);
   expect(errors).toEqual([]);

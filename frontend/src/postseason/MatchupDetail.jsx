@@ -91,7 +91,7 @@ export default function MatchupDetail({ slot, seasonCode }) {
       {comparable ? (
         <div className="mt-4">
           <Link
-            to={"/" + seasonCode + "/comparisons?teamA=" + encodeURIComponent(clubs[0].clubCode) + "&teamB=" + encodeURIComponent(clubs[1].clubCode)}
+            to={"/" + seasonCode + "/compare?teamA=" + encodeURIComponent(clubs[0].clubCode) + "&teamB=" + encodeURIComponent(clubs[1].clubCode)}
             className="btn btn-outline btn-sm"
           >
             Compare {clubs[0].short} and {clubs[1].short}

@@ -82,3 +82,4 @@ every such change so it can be found later.
 - [compare-players-overview-and-advanced.md](compare-players-overview-and-advanced.md)
 - [compare-trends-rosters-advanced-and-picker.md](compare-trends-rosters-advanced-and-picker.md)
 - [postseason-page-with-a-real-bracket.md](postseason-page-with-a-real-bracket.md)
+- [page-addresses-tab-titles-and-public-files.md](page-addresses-tab-titles-and-public-files.md)

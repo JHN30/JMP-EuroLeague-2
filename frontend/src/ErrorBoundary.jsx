@@ -15,7 +15,7 @@ class ErrorBoundary extends Component {
   render() {
     if (this.state.hasError) {
       return (
-        <div className="flex min-h-screen items-center justify-center p-6">
+        <div className="flex min-h-screen items-center justify-center p-3 sm:p-6">
           <div role="alert" className="alert alert-error max-w-md">
             <span>Something went wrong on this page.</span>
             <button type="button" className="btn btn-sm" onClick={() => window.location.reload()}>

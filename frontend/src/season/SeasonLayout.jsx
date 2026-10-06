@@ -9,6 +9,8 @@ import { THEMES } from "../lib/useThemePreference";
 import { useDefaultSeasonCode } from "./useDefaultSeasonCode";
 import SeasonSelector from "./SeasonSelector";
 import NavBar from "./NavBar";
+import SiteMenu from "./SiteMenu";
+import { pageLabel } from "./sections";
 
 function SunIcon(props) {
   return (
@@ -103,19 +105,26 @@ export default function SeasonLayout({ themePreference }) {
         Skip to main content
       </a>
       <header className="app-nav">
-        <div className="flex items-center justify-between gap-4 px-4 py-2 sm:px-6">
-          <div className="flex items-center gap-2">
+        <div className="flex h-12 shrink-0 items-center justify-between gap-3 px-3 sm:px-5 lg:px-8">
+          <div className="flex min-w-0 items-center gap-2">
             <img src="/logo-header.png" alt="" aria-hidden="true" className="brand-mark" />
-            <span className="eyebrow">EuroLeague</span>
+            <span className="eyebrow hidden sm:inline">EuroLeague</span>
+            <span data-testid="page-name" className="truncate font-semibold sm:hidden">
+              {pageLabel(location.pathname)}
+            </span>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="hidden items-center gap-2 sm:flex">
             <SeasonSelector />
             <ThemeToggle themePreference={themePreference} />
           </div>
+          <SiteMenu>
+            <SeasonSelector />
+            <ThemeToggle themePreference={themePreference} />
+          </SiteMenu>
         </div>
         <NavBar />
       </header>
-      <main id="main-content" tabIndex={-1} className="p-6 outline-none">
+      <main id="main-content" tabIndex={-1} className="p-3 outline-none sm:p-5 lg:p-8">
         <RouteErrorBoundary>
           <Suspense fallback={<AsyncState status="loading" label="Loading page" />}>
             {/* Keyed by season so each page's local view-level filters reset

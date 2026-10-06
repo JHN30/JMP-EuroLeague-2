@@ -120,9 +120,14 @@ button {
   background-repeat: no-repeat, no-repeat, repeat;
 }
 
-/* Shared spacing scale, documented for future pages and the shared Panel
-   component (build-plan 15d) to adopt - not yet enforced anywhere in code:
-     Page gutter:  px-3 py-3 -> sm:px-5 sm:py-5 -> lg:px-8 lg:py-6
+/* Breakpoints: three layouts. Mobile (320 to 639px) is the unprefixed style, tablet starts at
+   Tailwind's sm (40rem) and desktop at lg (64rem). Hand-written media queries are mobile-first
+   min-width queries at those two values; a media query cannot read the theme variable, so the
+   values are kept in step by hand. md is retired and xl stays a desktop-only refinement. */
+
+/* Shared spacing scale. The page gutter (SeasonLayout's main and header) and the full-screen
+   states follow it; each page adopts the panel padding as its mobile layout item lands:
+     Page gutter:  p-3 -> sm:p-5 -> lg:p-8
      Container:    mx-auto w-full max-w-7xl min-w-0 flex-col gap-6
      Panel padding: p-4 sm:p-5 (p-3 on compact cards)
      Grid gaps:    gap-2 (tiles) / gap-3 (cards) / gap-4-5 (within sections)
@@ -461,17 +466,30 @@ button {
   }
 }
 
+/* The header's exact height: the mobile bar alone (menu opens over the page), or the bar plus the tab row. */
+:root {
+  --app-nav-height: 3rem;
+}
+@media (min-width: 40rem) {
+  :root {
+    --app-nav-height: 5.5rem;
+  }
+}
+
 .app-nav {
   position: sticky;
   top: 0;
   z-index: 10;
+  display: flex;
+  flex-direction: column;
+  height: var(--app-nav-height);
   background: color-mix(in srgb, var(--color-base-200) 92%, transparent);
   border-bottom: 1px solid var(--color-base-300);
 }
 
 /* A tab panel scrolled into view lands below the sticky nav, not under it. */
 .tab-panel {
-  scroll-margin-top: 7rem;
+  scroll-margin-top: calc(var(--app-nav-height) + 1rem);
 }
 
 .brand-mark {
@@ -850,20 +868,34 @@ button {
 /* KPI strip - compact number-forward summary chips (dashboard) */
 .kpi-strip {
   display: grid;
-  grid-template-columns: repeat(5, 1fr);
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(9rem, 1fr);
   gap: 1rem;
+  overflow-x: auto;
+  padding-bottom: 0.25rem;
 }
-@media (max-width: 1023px) {
-  .kpi-strip {
-    grid-template-columns: none;
-    grid-auto-flow: column;
-    grid-auto-columns: minmax(9rem, 1fr);
-    overflow-x: auto;
-    padding-bottom: 0.25rem;
+/* The photo cards leave the club name about 60px at 15rem, so words break mid-word. Wide cards
+   scroll sideways until there is room for four across (xl). */
+.kpi-strip.kpi-strip-4 {
+  grid-auto-columns: minmax(20rem, 1fr);
+}
+@media (min-width: 64rem) {
+  .kpi-strip:not(.kpi-strip-4) {
+    grid-auto-flow: row;
+    grid-auto-columns: auto;
+    grid-template-columns: repeat(5, 1fr);
+    overflow-x: visible;
+    padding-bottom: 0;
   }
 }
-.kpi-strip.kpi-strip-4 {
-  grid-template-columns: repeat(4, 1fr);
+@media (min-width: 80rem) {
+  .kpi-strip.kpi-strip-4 {
+    grid-auto-flow: row;
+    grid-auto-columns: auto;
+    grid-template-columns: repeat(4, 1fr);
+    overflow-x: visible;
+    padding-bottom: 0;
+  }
 }
 .kpi-chip {
   display: flex;

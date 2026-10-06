@@ -1,28 +1,20 @@
 import { NavLink, useParams } from "react-router";
-
-const TABS = [
-  { label: "Home", path: "home" },
-  { label: "Overview", path: "overview" },
-  { label: "Standings", path: "standings" },
-  { label: "Games", path: "games" },
-  { label: "Teams", path: "teams" },
-  { label: "Players", path: "players" },
-  { label: "Leaders", path: "leaders" },
-  { label: "Compare", path: "compare" },
-  { label: "Postseason", path: "postseason" },
-];
+import { TABS } from "./sections";
 
 export default function NavBar() {
   const { seasonCode } = useParams();
 
   return (
-    <nav aria-label="Sections" className="border-t border-base-300 px-4 sm:px-6">
-      <div className="tabs tabs-sm flex-wrap">
+    <nav
+      aria-label="Sections"
+      className="hidden min-h-0 flex-1 items-center border-t border-base-300 px-3 sm:flex sm:px-5 lg:px-8"
+    >
+      <div className="tabs tabs-sm flex-nowrap overflow-x-auto">
         {TABS.map((tab) => (
           <NavLink
             key={tab.label}
             to={`/${seasonCode}/${tab.path}`}
-            className={({ isActive }) => `tab font-semibold ${isActive ? "tab-active text-primary" : ""}`}
+            className={({ isActive }) => `tab px-1.5 font-semibold lg:px-2 ${isActive ? "tab-active text-primary" : ""}`}
           >
             {tab.label}
           </NavLink>

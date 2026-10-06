@@ -48,7 +48,7 @@ export default function AsyncState({
       </div>
     );
     if (!fullScreen) return alert;
-    return <div className="flex min-h-screen items-center justify-center p-6">{alert}</div>;
+    return <div className="flex min-h-screen items-center justify-center p-3 sm:p-6">{alert}</div>;
   }
 
   return <EmptyText>{message}</EmptyText>;

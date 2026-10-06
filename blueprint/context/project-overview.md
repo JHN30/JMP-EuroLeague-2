@@ -1,6 +1,6 @@
 # JMP Euroleague - Project Overview
 
-<!-- blueprint:source-hash f54104cc6acfda371f28d74bf7408c2fcaf61d0053df2b48b1f0c1384c6cd065 -->
+<!-- blueprint:source-hash 8799228ac390d7dca0632ff10a1ab17b8cdc0d04f2606c94b25af62d88ef99eb -->
 
 > A public, read-only EuroLeague explorer for the 2023-24 (`E2023`) to 2026-27 (`E2026`) seasons, backed by curated Neon PostgreSQL tables.
 
@@ -24,7 +24,7 @@ Fans currently have to search scattered pages or interpret raw API data to under
 
 ## Features
 
-The headline is a four-season public explorer whose every view stays in the selected season. Build order (all shipped):
+The headline is a four-season public explorer whose every view stays in the selected season. Build order (1 to 30 shipped, 31 planned):
 
 1. **Season data access** - validated, typed Express endpoints over the existing Neon data: season catalog (1a), teams, players, and rosters (1b), games and box scores (1c), standings and season statistics (1d).
 2. **Season navigation** - a global selector that persists across routes without mixing seasons.
@@ -56,6 +56,7 @@ The headline is a four-season public explorer whose every view stays in the sele
 28. **Leaders page rework** - `/:season/statistics` opens on category cards (top five per statistic) for Players, Teams, and Advanced, each opening a full leaderboard: statistic families, per game or totals, minimum games (qualified by default), team and position filters, search, paging, rank-movement arrows, attempt minimums on percentages. "Hot right now" sets the last five games against the season. Backend: `GET /seasons/:seasonCode/leaders/form?phase=&games=`, `position` on `season-stats`, and `advanced/leaders` with `offset`, `order`, `minMinutes`, photo, and total. The shared tab strip gained three levels (28d). Not built: per-36/per-30, career leaders.
 29. **Compare page rework** - opens on the coming round's games above pickers for any two teams or players; a picked game opens the comparison with the home club first (29a). Teams: Overview (matchup edges over 16 measures, form and venue records, top scorers, meetings), Statistics (every statistic with league places), Rosters (squad facts, top five by Win Shares, rosters), Trends (last five games against the season, five-game averages, running differential, margin bars) (29b). Players: Overview (percentile radar, season line, form), Statistics, Advanced (PER, Win Shares, per-100, rates with places), Trends (29c). Backend: `GET /seasons/:seasonCode/teams/:clubCode/players-advanced` and `players/:personKey/advanced?extended=true` (per-100 and rate figures with ranks). Player search is debounced (29d).
 30. **Postseason page** - `/:season/postseason` (`/playoffs` redirects) replaces Format: the Play-In, Playoffs, and Final Four as a bracket with series scores, per-matchup games, and club path highlighting. Unplayed matchups are filled from the standings and earlier winners and marked Projected (seeding, not a simulation or prediction); unknown participants show placeholders. A race table lists every club that can still reach a place, with clinch status from wins and games left (tiebreakers ignored); a finished season shows its champion and every club's finish.
+31. **Mobile-friendly layouts** (planned) - every page usable at 320px wide with no sideways page scroll, in three layouts: mobile (320 to 639px, unprefixed styles), tablet (`sm`, 640px), desktop (`lg`, 1024px). `md:` and the stray media-query widths (639, 720, 1023, 1100) retire; `xl:` and the `@container` rules stay. Foundation (31a): slim mobile header with a hamburger menu holding the tabs, season picker, and theme switch; the gutter scale; the KPI strip fix; a header-height variable; a Playwright overflow spec at 320, 390, 768, and 1024px. Home (31b): swipeable scroll-snap rows, Standings in full view below `lg`, a 2x2 KPI strip near the top. Then one page per item (31c to 31n). Layout only: no API or data change.
 
 Every data-driven page needs loading, empty, unavailable, partial-data, and error states. Known corrections and anomalies must remain visible. JMP Rating, win probabilities, simulations, seasons before `E2023`, archive-wide records, other competitions, and user features are deferred.
 
@@ -101,7 +102,7 @@ None in Phase 1. This is a portfolio and fan product; payments, subscriptions, a
 
 ## UI/UX
 
-Use a dark sports-analytics style with EuroLeague orange, restrained complementary color, and high-contrast neutral surfaces without copying the league website. Prioritize readable tables and visible season, phase, and round context. Provide deliberate mobile layouts, accessible charts, semantic structure, keyboard access, visible focus, sufficient contrast, and non-color-only status cues. Avoid expensive blur and excessive animation.
+Use a dark sports-analytics style with EuroLeague orange, restrained complementary color, and high-contrast neutral surfaces without copying the league website. Prioritize readable tables and visible season, phase, and round context. Provide deliberate mobile layouts (320px is the smallest supported width; three layouts at the `sm` 640px and `lg` 1024px breaks, per feature 31), accessible charts, semantic structure, keyboard access, visible focus, sufficient contrast, and non-color-only status cues. Avoid expensive blur and excessive animation.
 
 The planned screens are home, season overview, standings, games, game detail, team directory/detail (tabs: Overview, Statistics, Roster, Shooting, Advanced, Games), player directory/detail (tabs: Overview, Season by season, Statistics, Advanced, Shooting, Games), Leaders (cards, then boards), Compare (games panel, then Overview, Statistics, Rosters or Advanced, Trends), and Postseason (bracket), reached through a persistent navigation bar alongside the season selector. Tab strips have three levels: a page's main navigation, the filter under it, and detail strips. Records cover the loaded seasons. Exact URL paths are not specified in the plans.
 

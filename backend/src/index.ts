@@ -1,3 +1,5 @@
+import fs from "node:fs";
+import path from "node:path";
 import express from "express";
 import cors from "cors";
 import { sql } from "drizzle-orm";
@@ -17,10 +19,6 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use("/api/seasons", seasonRouter);
 
-app.get("/", (req, res) => {
-  res.send("Hello, world!");
-});
-
 app.get("/api/health", async (req, res) => {
   try {
     await db.execute(sql`select 1`);
@@ -31,6 +29,31 @@ app.get("/api/health", async (req, res) => {
     });
   }
 });
+
+// Serve the built frontend (frontend/dist) when it exists, so one service hosts the whole app.
+const frontendDist = path.resolve(__dirname, "../../frontend/dist");
+const frontendIndex = path.join(frontendDist, "index.html");
+if (fs.existsSync(frontendIndex)) {
+  app.use(
+    express.static(frontendDist, {
+      // Vite fingerprints everything under /assets, so it can be cached for good.
+      setHeaders(res, filePath) {
+        if (filePath.includes(`${path.sep}assets${path.sep}`)) {
+          res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
+        }
+      },
+    }),
+  );
+  // Page addresses like /2026/standings are handled by the React router, so they get index.html.
+  app.use((req, res, next) => {
+    if ((req.method !== "GET" && req.method !== "HEAD") || req.path.startsWith("/api")) {
+      next();
+      return;
+    }
+    res.setHeader("Cache-Control", "no-cache");
+    res.sendFile(frontendIndex);
+  });
+}
 
 app.listen(ENV.PORT, () => {
   console.log(`Server is running on port ${ENV.PORT}`);

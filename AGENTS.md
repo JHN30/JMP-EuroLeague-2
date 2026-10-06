@@ -297,8 +297,9 @@ Run each command from the repository root. Each app has its own
 `package-lock.json` and uses npm.
 
 - Build both apps: `npm run build` (root)
-- Run both built apps: `npm start` (root; API from `backend/dist` plus the
-  frontend preview on http://localhost:4173)
+- Run the built app: `npm start` (root; one server, the API from `backend/dist`
+  also serves `frontend/dist` on its `PORT`; in production the frontend calls
+  the API on the same origin)
 - Run both dev servers: `npm run dev` (root)
 - Frontend dev server: `cd frontend && npm run dev` (Vite defaults to http://localhost:5173)
 - Frontend build: `cd frontend && npm run build`

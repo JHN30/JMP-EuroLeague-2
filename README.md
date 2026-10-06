@@ -155,7 +155,7 @@ npm run dev
 # Or, from the root directory, run both apps with one command
 npm run dev          # both dev servers
 npm run build        # build both apps
-npm start            # run both built apps (API plus frontend preview)
+npm start            # run the built app (the API also serves the built frontend)
 
 # Check the frontend (from frontend directory)
 npm run lint
@@ -190,6 +190,6 @@ DB_URL=your_postgres_connection_string
 FRONTEND_URL=http://localhost:5173
 ```
 
-The frontend reads one optional variable, `VITE_API_URL` (default `http://localhost:3000/api`). It is public, so it must never hold a secret.
+The frontend reads one optional variable, `VITE_API_URL` (default `http://localhost:3000/api` in development and `/api` in a production build, which the API serves on the same origin). It is public, so it must never hold a secret.
 
 ---

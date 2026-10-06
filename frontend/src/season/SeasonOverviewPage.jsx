@@ -712,7 +712,7 @@ export default function SeasonOverviewPage() {
   return (
     <motion.div className="flex flex-col gap-6" variants={sectionContainer} initial="hidden" animate="show">
       <motion.div variants={sectionItem}>
-        <PageHeader kicker="RECAP" title={`EuroLeague ${formatSeasonLabel(seasonCode)}`} />
+        <PageHeader stacked kicker="RECAP" title={`EuroLeague ${formatSeasonLabel(seasonCode)}`} />
       </motion.div>
 
       {summaryLoading ? (

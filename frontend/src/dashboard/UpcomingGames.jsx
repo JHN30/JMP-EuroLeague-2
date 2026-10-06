@@ -3,11 +3,13 @@ import { motion } from "motion/react";
 import { useParams } from "react-router";
 import { getSeasonGames, getSeasonStandings } from "../lib/api";
 import { listContainer } from "../lib/motion";
+import { useMediaQuery } from "../lib/useMediaQuery";
 import { MatchCard } from "./RecentResults";
 import { WidgetPanel } from "./Dashboard";
 
 export default function UpcomingGames() {
   const { seasonCode } = useParams();
+  const isSwipeRow = useMediaQuery("not (min-width: 40rem)");
 
   const gamesQuery = useQuery({
     queryKey: ["games", seasonCode, "scheduled", "asc"],
@@ -37,7 +39,15 @@ export default function UpcomingGames() {
       isEmpty={gamesQuery.isSuccess && games.length === 0}
       emptyMessage={hasPlayedGames ? "Season finished." : "No games scheduled yet."}
     >
-      <motion.div className="games-row" variants={listContainer} initial="hidden" animate="show">
+      <motion.div
+        className="games-row"
+        role="group"
+        aria-label="Upcoming games"
+        tabIndex={isSwipeRow ? 0 : undefined}
+        variants={listContainer}
+        initial="hidden"
+        animate="show"
+      >
         {games.map((game) => (
           <MatchCard
             key={game.gameCode}

@@ -509,30 +509,78 @@ button {
   flex-direction: column;
   gap: 0.6rem;
 }
-/* Wide enough for two columns: the five newest results on the left, the next five on the right. */
-@container (min-width: 34rem) {
-  .games-list {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    grid-template-rows: repeat(5, auto);
-    grid-auto-flow: column;
+/* Wide enough for two columns: the five newest results on the left, the next five on the right.
+   Below sm only five show (the rest wait behind a button), so the list stays one column there. */
+@media (min-width: 40rem) {
+  @container (min-width: 34rem) {
+    .games-list {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      grid-template-rows: repeat(5, auto);
+      grid-auto-flow: column;
+    }
   }
 }
+/* Below sm the upcoming games are a swipe row that bleeds out to the panel edge (the panel pads
+   1rem there), so the neighbouring cards peek out to the border. The scroll padding keeps the
+   first and last card on the panel's content edge, in line with the heading; the cards in between
+   rest centred, and each swipe locks one card in. */
 .games-row {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr));
+  display: flex;
   gap: 0.6rem;
-  padding-top: 0.25rem;
-  padding-bottom: 0.25rem;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scroll-snap-type: x mandatory;
+  margin-inline: -1rem;
+  padding: 0.25rem 1rem;
+  scroll-padding-inline: 1rem;
+}
+.games-row > .match-card {
+  flex: 0 0 85%;
+  scroll-snap-align: center;
+  scroll-snap-stop: always;
+}
+@media (min-width: 40rem) {
+  .games-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr));
+    overflow-x: visible;
+    scroll-snap-type: none;
+    margin-inline: 0;
+    padding: 0.25rem 0;
+    scroll-padding-inline: 0;
+  }
+  .games-row > .match-card {
+    flex: none;
+    scroll-snap-align: none;
+    scroll-snap-stop: normal;
+  }
+}
+.games-row:focus-visible,
+.leaders-row:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
 }
 .match-card {
   display: block;
   background: var(--color-base-200);
   border: 1px solid var(--color-base-300);
   border-radius: var(--radius-field);
-  padding: 0.7rem 0.85rem;
+  padding: 0.6rem 0.7rem;
   text-decoration: none;
   color: inherit;
+}
+/* Results past the fifth wait behind a "Show more" button below sm. */
+.match-card-extra {
+  display: none;
+}
+@media (min-width: 40rem) {
+  .match-card {
+    padding: 0.7rem 0.85rem;
+  }
+  .match-card-extra {
+    display: block;
+  }
 }
 .match-card:hover {
   border-color: var(--color-primary);
@@ -725,18 +773,48 @@ button {
 }
 
 /* Per-stat leader cards (dashboard) */
+/* Same swipe row below sm; two columns from sm; the sideways-scrolling row from lg. */
 .leaders-row {
   display: flex;
   flex-direction: row;
-  gap: 1rem;
+  gap: 0.75rem;
   overflow-x: auto;
   overscroll-behavior-x: contain;
-  padding-top: 0.25rem;
-  padding-bottom: 0.25rem;
+  scroll-snap-type: x mandatory;
+  margin-inline: -1rem;
+  padding: 0.25rem 1rem;
+  scroll-padding-inline: 1rem;
 }
 .leaders-row .kpi-chip {
-  flex: 1 1 0;
-  min-width: 15rem;
+  flex: 0 0 85%;
+  scroll-snap-align: center;
+  scroll-snap-stop: always;
+}
+@media (min-width: 40rem) {
+  .leaders-row {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1rem;
+    overflow-x: visible;
+    scroll-snap-type: none;
+    margin-inline: 0;
+    padding: 0.25rem 0;
+    scroll-padding-inline: 0;
+  }
+  .leaders-row .kpi-chip {
+    scroll-snap-align: none;
+    scroll-snap-stop: normal;
+  }
+}
+@media (min-width: 64rem) {
+  .leaders-row {
+    display: flex;
+    overflow-x: auto;
+  }
+  .leaders-row .kpi-chip {
+    flex: 1 1 0;
+    min-width: 15rem;
+  }
 }
 
 /* Form watch - hottest/coldest team by last-10 record (dashboard) */
@@ -790,12 +868,13 @@ button {
 }
 .leader-trend-row {
   display: flex;
-  align-items: center;
-  gap: 1.5rem;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.75rem;
 }
 .leader-trend-stat {
   flex: none;
-  text-align: right;
+  text-align: left;
 }
 .leader-trend-stat .value {
   font-size: 1.4rem;
@@ -854,14 +933,14 @@ button {
   stroke: var(--color-base-100);
   stroke-width: 1.5;
 }
-@media (max-width: 639px) {
+@media (min-width: 40rem) {
   .leader-trend-row {
-    flex-direction: column;
-    align-items: stretch;
-    gap: 0.75rem;
+    flex-direction: row;
+    align-items: center;
+    gap: 1.5rem;
   }
   .leader-trend-stat {
-    text-align: left;
+    text-align: right;
   }
 }
 
@@ -874,10 +953,13 @@ button {
   overflow-x: auto;
   padding-bottom: 0.25rem;
 }
-/* The photo cards leave the club name about 60px at 15rem, so words break mid-word. Wide cards
-   scroll sideways until there is room for four across (xl). */
+/* Home's four photo cards sit two by two until there is room for four across (xl). */
 .kpi-strip.kpi-strip-4 {
-  grid-auto-columns: minmax(20rem, 1fr);
+  grid-auto-flow: row;
+  grid-auto-columns: auto;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  overflow-x: visible;
+  padding-bottom: 0;
 }
 @media (min-width: 64rem) {
   .kpi-strip:not(.kpi-strip-4) {
@@ -890,11 +972,7 @@ button {
 }
 @media (min-width: 80rem) {
   .kpi-strip.kpi-strip-4 {
-    grid-auto-flow: row;
-    grid-auto-columns: auto;
     grid-template-columns: repeat(4, 1fr);
-    overflow-x: visible;
-    padding-bottom: 0;
   }
 }
 .kpi-chip {
@@ -985,15 +1063,11 @@ button {
 /* Home's photo KPI cards (KPI strip and stat-leader row), and Season
    Overview's leader grid/hero, read taller than the standard strip
    elsewhere. */
-.kpi-strip-4 .kpi-chip,
-.leaders-row .kpi-chip,
 .season-leaders-grid .kpi-chip,
 .team-leaders-grid .kpi-chip,
 .season-hero-kpis .kpi-chip {
   padding: 1.5rem 1.35rem;
 }
-.kpi-strip-4 .kpi-chip-image,
-.leaders-row .kpi-chip-image,
 .season-leaders-grid .kpi-chip-image,
 .team-leaders-grid .kpi-chip-image,
 .season-hero-kpis .kpi-chip-image {
@@ -1001,19 +1075,77 @@ button {
   max-width: 8rem;
   margin: -1.5rem -0.75rem -1.5rem 0;
 }
-.kpi-strip-4 .kpi-chip .name,
-.leaders-row .kpi-chip .name,
 .season-leaders-grid .kpi-chip .name,
 .team-leaders-grid .kpi-chip .name,
 .season-hero-kpis .kpi-chip .name {
   font-size: 1rem;
 }
-.kpi-strip-4 .kpi-chip .value,
-.leaders-row .kpi-chip .value,
 .season-leaders-grid .kpi-chip .value,
 .team-leaders-grid .kpi-chip .value,
 .season-hero-kpis .kpi-chip .value {
   font-size: 1.7rem;
+}
+
+/* Home's four KPI cards: compact and stacked below sm (crest on top, cards about 140px wide so club
+   names wrap by whole words), the tall photo card from sm up. */
+.kpi-strip-4 .kpi-chip {
+  flex-direction: column-reverse;
+  align-items: flex-start;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  padding: 0.9rem 0.85rem;
+}
+.kpi-strip-4 .kpi-chip-image {
+  height: 3rem;
+  max-width: 3rem;
+  align-self: flex-start;
+  margin: 0;
+}
+@media (min-width: 40rem) {
+  .kpi-strip-4 .kpi-chip {
+    flex-direction: row;
+    justify-content: space-between;
+    gap: 0.75rem;
+    padding: 1.5rem 1.35rem;
+  }
+  .kpi-strip-4 .kpi-chip-image {
+    height: 8.5rem;
+    max-width: 8rem;
+    align-self: flex-end;
+    margin: -1.5rem -0.75rem -1.5rem 0;
+  }
+  .kpi-strip-4 .kpi-chip .name {
+    font-size: 1rem;
+  }
+  .kpi-strip-4 .kpi-chip .value {
+    font-size: 1.7rem;
+  }
+}
+
+/* Home's leader cards: a smaller photo below sm so the player name fits beside it, the tall card from sm up. */
+.leaders-row .kpi-chip {
+  padding: 1rem;
+}
+.leaders-row .kpi-chip-image {
+  height: 6rem;
+  max-width: 5.5rem;
+  margin: -1rem -0.5rem -1rem 0;
+}
+@media (min-width: 40rem) {
+  .leaders-row .kpi-chip {
+    padding: 1.5rem 1.35rem;
+  }
+  .leaders-row .kpi-chip-image {
+    height: 8.5rem;
+    max-width: 8rem;
+    margin: -1.5rem -0.75rem -1.5rem 0;
+  }
+  .leaders-row .kpi-chip .name {
+    font-size: 1rem;
+  }
+  .leaders-row .kpi-chip .value {
+    font-size: 1.7rem;
+  }
 }
 
 /* winner marker - non-color-only leader indicator (comparisons stat rows) */

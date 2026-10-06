@@ -55,7 +55,7 @@ export default function KpiStrip() {
   }
 
   return (
-    <HeaderStats className="kpi-strip-4">
+    <HeaderStats className="kpi-strip-4" data-testid="home-kpi-strip">
       <CompactMetric
         isLoading={standingsQuery.isLoading}
         isError={standingsQuery.isError}

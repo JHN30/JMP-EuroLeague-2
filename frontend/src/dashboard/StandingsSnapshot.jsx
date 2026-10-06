@@ -25,10 +25,11 @@ export default function StandingsSnapshot({ height }) {
       onRetry={() => query.refetch()}
       isEmpty={query.isSuccess && standings.length === 0}
       emptyMessage="Standings not available yet."
-      style={height != null ? { height: `${height}px` } : undefined}
+      className="lg:h-(--results-height)"
+      style={height != null ? { "--results-height": `${height}px` } : undefined}
     >
       <motion.ol
-        className="min-h-0 flex-1 space-y-2 overflow-y-auto overscroll-y-contain pr-4"
+        className="min-h-0 flex-1 space-y-2 lg:overflow-y-auto lg:overscroll-y-contain lg:pr-4"
         variants={listContainer}
         initial="hidden"
         animate="show"

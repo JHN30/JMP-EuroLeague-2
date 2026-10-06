@@ -23,6 +23,28 @@ export async function findPageOverflow(page) {
   });
 }
 
+// Texts whose longest word is wider than the box they wrap in, which the browser then cuts mid-word.
+export async function findBrokenWords(locator) {
+  return locator.evaluateAll((elements) =>
+    elements
+      .filter((element) => {
+        const style = getComputedStyle(element);
+        const probe = document.createElement("span");
+        probe.style.cssText = `position:absolute;visibility:hidden;white-space:nowrap;font:${style.font};letter-spacing:${style.letterSpacing};text-transform:${style.textTransform}`;
+        document.body.appendChild(probe);
+        const widest = Math.max(
+          ...element.textContent.split(/\s+/).map((word) => {
+            probe.textContent = word;
+            return probe.getBoundingClientRect().width;
+          }),
+        );
+        probe.remove();
+        return widest > element.clientWidth + 0.5;
+      })
+      .map((element) => element.textContent),
+  );
+}
+
 export async function seasonSlug(page) {
   await page.goto("/");
   await page.waitForURL(/\/home$/);

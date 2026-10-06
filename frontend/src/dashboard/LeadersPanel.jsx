@@ -5,6 +5,7 @@ import { getLeaderStats } from "../lib/api";
 import AsyncState from "../lib/AsyncState";
 import { cardHover, listContainer, listItem } from "../lib/motion";
 import { PHASE_NAMES } from "../lib/phaseSummary";
+import { useMediaQuery } from "../lib/useMediaQuery";
 import { useCurrentPhaseCode } from "../lib/useCurrentPhaseCode";
 import Panel from "../lib/Panel";
 import PanelHeader from "../lib/PanelHeader";
@@ -61,12 +62,21 @@ function StatLeaderCard({ seasonCode, category, phaseCode }) {
 }
 
 function PhaseLeadersGroup({ seasonCode, phaseCode, showHeading }) {
+  const isSwipeRow = useMediaQuery("not (min-width: 40rem)");
   return (
     <div>
       {showHeading ? (
         <h3 className="mb-2 font-semibold">{PHASE_NAMES[phaseCode] ?? phaseCode}</h3>
       ) : null}
-      <motion.div className="leaders-row" variants={listContainer} initial="hidden" animate="show">
+      <motion.div
+        className="leaders-row"
+        role="group"
+        aria-label={`${PHASE_NAMES[phaseCode] ?? phaseCode} leaders`}
+        tabIndex={isSwipeRow ? 0 : undefined}
+        variants={listContainer}
+        initial="hidden"
+        animate="show"
+      >
         {CATEGORIES.map((category) => (
           <StatLeaderCard key={category.key} seasonCode={seasonCode} category={category} phaseCode={phaseCode} />
         ))}
@@ -85,7 +95,7 @@ export default function LeadersPanel() {
   const phasesToShow = phaseCode === "RS" ? ["RS"] : ["RS", phaseCode];
 
   return (
-    <Panel as="section" className="p-6">
+    <Panel as="section" className="p-4 sm:p-5 lg:p-6">
       <PanelHeader
         kicker="LEADERS"
         title={phasesToShow.length === 1 ? (PHASE_NAMES[phaseCode] ?? phaseCode) : "Top performers"}

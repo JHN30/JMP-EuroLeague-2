@@ -160,7 +160,7 @@ export default function PostseasonPage() {
   const seasonLabel = formatSeasonLabel(seasonCode);
   return (
     <motion.div className="flex flex-col gap-6" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3, ease: EASE_OUT }}>
-      <PageHeader kicker="SEASON" title="Postseason" />
+      <PageHeader stacked kicker="SEASON" title="Postseason" />
 
       <Panel className="p-4">
         <p className="eyebrow mb-0.5">{summary.kicker}</p>

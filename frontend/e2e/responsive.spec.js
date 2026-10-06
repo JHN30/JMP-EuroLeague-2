@@ -31,6 +31,30 @@ const PAGES = [
   detailPage("Team page", "teams", 'a[href*="/teams/"]'),
 ];
 
+test.describe("the page header", () => {
+  for (const width of [390, 1280]) {
+    for (const { name, route } of PAGES.filter((page) => page.name !== "Page not found")) {
+      test(`sits 24px above the content on ${name} at ${width}px`, async ({ page }) => {
+        await page.setViewportSize({ width, height: HEIGHT });
+        const season = await seasonSlug(page);
+        await page.goto(await route(page, season));
+        await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
+        await expect(page.locator(".loading")).toHaveCount(0, { timeout: 15_000 });
+        await expect
+          .poll(() =>
+            page.evaluate(() => {
+              const header = document.querySelector("h1").closest("section");
+              let node = header;
+              while (node && !node.nextElementSibling) node = node.parentElement;
+              return Math.round(node.nextElementSibling.getBoundingClientRect().top - header.getBoundingClientRect().bottom);
+            }),
+          )
+          .toBe(24);
+      });
+    }
+  }
+});
+
 const MOBILE_WIDTHS = [320, 390, 639];
 const TABLET_AND_UP_WIDTHS = [640, 768, 1024];
 
@@ -61,7 +85,7 @@ for (const width of WIDTHS) {
         const season = await seasonSlug(page);
         await page.goto(await route(page, season));
         await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
-        await expect(page.locator(".loading")).toHaveCount(0);
+        await expect(page.locator(".loading")).toHaveCount(0, { timeout: 15_000 });
         const overflow = await findPageOverflow(page);
         expect(overflow.scrollWidth, `wider than the screen: ${overflow.offenders.join("; ")}`).toBeLessThanOrEqual(
           overflow.clientWidth,

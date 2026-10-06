@@ -17,10 +17,10 @@ import RecentResults from "./RecentResults";
 import StandingsSnapshot from "./StandingsSnapshot";
 import UpcomingGames from "./UpcomingGames";
 
-export function WidgetPanel({ kicker, title, isLoading, isError, onRetry, isEmpty, emptyMessage, style, children }) {
+export function WidgetPanel({ kicker, title, isLoading, isError, onRetry, isEmpty, emptyMessage, className = "", style, children }) {
   const status = isLoading ? "loading" : isError ? "error" : isEmpty ? "empty" : "ready";
   return (
-    <Panel as="section" className="flex flex-col p-6" style={style}>
+    <Panel as="section" className={`flex flex-col p-4 sm:p-5 lg:p-6 ${className}`} style={style}>
       <PanelHeader kicker={kicker} title={title} />
       <AnimatePresence mode="wait" initial={false}>
         <motion.div
@@ -77,6 +77,7 @@ export default function Dashboard() {
     <motion.div className="flex flex-col gap-6" variants={sectionContainer} initial="hidden" animate="show">
       <motion.div variants={sectionItem}>
         <PageHeader
+          stacked
           kicker={formatSeasonLabel(seasonCode)}
           title={round != null ? `Round ${round}` : "Season overview"}
         />

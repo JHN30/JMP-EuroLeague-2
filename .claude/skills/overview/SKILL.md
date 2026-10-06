@@ -143,7 +143,7 @@ time this skill regenerates the overview.
   the plans. If something is underspecified, leave a clearly marked `> TODO`
   rather than inventing an answer.
 - **Keep the overview compact.** Never copy long plan passages. The generated
-  overview must remain below 20,000 bytes. Measure it before the final handoff.
+  overview must remain below 40,000 bytes. Measure it before the final handoff.
   If a draft is larger, compact narrative and repeated lists while preserving
   concrete contracts, build order, and constraints. If those distinct facts
   cannot fit, stop and identify which plan section needs to be split or moved to

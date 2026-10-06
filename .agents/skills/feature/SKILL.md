@@ -86,7 +86,7 @@ data-integrity boundary as established when the repository exposes network or
 untrusted input, auth/session/ownership, shared persisted data, destructive
 operations, secrets, or sensitive data, even when the plans do not name it.
 
-If `project-overview.md` is 20,000 bytes or larger, stop and ask for `/overview`
+If `project-overview.md` is 40,000 bytes or larger, stop and ask for `/overview`
 instead of loading it. If the target is too large for one reviewable branch,
 propose sub-features and wait for approval before editing the user-owned build
 plan. After approval, add lettered checklist items under the parent and spec only

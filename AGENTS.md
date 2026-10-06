@@ -296,6 +296,10 @@ checks do not make the Blueprint unusable.
 Run each command from the repository root. Each app has its own
 `package-lock.json` and uses npm.
 
+- Build both apps: `npm run build` (root)
+- Run both built apps: `npm start` (root; API from `backend/dist` plus the
+  frontend preview on http://localhost:4173)
+- Run both dev servers: `npm run dev` (root)
 - Frontend dev server: `cd frontend && npm run dev` (Vite defaults to http://localhost:5173)
 - Frontend build: `cd frontend && npm run build`
 - Frontend preview: `cd frontend && npm run preview`

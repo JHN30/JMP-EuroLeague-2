@@ -1,0 +1,37 @@
+services:
+  # API: Express + TypeScript, compiled to backend/dist
+  - type: web
+    name: jmp-euroleague-api
+    runtime: node
+    plan: starter
+    rootDir: backend
+    buildCommand: npm ci --include=dev && npm run build
+    startCommand: npm start
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_VERSION
+        value: "24"
+      - key: NODE_ENV
+        value: production
+      - key: FRONTEND_URL
+        value: https://www.jmpeuroleague.com
+      - key: DB_URL
+        sync: false # secret, entered in the Render dashboard
+
+  # Frontend: Vite build served as a static site
+  - type: web
+    name: jmp-euroleague-web
+    runtime: static
+    rootDir: frontend
+    buildCommand: npm ci && npm run build
+    staticPublishPath: dist
+    envVars:
+      - key: NODE_VERSION
+        value: "24"
+      - key: VITE_API_URL
+        sync: false # public API address ending in /api, entered in the Render dashboard
+    routes:
+      # client-side routing: every path serves index.html
+      - type: rewrite
+        source: /*
+        destination: /index.html

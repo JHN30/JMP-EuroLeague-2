@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { motion } from "motion/react";
 import { Link, useParams } from "react-router";
-import { getAdvancedStandings, getGameFlow, getPhaseResults, getPhases, getSeasonStandings } from "../lib/api";
+import { getAdvancedStandings, getGameFlow, getPhaseResults, getPhases, getSeasonStandings, getSeasonTeams } from "../lib/api";
 import AsyncState from "../lib/AsyncState";
 import EmptyText from "../lib/EmptyText";
 import PageHeader from "../lib/PageHeader";
@@ -56,6 +56,13 @@ export default function StandingsPage() {
     queryFn: () => getSeasonStandings(seasonCode, phaseCode),
     enabled: Boolean(phaseCode),
   });
+
+  // The short names the table shows on a phone come from the teams list (the standings carry only the full name). The table
+  // does not wait for it: until it arrives, or if it fails, the full names show.
+  const teamsQuery = useQuery({ queryKey: ["teams", seasonCode], queryFn: () => getSeasonTeams(seasonCode) });
+  const shortNames = new Map(
+    (teamsQuery.data?.teams ?? []).filter((team) => team.abbreviatedName).map((team) => [team.clubCode, team.abbreviatedName]),
+  );
 
   const round = standingsQuery.data?.round ?? null;
   const standings = standingsQuery.data?.standings ?? [];
@@ -203,6 +210,7 @@ export default function StandingsPage() {
                   view={view}
                   showTiers={phaseCode === "RS"}
                   netByClub={netByClub}
+                  shortNames={shortNames}
                   resultsQuery={resultsQuery}
                   resultsByClub={resultsByClub(resultsQuery.data)}
                   gameFlowQuery={gameFlowQuery}

@@ -443,6 +443,151 @@ button {
   opacity: 0.6;
 }
 
+/* Standings table. Below xl it is wider than the screen, so the rank and the team stay pinned on the left while the stats
+   scroll behind them. Both pinned columns have an explicit width (--pin-rank, --pin-team) so the team column can pin right
+   after the rank. Below sm the scroll wrapper reports how far the table has been swiped as --collapse (0 to 1) and the team
+   column follows it: it narrows with the finger and the name fades out, leaving the crest, so the stats get the room. Cells
+   are tighter below sm, and the Q badge sits over the rank circle's corner there instead of taking width. */
+.standings-table {
+  --pin-rank: 2.25rem;
+  /* 7.625rem with the name, 2.25rem with the crest alone (a difference of 5.375rem). */
+  --pin-team: calc(7.625rem - var(--collapse, 0) * 5.375rem);
+  --name-fade: calc(1 - var(--collapse, 0) * 1.6);
+}
+.standings-table thead th,
+.standings-table tbody tr:not(.tier-row) td {
+  padding-inline: 0.25rem;
+}
+.standings-table thead th:nth-child(-n + 2),
+.standings-table tbody tr:not(.tier-row) td:nth-child(-n + 2) {
+  position: sticky;
+  z-index: 1;
+  background-color: var(--color-base-100);
+}
+.standings-table thead th:first-child,
+.standings-table tbody tr:not(.tier-row) td:first-child {
+  left: 0;
+  z-index: 2;
+  width: var(--pin-rank);
+  min-width: var(--pin-rank);
+  max-width: var(--pin-rank);
+}
+.standings-table thead th:nth-child(2),
+.standings-table tbody tr:not(.tier-row) td:nth-child(2) {
+  left: var(--pin-rank);
+  width: var(--pin-team);
+  min-width: var(--pin-team);
+  max-width: var(--pin-team);
+  padding-inline: 0.3125rem;
+  overflow: hidden;
+  box-shadow: 1px 0 0 var(--color-base-300);
+}
+.standings-table tbody tr:not(.tier-row) td:nth-child(2) a {
+  gap: 0.375rem;
+}
+.standings-table tbody tr:not(.tier-row) td:nth-child(2) a img {
+  width: 1.375rem;
+  height: 1.375rem;
+}
+/* The name keeps the width it has at rest, so it is clipped by the narrowing cell and fades instead of re-wrapping. */
+.standings-table tbody tr:not(.tier-row) td:nth-child(2) a span {
+  flex: none;
+  width: 5.125rem;
+  opacity: var(--name-fade);
+}
+/* Stat numbers are a touch smaller on a phone, so the four stats at rest are not crowded. */
+.standings-table thead th:nth-child(n + 3),
+.standings-table tbody tr:not(.tier-row) td:nth-child(n + 3) {
+  font-size: 0.75rem;
+}
+/* The first stat column (wins, as GP is hidden here) keeps a little air next to the pinned edge. */
+.standings-table thead th:nth-child(4),
+.standings-table tbody tr:not(.tier-row) td:nth-child(4) {
+  padding-left: 0.625rem;
+}
+.standings-table thead th:nth-child(2) {
+  color: color-mix(in srgb, currentColor max(0%, calc(var(--name-fade) * 100%)), transparent);
+}
+.standings-table .position-cell {
+  position: relative;
+}
+.standings-table .position-cell .badge {
+  position: absolute;
+  top: -0.3rem;
+  right: -0.35rem;
+  height: 0.8rem;
+  padding-inline: 0.2rem;
+  font-size: 0.55rem;
+}
+.standings-table .rank {
+  width: 1.75rem;
+  height: 1.75rem;
+}
+/* A tier heading's label stays in view while the table is scrolled sideways. */
+.tier-row td span {
+  position: sticky;
+  left: 0.7rem;
+  display: inline-block;
+}
+@media (min-width: 40rem) {
+  .standings-table {
+    --pin-rank: 5.5rem;
+    --pin-team: 18rem;
+  }
+  /* No collapse from sm: the collapsed table would be narrower than its box, stop scrolling, and the column would jump. */
+  .standings-table {
+    --name-fade: 1;
+  }
+  .standings-table tbody tr:not(.tier-row) td:nth-child(2) a span {
+    flex: 0 1 auto;
+    width: auto;
+  }
+  .standings-table thead th:nth-child(n + 3),
+  .standings-table tbody tr:not(.tier-row) td:nth-child(n + 3) {
+    font-size: 0.875rem;
+  }
+  .standings-table thead th,
+  .standings-table tbody tr:not(.tier-row) td,
+  .standings-table thead th:nth-child(2),
+  .standings-table tbody tr:not(.tier-row) td:nth-child(2) {
+    padding-inline: 1rem;
+  }
+  .standings-table tbody tr:not(.tier-row) td:nth-child(2) a {
+    gap: 0.5rem;
+  }
+  .standings-table tbody tr:not(.tier-row) td:nth-child(2) a img {
+    width: 1.5rem;
+    height: 1.5rem;
+  }
+  .standings-table .position-cell .badge {
+    position: revert-layer;
+    top: revert-layer;
+    right: revert-layer;
+    height: revert-layer;
+    padding-inline: revert-layer;
+    font-size: revert-layer;
+  }
+}
+@media (min-width: 80rem) {
+  .standings-table thead th:nth-child(-n + 2),
+  .standings-table tbody tr:not(.tier-row) td:nth-child(-n + 2) {
+    position: static;
+    z-index: auto;
+    background-color: transparent;
+    box-shadow: none;
+    transition: none;
+  }
+  .standings-table thead th:first-child,
+  .standings-table tbody tr:not(.tier-row) td:first-child,
+  .standings-table thead th:nth-child(2),
+  .standings-table tbody tr:not(.tier-row) td:nth-child(2) {
+    width: auto;
+    min-width: 0;
+    max-width: none;
+    overflow: visible;
+  }
+}
+
 .skip-link {
   position: fixed;
   top: -3rem;
@@ -977,8 +1122,20 @@ button {
   overflow-x: visible;
   padding-bottom: 0;
 }
+/* Standings' five cards sit two by two until there is room for five across (xl): their names break up to about 1024px.
+   This rule must stay before the lg media rule below, which it overrides. */
+.kpi-strip.kpi-strip-5 {
+  grid-auto-flow: row;
+  grid-auto-columns: auto;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  overflow-x: visible;
+  padding-bottom: 0;
+}
+.kpi-strip-5 > :last-child:nth-child(odd) {
+  grid-column: 1 / -1;
+}
 @media (min-width: 64rem) {
-  .kpi-strip:not(.kpi-strip-4) {
+  .kpi-strip:not(.kpi-strip-4):not(.kpi-strip-5) {
     grid-auto-flow: row;
     grid-auto-columns: auto;
     grid-template-columns: repeat(5, 1fr);
@@ -989,6 +1146,12 @@ button {
 @media (min-width: 80rem) {
   .kpi-strip.kpi-strip-4 {
     grid-template-columns: repeat(4, 1fr);
+  }
+  .kpi-strip.kpi-strip-5 {
+    grid-template-columns: repeat(5, 1fr);
+  }
+  .kpi-strip-5 > :last-child:nth-child(odd) {
+    grid-column: auto;
   }
 }
 .kpi-chip {
@@ -1133,6 +1296,36 @@ button {
   .kpi-strip-4 .kpi-chip .value,
   .season-hero-kpis .kpi-chip .value {
     font-size: 1.7rem;
+  }
+}
+
+/* Standings' KPI cards: compact and stacked below sm (crest on top); from sm the standard small card (crest beside the text),
+   which is what the plain .kpi-chip rules already give. */
+.kpi-strip-5 .kpi-chip {
+  flex-direction: column-reverse;
+  align-items: flex-start;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  padding: 0.9rem 0.85rem;
+}
+.kpi-strip-5 .kpi-chip-image {
+  height: 3rem;
+  max-width: 3rem;
+  align-self: flex-start;
+  margin: 0;
+}
+@media (min-width: 40rem) {
+  .kpi-strip-5 .kpi-chip {
+    flex-direction: row;
+    justify-content: space-between;
+    gap: 0.75rem;
+    padding: 0.9rem 1.1rem;
+  }
+  .kpi-strip-5 .kpi-chip-image {
+    height: 5.5rem;
+    max-width: 6rem;
+    align-self: flex-end;
+    margin: -0.9rem -0.4rem -0.9rem 0;
   }
 }
 

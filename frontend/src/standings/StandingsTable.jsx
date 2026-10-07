@@ -62,7 +62,9 @@ const TIER_LABELS = {
 function TierRow({ tier, columnCount }) {
   return (
     <AnimatedRow layout="position" className={`tier-row tier-row-${tier}`}>
-      <td colSpan={columnCount}>{TIER_LABELS[tier]}</td>
+      <td colSpan={columnCount}>
+        <span>{TIER_LABELS[tier]}</span>
+      </td>
     </AnimatedRow>
   );
 }
@@ -86,19 +88,19 @@ const VIEW_NET_FIELD = {
   last10: "last10NetRating",
 };
 
-function OverviewTable({ standings, seasonCode, view, showTiers, netByClub }) {
+function OverviewTable({ standings, seasonCode, view, showTiers, netByClub, shortNames }) {
   const sorted = sortForView(standings, view);
   const tiersActive = showTiers && view === "overall";
   const tiers = tiersActive ? sorted.map((entry) => tierForPosition(entry.basic?.position)) : [];
   const columnCount = 14;
 
   return (
-    <table className="table">
+    <table className="table standings-table">
       <thead>
         <tr>
           <th><HeaderTip tip="Position: rank in the standings">#</HeaderTip></th>
           <th>Team</th>
-          <th><HeaderTip tip="Games played">GP</HeaderTip></th>
+          <th className="hidden sm:table-cell"><HeaderTip tip="Games played">GP</HeaderTip></th>
           <th><HeaderTip tip="Wins">W</HeaderTip></th>
           <th><HeaderTip tip="Losses">L</HeaderTip></th>
           <th><HeaderTip tip="Win percentage: wins divided by games played">PCT</HeaderTip></th>
@@ -128,9 +130,9 @@ function OverviewTable({ standings, seasonCode, view, showTiers, netByClub }) {
                   <TieBreakFlag entry={entry} />
                 </td>
                 <td>
-                  <ClubCell entry={entry} seasonCode={seasonCode} />
+                  <ClubCell entry={entry} seasonCode={seasonCode} shortName={shortNames?.get(entry.clubCode)} />
                 </td>
-                <td>{entry.basic?.gamesPlayed ?? "-"}</td>
+                <td className="hidden sm:table-cell">{entry.basic?.gamesPlayed ?? "-"}</td>
                 <td>{entry.basic?.gamesWon ?? "-"}</td>
                 <td>{entry.basic?.gamesLost ?? "-"}</td>
                 <td>{entry.basic?.winPercentage ?? "-"}</td>
@@ -155,12 +157,32 @@ function OverviewTable({ standings, seasonCode, view, showTiers, netByClub }) {
   );
 }
 
+// Swiping this far (px) takes the team column from its name down to the crest. The CSS reads --collapse, 0 to 1, below sm.
+const COLLAPSE_DISTANCE = 36;
+
+// Reports how far the table has been swiped sideways as --collapse, so the pinned team column narrows with the finger.
+// It is written straight to the element: a React state update on every scroll event would re-render the whole table.
+function ScrollingTable({ children }) {
+  return (
+    <div
+      className="standings-scroll overflow-x-auto overscroll-x-contain"
+      onScroll={(event) => {
+        const box = event.currentTarget;
+        box.style.setProperty("--collapse", String(Math.min(1, box.scrollLeft / COLLAPSE_DISTANCE)));
+      }}
+    >
+      {children}
+    </div>
+  );
+}
+
 export default function StandingsTable({
   standings,
   seasonCode,
   view = "overall",
   showTiers = false,
   netByClub,
+  shortNames,
   breakdown = "overview",
   resultsQuery,
   resultsByClub,
@@ -186,15 +208,16 @@ export default function StandingsTable({
 
   return (
     <Panel className="p-2">
-      <div className="overflow-x-auto overscroll-x-contain">
+      <ScrollingTable>
         <OverviewTable
           standings={standings}
           seasonCode={seasonCode}
           view={view}
           showTiers={showTiers}
           netByClub={netByClub}
+          shortNames={shortNames}
         />
-      </div>
+      </ScrollingTable>
       <StandingsFooterBadges />
     </Panel>
   );

@@ -47,7 +47,7 @@ export default function StandingsKpiStrip({ seasonCode, phaseCode, round, standi
   }
 
   return (
-    <HeaderStats>
+    <HeaderStats className="kpi-strip-5" data-testid="standings-kpi-strip">
       <CompactMetric
         value={leader ? `${leader.basic.gamesWon}-${leader.basic.gamesLost}` : "–"}
         label="Leader"

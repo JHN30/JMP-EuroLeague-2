@@ -1,9 +1,12 @@
 import { Link } from "react-router";
 
-export function ClubCell({ entry, seasonCode }) {
+// With a short name the cell shows it below sm and the full name from sm up; the link is named by the full name at every width.
+export function ClubCell({ entry, seasonCode, shortName }) {
+  const fullName = entry.clubName ?? entry.clubCode;
   return (
     <Link
       to={`/${seasonCode}/teams/${entry.clubCode}`}
+      aria-label={shortName ? fullName : undefined}
       className="link link-hover flex min-w-0 items-center gap-2 font-medium"
     >
       {entry.crestUrl ? (
@@ -16,16 +19,25 @@ export function ClubCell({ entry, seasonCode }) {
           }}
         />
       ) : null}
-      <span className="max-w-40 truncate sm:max-w-56" title={entry.clubName ?? entry.clubCode}>
-        {entry.clubName ?? entry.clubCode}
-      </span>
+      {shortName ? (
+        <>
+          <span className="break-words text-xs leading-tight sm:hidden">{shortName}</span>
+          <span className="hidden max-w-56 truncate sm:inline" title={fullName}>
+            {fullName}
+          </span>
+        </>
+      ) : (
+        <span className="max-w-40 truncate sm:max-w-56" title={fullName}>
+          {fullName}
+        </span>
+      )}
     </Link>
   );
 }
 
 export function PositionCell({ position, qualified }) {
   return (
-    <span className="inline-flex items-center gap-1">
+    <span className="position-cell inline-flex items-center gap-1">
       <span className={`rank ${position === 1 ? "rank-1" : ""}`}>{position ?? "-"}</span>
       {qualified ? (
         <span className="badge badge-xs badge-secondary" title="Qualified">

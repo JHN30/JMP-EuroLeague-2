@@ -24,7 +24,7 @@ test("the Advanced view shows the pipeline's per-game measures and the season-to
   await expect(page.getByText("This game").first()).toBeVisible();
   await expect(page.getByText("Season through round 2").first()).toBeVisible();
 
-  const cells = rowFor(page, "STARTER, SAM").first().locator("td");
+  const cells = rowFor(page, "STARTER SAM").first().locator("td");
   await expect(cells.nth(COLUMN.min)).toHaveText("15:00");
   await expect(cells.nth(COLUMN.gmsc)).toHaveText("21.4");
   await expect(cells.nth(COLUMN.per)).toHaveText("20.1");
@@ -45,7 +45,7 @@ test("a missing measure is an em dash, and a missing season row is a dash too", 
   await page.setViewportSize({ width: 1500, height: 1000 });
   await openAdvanced(page);
 
-  const cells = rowFor(page, "RIVAL, ROY").first().locator("td");
+  const cells = rowFor(page, "RIVAL ROY").first().locator("td");
   await expect(cells.nth(COLUMN.usg)).toHaveText("—");
   await expect(cells.nth(COLUMN.seasonPer)).toHaveText("—");
   await expect(cells.nth(COLUMN.seasonPer).locator("span")).toHaveAttribute("title", "No season record through this round");
@@ -56,7 +56,7 @@ test("a small season sample is hidden with its explanation", async ({ page }) =>
   await page.setViewportSize({ width: 1500, height: 1000 });
   await openAdvanced(page);
 
-  const cells = rowFor(page, "BENCH, BO").first().locator("td");
+  const cells = rowFor(page, "BENCH BO").first().locator("td");
   await expect(cells.nth(COLUMN.seasonPer)).toHaveText("—");
   await expect(cells.nth(COLUMN.seasonPer).locator("span")).toHaveAttribute(
     "title",
@@ -74,7 +74,7 @@ test("game PER is shown only from 10 minutes played", async ({ page }) => {
   };
   await openAdvanced(page, { advanced });
 
-  const cell = rowFor(page, "RESERVE, RAY").first().locator("td").nth(COLUMN.per);
+  const cell = rowFor(page, "RESERVE RAY").first().locator("td").nth(COLUMN.per);
   await expect(cell).toHaveText("—");
   await expect(cell.locator("span")).toHaveAttribute("title", "Game PER is shown from 10 minutes played");
 });
@@ -83,9 +83,9 @@ test("the game-high Game Score and game PER are bold", async ({ page }) => {
   await page.setViewportSize({ width: 1500, height: 1000 });
   await openAdvanced(page);
 
-  await expect(rowFor(page, "RIVAL, ROY").first().locator("td").nth(COLUMN.gmsc)).toHaveClass(/font-bold/);
-  await expect(rowFor(page, "RIVAL, ROY").first().locator("td").nth(COLUMN.per)).toHaveClass(/font-bold/);
-  await expect(rowFor(page, "STARTER, SAM").first().locator("td").nth(COLUMN.per)).not.toHaveClass(/font-bold/);
+  await expect(rowFor(page, "RIVAL ROY").first().locator("td").nth(COLUMN.gmsc)).toHaveClass(/font-bold/);
+  await expect(rowFor(page, "RIVAL ROY").first().locator("td").nth(COLUMN.per)).toHaveClass(/font-bold/);
+  await expect(rowFor(page, "STARTER SAM").first().locator("td").nth(COLUMN.per)).not.toHaveClass(/font-bold/);
 });
 
 test("a game without advanced data says so, and Traditional still works", async ({ page }) => {
@@ -117,7 +117,7 @@ test("the box score players are the same in both views", async ({ page }) => {
   await page.setViewportSize({ width: 1500, height: 1000 });
   await openAdvanced(page);
   for (const player of BOX_SCORE.playerStats.filter((row) => row.timePlayed > 0)) {
-    await expect(rowFor(page, player.personName).first()).toBeVisible();
+    await expect(rowFor(page, player.personName.replace(",", "")).first()).toBeVisible();
   }
-  await expect(page.locator("p", { hasText: "Did not play:" })).toContainText("SITTER, SID");
+  await expect(page.locator("p", { hasText: "Did not play:" })).toContainText("SITTER SID");
 });

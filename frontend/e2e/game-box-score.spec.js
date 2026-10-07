@@ -36,12 +36,12 @@ test("the box score tables are stacked, show whole numbers, and list players who
   // Starters first even with fewer minutes, then the bench; the player with no minutes is not a row.
   const teamA = tables.nth(0).locator("tbody tr");
   await expect(teamA).toHaveCount(2);
-  await expect(teamA.nth(0)).toContainText("STARTER, SAM");
-  await expect(teamA.nth(1)).toContainText("BENCH, BO");
+  await expect(teamA.nth(0)).toContainText("STARTER SAM");
+  await expect(teamA.nth(1)).toContainText("BENCH BO");
   await expect(teamA.nth(0)).toContainText("10-12");
   await expect(teamA.nth(0)).toContainText("9-9");
   await expect(page.getByText("Did not play:")).toBeVisible();
-  await expect(page.getByRole("link", { name: "SITTER, SID" })).toBeVisible();
+  await expect(page.getByRole("link", { name: "SITTER SID" })).toBeVisible();
 
   // The Team comparison tab reads the same numbers.
   await page.getByRole("tab", { name: "Team comparison" }).click();
@@ -55,8 +55,8 @@ test("player names link to their pages and only the game-high is bold", async ({
   await page.goto(`/${SEASON}/games/1`);
   await openBoxScore(page);
 
-  await expect(page.getByRole("link", { name: "STARTER, SAM" })).toHaveAttribute("href", `/${SEASON}/players/A-STARTER`);
-  await expect(page.getByRole("link", { name: "SITTER, SID" })).toHaveAttribute("href", `/${SEASON}/players/A-DNP`);
+  await expect(page.getByRole("link", { name: "STARTER SAM" })).toHaveAttribute("href", `/${SEASON}/players/A-STARTER`);
+  await expect(page.getByRole("link", { name: "SITTER SID" })).toHaveAttribute("href", `/${SEASON}/players/A-DNP`);
 
   const bold = async (rowName, cellIndex) => {
     const cell = page.locator("tbody tr", { hasText: rowName }).locator("td").nth(cellIndex);
@@ -66,19 +66,19 @@ test("player names link to their pages and only the game-high is bold", async ({
   const STEALS = 10;
   const PLUS_MINUS = 16;
   // Both 30-point scorers are bold (a tie); the 12- and 8-point players are not.
-  expect(await bold("STARTER, SAM", POINTS)).toBe(true);
-  expect(await bold("RIVAL, ROY", POINTS)).toBe(true);
-  expect(await bold("BENCH, BO", POINTS)).toBe(false);
-  expect(await bold("RESERVE, RAY", POINTS)).toBe(false);
+  expect(await bold("STARTER SAM", POINTS)).toBe(true);
+  expect(await bold("RIVAL ROY", POINTS)).toBe(true);
+  expect(await bold("BENCH BO", POINTS)).toBe(false);
+  expect(await bold("RESERVE RAY", POINTS)).toBe(false);
   // A column where everyone has zero has no game-high.
-  expect(await bold("STARTER, SAM", STEALS)).toBe(false);
+  expect(await bold("STARTER SAM", STEALS)).toBe(false);
   // The best plus/minus (+6) is bold.
-  expect(await bold("STARTER, SAM", PLUS_MINUS)).toBe(true);
-  expect(await bold("BENCH, BO", PLUS_MINUS)).toBe(false);
+  expect(await bold("STARTER SAM", PLUS_MINUS)).toBe(true);
+  expect(await bold("BENCH BO", PLUS_MINUS)).toBe(false);
 
   // Names are reachable by keyboard.
-  await page.getByRole("link", { name: "STARTER, SAM" }).focus();
-  await expect(page.getByRole("link", { name: "STARTER, SAM" })).toBeFocused();
+  await page.getByRole("link", { name: "STARTER SAM" }).focus();
+  await expect(page.getByRole("link", { name: "STARTER SAM" })).toBeFocused();
 });
 
 test("box score stats and the starter marker have hover tips", async ({ page }) => {

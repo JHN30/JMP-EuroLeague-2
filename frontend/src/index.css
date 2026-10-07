@@ -207,6 +207,54 @@ button {
   pointer-events: none;
 }
 
+/* The game Box score tables, below sm. The first column (the jersey number and the name) is pinned like the Standings team
+   column: 7.625rem at rest, and the table's scroll box (ScrollingTable) reports how far it was swiped as --collapse, so the
+   column narrows to 2.25rem and the name fades while the headshot takes the jersey number's place (a player without a
+   headshot keeps the number). The position line is left out of the phone view (max-sm:hidden). Stat cells are tight and never
+   wrap a made-attempted line at its hyphen. */
+@media (max-width: 39.999rem) {
+  .box-score-table {
+    --pin-player: calc(7.625rem - var(--collapse, 0) * 5.375rem);
+    --name-fade: calc(1 - var(--collapse, 0) * 1.6);
+    --photo-fade: clamp(0, var(--collapse, 0) * 1.6, 1);
+  }
+  .box-score-table th:first-child,
+  .box-score-table td:first-child {
+    width: var(--pin-player);
+    min-width: var(--pin-player);
+    max-width: var(--pin-player);
+    padding-inline: 0.3125rem;
+    overflow: hidden;
+  }
+  .box-score-table th:not(:first-child),
+  .box-score-table td:not(:first-child) {
+    padding-inline: 0.3125rem;
+    white-space: nowrap;
+  }
+  /* The name keeps the width it has at rest, so it is clipped by the narrowing cell and fades instead of re-wrapping. */
+  .box-score-name {
+    flex: none;
+    width: 5.25rem;
+    opacity: var(--name-fade);
+  }
+  /* The headshot sits over the jersey number's slot and takes its place as the column folds. */
+  .box-score-photo {
+    position: absolute;
+    top: 50%;
+    left: 0;
+    width: 1.5rem;
+    height: 2rem;
+    transform: translateY(-50%);
+    opacity: var(--photo-fade);
+  }
+  .box-score-dorsal {
+    opacity: calc(1 - var(--photo-fade));
+  }
+  .box-score-fade {
+    opacity: var(--name-fade);
+  }
+}
+
 .eyebrow {
   color: var(--color-primary);
   font-size: 0.75rem;

@@ -29,6 +29,7 @@ import { useDocumentTitle } from "../lib/useDocumentTitle";
 import { sectionContainer, sectionItem } from "../lib/motion";
 import { usePrefersReducedMotion } from "../lib/usePrefersReducedMotion";
 import { AnimatedBody, AnimatedRow } from "../standings/motionTable";
+import ScrollingTable from "../standings/ScrollingTable";
 import { compareByName, hasMinutes, isStarter, teamName } from "./gameUtils";
 import { PeriodTable, ScoreFlowChart } from "./gameFlow";
 import { computeGameFlow, momentLabel, withRunningScore } from "./gameFlowData";
@@ -134,6 +135,48 @@ function computeGameHighs(playerStats, columns) {
   return highs;
 }
 
+// The first cell of a box score row. Below sm the cell is pinned narrow and folds as the table is swiped (index.css,
+// `box-score-table`): at rest it shows the jersey number and the name, folded it shows the headshot. A player without a
+// usable headshot keeps the jersey number.
+function BoxScorePlayer({ player, seasonCode }) {
+  const [photoFailed, setPhotoFailed] = useState(false);
+  const hasPhoto = Boolean(player.headshotUrl) && !photoFailed;
+
+  return (
+    <div className="relative flex min-w-0 items-center gap-2 max-sm:gap-1">
+      <span className={`w-6 flex-none text-center text-xs text-base-content/60 ${hasPhoto ? "box-score-dorsal" : ""}`}>{player.dorsal ?? "-"}</span>
+      {hasPhoto ? (
+        <img
+          src={player.headshotUrl}
+          alt=""
+          className="box-score-photo aspect-3/4 h-10 w-auto flex-none object-contain object-bottom"
+          onError={() => setPhotoFailed(true)}
+        />
+      ) : null}
+      <div className="box-score-name min-w-0">
+        {/* Below sm the name and the Starter badge flow as text: a word is never cut (unless it is wider than the column), and
+            the badge follows the last word or drops to the next line. From sm they sit side by side as before. */}
+        <div className="flex items-center gap-1 max-sm:block">
+          <PlayerLink
+            seasonCode={seasonCode}
+            player={player}
+            noComma
+            className="max-w-32 truncate sm:max-w-48 max-sm:overflow-visible max-sm:whitespace-normal max-sm:[overflow-wrap:break-word]"
+          />
+          {isStarter(player) ? (
+            <span className="max-sm:ml-1 max-sm:inline-block max-sm:align-middle sm:contents">
+              <HeaderTip tip="Starter: in the starting five">
+                <span className="badge badge-primary badge-xs">S</span>
+              </HeaderTip>
+            </span>
+          ) : null}
+        </div>
+        {player.positionName ? <div className="text-xs text-base-content/60 max-sm:hidden">{player.positionName}</div> : null}
+      </div>
+    </div>
+  );
+}
+
 function BoxScoreTable({ players, teamTotal, team, won, seasonCode, gameHighs, columns, groups }) {
   const rows = players.filter((row) => row.side === teamTotal?.side);
   const { played, didNotPlay } = orderRoster(rows);
@@ -161,91 +204,70 @@ function BoxScoreTable({ players, teamTotal, team, won, seasonCode, gameHighs, c
       {rows.length === 0 || !teamTotal ? (
         <EmptyText>Box score not available yet.</EmptyText>
       ) : (
-        <Panel className="overflow-x-auto overscroll-x-contain p-2">
-          <table className="data-table-sticky table table-sm hover">
-            <thead>
-              {groups ? (
+        <Panel className="p-2 max-sm:p-1">
+          <ScrollingTable>
+            <table className="data-table-sticky box-score-table table table-sm hover">
+              <thead>
+                {groups ? (
+                  <tr>
+                    <th />
+                    {groups.map((group) => (
+                      <th key={group.label} colSpan={group.span} className={`text-center text-xs font-semibold uppercase tracking-wide${groupDivider(group)}`}>
+                        {group.label}
+                      </th>
+                    ))}
+                  </tr>
+                ) : null}
                 <tr>
-                  <th />
-                  {groups.map((group) => (
-                    <th key={group.label} colSpan={group.span} className={`text-center text-xs font-semibold uppercase tracking-wide${groupDivider(group)}`}>
-                      {group.label}
+                  <th>
+                    <span className="box-score-fade">Player</span>
+                  </th>
+                  {columns.map((column) => (
+                    <th key={column.key ?? column.label} className={`num text-center${groupDivider(column)}`}>
+                      <HeaderTip tip={column.tip ?? STAT_TIPS[column.label]}>{column.label}</HeaderTip>
                     </th>
                   ))}
                 </tr>
-              ) : null}
-              <tr>
-                <th>Player</th>
-                {columns.map((column) => (
-                  <th key={column.key ?? column.label} className={`num text-center${groupDivider(column)}`}>
-                    <HeaderTip tip={column.tip ?? STAT_TIPS[column.label]}>{column.label}</HeaderTip>
-                  </th>
+              </thead>
+              <AnimatedBody>
+                {played.map((player) => (
+                  <AnimatedRow key={player.personKey}>
+                    <td>
+                      <BoxScorePlayer player={player} seasonCode={seasonCode} />
+                    </td>
+                    {columns.map((column) => {
+                      const high = gameHighs[column.label];
+                      const isHigh = high != null && highValueOf(column, player) === high;
+                      return (
+                        <td key={column.key ?? column.label} className={`num text-center tabular-nums${isHigh ? " font-bold" : ""}${groupDivider(column)}`}>
+                          {column.render(player)}
+                        </td>
+                      );
+                    })}
+                  </AnimatedRow>
                 ))}
-              </tr>
-            </thead>
-            <AnimatedBody>
-              {played.map((player) => (
-                <AnimatedRow key={player.personKey}>
+              </AnimatedBody>
+              <tfoot>
+                <tr className="font-bold">
                   <td>
-                    <div className="flex min-w-0 items-center gap-2">
-                      <span className="w-6 flex-none text-center text-xs text-base-content/60">
-                        {player.dorsal ?? "-"}
-                      </span>
-                      {player.headshotUrl ? (
-                        <img
-                          src={player.headshotUrl}
-                          alt=""
-                          className="aspect-3/4 h-10 w-auto flex-none object-contain object-bottom"
-                          onError={(event) => {
-                            event.currentTarget.style.display = "none";
-                          }}
-                        />
-                      ) : null}
-                      <div className="min-w-0">
-                        <div className="flex items-center gap-1">
-                          <PlayerLink seasonCode={seasonCode} player={player} className="max-w-32 truncate sm:max-w-48" />
-                          {isStarter(player) ? (
-                            <HeaderTip tip="Starter: in the starting five">
-                              <span className="badge badge-primary badge-xs">S</span>
-                            </HeaderTip>
-                          ) : null}
-                        </div>
-                        {player.positionName ? (
-                          <div className="text-xs text-base-content/60">{player.positionName}</div>
-                        ) : null}
-                      </div>
-                    </div>
+                    <span className="box-score-fade">Total</span>
                   </td>
-                  {columns.map((column) => {
-                    const high = gameHighs[column.label];
-                    const isHigh = high != null && highValueOf(column, player) === high;
-                    return (
-                      <td key={column.key ?? column.label} className={`num text-center tabular-nums${isHigh ? " font-bold" : ""}${groupDivider(column)}`}>
-                        {column.render(player)}
-                      </td>
-                    );
-                  })}
-                </AnimatedRow>
-              ))}
-            </AnimatedBody>
-            <tfoot>
-              <tr className="font-bold">
-                <td>Total</td>
-                {columns.map((column) => (
-                  <td key={column.key ?? column.label} className={`num text-center tabular-nums${groupDivider(column)}`}>
-                    {column.render(teamTotal)}
-                  </td>
-                ))}
-              </tr>
-            </tfoot>
-          </table>
+                  {columns.map((column) => (
+                    <td key={column.key ?? column.label} className={`num text-center tabular-nums${groupDivider(column)}`}>
+                      {column.render(teamTotal)}
+                    </td>
+                  ))}
+                </tr>
+              </tfoot>
+            </table>
+          </ScrollingTable>
           {didNotPlay.length > 0 ? (
             <p className="muted px-2 pt-2 pb-1 text-sm">
               <span className="font-semibold">Did not play:</span>{" "}
               {didNotPlay.map((player, index) => (
                 <span key={player.personKey}>
                   {index > 0 ? ", " : ""}
-                  <PlayerLink seasonCode={seasonCode} player={player} />
+                  <PlayerLink seasonCode={seasonCode} player={player} noComma />
                 </span>
               ))}
             </p>

@@ -1,8 +1,10 @@
-import { useId, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { motion } from "motion/react";
 import { thinAxisLabels } from "../lib/chartHelpers";
 import { teamHue } from "../lib/teamHue";
 import { useElementWidth } from "../lib/useElementWidth";
+import { useMediaQuery } from "../lib/useMediaQuery";
+import { usePrefersReducedMotion } from "../lib/usePrefersReducedMotion";
 
 const MIN_HEIGHT = 390;
 const HEIGHT_PER_ROW = 50;
@@ -10,6 +12,11 @@ const POSTSEASON_CUTOFF = 6;
 const PLAYIN_CUTOFF = 10;
 const CREST_RADIUS = 19;
 const MARGIN = { top: 4, bottom: 28, left: 34, right: CREST_RADIUS + 6 };
+
+// Below sm the chart is built for a narrow screen: every round gets a minimum width, so the plot is wider than the box and
+// the box scrolls sideways; crests and rows are smaller; and the position numbers sit in a strip of their own that stays put.
+const NARROW_QUERY = "(max-width: 39.999rem)";
+const NARROW = { minHeight: 300, heightPerRow: 30, crestRadius: 12, perRound: 22, axis: 26 };
 
 const GRID_STROKE = "color-mix(in srgb, var(--color-base-content) 20%, transparent)";
 const POSTSEASON_FILL = "color-mix(in srgb, var(--color-success) 6.5%, transparent)";
@@ -22,6 +29,8 @@ const PLAYIN_FILL = "color-mix(in srgb, var(--color-warning) 6.5%, transparent)"
 export default function RaceChart({ rounds, visibleCount, standingsByRound, teamOrder, focusedClub, onFocusClub }) {
   const containerRef = useRef(null);
   const width = useElementWidth(containerRef);
+  const narrow = useMediaQuery(NARROW_QUERY);
+  const reducedMotion = usePrefersReducedMotion();
   const clipId = `race-reveal-${useId().replace(/:/g, "")}`;
   const crestClipId = `${clipId}-crest`;
 
@@ -36,25 +45,43 @@ export default function RaceChart({ rounds, visibleCount, standingsByRound, team
   const move = { duration, ease: "easeInOut" };
 
   const teamCount = teamOrder.length;
+
+  const crestRadius = narrow ? NARROW.crestRadius : CREST_RADIUS;
+  const margin = narrow ? { top: 4, bottom: 28, left: 6, right: crestRadius + 6 } : MARGIN;
+  const rowHeight = narrow ? NARROW.heightPerRow : HEIGHT_PER_ROW;
+  const height = Math.max(narrow ? NARROW.minHeight : MIN_HEIGHT, (teamCount + 1) * rowHeight) + margin.top + margin.bottom;
+  // Wide screens fit every round in the box; a narrow one keeps a minimum per round and lets the box scroll.
+  const contentWidth = narrow ? Math.max(width, margin.left + rounds.length * NARROW.perRound + margin.right) : width;
+  const plotWidth = Math.max(0, contentWidth - margin.left - margin.right);
+  const plotHeight = height - margin.top - margin.bottom;
+  const step = plotWidth / Math.max(1, rounds.length);
+  const x = (index) => margin.left + (index + 0.5) * step;
+  // One row of room above the first place and below the last.
+  const y = (position) => margin.top + (position / (teamCount + 1)) * plotHeight;
+
+  const crestIndex = Math.max(visibleCount, 1) - 1;
+
+  // Below sm the box scrolls, so keep the round being shown in view: the first run (the latest round) jumps, later steps glide.
+  const followedOnce = useRef(false);
+  const followX = x(crestIndex);
+  useEffect(() => {
+    const box = containerRef.current;
+    if (!narrow || !box || width === 0) return;
+    const left = Math.max(0, followX - box.clientWidth / 2);
+    box.scrollTo({ left, behavior: followedOnce.current && !reducedMotion ? "smooth" : "auto" });
+    followedOnce.current = true;
+  }, [narrow, followX, width, reducedMotion]);
+
   if (rounds.length < 2 || teamCount === 0) {
     return <p className="muted text-sm">Not enough round history yet to chart the standings race.</p>;
   }
-
-  const height = Math.max(MIN_HEIGHT, (teamCount + 1) * HEIGHT_PER_ROW) + MARGIN.top + MARGIN.bottom;
-  const plotWidth = Math.max(0, width - MARGIN.left - MARGIN.right);
-  const plotHeight = height - MARGIN.top - MARGIN.bottom;
-  const step = plotWidth / rounds.length;
-  const x = (index) => MARGIN.left + (index + 0.5) * step;
-  // One row of room above the first place and below the last.
-  const y = (position) => MARGIN.top + (position / (teamCount + 1)) * plotHeight;
 
   const positions = Array.from({ length: teamCount }, (_, index) => index + 1);
   const roundLabels = thinAxisLabels(rounds.map((round) => `R${round}`), 8);
   const postseasonEnd = Math.min(POSTSEASON_CUTOFF + 0.5, teamCount + 0.5);
   const playinEnd = Math.min(PLAYIN_CUTOFF + 0.5, teamCount + 0.5);
   const revealWidth = visibleCount > 0 ? x(visibleCount - 1) + 6 : 0;
-  const crestIndex = Math.max(visibleCount, 1) - 1;
-  const crestInner = CREST_RADIUS - 3;
+  const crestInner = crestRadius - 3;
 
   const teams = teamOrder.map((team, index) => {
     const series = rounds.map((round) => standingsByRound.get(round)?.get(team.clubCode) ?? null);
@@ -83,13 +110,30 @@ export default function RaceChart({ rounds, visibleCount, standingsByRound, team
           ))}
         </select>
       </label>
+      <p className="race-hint muted text-xs">Turn your phone sideways for a wider chart.</p>
       <div className="rounded-field border border-base-300 bg-base-100/60 p-2 sm:p-3">
-        <div ref={containerRef} className="w-full" style={{ height }}>
+        <div className={narrow ? "flex" : undefined}>
+          {narrow ? (
+            // The position numbers stay put while the rounds scroll beside them.
+            <svg width={NARROW.axis} height={height} aria-hidden="true" style={{ display: "block", flex: "none", fontSize: 12 }}>
+              {positions.map((position) => (
+                <text key={position} x={NARROW.axis - 6} y={y(position) + 4} textAnchor="end" style={{ fill: "var(--color-base-content)" }}>
+                  {position}
+                </text>
+              ))}
+            </svg>
+          ) : null}
+          <div
+            ref={containerRef}
+            className={narrow ? "min-w-0 flex-1 overflow-x-auto overscroll-x-contain" : "w-full"}
+            style={narrow ? undefined : { height }}
+            {...(narrow ? { tabIndex: 0, role: "region", "aria-label": "Standings race chart, scrolls sideways" } : {})}
+          >
           {width > 0 ? (
             <svg
-              width={width}
+              width={contentWidth}
               height={height}
-              viewBox={`0 0 ${width} ${height}`}
+              viewBox={`0 0 ${contentWidth} ${height}`}
               role="img"
               aria-label={`Standings position by round across ${rounds.length} rounds for ${teamCount} teams`}
               style={{ display: "block", fontSize: 12 }}
@@ -103,9 +147,9 @@ export default function RaceChart({ rounds, visibleCount, standingsByRound, team
                 </clipPath>
               </defs>
 
-              <rect x={MARGIN.left} y={y(0)} width={plotWidth} height={y(postseasonEnd) - y(0)} style={{ fill: POSTSEASON_FILL }} />
+              <rect x={margin.left} y={y(0)} width={plotWidth} height={y(postseasonEnd) - y(0)} style={{ fill: POSTSEASON_FILL }} />
               <rect
-                x={MARGIN.left}
+                x={margin.left}
                 y={y(postseasonEnd)}
                 width={plotWidth}
                 height={Math.max(0, y(playinEnd) - y(postseasonEnd))}
@@ -114,10 +158,12 @@ export default function RaceChart({ rounds, visibleCount, standingsByRound, team
 
               {positions.map((position) => (
                 <g key={position}>
-                  <line x1={MARGIN.left} x2={MARGIN.left + plotWidth} y1={y(position)} y2={y(position)} style={{ stroke: GRID_STROKE }} />
-                  <text x={MARGIN.left - 8} y={y(position) + 4} textAnchor="end" style={{ fill: "var(--color-base-content)" }}>
-                    {position}
-                  </text>
+                  <line x1={margin.left} x2={margin.left + plotWidth} y1={y(position)} y2={y(position)} style={{ stroke: GRID_STROKE }} />
+                  {narrow ? null : (
+                    <text x={MARGIN.left - 8} y={y(position) + 4} textAnchor="end" style={{ fill: "var(--color-base-content)" }}>
+                      {position}
+                    </text>
+                  )}
                 </g>
               ))}
               {rounds.map((round, index) => (
@@ -173,7 +219,7 @@ export default function RaceChart({ rounds, visibleCount, standingsByRound, team
                     onClick={() => toggleFocus(team.clubCode)}
                     style={{ cursor: "pointer", pointerEvents: visibleCount === 0 ? "none" : undefined }}
                   >
-                    <circle r={CREST_RADIUS} style={{ fill: "var(--color-base-100)" }} stroke={isFocused ? "var(--color-primary)" : color} strokeWidth={isFocused ? 4 : 2.5} />
+                    <circle r={crestRadius} style={{ fill: "var(--color-base-100)" }} stroke={isFocused ? "var(--color-primary)" : color} strokeWidth={isFocused ? 4 : 2.5} />
                     {team.crestUrl ? (
                       <image
                         href={team.crestUrl}
@@ -191,6 +237,7 @@ export default function RaceChart({ rounds, visibleCount, standingsByRound, team
               })}
             </svg>
           ) : null}
+          </div>
         </div>
       </div>
     </div>

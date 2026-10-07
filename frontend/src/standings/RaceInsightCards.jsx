@@ -50,7 +50,19 @@ function InsightCard({ label, team, detail, seasonCode }) {
       to={team ? `/${seasonCode}/teams/${team.clubCode}` : "#"}
       className="panel flex flex-col gap-1 p-3 hover:bg-base-200"
     >
-      <span className="eyebrow">{label}</span>
+      <div className="flex flex-col-reverse items-start gap-2 sm:flex-row sm:justify-between">
+        <span className="eyebrow">{label}</span>
+        {team?.crestUrl ? (
+          <img
+            src={team.crestUrl}
+            alt=""
+            className="h-9 w-9 flex-none object-contain sm:h-10 sm:w-10"
+            onError={(event) => {
+              event.currentTarget.style.display = "none";
+            }}
+          />
+        ) : null}
+      </div>
       <span className="font-semibold">{team ? (team.clubName ?? team.clubCode) : "-"}</span>
       {detail ? <span className="text-xs text-base-content/70">{detail}</span> : null}
     </Link>

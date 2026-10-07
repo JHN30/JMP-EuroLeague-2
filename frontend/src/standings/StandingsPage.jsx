@@ -167,6 +167,7 @@ export default function StandingsPage() {
                 phaseCode={phaseCode}
                 latestRound={round}
                 latestStandings={standings}
+                shortNames={shortNames}
               />
             ) : (
               <motion.div

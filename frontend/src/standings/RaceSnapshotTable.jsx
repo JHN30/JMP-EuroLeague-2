@@ -33,6 +33,7 @@ export default function RaceSnapshotTable({
   positionsByRound,
   recordsByRound,
   teamOrder,
+  shortNames,
   focusedClub,
   onFocusClub,
 }) {
@@ -65,7 +66,7 @@ export default function RaceSnapshotTable({
       <p className="px-2 pb-1 text-xs font-semibold text-base-content/70">
         {round == null ? "Season start" : `Standings after round ${round}`}
       </p>
-      <table className="table">
+      <table className="table race-table">
         <thead>
           <tr>
             <th><HeaderTip tip="Position after this round">#</HeaderTip></th>
@@ -90,13 +91,20 @@ export default function RaceSnapshotTable({
                 <td>
                   <Link
                     to={`/${seasonCode}/teams/${team.clubCode}`}
+                    aria-label={shortNames?.get(team.clubCode) ? teamName(team) : undefined}
                     className="link link-hover flex items-center gap-2 font-medium"
                     onClick={(event) => event.stopPropagation()}
                   >
                     {team.crestUrl ? (
                       <img src={team.crestUrl} alt="" className="h-5 w-5 flex-none object-contain" />
                     ) : null}
-                    <span className="max-w-40 truncate" title={teamName(team)}>
+                    {shortNames?.get(team.clubCode) ? (
+                      <span className="hidden text-xs leading-tight max-sm:inline lg:max-xl:inline">{shortNames.get(team.clubCode)}</span>
+                    ) : null}
+                    <span
+                      className={`max-w-40 truncate ${shortNames?.get(team.clubCode) ? "max-sm:hidden lg:max-xl:hidden" : ""}`}
+                      title={teamName(team)}
+                    >
                       {teamName(team)}
                     </span>
                   </Link>

@@ -591,6 +591,25 @@ button {
   }
 }
 
+/* The Race tab's snapshot table: tight cells where it sits in a narrow box (a phone, and the side column from lg to xl),
+   with the short club names the markup swaps in at the same widths. */
+@media (max-width: 39.999rem), (min-width: 64rem) and (max-width: 79.999rem) {
+  .race-table th,
+  .race-table td {
+    padding-inline: 0.375rem;
+  }
+}
+
+/* The Race chart's hint to turn the phone: only on a phone held upright. */
+.race-hint {
+  display: none;
+}
+@media (max-width: 39.999rem) and (orientation: portrait) {
+  .race-hint {
+    display: block;
+  }
+}
+
 .skip-link {
   position: fixed;
   top: -3rem;

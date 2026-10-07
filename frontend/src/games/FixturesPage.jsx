@@ -67,12 +67,24 @@ export default function FixturesPage() {
   const games = gamesQuery.data?.games ?? [];
   const isResolvingRound = roundsQuery.isLoading || nextGameQuery.isLoading;
 
-  // Keep the selected round visible in the scrolling strip. Scrolls the strip itself, never the page.
+  // Keep the selected round visible in the scrolling strip, also when the strip changes width (a phone turned sideways).
+  // Scrolls the strip itself, never the page.
   useEffect(() => {
     const strip = roundStripRef.current;
-    const active = strip?.querySelector('[aria-selected="true"]');
-    if (!strip || !active) return;
-    strip.scrollTo({ left: active.offsetLeft - (strip.clientWidth - active.offsetWidth) / 2, behavior: "smooth" });
+    if (!strip) return undefined;
+    const centre = (behavior) => {
+      const active = strip.querySelector('[aria-selected="true"]');
+      if (active) strip.scrollTo({ left: active.offsetLeft - (strip.clientWidth - active.offsetWidth) / 2, behavior });
+    };
+    centre("smooth");
+    // The observer reports once when it starts; that first report is the scroll above, not a resize.
+    let first = true;
+    const observer = new ResizeObserver(() => {
+      if (first) first = false;
+      else centre("auto");
+    });
+    observer.observe(strip);
+    return () => observer.disconnect();
   }, [selectedRound, rounds.length]);
 
   function selectRound(number) {
@@ -108,12 +120,12 @@ export default function FixturesPage() {
         panelId="fixtures-panel"
         activeKey={phaseCode}
         onChange={handlePhaseChange}
-        className="mb-4 w-fit"
+        className="mb-2 w-fit sm:mb-4"
         tabs={phases.map((phase) => ({ key: phase.code, label: phase.name ?? phase.code }))}
       />
 
       {rounds.length > 0 ? (
-        <div className="mb-6 flex items-center gap-2">
+        <div className="mb-2 flex items-center gap-1 sm:mb-6 sm:gap-2">
           <motion.button
             type="button"
             whileTap={{ scale: 0.88 }}

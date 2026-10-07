@@ -959,6 +959,56 @@ button {
   border-color: var(--color-primary);
   color: var(--color-primary);
 }
+/* Below sm the round tabs, the cards and their parts are compact, so more of a round fits a phone screen. The date under a
+   score may wrap, so it does not set the width of the centre column and leave the club names too little room. */
+@media (max-width: 39.999rem) {
+  .round-strip .tab {
+    padding-inline: 0.5rem;
+    font-size: 0.8125rem;
+  }
+  .fixture-card {
+    gap: 0.4rem;
+    padding: 0.65rem;
+  }
+  .fixture-card-body {
+    gap: 0.4rem;
+  }
+  .fixture-team {
+    gap: 0.1rem;
+    font-size: 0.74rem;
+  }
+  .fixture-crest {
+    width: 2rem;
+    height: 2rem;
+  }
+  .fixture-team-record {
+    font-size: 0.7rem;
+  }
+  .fixture-center {
+    gap: 0.2rem;
+  }
+  .fixture-date {
+    max-width: 5rem;
+    font-size: 0.7rem;
+    line-height: 1.2;
+    text-align: center;
+    white-space: normal;
+  }
+  .fixture-time {
+    font-size: 1.25rem;
+  }
+  .score-pill {
+    font-size: 1.05rem;
+  }
+  .score-pill > span {
+    min-width: 2rem;
+    padding: 0.35rem 0.4rem;
+  }
+  .fixture-cta {
+    padding: 0.15rem 0.5rem;
+    font-size: 0.72rem;
+  }
+}
 
 /* Per-stat leader cards (dashboard) */
 /* Same swipe row below sm; two columns from sm; the sideways-scrolling row from lg. The Season overview's

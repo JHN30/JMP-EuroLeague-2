@@ -127,6 +127,8 @@ for (const { name, season, view } of [
       if (width < 640) {
         await swipeTo(18);
         await expect.poll(async () => (await measureTable(page)).scrolled).toBe(18);
+        // The scroll handler runs a frame after the scroll position changes.
+        await expect.poll(async () => (await measureTable(page)).teamWidth).toBeLessThan(rest.teamWidth - 20);
         const partway = await measureTable(page);
         expect(partway.teamWidth).toBeGreaterThan(50);
         expect(partway.teamWidth).toBeLessThan(rest.teamWidth - 20);
@@ -135,8 +137,8 @@ for (const { name, season, view } of [
 
         await swipeTo(100);
         await expect.poll(async () => (await measureTable(page)).scrolled).toBeGreaterThan(36);
+        await expect.poll(async () => (await measureTable(page)).teamWidth).toBeLessThanOrEqual(40);
         const away = await measureTable(page);
-        expect(away.teamWidth).toBeLessThanOrEqual(40);
         expect(away.rankLeft).toBe(0);
         expect(away.teamLeft).toBeGreaterThanOrEqual(30);
         expect(away.nameOpacity).toBe("0");

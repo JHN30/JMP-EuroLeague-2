@@ -15,7 +15,7 @@ export default function MarginStrip({ games, clubName, maxMargin }) {
 
   return (
     <svg
-      className="viz-svg"
+      className="viz-svg margin-strip"
       viewBox={`0 0 ${width} ${HEIGHT}`}
       width={width}
       height={HEIGHT}

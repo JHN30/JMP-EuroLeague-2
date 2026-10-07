@@ -11,6 +11,7 @@ import { halfTimeRecords, marginStats, quarterProfile, shapeLabel } from "./brea
 import { AnimatedBody, AnimatedRow } from "./motionTable";
 import RecordBar from "./RecordBar";
 import { ClubCell, PositionCell } from "./standingsCells";
+import ScrollingTable from "./ScrollingTable";
 
 const VIEWS = [
   { key: "quarters", label: "Net points per quarter" },
@@ -101,7 +102,7 @@ function TimeInFront({ flow }) {
   );
 }
 
-export default function AheadBehindView({ standings, seasonCode, resultsQuery, resultsByClub, gameFlowQuery }) {
+export default function AheadBehindView({ standings, seasonCode, shortNames, resultsQuery, resultsByClub, gameFlowQuery }) {
   const [view, setView] = useState("quarters");
 
   if (resultsQuery.isPending) return <AsyncState status="loading" label="Loading the quarter scores" />;
@@ -150,8 +151,8 @@ export default function AheadBehindView({ standings, seasonCode, resultsQuery, r
           {view === "quarters" ? (
             <Panel className="p-2">
               <PanelHeader kicker="QUARTERS" title="Who wins which quarter?" />
-              <div className="overflow-x-auto overscroll-x-contain">
-                <table className="table breakdown-table">
+              <ScrollingTable>
+                <table className="table breakdown-table pinned-table">
                   <thead>
                     <tr>
                       <th><HeaderTip tip="Position: rank in the standings">#</HeaderTip></th>
@@ -170,7 +171,7 @@ export default function AheadBehindView({ standings, seasonCode, resultsQuery, r
                           <PositionCell position={entry.basic?.position} qualified={entry.basic?.qualified} />
                         </td>
                         <td>
-                          <ClubCell entry={entry} seasonCode={seasonCode} />
+                          <ClubCell entry={entry} seasonCode={seasonCode} shortName={shortNames?.get(entry.clubCode)} />
                         </td>
                         {profile ? (
                           profile.quarters.map((value, index) => (
@@ -188,7 +189,7 @@ export default function AheadBehindView({ standings, seasonCode, resultsQuery, r
                     ))}
                   </AnimatedBody>
                 </table>
-              </div>
+              </ScrollingTable>
             </Panel>
           ) : (
             <Panel className="p-2">
@@ -238,17 +239,17 @@ export default function AheadBehindView({ standings, seasonCode, resultsQuery, r
             when a team leads or trails at half-time. The time figures come from play-by-play, so they exist only where it
             has been loaded.
           </p>
-          <div className="overflow-x-auto overscroll-x-contain">
-            <table className="table breakdown-table">
+          <ScrollingTable>
+            <table className="table breakdown-table pinned-table">
               <thead>
                 <tr>
                   <th><HeaderTip tip="Position: rank in the standings">#</HeaderTip></th>
                   <th>Team</th>
-                  <th className="group-start"><HeaderTip tip="Share of the game spent leading, tied and trailing">Time leading / tied / trailing</HeaderTip></th>
-                  <th><HeaderTip tip="Lead changes: times the lead swapped, per game">Lead changes</HeaderTip></th>
-                  <th><HeaderTip tip="Biggest lead: largest lead of the season, in points">Biggest lead</HeaderTip></th>
-                  <th className="group-start"><HeaderTip tip="Record when leading at half-time">Leading at half, won</HeaderTip></th>
-                  <th><HeaderTip tip="Record when trailing at half-time">Trailing at half, won</HeaderTip></th>
+                  <th className="group-start wrap-head"><HeaderTip tip="Lead changes: times the lead swapped, per game">Lead changes</HeaderTip></th>
+                  <th className="wrap-head"><HeaderTip tip="Biggest lead: largest lead of the season, in points">Biggest lead</HeaderTip></th>
+                  <th className="group-start wrap-head"><HeaderTip tip="Share of the game spent leading, tied and trailing">Time leading / tied / trailing</HeaderTip></th>
+                  <th className="group-start wrap-head"><HeaderTip tip="Record when leading at half-time">Leading at half, won</HeaderTip></th>
+                  <th className="wrap-head"><HeaderTip tip="Record when trailing at half-time">Trailing at half, won</HeaderTip></th>
                 </tr>
               </thead>
               <AnimatedBody>
@@ -260,13 +261,13 @@ export default function AheadBehindView({ standings, seasonCode, resultsQuery, r
                         <PositionCell position={entry.basic?.position} qualified={entry.basic?.qualified} />
                       </td>
                       <td>
-                        <ClubCell entry={entry} seasonCode={seasonCode} />
+                        <ClubCell entry={entry} seasonCode={seasonCode} shortName={shortNames?.get(entry.clubCode)} />
                       </td>
+                      <td className="group-start tabular-nums">{flow?.leadChangesPerGame != null ? flow.leadChangesPerGame.toFixed(1) : "—"}</td>
+                      <td className="tabular-nums">{flow?.largestLead ?? "—"}</td>
                       <td className="group-start">
                         {gameFlowQuery.isPending ? <span className="muted">…</span> : <TimeInFront flow={flow} />}
                       </td>
-                      <td className="tabular-nums">{flow?.leadChangesPerGame != null ? flow.leadChangesPerGame.toFixed(1) : "—"}</td>
-                      <td className="tabular-nums">{flow?.largestLead ?? "—"}</td>
                       <td className="group-start">
                         <RecordBar record={halfTime.lead} label="Leading at half-time" />
                       </td>
@@ -278,7 +279,7 @@ export default function AheadBehindView({ standings, seasonCode, resultsQuery, r
                 })}
               </AnimatedBody>
             </table>
-          </div>
+          </ScrollingTable>
         </Panel>
       </div>
     </div>

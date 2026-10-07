@@ -8,6 +8,7 @@ import MarginStrip from "./MarginStrip";
 import { AnimatedBody, AnimatedRow } from "./motionTable";
 import RecordBar from "./RecordBar";
 import { ClubCell, PositionCell } from "./standingsCells";
+import ScrollingTable from "./ScrollingTable";
 
 const EXPECTED_WIDTH = 340;
 const EXPECTED_HEIGHT = 26;
@@ -47,7 +48,7 @@ function ExpectedWins({ wins, expected, low, high, clubName }) {
   );
 }
 
-export default function MarginsView({ standings, seasonCode, resultsQuery, resultsByClub, netByClub }) {
+export default function MarginsView({ standings, seasonCode, shortNames, resultsQuery, resultsByClub, netByClub }) {
   if (resultsQuery.isPending) return <AsyncState status="loading" label="Loading margins" />;
   if (resultsQuery.isError) {
     return <AsyncState status="error" message="Could not load the margins." onRetry={() => resultsQuery.refetch()} />;
@@ -92,19 +93,19 @@ export default function MarginsView({ standings, seasonCode, resultsQuery, resul
         </p>
         <Panel className="p-2">
           <PanelHeader kicker="MARGINS" title="How big were the wins and losses?" />
-          <div className="overflow-x-auto overscroll-x-contain">
-            <table className="table breakdown-table">
+          <ScrollingTable>
+            <table className="table breakdown-table pinned-table">
               <thead>
                 <tr>
                   <th><HeaderTip tip="Position: rank in the standings">#</HeaderTip></th>
                   <th>Team</th>
-                  <th><HeaderTip tip="Margin of every game, oldest first: up is a win, down a loss">Season, game by game</HeaderTip></th>
-                  <th className="group-start"><HeaderTip tip="Average margin: points won or lost by, per game">Avg margin</HeaderTip></th>
-                  <th><HeaderTip tip="Average win margin: points won by, in wins">Avg win</HeaderTip></th>
-                  <th><HeaderTip tip="Average loss margin: points lost by, in losses">Avg loss</HeaderTip></th>
-                  <th><HeaderTip tip="Biggest win: largest winning margin">Biggest win</HeaderTip></th>
-                  <th><HeaderTip tip="Biggest loss: largest losing margin">Biggest loss</HeaderTip></th>
-                  <th><HeaderTip tip="Close games: record when decided by 3 points or fewer">Close (≤3)</HeaderTip></th>
+                  <th className="group-start wrap-head"><HeaderTip tip="Average margin: points won or lost by, per game">Avg margin</HeaderTip></th>
+                  <th className="wrap-head"><HeaderTip tip="Average win margin: points won by, in wins">Avg win</HeaderTip></th>
+                  <th className="wrap-head"><HeaderTip tip="Average loss margin: points lost by, in losses">Avg loss</HeaderTip></th>
+                  <th className="group-start"><HeaderTip tip="Margin of every game, oldest first: up is a win, down a loss">Season, game by game</HeaderTip></th>
+                  <th className="wrap-head"><HeaderTip tip="Biggest win: largest winning margin">Biggest win</HeaderTip></th>
+                  <th className="wrap-head"><HeaderTip tip="Biggest loss: largest losing margin">Biggest loss</HeaderTip></th>
+                  <th className="wrap-head"><HeaderTip tip="Close games: record when decided by 3 points or fewer">Close (≤3)</HeaderTip></th>
                 </tr>
               </thead>
               <AnimatedBody>
@@ -114,14 +115,14 @@ export default function MarginsView({ standings, seasonCode, resultsQuery, resul
                       <PositionCell position={entry.basic?.position} qualified={entry.basic?.qualified} />
                     </td>
                     <td>
-                      <ClubCell entry={entry} seasonCode={seasonCode} />
-                    </td>
-                    <td>
-                      <MarginStrip games={games} clubName={entry.clubName ?? entry.clubCode} maxMargin={maxMargin} />
+                      <ClubCell entry={entry} seasonCode={seasonCode} shortName={shortNames?.get(entry.clubCode)} />
                     </td>
                     <td className="group-start tabular-nums font-semibold">{stats ? formatSignedDecimal(stats.avgMargin) : "—"}</td>
                     <td className="tabular-nums">{stats ? formatSignedDecimal(stats.avgWin) : "—"}</td>
                     <td className="tabular-nums">{stats ? formatSignedDecimal(stats.avgLoss) : "—"}</td>
+                    <td className="group-start">
+                      <MarginStrip games={games} clubName={entry.clubName ?? entry.clubCode} maxMargin={maxMargin} />
+                    </td>
                     <td className="tabular-nums">{stats ? formatSignedDecimal(stats.biggestWin, 0) : "—"}</td>
                     <td className="tabular-nums">{stats ? formatSignedDecimal(stats.biggestLoss, 0) : "—"}</td>
                     <td title="Games decided by 3 points or fewer">{stats ? <RecordBar record={stats.close} label="Close games" /> : "—"}</td>
@@ -129,7 +130,7 @@ export default function MarginsView({ standings, seasonCode, resultsQuery, resul
                 ))}
               </AnimatedBody>
             </table>
-          </div>
+          </ScrollingTable>
         </Panel>
       </div>
 
@@ -138,17 +139,23 @@ export default function MarginsView({ standings, seasonCode, resultsQuery, resul
           <PanelHeader kicker="EXPECTED WINS" title="Did the results match the scoring?" />
           <p className="muted px-2 pb-2 text-sm">
             Given the points a team scored and allowed, how many games should it have won (the Pythagorean expectation,
-            also used by Cleaning the Glass and Basketball-Reference)? <strong>Filled dot = wins, hollow dot = expected
-            wins.</strong> A green link means it won more than its scoring suggests (strong in close games, or lucky); red
-            means fewer.
+            also used by Cleaning the Glass and Basketball-Reference)?{" "}
+            <span className="hidden sm:inline">
+              <strong>Filled dot = wins, hollow dot = expected wins.</strong> A green link means it won more than its
+              scoring suggests (strong in close games, or lucky); red means fewer.
+            </span>
+            <span className="sm:hidden">
+              <strong>Diff = wins minus expected wins.</strong> Green means it won more than its scoring suggests (strong
+              in close games, or lucky); red means fewer.
+            </span>
           </p>
-          <div className="overflow-x-auto overscroll-x-contain">
-            <table className="table breakdown-table">
+          <ScrollingTable>
+            <table className="table breakdown-table pinned-table">
               <thead>
                 <tr>
                   <th><HeaderTip tip="Position: rank in the standings">#</HeaderTip></th>
                   <th>Team</th>
-                  <th className="group-start">
+                  <th className="group-start hidden sm:table-cell">
                     <svg className="viz-svg" viewBox={`0 0 ${EXPECTED_WIDTH + 44} 16`} width={EXPECTED_WIDTH + 44} height="16" aria-hidden="true">
                       {axisTicks.map((value) => (
                         <text
@@ -165,6 +172,7 @@ export default function MarginsView({ standings, seasonCode, resultsQuery, resul
                   </th>
                   <th><HeaderTip tip="Wins: actual wins this season">Wins</HeaderTip></th>
                   <th><HeaderTip tip="Expected wins: wins the points scored and allowed suggest">Expected</HeaderTip></th>
+                  <th className="sm:hidden"><HeaderTip tip="Difference: wins minus expected wins. Green means more wins than the scoring suggests">Diff</HeaderTip></th>
                 </tr>
               </thead>
               <AnimatedBody>
@@ -174,18 +182,21 @@ export default function MarginsView({ standings, seasonCode, resultsQuery, resul
                       <PositionCell position={entry.basic?.position} qualified={entry.basic?.qualified} />
                     </td>
                     <td>
-                      <ClubCell entry={entry} seasonCode={seasonCode} />
+                      <ClubCell entry={entry} seasonCode={seasonCode} shortName={shortNames?.get(entry.clubCode)} />
                     </td>
-                    <td className="group-start">
+                    <td className="group-start hidden sm:table-cell">
                       <ExpectedWins wins={wins} expected={expected} low={low} high={high} clubName={entry.clubName ?? entry.clubCode} />
                     </td>
                     <td className="tabular-nums">{wins}</td>
                     <td className="tabular-nums">{formatDecimal(expected)}</td>
+                    <td className={`font-semibold tabular-nums sm:hidden ${wins - expected >= 0 ? "text-success" : "text-error"}`}>
+                      {formatSignedDecimal(wins - expected)}
+                    </td>
                   </AnimatedRow>
                 ))}
               </AnimatedBody>
             </table>
-          </div>
+          </ScrollingTable>
         </Panel>
       ) : null}
 
@@ -196,8 +207,8 @@ export default function MarginsView({ standings, seasonCode, resultsQuery, resul
           three-pointers, two-pointers or free throws than its opponent. Read a team against the league row at the bottom,
           which is the baseline.
         </p>
-        <div className="overflow-x-auto overscroll-x-contain">
-          <table className="table breakdown-table">
+        <ScrollingTable>
+          <table className="table breakdown-table pinned-table">
             <thead>
               <tr>
                 <th><HeaderTip tip="Position: rank in the standings">#</HeaderTip></th>
@@ -218,7 +229,7 @@ export default function MarginsView({ standings, seasonCode, resultsQuery, resul
                     <PositionCell position={entry.basic?.position} qualified={entry.basic?.qualified} />
                   </td>
                   <td>
-                    <ClubCell entry={entry} seasonCode={seasonCode} />
+                    <ClubCell entry={entry} seasonCode={seasonCode} shortName={shortNames?.get(entry.clubCode)} />
                   </td>
                   {CATEGORIES.map((category, index) => (
                     <td key={category.key} className={index === 0 ? "group-start" : undefined}>
@@ -238,7 +249,7 @@ export default function MarginsView({ standings, seasonCode, resultsQuery, resul
               </AnimatedRow>
             </AnimatedBody>
           </table>
-        </div>
+        </ScrollingTable>
       </Panel>
     </div>
   );

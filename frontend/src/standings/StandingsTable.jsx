@@ -3,6 +3,7 @@ import { formatCount, formatSignedDecimal, formatSignedDiff } from "../lib/forma
 import HeaderTip from "../lib/HeaderTip";
 import Panel from "../lib/Panel";
 import { AnimatedBody, AnimatedRow } from "./motionTable";
+import ScrollingTable from "./ScrollingTable";
 import AheadBehindView from "./AheadBehindView";
 import MarginsView from "./MarginsView";
 import StreaksFormView from "./StreaksFormView";
@@ -95,7 +96,7 @@ function OverviewTable({ standings, seasonCode, view, showTiers, netByClub, shor
   const columnCount = 14;
 
   return (
-    <table className="table standings-table">
+    <table className="table standings-table pinned-table">
       <thead>
         <tr>
           <th><HeaderTip tip="Position: rank in the standings">#</HeaderTip></th>
@@ -157,25 +158,6 @@ function OverviewTable({ standings, seasonCode, view, showTiers, netByClub, shor
   );
 }
 
-// Swiping this far (px) takes the team column from its name down to the crest. The CSS reads --collapse, 0 to 1, below sm.
-const COLLAPSE_DISTANCE = 36;
-
-// Reports how far the table has been swiped sideways as --collapse, so the pinned team column narrows with the finger.
-// It is written straight to the element: a React state update on every scroll event would re-render the whole table.
-function ScrollingTable({ children }) {
-  return (
-    <div
-      className="standings-scroll overflow-x-auto overscroll-x-contain"
-      onScroll={(event) => {
-        const box = event.currentTarget;
-        box.style.setProperty("--collapse", String(Math.min(1, box.scrollLeft / COLLAPSE_DISTANCE)));
-      }}
-    >
-      {children}
-    </div>
-  );
-}
-
 export default function StandingsTable({
   standings,
   seasonCode,
@@ -189,16 +171,17 @@ export default function StandingsTable({
   gameFlowQuery,
 }) {
   if (breakdown === "streaks") {
-    return <StreaksFormView standings={standings} seasonCode={seasonCode} resultsQuery={resultsQuery} resultsByClub={resultsByClub} />;
+    return <StreaksFormView standings={standings} seasonCode={seasonCode} shortNames={shortNames} resultsQuery={resultsQuery} resultsByClub={resultsByClub} />;
   }
   if (breakdown === "margins") {
-    return <MarginsView standings={standings} seasonCode={seasonCode} resultsQuery={resultsQuery} resultsByClub={resultsByClub} netByClub={netByClub} />;
+    return <MarginsView standings={standings} seasonCode={seasonCode} shortNames={shortNames} resultsQuery={resultsQuery} resultsByClub={resultsByClub} netByClub={netByClub} />;
   }
   if (breakdown === "aheadBehind") {
     return (
       <AheadBehindView
         standings={standings}
         seasonCode={seasonCode}
+        shortNames={shortNames}
         resultsQuery={resultsQuery}
         resultsByClub={resultsByClub}
         gameFlowQuery={gameFlowQuery}

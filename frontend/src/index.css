@@ -443,37 +443,35 @@ button {
   opacity: 0.6;
 }
 
-/* Standings table. Below xl it is wider than the screen, so the rank and the team stay pinned on the left while the stats
-   scroll behind them. Both pinned columns have an explicit width (--pin-rank, --pin-team) so the team column can pin right
-   after the rank. Below sm the scroll wrapper reports how far the table has been swiped as --collapse (0 to 1) and the team
-   column follows it: it narrows with the finger and the name fades out, leaving the crest, so the stats get the room. Cells
-   are tighter below sm, and the Q badge sits over the rank circle's corner there instead of taking width. */
-.standings-table {
+/* Standings tables (the Overview table and the breakdown tables). Below xl they are wider than the screen, so the rank and
+   the team stay pinned on the left while the stats scroll behind them. Both pinned columns have an explicit width
+   (--pin-rank, --pin-team) so the team column can pin right after the rank. Below sm the scroll wrapper reports how far the
+   table has been swiped as --collapse (0 to 1) and the team column follows it: it narrows with the finger and the name
+   fades out, leaving the crest, so the stats get the room. The Q badge sits over the rank circle's corner below sm instead
+   of taking width. `.pinned-table` is what both kinds share; `.standings-table` adds the Overview table's own cell sizes. */
+.pinned-table {
   --pin-rank: 2.25rem;
   /* 7.625rem with the name, 2.25rem with the crest alone (a difference of 5.375rem). */
   --pin-team: calc(7.625rem - var(--collapse, 0) * 5.375rem);
   --name-fade: calc(1 - var(--collapse, 0) * 1.6);
 }
-.standings-table thead th,
-.standings-table tbody tr:not(.tier-row) td {
-  padding-inline: 0.25rem;
-}
-.standings-table thead th:nth-child(-n + 2),
-.standings-table tbody tr:not(.tier-row) td:nth-child(-n + 2) {
+.pinned-table thead th:nth-child(-n + 2),
+.pinned-table tbody tr:not(.tier-row) td:nth-child(-n + 2) {
   position: sticky;
   z-index: 1;
   background-color: var(--color-base-100);
 }
-.standings-table thead th:first-child,
-.standings-table tbody tr:not(.tier-row) td:first-child {
+.pinned-table thead th:first-child,
+.pinned-table tbody tr:not(.tier-row) td:first-child {
   left: 0;
   z-index: 2;
   width: var(--pin-rank);
   min-width: var(--pin-rank);
   max-width: var(--pin-rank);
+  padding-inline: 0.25rem;
 }
-.standings-table thead th:nth-child(2),
-.standings-table tbody tr:not(.tier-row) td:nth-child(2) {
+.pinned-table thead th:nth-child(2),
+.pinned-table tbody tr:not(.tier-row) td:nth-child(2) {
   left: var(--pin-rank);
   width: var(--pin-team);
   min-width: var(--pin-team);
@@ -482,20 +480,42 @@ button {
   overflow: hidden;
   box-shadow: 1px 0 0 var(--color-base-300);
 }
-.standings-table tbody tr:not(.tier-row) td:nth-child(2) a {
+.pinned-table tbody tr:not(.tier-row) td:nth-child(2) a {
   gap: 0.375rem;
 }
-.standings-table tbody tr:not(.tier-row) td:nth-child(2) a img {
+.pinned-table tbody tr:not(.tier-row) td:nth-child(2) a img {
   width: 1.375rem;
   height: 1.375rem;
 }
 /* The name keeps the width it has at rest, so it is clipped by the narrowing cell and fades instead of re-wrapping. */
-.standings-table tbody tr:not(.tier-row) td:nth-child(2) a span {
+.pinned-table tbody tr:not(.tier-row) td:nth-child(2) a span {
   flex: none;
   width: 5.125rem;
   opacity: var(--name-fade);
 }
-/* Stat numbers are a touch smaller on a phone, so the four stats at rest are not crowded. */
+.pinned-table thead th:nth-child(2) {
+  color: color-mix(in srgb, currentColor max(0%, calc(var(--name-fade) * 100%)), transparent);
+}
+.pinned-table .position-cell {
+  position: relative;
+}
+.pinned-table .position-cell .badge {
+  position: absolute;
+  top: -0.3rem;
+  right: -0.35rem;
+  height: 0.8rem;
+  padding-inline: 0.2rem;
+  font-size: 0.55rem;
+}
+.pinned-table .rank {
+  width: 1.75rem;
+  height: 1.75rem;
+}
+/* The Overview table: tight stat cells and slightly smaller numbers on a phone, so four stats fit at rest. */
+.standings-table thead th,
+.standings-table tbody tr:not(.tier-row) td {
+  padding-inline: 0.25rem;
+}
 .standings-table thead th:nth-child(n + 3),
 .standings-table tbody tr:not(.tier-row) td:nth-child(n + 3) {
   font-size: 0.75rem;
@@ -505,24 +525,6 @@ button {
 .standings-table tbody tr:not(.tier-row) td:nth-child(4) {
   padding-left: 0.625rem;
 }
-.standings-table thead th:nth-child(2) {
-  color: color-mix(in srgb, currentColor max(0%, calc(var(--name-fade) * 100%)), transparent);
-}
-.standings-table .position-cell {
-  position: relative;
-}
-.standings-table .position-cell .badge {
-  position: absolute;
-  top: -0.3rem;
-  right: -0.35rem;
-  height: 0.8rem;
-  padding-inline: 0.2rem;
-  font-size: 0.55rem;
-}
-.standings-table .rank {
-  width: 1.75rem;
-  height: 1.75rem;
-}
 /* A tier heading's label stays in view while the table is scrolled sideways. */
 .tier-row td span {
   position: sticky;
@@ -530,36 +532,28 @@ button {
   display: inline-block;
 }
 @media (min-width: 40rem) {
-  .standings-table {
+  .pinned-table {
     --pin-rank: 5.5rem;
     --pin-team: 18rem;
-  }
-  /* No collapse from sm: the collapsed table would be narrower than its box, stop scrolling, and the column would jump. */
-  .standings-table {
+    /* No collapse from sm: the collapsed table would be narrower than its box, stop scrolling, and the column would jump. */
     --name-fade: 1;
   }
-  .standings-table tbody tr:not(.tier-row) td:nth-child(2) a span {
+  .pinned-table tbody tr:not(.tier-row) td:nth-child(2) a span {
     flex: 0 1 auto;
     width: auto;
   }
-  .standings-table thead th:nth-child(n + 3),
-  .standings-table tbody tr:not(.tier-row) td:nth-child(n + 3) {
-    font-size: 0.875rem;
+  .pinned-table thead th:nth-child(-n + 2),
+  .pinned-table tbody tr:not(.tier-row) td:nth-child(-n + 2) {
+    padding-inline: 0.6rem;
   }
-  .standings-table thead th,
-  .standings-table tbody tr:not(.tier-row) td,
-  .standings-table thead th:nth-child(2),
-  .standings-table tbody tr:not(.tier-row) td:nth-child(2) {
-    padding-inline: 1rem;
-  }
-  .standings-table tbody tr:not(.tier-row) td:nth-child(2) a {
+  .pinned-table tbody tr:not(.tier-row) td:nth-child(2) a {
     gap: 0.5rem;
   }
-  .standings-table tbody tr:not(.tier-row) td:nth-child(2) a img {
+  .pinned-table tbody tr:not(.tier-row) td:nth-child(2) a img {
     width: 1.5rem;
     height: 1.5rem;
   }
-  .standings-table .position-cell .badge {
+  .pinned-table .position-cell .badge {
     position: revert-layer;
     top: revert-layer;
     right: revert-layer;
@@ -567,20 +561,29 @@ button {
     padding-inline: revert-layer;
     font-size: revert-layer;
   }
-}
-@media (min-width: 80rem) {
+  .standings-table thead th:nth-child(n + 3),
+  .standings-table tbody tr:not(.tier-row) td:nth-child(n + 3) {
+    font-size: 0.875rem;
+  }
+  .standings-table thead th,
+  .standings-table tbody tr:not(.tier-row) td,
   .standings-table thead th:nth-child(-n + 2),
   .standings-table tbody tr:not(.tier-row) td:nth-child(-n + 2) {
+    padding-inline: 1rem;
+  }
+}
+@media (min-width: 80rem) {
+  .pinned-table thead th:nth-child(-n + 2),
+  .pinned-table tbody tr:not(.tier-row) td:nth-child(-n + 2) {
     position: static;
     z-index: auto;
     background-color: transparent;
     box-shadow: none;
-    transition: none;
   }
-  .standings-table thead th:first-child,
-  .standings-table tbody tr:not(.tier-row) td:first-child,
-  .standings-table thead th:nth-child(2),
-  .standings-table tbody tr:not(.tier-row) td:nth-child(2) {
+  .pinned-table thead th:first-child,
+  .pinned-table tbody tr:not(.tier-row) td:first-child,
+  .pinned-table thead th:nth-child(2),
+  .pinned-table tbody tr:not(.tier-row) td:nth-child(2) {
     width: auto;
     min-width: 0;
     max-width: none;
@@ -1522,6 +1525,11 @@ button {
   border-left: 1px solid var(--color-base-300);
 }
 
+/* A short header may wrap to two lines instead of setting the column width ("Biggest" over "win"). */
+.breakdown-table .wrap-head {
+  white-space: normal;
+  line-height: 1.15;
+}
 .breakdown-legend {
   display: flex;
   flex-wrap: wrap;
@@ -1569,13 +1577,31 @@ button {
 .results-ribbon {
   display: flex;
   gap: 1px;
-  min-width: 12rem;
+  width: 11.5rem;
 }
 .ribbon-dot {
-  flex: none;
-  width: 6px;
+  flex: 1 1 0;
+  min-width: 0;
   height: 16px;
   border-radius: 2px;
+}
+/* Below sm the bars share a fixed width, so a whole season fits on the screen next to the pinned columns. */
+.margin-strip {
+  max-width: 11.5rem;
+  height: auto;
+}
+@media (min-width: 40rem) {
+  .results-ribbon {
+    width: auto;
+    min-width: 12rem;
+  }
+  .ribbon-dot {
+    flex: none;
+    width: 6px;
+  }
+  .margin-strip {
+    max-width: none;
+  }
 }
 .ribbon-dot.is-win {
   background: var(--win-4);
@@ -1649,23 +1675,6 @@ button {
 .shape-card svg { width: 100%; height: auto; }
 
 .state-bar-text b { font-weight: 800; }
-
-/* narrow screens: the tables scroll sideways, so pin the team name; on phones also drop the rank column */
-@media (max-width: 1100px) {
-  .breakdown-table th:nth-child(2),
-  .breakdown-table td:nth-child(2) {
-    position: sticky;
-    left: 0;
-    z-index: 1;
-    background-color: var(--color-base-100);
-  }
-}
-@media (max-width: 720px) {
-  .breakdown-table th:first-child,
-  .breakdown-table td:first-child {
-    display: none;
-  }
-}
 
 /* hover tips for column headers (lib/HeaderTip.jsx) */
 .header-tip-label {

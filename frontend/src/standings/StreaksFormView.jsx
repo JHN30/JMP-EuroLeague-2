@@ -6,6 +6,7 @@ import { derivedFigures } from "./breakdownUtils";
 import { AnimatedBody, AnimatedRow } from "./motionTable";
 import RecordBar from "./RecordBar";
 import { ClubCell, PositionCell } from "./standingsCells";
+import ScrollingTable from "./ScrollingTable";
 
 function ResultsRibbon({ games, clubName }) {
   if (!games || games.length === 0) return <span className="muted">—</span>;
@@ -29,7 +30,7 @@ function ResultsRibbon({ games, clubName }) {
   );
 }
 
-export default function StreaksFormView({ standings, seasonCode, resultsQuery, resultsByClub }) {
+export default function StreaksFormView({ standings, seasonCode, shortNames, resultsQuery, resultsByClub }) {
   return (
     <div className="breakdown-vis">
       <p className="breakdown-legend">
@@ -47,8 +48,8 @@ export default function StreaksFormView({ standings, seasonCode, resultsQuery, r
         </span>
       </p>
       <Panel className="p-2">
-        <div className="overflow-x-auto overscroll-x-contain">
-          <table className="table breakdown-table">
+        <ScrollingTable>
+          <table className="table breakdown-table pinned-table">
             <thead>
               <tr>
                 <th><HeaderTip tip="Position: rank in the standings">#</HeaderTip></th>
@@ -56,8 +57,8 @@ export default function StreaksFormView({ standings, seasonCode, resultsQuery, r
                 <th><HeaderTip tip="Home record: wins and losses at home">Home</HeaderTip></th>
                 <th><HeaderTip tip="Away record: wins and losses on the road">Away</HeaderTip></th>
                 <th><HeaderTip tip="Last 10: record in the last 10 games">Last 10</HeaderTip></th>
-                <th><HeaderTip tip="Longest winning streak: most wins in a row this season">Longest W</HeaderTip></th>
-                <th><HeaderTip tip="Longest losing streak: most losses in a row this season">Longest L</HeaderTip></th>
+                <th className="wrap-head"><HeaderTip tip="Longest winning streak: most wins in a row this season">W streak</HeaderTip></th>
+                <th className="wrap-head"><HeaderTip tip="Longest losing streak: most losses in a row this season">L streak</HeaderTip></th>
                 <th className="group-start"><HeaderTip tip="Every game, oldest first: green is a win, red a loss">Season, game by game</HeaderTip></th>
               </tr>
             </thead>
@@ -71,7 +72,7 @@ export default function StreaksFormView({ standings, seasonCode, resultsQuery, r
                     <PositionCell position={entry.basic?.position} qualified={entry.basic?.qualified} />
                   </td>
                   <td>
-                    <ClubCell entry={entry} seasonCode={seasonCode} />
+                    <ClubCell entry={entry} seasonCode={seasonCode} shortName={shortNames?.get(entry.clubCode)} />
                   </td>
                   <td>
                     <RecordBar record={entry.basic?.homeRecord} label="Home" />
@@ -97,7 +98,7 @@ export default function StreaksFormView({ standings, seasonCode, resultsQuery, r
               })}
             </AnimatedBody>
           </table>
-        </div>
+        </ScrollingTable>
       </Panel>
       {resultsQuery.isError ? <p className="muted mt-2 text-sm">Could not load the game results for the ribbon.</p> : null}
     </div>

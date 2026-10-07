@@ -16,8 +16,10 @@ async function openAdvanced(page, season, view = "Overview") {
   await pickView(page, view);
 }
 
+// Below 640px the views are a select, from it a tab strip.
 async function pickView(page, view) {
-  await page.getByRole("tablist", { name: "Advanced standings view" }).getByRole("tab", { name: view }).click();
+  if (page.viewportSize().width < 640) await page.getByRole("combobox", { name: "View" }).selectOption({ label: view });
+  else await page.getByRole("tablist", { name: "Advanced standings view" }).getByRole("tab", { name: view }).click();
   await expect(page.locator("#advanced-standings-panel table").first()).toBeVisible({ timeout: 30_000 });
 }
 
@@ -204,9 +206,9 @@ test("the controls and notes stay inside the screen on a phone", async ({ page }
   await atWidths(page, [320, 390], async (width) => {
     expect(await findPageOverflow(page)).toMatchObject({ offenders: [] });
     for (const locator of [
-      page.getByRole("tablist", { name: "Advanced standings scope" }),
-      page.getByRole("tablist", { name: "Advanced standings view" }),
-      page.getByRole("combobox").first(),
+      page.getByRole("combobox", { name: "Scope" }),
+      page.getByRole("combobox", { name: "Round" }),
+      page.getByRole("combobox", { name: "View" }),
     ]) {
       const box = await locator.boundingBox();
       expect(box.x).toBeGreaterThanOrEqual(0);

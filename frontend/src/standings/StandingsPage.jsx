@@ -14,6 +14,7 @@ import { resultsByClub } from "./breakdownUtils";
 import StandingsKpiStrip from "./StandingsKpiStrip";
 import StandingsTable from "./StandingsTable";
 import RaceView from "./RaceView";
+import ViewSelect from "../lib/ViewSelect";
 import AdvancedStandingsView from "./AdvancedStandingsView";
 
 const VIEW_TABS = [
@@ -35,6 +36,9 @@ const BREAKDOWN_TABS = [
   { key: "margins", label: "Winning margins" },
   { key: "aheadBehind", label: "Ahead/behind" },
 ];
+
+// The phone's View select: the view tabs, then the breakdowns after the overview.
+const PHONE_VIEW_OPTIONS = [...VIEW_TABS, ...BREAKDOWN_TABS.filter((tab) => tab.key !== "overview")];
 
 export default function StandingsPage() {
   useDocumentTitle("Standings");
@@ -177,7 +181,23 @@ export default function StandingsPage() {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.3, ease: EASE_OUT }}
               >
-                <div className="flex flex-wrap items-center gap-3">
+                {/* Below sm the four views and the three breakdowns are one list in one select (the view tabs were already hidden
+                    whenever a breakdown was chosen, so they never applied together). */}
+                <ViewSelect
+                  className="sm:hidden"
+                  label="View"
+                  value={breakdown === "overview" ? view : breakdown}
+                  options={PHONE_VIEW_OPTIONS}
+                  onChange={(key) => {
+                    if (VIEW_TABS.some((tab) => tab.key === key)) {
+                      setBreakdown("overview");
+                      setView(key);
+                    } else {
+                      setBreakdown(key);
+                    }
+                  }}
+                />
+                <div className="hidden flex-wrap items-center gap-3 sm:flex">
                   {breakdown === "overview" ? (
                     <TabStrip
                       ariaLabel="Standings view"
@@ -188,7 +208,7 @@ export default function StandingsPage() {
                       tabs={VIEW_TABS}
                     />
                   ) : null}
-                  <label className="flex items-center gap-2 text-xs text-base-content/70">
+                  <label className="ms-2 flex items-center gap-2 text-xs text-base-content/70">
                     Breakdown
                     <select
                       className="select select-sm select-bordered"

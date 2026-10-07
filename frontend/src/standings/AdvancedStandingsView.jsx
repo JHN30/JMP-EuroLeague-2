@@ -8,6 +8,7 @@ import { formatDecimal, formatFractionPercent, formatRound, formatSignedDecimal 
 import HeaderTip from "../lib/HeaderTip";
 import Panel from "../lib/Panel";
 import PanelHeader from "../lib/PanelHeader";
+import ViewSelect from "../lib/ViewSelect";
 import { TabPanel, TabStrip } from "../lib/TabStrip";
 import AdvancedExplainedView from "./AdvancedExplainedView";
 import { HomeAwayLink, NetBar, RatingsScatter } from "./advancedVisuals";
@@ -270,6 +271,10 @@ export default function AdvancedStandingsView({ seasonCode, shortNames }) {
   if (standings.length === 0) return <EmptyText>Advanced standings not available yet for this season.</EmptyText>;
 
   const view = VIEWS.find((candidate) => candidate.key === viewKey) ?? VIEWS[0];
+  const roundOptions = rounds.map((roundNumber) => ({
+    key: String(roundNumber),
+    label: `${formatRound(roundNumber)}${roundNumber === rounds[rounds.length - 1] ? " (latest)" : ""}`,
+  }));
 
   // Figures shared by every row of the table: the Net bar scale, the home and away scale, and each club's rank in the
   // columns that are shaded by rank.
@@ -298,7 +303,20 @@ export default function AdvancedStandingsView({ seasonCode, shortNames }) {
 
   return (
     <div className="breakdown-vis flex flex-col gap-3">
-      <div className="flex flex-wrap items-center gap-3">
+      {/* Below sm the scope, the round and the view are selects: Scope and Round side by side, then View. From sm they are
+          the tab strips and the Round select. */}
+      <div className="grid grid-cols-2 gap-3 sm:hidden">
+        <ViewSelect
+          label="Scope"
+          value={activeScope}
+          options={scopes.map((code) => ({ key: code, label: SCOPE_LABELS[code] ?? code }))}
+          onChange={changeScope}
+        />
+        <ViewSelect label="Round" value={String(query.data.round)} options={roundOptions} onChange={(key) => setRound(Number(key))} />
+      </div>
+      <ViewSelect className="sm:hidden" label="View" value={view.key} options={VIEW_TABS} onChange={setViewKey} />
+
+      <div className="hidden flex-wrap items-center gap-3 sm:flex">
         <TabStrip
           ariaLabel="Advanced standings scope"
           panelId="advanced-standings-panel"
@@ -307,7 +325,7 @@ export default function AdvancedStandingsView({ seasonCode, shortNames }) {
           className="w-fit"
           tabs={scopes.map((code) => ({ key: code, label: SCOPE_LABELS[code] ?? code }))}
         />
-        <label className="flex items-center gap-2 text-xs text-base-content/70">
+        <label className="ms-2 flex items-center gap-2 text-xs text-base-content/70">
           Round
           <select
             className="select select-sm select-bordered"
@@ -329,7 +347,7 @@ export default function AdvancedStandingsView({ seasonCode, shortNames }) {
         panelId="advanced-standings-panel"
         activeKey={view.key}
         onChange={setViewKey}
-        className="w-fit"
+        className="hidden w-fit sm:flex"
         tabs={VIEW_TABS}
       />
 

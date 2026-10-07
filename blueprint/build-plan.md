@@ -163,6 +163,7 @@ Scaffolding, shared layout, design tokens, database connection setup, and deploy
     - [x] 31d-iii. **Race** - The race chart, playback controls, round picker, snapshot table and insight cards.
     - [x] 31d-iv. **Advanced standings** - Overview, Ratings (with the scatter), Four factors, Schedule and Splits.
     - [x] 31d-v. **Advanced Explained** - The Explained view's long explainer and its visuals.
+    - [x] 31d-vi. **View controls on phones** - Below 640px the Standings Table tab gets one View select (Overall, Home, Away, Last 10, Streaks and form, Winning margins, Ahead/behind) instead of the view tabs plus the Breakdown select, and the Advanced tab gets one View select (Overview, Ratings, Four factors, Schedule, Splits, Explained) with Scope and Round on one row; the Round and Breakdown labels line up with the tab text. From 640px the tabs and selects are as today.
   - [ ] 31e. **Games list** - Mobile and tablet layouts for `/:season/games`, checked at 320, 390, 768 and 1024px and added to the overflow spec.
   - [ ] 31f. **Game detail** - Mobile and tablet layouts for `/:season/games/:gameCode` and all its tabs, checked at 320, 390, 768 and 1024px and added to the overflow spec.
   - [ ] 31g. **Teams** - Mobile and tablet layouts for `/:season/teams`, checked at 320, 390, 768 and 1024px and added to the overflow spec.

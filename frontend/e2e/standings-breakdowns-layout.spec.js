@@ -21,6 +21,12 @@ async function openBreakdown(page, season, label) {
   await expect(page.locator("main table.breakdown-table").first()).toBeVisible({ timeout: 30_000 });
 }
 
+// Below 640px the breakdowns are options of the View select, from it of the Breakdown select.
+async function pickBreakdown(page, label) {
+  const name = page.viewportSize().width < 640 ? "View" : "Breakdown";
+  await page.getByRole("combobox", { name }).selectOption({ label });
+}
+
 async function atWidths(page, widths, check) {
   for (const width of widths) {
     await test.step(`${width}px`, async () => {
@@ -213,14 +219,14 @@ test("the season strips and bars fit between the pinned crest and the edge on a 
     await expect(expected.locator("thead th", { hasText: "Diff" })).toBeHidden();
   });
 
-  await page.getByRole("combobox", { name: "Breakdown" }).selectOption({ label: "Streaks and form" });
+  await pickBreakdown(page, "Streaks and form");
   await expect(tables(page).first().locator(".results-ribbon").first()).toBeVisible();
   await atWidths(page, [320, 390], async () => {
     const ribbon = await columnFits(".results-ribbon");
     expect(ribbon.width).toBeLessThanOrEqual(ribbon.room);
   });
 
-  await page.getByRole("combobox", { name: "Breakdown" }).selectOption({ label: "Ahead/behind" });
+  await pickBreakdown(page, "Ahead/behind");
   await page.getByRole("tab", { name: "Net points per quarter" }).click();
   await expect(tables(page).first()).toBeVisible();
 });

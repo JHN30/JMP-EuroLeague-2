@@ -38,7 +38,7 @@ export function HomeAwayLink({ away, home, low, high, clubName }) {
   const y = height / 2;
   return (
     <svg
-      className="viz-svg"
+      className="viz-svg home-away-link"
       viewBox={`0 0 ${width} ${height}`}
       width={width}
       height={height}
@@ -76,6 +76,7 @@ function tickValues(low, high, maxCount) {
 
 const MARGIN = { top: 22, right: 22, bottom: 50, left: 54 };
 const CREST = 13;
+const CREST_SMALL = 9;
 const GRID = "color-mix(in srgb, var(--color-base-content) 14%, transparent)";
 const LINE = "color-mix(in srgb, var(--color-base-content) 55%, transparent)";
 const ISO = "color-mix(in srgb, var(--color-base-content) 18%, transparent)";
@@ -99,6 +100,8 @@ export function RatingsScatter({ entries }) {
   const meanDefense = clubs.reduce((sum, entry) => sum + entry.defensiveRating, 0) / clubs.length;
 
   const compact = width > 0 && width < 560;
+  // On a phone the crests are smaller, so a cluster of clubs overlaps less.
+  const CREST_R = width > 0 && width < 400 ? CREST_SMALL : CREST;
   const height = width > 0 ? Math.round(Math.min(560, Math.max(380, width * 0.68))) : 0;
   const plotWidth = Math.max(0, width - MARGIN.left - MARGIN.right);
   const plotHeight = height - MARGIN.top - MARGIN.bottom;
@@ -127,7 +130,7 @@ export function RatingsScatter({ entries }) {
               <rect x={MARGIN.left} y={MARGIN.top} width={plotWidth} height={plotHeight} />
             </clipPath>
             <clipPath id={`crest-${clipId}`}>
-              <circle r={CREST - 2} />
+              <circle r={CREST_R - 2} />
             </clipPath>
           </defs>
 
@@ -207,7 +210,7 @@ export function RatingsScatter({ entries }) {
                   transition={{ duration: 0.3, delay: isHovered ? 0 : 0.05 + index * 0.025, ease: EASE_OUT }}
                 >
                   <circle
-                    r={CREST}
+                    r={CREST_R}
                     style={{
                       fill: "var(--color-base-100)",
                       stroke: isHovered ? "var(--color-primary)" : "color-mix(in srgb, var(--color-base-content) 35%, transparent)",
@@ -217,10 +220,10 @@ export function RatingsScatter({ entries }) {
                   {entry.crestUrl ? (
                     <image
                       href={entry.crestUrl}
-                      x={-(CREST - 2)}
-                      y={-(CREST - 2)}
-                      width={(CREST - 2) * 2}
-                      height={(CREST - 2) * 2}
+                      x={-(CREST_R - 2)}
+                      y={-(CREST_R - 2)}
+                      width={(CREST_R - 2) * 2}
+                      height={(CREST_R - 2) * 2}
                       preserveAspectRatio="xMidYMid meet"
                       clipPath={`url(#crest-${clipId})`}
                     />
@@ -240,8 +243,8 @@ export function RatingsScatter({ entries }) {
             const boxWidth = Math.max(name.length, detail.length) * 6 + 16;
             const cx = Math.min(Math.max(x(hoveredEntry.offensiveRating), MARGIN.left + boxWidth / 2), width - MARGIN.right - boxWidth / 2);
             const cy = y(hoveredEntry.defensiveRating);
-            const above = cy - CREST - 50 > MARGIN.top;
-            const top = above ? cy - CREST - 48 : cy + CREST + 8;
+            const above = cy - CREST_R - 50 > MARGIN.top;
+            const top = above ? cy - CREST_R - 48 : cy + CREST_R + 8;
             return (
               <g pointerEvents="none">
                 <rect x={cx - boxWidth / 2} y={top} width={boxWidth} height={38} rx={6} style={{ fill: "var(--color-neutral)", opacity: 0.96 }} />

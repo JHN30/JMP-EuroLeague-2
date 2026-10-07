@@ -572,18 +572,38 @@ button {
     padding-inline: 1rem;
   }
 }
+/* From xl the tables fit their box and nothing is pinned. A table that is still wider than its box at xl (the Advanced
+   Splits view, 1,284px wide) keeps its pinning until it fits, from 86rem. */
 @media (min-width: 80rem) {
-  .pinned-table thead th:nth-child(-n + 2),
-  .pinned-table tbody tr:not(.tier-row) td:nth-child(-n + 2) {
+  .pinned-table:not(.pin-wide) thead th:nth-child(-n + 2),
+  .pinned-table:not(.pin-wide) tbody tr:not(.tier-row) td:nth-child(-n + 2) {
     position: static;
     z-index: auto;
     background-color: transparent;
     box-shadow: none;
   }
-  .pinned-table thead th:first-child,
-  .pinned-table tbody tr:not(.tier-row) td:first-child,
-  .pinned-table thead th:nth-child(2),
-  .pinned-table tbody tr:not(.tier-row) td:nth-child(2) {
+  .pinned-table:not(.pin-wide) thead th:first-child,
+  .pinned-table:not(.pin-wide) tbody tr:not(.tier-row) td:first-child,
+  .pinned-table:not(.pin-wide) thead th:nth-child(2),
+  .pinned-table:not(.pin-wide) tbody tr:not(.tier-row) td:nth-child(2) {
+    width: auto;
+    min-width: 0;
+    max-width: none;
+    overflow: visible;
+  }
+}
+@media (min-width: 86rem) {
+  .pinned-table.pin-wide thead th:nth-child(-n + 2),
+  .pinned-table.pin-wide tbody tr:not(.tier-row) td:nth-child(-n + 2) {
+    position: static;
+    z-index: auto;
+    background-color: transparent;
+    box-shadow: none;
+  }
+  .pinned-table.pin-wide thead th:first-child,
+  .pinned-table.pin-wide tbody tr:not(.tier-row) td:first-child,
+  .pinned-table.pin-wide thead th:nth-child(2),
+  .pinned-table.pin-wide tbody tr:not(.tier-row) td:nth-child(2) {
     width: auto;
     min-width: 0;
     max-width: none;
@@ -1605,7 +1625,8 @@ button {
   border-radius: 2px;
 }
 /* Below sm the bars share a fixed width, so a whole season fits on the screen next to the pinned columns. */
-.margin-strip {
+.margin-strip,
+.home-away-link {
   max-width: 11.5rem;
   height: auto;
 }
@@ -1618,7 +1639,8 @@ button {
     flex: none;
     width: 6px;
   }
-  .margin-strip {
+  .margin-strip,
+  .home-away-link {
     max-width: none;
   }
 }

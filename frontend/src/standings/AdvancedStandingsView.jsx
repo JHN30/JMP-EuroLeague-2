@@ -12,6 +12,7 @@ import { TabPanel, TabStrip } from "../lib/TabStrip";
 import AdvancedExplainedView from "./AdvancedExplainedView";
 import { HomeAwayLink, NetBar, RatingsScatter } from "./advancedVisuals";
 import { AnimatedBody, AnimatedRow } from "./motionTable";
+import ScrollingTable from "./ScrollingTable";
 import { ClubCell } from "./standingsCells";
 
 const SCOPE_LABELS = { RS: "Regular season", all: "All games", PS: "Postseason" };
@@ -199,8 +200,21 @@ const VIEWS = [
       {
         label: "Home and away",
         columns: [
+          { label: "Home W-L", tip: "Record at home", value: record("homeGames", "homeWins") },
+          { label: "Away W-L", tip: "Record on the road", value: record("awayGames", "awayWins") },
+          { label: "Home Net", tip: "Net rating at home", value: signed("homeNetRating") },
+          { label: "Away Net", tip: "Net rating on the road", value: signed("awayNetRating") },
+          {
+            label: "Home adv",
+            tip: "Home advantage: home net rating minus away net rating",
+            value: (entry) =>
+              isNumber(entry.homeNetRating) && isNumber(entry.awayNetRating) ? formatSignedDecimal(entry.homeNetRating - entry.awayNetRating) : "—",
+            strong: true,
+          },
           {
             label: "Away → Home net",
+            // The dot chart is for wider screens; below sm the same figures are the numbers beside it.
+            wideOnly: true,
             tip: "Net rating away (hollow dot) to net rating at home (filled dot)",
             render: (entry, context) => (
               <HomeAwayLink
@@ -212,17 +226,6 @@ const VIEWS = [
               />
             ),
           },
-          {
-            label: "Home adv",
-            tip: "Home advantage: home net rating minus away net rating",
-            value: (entry) =>
-              isNumber(entry.homeNetRating) && isNumber(entry.awayNetRating) ? formatSignedDecimal(entry.homeNetRating - entry.awayNetRating) : "—",
-            strong: true,
-          },
-          { label: "Home W-L", tip: "Record at home", value: record("homeGames", "homeWins") },
-          { label: "Home Net", tip: "Net rating at home", value: signed("homeNetRating") },
-          { label: "Away W-L", tip: "Record on the road", value: record("awayGames", "awayWins") },
-          { label: "Away Net", tip: "Net rating on the road", value: signed("awayNetRating") },
         ],
       },
       {
@@ -246,7 +249,7 @@ const VIEWS = [
 
 const VIEW_TABS = VIEWS.map(({ key, label }) => ({ key, label }));
 
-export default function AdvancedStandingsView({ seasonCode }) {
+export default function AdvancedStandingsView({ seasonCode, shortNames }) {
   const [scope, setScope] = useState(null);
   const [round, setRound] = useState(null);
   const [viewKey, setViewKey] = useState("overview");
@@ -353,17 +356,31 @@ export default function AdvancedStandingsView({ seasonCode }) {
                 opponents, not to have played each other, which usually happens within the first few rounds.
               </p>
             ) : null}
-            <div className="overflow-x-auto overscroll-x-contain">
-              <table className="table breakdown-table">
+            <ScrollingTable>
+              <table className={`table breakdown-table pinned-table${view.key === "splits" ? " pin-wide" : ""}`}>
                 <thead>
                   {labelled ? (
                     <tr>
-                      <th colSpan={2} />
-                      {view.groups.map((group) => (
-                        <th key={group.label} colSpan={group.columns.length} className="group-start text-center">
-                          {group.label}
-                        </th>
-                      ))}
+                      <th />
+                      <th />
+                      {view.groups.flatMap((group) => {
+                        const phoneColumns = group.columns.filter((column) => !column.wideOnly).length;
+                        // A column that is hidden on a phone is not in the grid there, so the group needs a span for each size.
+                        return phoneColumns === group.columns.length
+                          ? [
+                              <th key={group.label} colSpan={group.columns.length} className="group-start text-center">
+                                {group.label}
+                              </th>,
+                            ]
+                          : [
+                              <th key={`${group.label}-phone`} colSpan={phoneColumns} className="group-start text-center sm:hidden">
+                                {group.label}
+                              </th>,
+                              <th key={group.label} colSpan={group.columns.length} className="group-start hidden text-center sm:table-cell">
+                                {group.label}
+                              </th>,
+                            ];
+                      })}
                     </tr>
                   ) : null}
                   <tr>
@@ -373,8 +390,19 @@ export default function AdvancedStandingsView({ seasonCode }) {
                     <th>Team</th>
                     {view.groups.flatMap((group, groupIndex) =>
                       group.columns.map((column, columnIndex) => (
-                        <th key={`${groupIndex}-${column.label}`} className={columnIndex === 0 ? "group-start" : undefined}>
-                          <HeaderTip tip={column.tip}>{column.label}</HeaderTip>
+                        <th
+                          key={`${groupIndex}-${column.label}`}
+                          className={`wrap-head${columnIndex === 0 ? " group-start" : ""}${column.wideOnly ? " hidden sm:table-cell" : ""}`}
+                        >
+                          <HeaderTip tip={column.tip}>
+                            {/* A label breaks between words, never inside one ("W-L" at its hyphen). */}
+                            {column.label.split(" ").map((word, wordIndex) => (
+                              <span key={wordIndex} className="whitespace-nowrap">
+                                {wordIndex > 0 ? " " : ""}
+                                {word}
+                              </span>
+                            ))}
+                          </HeaderTip>
                         </th>
                       )),
                     )}
@@ -387,7 +415,7 @@ export default function AdvancedStandingsView({ seasonCode }) {
                         <span className="rank">{index + 1}</span>
                       </td>
                       <td>
-                        <ClubCell entry={entry} seasonCode={seasonCode} />
+                        <ClubCell entry={entry} seasonCode={seasonCode} shortName={shortNames?.get(entry.clubCode)} />
                       </td>
                       {view.groups.flatMap((group, groupIndex) =>
                         group.columns.map((column, columnIndex) => {
@@ -396,7 +424,7 @@ export default function AdvancedStandingsView({ seasonCode }) {
                           return (
                             <td
                               key={`${groupIndex}-${column.label}`}
-                              className={`tabular-nums${columnIndex === 0 ? " group-start" : ""}${column.strong ? " font-semibold" : ""}${column.shade ? " text-center font-semibold" : ""}`}
+                              className={`whitespace-nowrap tabular-nums${columnIndex === 0 ? " group-start" : ""}${column.strong ? " font-semibold" : ""}${column.shade ? " text-center font-semibold" : ""}${column.wideOnly ? " hidden sm:table-cell" : ""}`}
                               style={style}
                               title={placed ? `Rank ${placed.rank} of ${placed.total}` : undefined}
                             >
@@ -409,7 +437,7 @@ export default function AdvancedStandingsView({ seasonCode }) {
                   ))}
                 </AnimatedBody>
               </table>
-            </div>
+            </ScrollingTable>
             <p className="px-1 py-2 text-xs text-base-content/70">
               Ordered by net rating. Values are cumulative through the selected round. Ratings are per 100 possessions.
             </p>

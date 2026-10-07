@@ -161,7 +161,7 @@ Scaffolding, shared layout, design tokens, database connection setup, and deploy
     - [x] 31d-i. **Table and KPI strip** - Overall, Home, Away and Last 10: a table that shows the record at 320px with the rank and team pinned on the left (a short team name below `sm`) and the other columns reachable by swiping, the KPI strip without the letter-by-letter stacking (two columns below `lg`, compact cards, on its own modifier class so Head-to-head keeps its strip until 31l), and the phase, view and breakdown controls fitting 320px.
     - [x] 31d-ii. **Breakdowns** - Streaks and form, Winning margins and Ahead/behind: the three breakdown tables and their legends at 320px, and the 720 and 1100px table rules move to the two breaks.
     - [x] 31d-iii. **Race** - The race chart, playback controls, round picker, snapshot table and insight cards.
-    - [ ] 31d-iv. **Advanced standings** - Overview, Ratings (with the scatter), Four factors, Schedule and Splits.
+    - [x] 31d-iv. **Advanced standings** - Overview, Ratings (with the scatter), Four factors, Schedule and Splits.
     - [ ] 31d-v. **Advanced Explained** - The Explained view's long explainer and its visuals.
   - [ ] 31e. **Games list** - Mobile and tablet layouts for `/:season/games`, checked at 320, 390, 768 and 1024px and added to the overflow spec.
   - [ ] 31f. **Game detail** - Mobile and tablet layouts for `/:season/games/:gameCode` and all its tabs, checked at 320, 390, 768 and 1024px and added to the overflow spec.

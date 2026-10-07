@@ -158,7 +158,7 @@ export default function StandingsPage() {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.3, ease: EASE_OUT }}
               >
-                <AdvancedStandingsView key={seasonCode} seasonCode={seasonCode} />
+                <AdvancedStandingsView key={seasonCode} seasonCode={seasonCode} shortNames={shortNames} />
               </motion.div>
             ) : mode === "race" ? (
               <RaceView

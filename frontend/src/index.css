@@ -1742,12 +1742,24 @@ button {
 }
 
 /* "Explained" tab of the advanced standings */
+/* Below sm each statistic is a stacked block: the statistic (name, label, formula) on top, the explanation and its picture
+   underneath, at the full width. From sm the table is two columns again (see the sm block after the .explained rules). */
+.explained-table,
+.explained-table tbody,
+.explained-table tr,
+.explained-table td {
+  display: block;
+}
+.explained-table thead {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
 .explained-table td {
   vertical-align: top;
-}
-.explained-table th:first-child,
-.explained-table td.explained-name {
-  width: 14rem;
 }
 .explained-name-stack {
   display: flex;
@@ -1784,11 +1796,11 @@ button {
 }
 .explained-body {
   display: flex;
-  flex-wrap: wrap;
+  flex-direction: column;
   gap: 1rem 1.5rem;
 }
 .explained-text {
-  flex: 1 1 20rem;
+  flex: none;
   min-width: 0;
   display: flex;
   flex-direction: column;
@@ -1807,8 +1819,9 @@ button {
   border-radius: 0 var(--radius-field) var(--radius-field) 0;
 }
 .explained-visual {
-  flex: 0 1 21rem;
-  min-width: 15rem;
+  flex: none;
+  min-width: 0;
+  max-width: 100%;
 }
 .explained-stack {
   display: flex;
@@ -1826,6 +1839,44 @@ button {
   line-height: 1.4;
   opacity: 0.75;
   white-space: normal;
+}
+@media (min-width: 40rem) {
+  .explained-table {
+    display: table;
+  }
+  .explained-table thead {
+    position: static;
+    width: auto;
+    height: auto;
+    overflow: visible;
+    clip: auto;
+    white-space: normal;
+    display: table-header-group;
+  }
+  .explained-table tbody {
+    display: table-row-group;
+  }
+  .explained-table tr {
+    display: table-row;
+  }
+  .explained-table td {
+    display: table-cell;
+  }
+  .explained-table th:first-child,
+  .explained-table td.explained-name {
+    width: 14rem;
+  }
+  .explained-body {
+    flex-direction: row;
+    flex-wrap: wrap;
+  }
+  .explained-text {
+    flex: 1 1 20rem;
+  }
+  .explained-visual {
+    flex: 0 1 21rem;
+    min-width: 15rem;
+  }
 }
 .waffle {
   display: grid;

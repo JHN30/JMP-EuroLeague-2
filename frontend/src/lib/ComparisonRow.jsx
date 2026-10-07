@@ -32,7 +32,8 @@ function Track({ width, position, anchor, title, animated }) {
 // Optional: `tip` (a hover tip on the label), `markerA`/`markerB` (raw values drawn as ticks, for example a season
 // average) and `avgA`/`avgB` (their printed text, shown under the bar). `animated` makes the row take part in a
 // staggered entrance (it must sit inside a motion parent using the list variants) and grows its bars. `bars={false}` leaves
-// the bars out and shows only the printed values and the highlight on the better side.
+// the bars out and shows only the printed values and the highlight on the better side. `compact` tightens the row's padding
+// and gaps below sm.
 export default function ComparisonRow({
   label,
   rawA,
@@ -47,6 +48,7 @@ export default function ComparisonRow({
   avgB = null,
   animated = false,
   bars = true,
+  compact = false,
 }) {
   const winner = winnerSide(rawA, rawB, direction);
   const { widthA, widthB } = comparisonBand(rawA, rawB);
@@ -56,10 +58,10 @@ export default function ComparisonRow({
 
   return (
     <Root
-      className="flex flex-1 flex-col justify-center border-b border-base-300 py-3 last:border-0"
+      className={`flex flex-1 flex-col justify-center border-b border-base-300 py-3 last:border-0 ${compact ? "max-sm:py-2" : ""}`}
       {...(animated ? { variants: listItem } : {})}
     >
-      <div className="mb-2 text-center">
+      <div className={`mb-2 text-center ${compact ? "max-sm:mb-1" : ""}`}>
         <span className="text-xs font-bold tracking-wide uppercase">
           {tip ? <HeaderTip tip={tip}>{label}</HeaderTip> : label}
         </span>
@@ -67,8 +69,8 @@ export default function ComparisonRow({
           <span className="muted ml-2 text-[0.65rem] tracking-wide uppercase">Lower is better</span>
         ) : null}
       </div>
-      <div className="grid grid-cols-2 gap-4">
-        <div className={`rounded-field p-2 ${winner === "a" ? "bg-primary/10 text-primary" : ""}`}>
+      <div className={`grid grid-cols-2 gap-4 ${compact ? "max-sm:gap-2" : ""}`}>
+        <div className={`rounded-field p-2 ${compact ? "max-sm:p-1.5" : ""} ${winner === "a" ? "bg-primary/10 text-primary" : ""}`}>
           <div className={`${bars ? "mb-1 " : ""}text-right font-semibold tabular-nums`}>{aMissing ? "—" : displayA}</div>
           {bars ? (
             <Track
@@ -81,7 +83,7 @@ export default function ComparisonRow({
           ) : null}
           {avgA ? <div className="muted mt-1 text-right text-xs tabular-nums">{avgA}</div> : null}
         </div>
-        <div className={`rounded-field p-2 ${winner === "b" ? "bg-primary/10 text-primary" : ""}`}>
+        <div className={`rounded-field p-2 ${compact ? "max-sm:p-1.5" : ""} ${winner === "b" ? "bg-primary/10 text-primary" : ""}`}>
           <div className={`${bars ? "mb-1 " : ""}text-left font-semibold tabular-nums`}>{bMissing ? "—" : displayB}</div>
           {bars ? (
             <Track

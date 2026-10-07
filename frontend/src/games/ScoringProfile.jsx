@@ -8,7 +8,7 @@ import { scoringProfileRows } from "./teamFlow";
 // The team labels above a column of mirrored rows: the local team on the left, the road team on the right.
 function TeamHeader({ localTeam, roadTeam, className = "" }) {
   return (
-    <div className={`mb-2 grid grid-cols-2 gap-4 ${className}`}>
+    <div className={`mb-2 grid grid-cols-2 gap-4 max-sm:gap-2 ${className}`}>
       <div className="flex justify-end">
         <TeamLabel team={localTeam} />
       </div>
@@ -28,12 +28,12 @@ export default function ScoringProfile({ teamFlowQuery, localTeam, roadTeam }) {
   if (rows.length === 0) return <EmptyText>The scoring profile isn't available for this game yet.</EmptyText>;
 
   return (
-    <Panel className="p-4">
+    <Panel className="p-4 max-sm:p-3">
       <div className="grid gap-x-10 lg:grid-cols-2" data-testid="scoring-profile-grid">
         <TeamHeader localTeam={localTeam} roadTeam={roadTeam} />
         <TeamHeader localTeam={localTeam} roadTeam={roadTeam} className="hidden lg:grid" />
         {rows.map(({ key, ...row }) => (
-          <ComparisonRow key={key} {...row} />
+          <ComparisonRow key={key} {...row} compact bars={false} />
         ))}
       </div>
     </Panel>

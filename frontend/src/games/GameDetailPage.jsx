@@ -36,7 +36,7 @@ import { computeGameFlow, momentLabel, withRunningScore } from "./gameFlowData";
 import { advancedColumns, attachAdvanced } from "./AdvancedBoxScore";
 import FourFactors from "./FourFactors";
 import ScoringProfile from "./ScoringProfile";
-import TeamLabel from "./TeamLabel";
+import TeamLabel, { TeamName } from "./TeamLabel";
 import OverviewTab from "./OverviewTab";
 import PlayerLink from "./PlayerLink";
 import RotationsTab from "./RotationsTab";
@@ -842,9 +842,9 @@ function PlayByPlaySection({ played, events, localTeam, roadTeam }) {
 
 function FlowMetric({ label, value, detail, tone }) {
   return (
-    <Panel className={`p-4 ${tone ? `border-${tone} bg-${tone}/10` : ""}`}>
+    <Panel className={`p-4 max-sm:p-3 ${tone ? `border-${tone} bg-${tone}/10` : ""}`}>
       <p className="eyebrow mb-1">{label}</p>
-      <p className="text-2xl font-semibold">{value}</p>
+      <p className="text-2xl font-semibold max-sm:text-xl">{value}</p>
       {detail ? <p className="muted mt-1 text-xs">{detail}</p> : null}
     </Panel>
   );
@@ -857,16 +857,16 @@ function FlowMetrics({ flow, localTeam, roadTeam }) {
       : { team: roadTeam, run: flow.roadRun };
 
   return (
-    <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+    <div className="grid gap-3 sm:grid-cols-2 sm:gap-4 xl:grid-cols-4">
       <FlowMetric label="Lead changes" value={flow.leadChanges} detail={`${flow.ties} tie${flow.ties === 1 ? "" : "s"}`} />
       <FlowMetric
-        label={`${teamName(localTeam)} biggest lead`}
+        label={<><TeamName team={localTeam} /> biggest lead</>}
         value={flow.localBiggest ? `+${flow.localBiggest.margin}` : "—"}
         detail={flow.localBiggest ? momentLabel(flow.localBiggest.moment) : "Never led"}
         tone="primary"
       />
       <FlowMetric
-        label={`${teamName(roadTeam)} biggest lead`}
+        label={<><TeamName team={roadTeam} /> biggest lead</>}
         value={flow.roadBiggest ? `+${flow.roadBiggest.margin}` : "—"}
         detail={flow.roadBiggest ? momentLabel(flow.roadBiggest.moment) : "Never led"}
         tone="secondary"
@@ -874,7 +874,7 @@ function FlowMetrics({ flow, localTeam, roadTeam }) {
       <FlowMetric
         label="Longest run"
         value={longerRun.run ? `${longerRun.run.points}-0` : "—"}
-        detail={longerRun.run ? `${teamName(longerRun.team)} · ${momentLabel(longerRun.run.endMoment)}` : "No runs yet"}
+        detail={longerRun.run ? <><TeamName team={longerRun.team} /> · {momentLabel(longerRun.run.endMoment)}</> : "No runs yet"}
       />
     </div>
   );
@@ -882,12 +882,12 @@ function FlowMetrics({ flow, localTeam, roadTeam }) {
 
 function MomentCard({ title, team, detail, moment }) {
   return (
-    <Panel className="flex items-start gap-3 p-4">
+    <Panel className="flex items-start gap-3 p-4 max-sm:gap-2 max-sm:p-3">
       {team?.crestUrl ? (
         <img
           src={team.crestUrl}
           alt=""
-          className="h-8 w-8 flex-none object-contain"
+          className="h-8 w-8 flex-none object-contain max-sm:h-6 max-sm:w-6"
           onError={(event) => {
             event.currentTarget.style.display = "none";
           }}
@@ -906,27 +906,27 @@ function TurningPoints({ flow, localTeam, roadTeam }) {
   return (
     <div>
       <PanelHeader kicker="MOMENTS" title="Turning points" />
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="grid gap-3 sm:grid-cols-2 sm:gap-4 xl:grid-cols-4">
         <MomentCard
-          title={`${teamName(localTeam)} peak lead`}
+          title={<><TeamName team={localTeam} /> peak lead</>}
           team={localTeam}
           detail={flow.localBiggest ? `Up by ${flow.localBiggest.margin}` : "Never led"}
           moment={flow.localBiggest?.moment}
         />
         <MomentCard
-          title={`${teamName(roadTeam)} peak lead`}
+          title={<><TeamName team={roadTeam} /> peak lead</>}
           team={roadTeam}
           detail={flow.roadBiggest ? `Up by ${flow.roadBiggest.margin}` : "Never led"}
           moment={flow.roadBiggest?.moment}
         />
         <MomentCard
-          title={`${teamName(localTeam)} best run`}
+          title={<><TeamName team={localTeam} /> best run</>}
           team={localTeam}
           detail={flow.localRun ? `${flow.localRun.points} unanswered points` : "No runs"}
           moment={flow.localRun?.endMoment}
         />
         <MomentCard
-          title={`${teamName(roadTeam)} best run`}
+          title={<><TeamName team={roadTeam} /> best run</>}
           team={roadTeam}
           detail={flow.roadRun ? `${flow.roadRun.points} unanswered points` : "No runs"}
           moment={flow.roadRun?.endMoment}
@@ -994,8 +994,8 @@ function TeamComparisonRows({ localTotal, roadTotal, localTeam, roadTeam }) {
   }
 
   return (
-    <Panel className="flex flex-1 flex-col p-4">
-      <div className="mb-2 grid grid-cols-2 gap-4">
+    <Panel className="flex flex-1 flex-col p-4 max-sm:p-3">
+      <div className="mb-2 grid grid-cols-2 gap-4 max-sm:gap-2">
         <div className="flex justify-end">
           <TeamLabel team={localTeam} />
         </div>
@@ -1006,6 +1006,8 @@ function TeamComparisonRows({ localTotal, roadTotal, localTeam, roadTeam }) {
           key={row.label}
           label={row.label}
           tip={STAT_TIPS[row.label]}
+          compact
+          bars={false}
           direction={row.lowerIsBetter ? "lower" : "higher"}
           rawA={row.value(localTotal)}
           rawB={row.value(roadTotal)}

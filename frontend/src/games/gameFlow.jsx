@@ -290,10 +290,10 @@ export function ScoreFlowChart({ flow, localTeam, roadTeam, compact = false }) {
   }
 
   return (
-    <Panel className="p-4">
+    <Panel className="p-4 max-sm:p-3">
       {compact ? null : <PanelHeader kicker="FLOW" title="Lead tracker" />}
       <div className="rounded-field border border-base-300 bg-base-100/60 p-2 sm:p-3">
-        <div className={`relative w-full ${compact ? "h-52" : "h-80"}`}>
+        <div className={`relative w-full ${compact ? "h-52" : "h-80 max-sm:h-64"}`}>
           <canvas
             ref={canvasRef}
             role="img"

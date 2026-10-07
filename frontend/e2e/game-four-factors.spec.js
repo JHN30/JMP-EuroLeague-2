@@ -82,7 +82,7 @@ test("with both averages available the panel explains the tick instead", async (
   await expect(page.getByText("Season averages need at least 3 games")).toHaveCount(0);
 });
 
-test("the box-score rows are mirrored bars with the old values and the same tooltips", async ({ page }) => {
+test("the box-score rows are mirrored rows (no bars) with the old values and the same tooltips", async ({ page }) => {
   await openComparison(page);
 
   await expect(page.locator("table")).toHaveCount(0);

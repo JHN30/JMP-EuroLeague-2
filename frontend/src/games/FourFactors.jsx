@@ -67,8 +67,8 @@ export default function FourFactors({ advancedQuery, localTeam, roadTeam }) {
   const averagesHidden = !(local.season && !local.season.hidden) || !(road.season && !road.season.hidden);
 
   return (
-    <Panel className="flex flex-1 flex-col p-4">
-      <div className="mb-2 grid grid-cols-2 gap-4">
+    <Panel className="flex flex-1 flex-col p-4 max-sm:p-3">
+      <div className="mb-2 grid grid-cols-2 gap-4 max-sm:gap-2">
         <div className="flex justify-end">
           <TeamLabel team={localTeam} />
         </div>
@@ -84,6 +84,7 @@ export default function FourFactors({ advancedQuery, localTeam, roadTeam }) {
               <ComparisonRow
                 key={row.label}
                 {...row}
+                compact
                 rawA={local[field]}
                 rawB={road[field]}
                 displayA={format(local[field])}

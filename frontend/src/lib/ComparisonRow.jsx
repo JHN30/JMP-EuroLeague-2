@@ -31,7 +31,8 @@ function Track({ width, position, anchor, title, animated }) {
 
 // Optional: `tip` (a hover tip on the label), `markerA`/`markerB` (raw values drawn as ticks, for example a season
 // average) and `avgA`/`avgB` (their printed text, shown under the bar). `animated` makes the row take part in a
-// staggered entrance (it must sit inside a motion parent using the list variants) and grows its bars.
+// staggered entrance (it must sit inside a motion parent using the list variants) and grows its bars. `bars={false}` leaves
+// the bars out and shows only the printed values and the highlight on the better side.
 export default function ComparisonRow({
   label,
   rawA,
@@ -45,6 +46,7 @@ export default function ComparisonRow({
   avgA = null,
   avgB = null,
   animated = false,
+  bars = true,
 }) {
   const winner = winnerSide(rawA, rawB, direction);
   const { widthA, widthB } = comparisonBand(rawA, rawB);
@@ -67,25 +69,29 @@ export default function ComparisonRow({
       </div>
       <div className="grid grid-cols-2 gap-4">
         <div className={`rounded-field p-2 ${winner === "a" ? "bg-primary/10 text-primary" : ""}`}>
-          <div className="mb-1 text-right font-semibold tabular-nums">{aMissing ? "—" : displayA}</div>
-          <Track
-            width={aMissing ? 0 : widthA}
-            position={aMissing ? null : markerPosition(markerA, rawA, rawB)}
-            anchor="start"
-            title={avgA ?? undefined}
-            animated={animated}
-          />
+          <div className={`${bars ? "mb-1 " : ""}text-right font-semibold tabular-nums`}>{aMissing ? "—" : displayA}</div>
+          {bars ? (
+            <Track
+              width={aMissing ? 0 : widthA}
+              position={aMissing ? null : markerPosition(markerA, rawA, rawB)}
+              anchor="start"
+              title={avgA ?? undefined}
+              animated={animated}
+            />
+          ) : null}
           {avgA ? <div className="muted mt-1 text-right text-xs tabular-nums">{avgA}</div> : null}
         </div>
         <div className={`rounded-field p-2 ${winner === "b" ? "bg-primary/10 text-primary" : ""}`}>
-          <div className="mb-1 text-left font-semibold tabular-nums">{bMissing ? "—" : displayB}</div>
-          <Track
-            width={bMissing ? 0 : widthB}
-            position={bMissing ? null : markerPosition(markerB, rawA, rawB)}
-            anchor="end"
-            title={avgB ?? undefined}
-            animated={animated}
-          />
+          <div className={`${bars ? "mb-1 " : ""}text-left font-semibold tabular-nums`}>{bMissing ? "—" : displayB}</div>
+          {bars ? (
+            <Track
+              width={bMissing ? 0 : widthB}
+              position={bMissing ? null : markerPosition(markerB, rawA, rawB)}
+              anchor="end"
+              title={avgB ?? undefined}
+              animated={animated}
+            />
+          ) : null}
           {avgB ? <div className="muted mt-1 text-left text-xs tabular-nums">{avgB}</div> : null}
         </div>
       </div>

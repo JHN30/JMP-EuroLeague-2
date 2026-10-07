@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { useCentredSelection } from "./useCentredSelection";
 
 function nextIndexFor(key, currentIndex, enabledCount) {
   if (key === "ArrowRight" || key === "ArrowDown") {
@@ -14,10 +15,14 @@ function nextIndexFor(key, currentIndex, enabledCount) {
 
 // `level` sets how prominent the strip is: 1 for a page's main navigation, 2 for the filter under it, 3 (the default) for the
 // detail strips inside a section. The bigger the level's weight, the bigger the tabs.
-export function TabStrip({ ariaLabel, tabs, activeKey, onChange, panelId, level = 3, className = "" }) {
+// `scrolling` is for a strip with more tabs than a narrow screen holds: below the lg breakpoint it stays one row that scrolls on
+// its own and keeps the active tab in the middle of it.
+export function TabStrip({ ariaLabel, tabs, activeKey, onChange, panelId, level = 3, scrolling = false, className = "" }) {
   const [focusedKey, setFocusedKey] = useState(activeKey);
   const [lastActiveKey, setLastActiveKey] = useState(activeKey);
   const buttonRefs = useRef({});
+  const stripRef = useRef(null);
+  useCentredSelection(stripRef, activeKey, scrolling);
 
   if (activeKey !== lastActiveKey) {
     setLastActiveKey(activeKey);
@@ -44,7 +49,7 @@ export function TabStrip({ ariaLabel, tabs, activeKey, onChange, panelId, level 
   }
 
   return (
-    <div role="tablist" aria-label={ariaLabel} className={`tabs tab-level-${level} ${className}`}>
+    <div ref={stripRef} role="tablist" aria-label={ariaLabel} className={`tabs tab-level-${level} ${scrolling ? "tabs-scroll" : ""} ${className}`}>
       {tabs.map((tab) => {
         const isActive = tab.key === activeKey;
         const isFocusable = tab.key === focusedKey;

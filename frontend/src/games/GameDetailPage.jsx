@@ -8,6 +8,7 @@ import ComparisonRow from "../lib/ComparisonRow";
 import EmptyText from "../lib/EmptyText";
 import {
   formatCount,
+  formatDate,
   formatDateTime as formatDateTimeShared,
   formatMinutes,
   formatMissing,
@@ -1099,14 +1100,15 @@ export default function GameDetailPage() {
     <div>
       <PageHeader
         kicker="MATCHUP"
+        childrenBelowSm
         title={
           <span className="flex flex-wrap items-center gap-2">
-            <span className={`flex items-center gap-3 ${localWon ? "text-primary" : ""}`}>
+            <span className={`flex items-center gap-2 text-lg sm:gap-3 sm:text-2xl ${localWon ? "text-primary" : ""}`}>
               {game.localTeam?.crestUrl ? (
                 <img
                   src={game.localTeam.crestUrl}
                   alt=""
-                  className="h-12 w-12 flex-none object-contain"
+                  className="h-10 w-10 flex-none object-contain sm:h-12 sm:w-12"
                   onError={(event) => {
                     event.currentTarget.style.display = "none";
                   }}
@@ -1114,13 +1116,13 @@ export default function GameDetailPage() {
               ) : null}
               {teamName(game.localTeam)}
             </span>
-            <span className="muted mx-2 text-lg font-normal">vs</span>
-            <span className={`flex items-center gap-3 ${roadWon ? "text-primary" : ""}`}>
+            <span className="muted mx-1 text-base font-normal sm:mx-2 sm:text-lg">vs</span>
+            <span className={`flex items-center gap-2 text-lg sm:gap-3 sm:text-2xl ${roadWon ? "text-primary" : ""}`}>
               {game.roadTeam?.crestUrl ? (
                 <img
                   src={game.roadTeam.crestUrl}
                   alt=""
-                  className="h-12 w-12 flex-none object-contain"
+                  className="h-10 w-10 flex-none object-contain sm:h-12 sm:w-12"
                   onError={(event) => {
                     event.currentTarget.style.display = "none";
                   }}
@@ -1132,7 +1134,7 @@ export default function GameDetailPage() {
         }
         description={
           <p className="muted">
-            {game.roundName ?? (game.roundNumber ? `Round ${game.roundNumber}` : game.phaseName)} · {formatDateTime(game.scheduledAt)}
+            {game.roundName ?? (game.roundNumber ? `Round ${game.roundNumber}` : game.phaseName)} · {game.played ? formatDate(game.scheduledAt, { dateStyle: "full" }) : formatDateTime(game.scheduledAt)}
           </p>
         }
       >
@@ -1148,7 +1150,7 @@ export default function GameDetailPage() {
         )}
       </PageHeader>
 
-      <TabStrip ariaLabel="Game detail" level={1} panelId="game-detail-panel" activeKey={tab} onChange={setTab} className="mb-4 w-fit" tabs={GAME_TABS} />
+      <TabStrip ariaLabel="Game detail" level={1} panelId="game-detail-panel" activeKey={tab} onChange={setTab} scrolling className="mb-4 lg:w-fit" tabs={GAME_TABS} />
 
       <TabPanel id="game-detail-panel" focusKey={tab} scroll={false}>
         <motion.div key={tab} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.25 }}>

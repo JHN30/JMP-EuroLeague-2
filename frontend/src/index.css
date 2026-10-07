@@ -1508,6 +1508,29 @@ button {
   --tab-line: 2px;
   --tab-height: 2rem;
 }
+/* A strip with more tabs than a narrow screen holds (the game page's seven) stays one row below lg and scrolls on its own;
+   the scroll bar is hidden, the next tab peeking out at the edge is the hint. Below sm the tabs are a little smaller. */
+@media (max-width: 63.999rem) {
+  .tabs-scroll {
+    flex-wrap: nowrap;
+    max-width: 100%;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .tabs-scroll::-webkit-scrollbar {
+    display: none;
+  }
+  .tabs-scroll .tab {
+    flex: none;
+    white-space: nowrap;
+  }
+}
+@media (max-width: 39.999rem) {
+  .tabs-scroll {
+    --tab-text: 0.875rem;
+    --tab-pad: 0.75rem;
+  }
+}
 
 /* stat chip - the statistic picker on a Leaders board; the lowest rung under the tab strips, filled so the choice stands out */
 .stat-chip {

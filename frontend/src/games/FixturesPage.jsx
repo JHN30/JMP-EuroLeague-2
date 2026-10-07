@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { motion } from "motion/react";
 import { useParams, useSearchParams } from "react-router";
@@ -6,6 +6,7 @@ import { getPhases, getRounds, getSeasonGames, getSeasonStandings } from "../lib
 import AsyncState from "../lib/AsyncState";
 import EmptyText from "../lib/EmptyText";
 import PageHeader from "../lib/PageHeader";
+import { useCentredSelection } from "../lib/useCentredSelection";
 import { useDocumentTitle } from "../lib/useDocumentTitle";
 import { listContainer } from "../lib/motion";
 import { usePhaseParam } from "../lib/usePhaseParam";
@@ -68,24 +69,7 @@ export default function FixturesPage() {
   const isResolvingRound = roundsQuery.isLoading || nextGameQuery.isLoading;
 
   // Keep the selected round visible in the scrolling strip, also when the strip changes width (a phone turned sideways).
-  // Scrolls the strip itself, never the page.
-  useEffect(() => {
-    const strip = roundStripRef.current;
-    if (!strip) return undefined;
-    const centre = (behavior) => {
-      const active = strip.querySelector('[aria-selected="true"]');
-      if (active) strip.scrollTo({ left: active.offsetLeft - (strip.clientWidth - active.offsetWidth) / 2, behavior });
-    };
-    centre("smooth");
-    // The observer reports once when it starts; that first report is the scroll above, not a resize.
-    let first = true;
-    const observer = new ResizeObserver(() => {
-      if (first) first = false;
-      else centre("auto");
-    });
-    observer.observe(strip);
-    return () => observer.disconnect();
-  }, [selectedRound, rounds.length]);
+  useCentredSelection(roundStripRef, `${selectedRound}:${rounds.length}`);
 
   function selectRound(number) {
     setSearchParams((params) => {

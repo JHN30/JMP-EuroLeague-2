@@ -39,7 +39,7 @@ function StandoutCard({ team, player, metric, seasonCode }) {
         <div className="mt-3 flex items-center gap-3">
           <Headshot player={player} />
           <div className="min-w-0">
-            <p className="text-lg font-semibold">
+            <p className="text-lg font-semibold break-words">
               <PlayerLink seasonCode={seasonCode} player={player} />
             </p>
             <p className="muted text-sm">
@@ -90,7 +90,7 @@ function KeyStatsCard({ game, localTotal, roadTotal, flowRows }) {
         <TeamLabel team={game.roadTeam} />
       </div>
       {[...keyStatRows(localTotal, roadTotal), ...flowRows].map(({ key, ...row }) => (
-        <ComparisonRow key={key} {...row} />
+        <ComparisonRow key={key} {...row} bars={false} />
       ))}
     </Panel>
   );
@@ -146,7 +146,7 @@ export default function OverviewTab({ game, seasonCode, boxScoreQuery, playByPla
         {advancedQuery.isLoading ? (
           <AsyncState status="loading" label="Loading the best players" compact />
         ) : hasPlayers ? (
-          <div className="grid gap-4 sm:grid-cols-2">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <StandoutCard team={game.localTeam} player={pickBestPlayer(localRows, metric)} metric={metric} seasonCode={seasonCode} />
             <StandoutCard team={game.roadTeam} player={pickBestPlayer(roadRows, metric)} metric={metric} seasonCode={seasonCode} />
           </div>
@@ -158,7 +158,7 @@ export default function OverviewTab({ game, seasonCode, boxScoreQuery, playByPla
       <motion.section variants={sectionItem}>
         <PanelHeader kicker="GAME LEADERS" title="Points, rebounds and assists" />
         {hasPlayers ? (
-          <div className="grid gap-4 sm:grid-cols-2">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <LeadersCard team={game.localTeam} rows={localRows} seasonCode={seasonCode} />
             <LeadersCard team={game.roadTeam} rows={roadRows} seasonCode={seasonCode} />
           </div>

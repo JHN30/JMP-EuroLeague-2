@@ -1,5 +1,5 @@
 import { test, expect } from "@playwright/test";
-import { HEIGHT, findBrokenWords, seasonSlug } from "./support/layout";
+import { HEIGHT, expectSwipeRowAtRest, expectSwipeRowSettles, findBrokenWords, seasonSlug } from "./support/layout";
 
 async function openHome(page, width) {
   await page.setViewportSize({ width, height: HEIGHT });
@@ -11,18 +11,6 @@ async function openHome(page, width) {
 
 const panel = (page, title) => page.locator("section", { has: page.getByRole("heading", { name: title }) });
 const top = (locator) => locator.evaluate((element) => element.getBoundingClientRect().top);
-
-// How far the card nearest the row's centre is from it, and which card that is.
-const nearestCard = (row) =>
-  row.evaluate((element) => {
-    const middle = element.getBoundingClientRect().left + element.clientWidth / 2;
-    const offsets = [...element.children].map((card) => {
-      const box = card.getBoundingClientRect();
-      return Math.abs(box.left + box.width / 2 - middle);
-    });
-    const best = Math.min(...offsets);
-    return { index: offsets.indexOf(best), offset: Math.round(best) };
-  });
 
 test.describe("panel padding", () => {
   for (const { width, padding } of [
@@ -100,52 +88,12 @@ test.describe("swipe rows below 640px", () => {
       test.describe(`${name} at ${width}px`, () => {
         test("start and end on the panel's content edge with the neighbouring card peeking out", async ({ page }) => {
           await openHome(page, width);
-          const row = page.getByRole("group", { name: group }).first();
-          await expect(row).toHaveCSS("scroll-snap-type", "x mandatory");
-          await expect(row).toHaveAttribute("tabindex", "0");
-
-          const geometry = await row.evaluate((el) => {
-            const panelStyle = getComputedStyle(el.closest("section"));
-            const panelBox = el.closest("section").getBoundingClientRect();
-            const edge = parseFloat(panelStyle.paddingLeft) + parseFloat(panelStyle.borderLeftWidth);
-            const [first, second] = [...el.children].map((card) => card.getBoundingClientRect());
-            return {
-              contentLeft: panelBox.left + edge,
-              contentWidth: panelBox.width - 2 * edge,
-              rowRight: el.getBoundingClientRect().right,
-              first: first.toJSON(),
-              second: second.toJSON(),
-            };
-          });
-          expect(Math.abs(geometry.first.left - geometry.contentLeft)).toBeLessThanOrEqual(1);
-          expect(geometry.first.width / geometry.contentWidth).toBeGreaterThan(0.8);
-          expect(geometry.first.width / geometry.contentWidth).toBeLessThan(0.9);
-          expect(geometry.rowRight - geometry.second.left).toBeGreaterThan(20);
-          expect(geometry.second.left - geometry.first.right).toBeLessThanOrEqual(12);
-
-          await row.evaluate((el) => el.scrollTo({ left: el.scrollWidth, behavior: "instant" }));
-          await expect
-            .poll(() =>
-              row.evaluate((el) => {
-                const panelStyle = getComputedStyle(el.closest("section"));
-                const edge = parseFloat(panelStyle.paddingRight) + parseFloat(panelStyle.borderRightWidth);
-                const last = el.lastElementChild.getBoundingClientRect();
-                return Math.abs(Math.round(el.closest("section").getBoundingClientRect().right - edge - last.right));
-              }),
-            )
-            .toBe(0);
+          await expectSwipeRowAtRest(page.getByRole("group", { name: group }).first());
         });
 
         test("settle on a centred card after a scroll and after ArrowRight", async ({ page }) => {
           await openHome(page, width);
-          const row = page.getByRole("group", { name: group }).first();
-          await row.evaluate((el) => el.scrollTo({ left: 150, behavior: "instant" }));
-          await expect.poll(async () => (await nearestCard(row)).offset).toBeLessThanOrEqual(2);
-
-          await row.evaluate((el) => el.scrollTo({ left: 0, behavior: "instant" }));
-          await row.focus();
-          await page.keyboard.press("ArrowRight");
-          await expect.poll(async () => nearestCard(row)).toEqual({ index: 1, offset: 0 });
+          await expectSwipeRowSettles(page, page.getByRole("group", { name: group }).first());
         });
       });
     }

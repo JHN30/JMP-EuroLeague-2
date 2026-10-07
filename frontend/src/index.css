@@ -557,7 +557,8 @@ button {
   }
 }
 .games-row:focus-visible,
-.leaders-row:focus-visible {
+.leaders-row:focus-visible,
+.season-leaders-grid:focus-visible {
   outline: 2px solid var(--color-primary);
   outline-offset: 2px;
 }
@@ -773,8 +774,10 @@ button {
 }
 
 /* Per-stat leader cards (dashboard) */
-/* Same swipe row below sm; two columns from sm; the sideways-scrolling row from lg. */
-.leaders-row {
+/* Same swipe row below sm; two columns from sm; the sideways-scrolling row from lg. The Season overview's
+   leaders grid shares everything but the lg row: it stays two columns, and goes to three from xl. */
+.leaders-row,
+.season-leaders-grid {
   display: flex;
   flex-direction: row;
   gap: 0.75rem;
@@ -785,13 +788,15 @@ button {
   padding: 0.25rem 1rem;
   scroll-padding-inline: 1rem;
 }
-.leaders-row .kpi-chip {
+.leaders-row .kpi-chip,
+.season-leaders-grid .kpi-chip {
   flex: 0 0 85%;
   scroll-snap-align: center;
   scroll-snap-stop: always;
 }
 @media (min-width: 40rem) {
-  .leaders-row {
+  .leaders-row,
+  .season-leaders-grid {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 1rem;
@@ -801,7 +806,8 @@ button {
     padding: 0.25rem 0;
     scroll-padding-inline: 0;
   }
-  .leaders-row .kpi-chip {
+  .leaders-row .kpi-chip,
+  .season-leaders-grid .kpi-chip {
     scroll-snap-align: none;
     scroll-snap-stop: normal;
   }
@@ -814,6 +820,16 @@ button {
   .leaders-row .kpi-chip {
     flex: 1 1 0;
     min-width: 15rem;
+  }
+}
+@media (min-width: 40rem) {
+  .season-leaders-grid {
+    padding-block: 0;
+  }
+}
+@media (min-width: 80rem) {
+  .season-leaders-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 }
 
@@ -1063,87 +1079,91 @@ button {
 /* Home's photo KPI cards (KPI strip and stat-leader row), and Season
    Overview's leader grid/hero, read taller than the standard strip
    elsewhere. */
-.season-leaders-grid .kpi-chip,
-.team-leaders-grid .kpi-chip,
-.season-hero-kpis .kpi-chip {
+.team-leaders-grid .kpi-chip {
   padding: 1.5rem 1.35rem;
 }
-.season-leaders-grid .kpi-chip-image,
-.team-leaders-grid .kpi-chip-image,
-.season-hero-kpis .kpi-chip-image {
+.team-leaders-grid .kpi-chip-image {
   height: 8.5rem;
   max-width: 8rem;
   margin: -1.5rem -0.75rem -1.5rem 0;
 }
-.season-leaders-grid .kpi-chip .name,
-.team-leaders-grid .kpi-chip .name,
-.season-hero-kpis .kpi-chip .name {
+.team-leaders-grid .kpi-chip .name {
   font-size: 1rem;
 }
-.season-leaders-grid .kpi-chip .value,
-.team-leaders-grid .kpi-chip .value,
-.season-hero-kpis .kpi-chip .value {
+.team-leaders-grid .kpi-chip .value {
   font-size: 1.7rem;
 }
 
-/* Home's four KPI cards: compact and stacked below sm (crest on top, cards about 140px wide so club
+/* Home's four KPI cards and the Season overview's two hero cards: compact and stacked below sm (crest on top, cards about 140px wide so club
    names wrap by whole words), the tall photo card from sm up. */
-.kpi-strip-4 .kpi-chip {
+.kpi-strip-4 .kpi-chip,
+.season-hero-kpis .kpi-chip {
   flex-direction: column-reverse;
   align-items: flex-start;
   justify-content: flex-end;
   gap: 0.5rem;
   padding: 0.9rem 0.85rem;
 }
-.kpi-strip-4 .kpi-chip-image {
+.kpi-strip-4 .kpi-chip-image,
+.season-hero-kpis .kpi-chip-image {
   height: 3rem;
   max-width: 3rem;
   align-self: flex-start;
   margin: 0;
 }
 @media (min-width: 40rem) {
-  .kpi-strip-4 .kpi-chip {
+  .kpi-strip-4 .kpi-chip,
+  .season-hero-kpis .kpi-chip {
     flex-direction: row;
     justify-content: space-between;
     gap: 0.75rem;
     padding: 1.5rem 1.35rem;
   }
-  .kpi-strip-4 .kpi-chip-image {
+  .kpi-strip-4 .kpi-chip-image,
+  .season-hero-kpis .kpi-chip-image {
     height: 8.5rem;
     max-width: 8rem;
     align-self: flex-end;
     margin: -1.5rem -0.75rem -1.5rem 0;
   }
-  .kpi-strip-4 .kpi-chip .name {
+  .kpi-strip-4 .kpi-chip .name,
+  .season-hero-kpis .kpi-chip .name {
     font-size: 1rem;
   }
-  .kpi-strip-4 .kpi-chip .value {
+  .kpi-strip-4 .kpi-chip .value,
+  .season-hero-kpis .kpi-chip .value {
     font-size: 1.7rem;
   }
 }
 
 /* Home's leader cards: a smaller photo below sm so the player name fits beside it, the tall card from sm up. */
-.leaders-row .kpi-chip {
+.leaders-row .kpi-chip,
+.season-leaders-grid .kpi-chip {
   padding: 1rem;
 }
-.leaders-row .kpi-chip-image {
+.leaders-row .kpi-chip-image,
+.season-leaders-grid .kpi-chip-image {
   height: 6rem;
   max-width: 5.5rem;
   margin: -1rem -0.5rem -1rem 0;
 }
 @media (min-width: 40rem) {
-  .leaders-row .kpi-chip {
+  .leaders-row .kpi-chip,
+  .season-leaders-grid .kpi-chip {
     padding: 1.5rem 1.35rem;
   }
-  .leaders-row .kpi-chip-image {
+  .leaders-row .kpi-chip-image,
+  .season-leaders-grid .kpi-chip-image {
     height: 8.5rem;
     max-width: 8rem;
     margin: -1.5rem -0.75rem -1.5rem 0;
   }
-  .leaders-row .kpi-chip .name {
+  .leaders-row .kpi-chip .name,
+  .season-leaders-grid .kpi-chip .name {
     font-size: 1rem;
   }
-  .leaders-row .kpi-chip .value {
+  .leaders-row .kpi-chip .value,
+  .season-leaders-grid .kpi-chip .value {
     font-size: 1.7rem;
   }
 }

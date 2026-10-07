@@ -1,4 +1,4 @@
-import { useMemo, useRef, useEffect } from "react";
+import { useMemo, useRef, useEffect, useState } from "react";
 import { useQueries, useQuery } from "@tanstack/react-query";
 import { Chart } from "chart.js/auto";
 import { motion } from "motion/react";
@@ -12,13 +12,14 @@ import PageHeader from "../lib/PageHeader";
 import RevealImage from "../lib/RevealImage";
 import { useDocumentTitle } from "../lib/useDocumentTitle";
 import { useCurrentPhaseCode } from "../lib/useCurrentPhaseCode";
-import { thinAxisLabels } from "../lib/chartHelpers";
+import { useMediaQuery } from "../lib/useMediaQuery";
 import { PHASE_NAMES, PHASE_ORDER, dateRangeLabel, isChampionshipLabel, phaseSortIndex } from "../lib/phaseSummary";
 import { useActiveTheme, themeColor } from "../lib/useActiveTheme";
-import { formatDateTime, formatPerGame, formatRound, formatSeasonLabel } from "../lib/format";
+import { formatDateTime, formatPerGame, formatSeasonLabel } from "../lib/format";
 
 const MotionLink = motion.create(Link);
 
+const SMALL_CHART_WIDTH = 560;
 const MAX_PAGE_SIZE = 100;
 const MAX_PAGES = 10;
 
@@ -83,7 +84,7 @@ function SeasonHero({ champion, leader, pointsPerGame }) {
   const ppg = pointsPerGame;
 
   return (
-    <div className="season-hero-kpis grid gap-4 sm:grid-cols-2">
+    <div className="season-hero-kpis grid grid-cols-2 gap-3 sm:gap-4" data-testid="season-hero-kpis">
       <div className="kpi-chip">
         <div className="kpi-chip-body">
           <span className="label">League leader</span>
@@ -215,6 +216,42 @@ function pickDefiningGames(playedGames) {
   return [...chosen.values()];
 }
 
+function shortName(team) {
+  return team?.abbreviatedName ?? team?.name ?? "TBD";
+}
+
+// Below lg a team is its crest alone and its full name stays as hidden text; from lg the short name sits beside the crest.
+// A club without a crest (or one that fails to load) shows its short name in the crest slot instead. Only text is dimmed for
+// the losing side, never the crest, which is all that names the club below lg.
+function TeamName({ team, dimmed, nameFirst = false }) {
+  const [crestFailed, setCrestFailed] = useState(false);
+  const crest =
+    team?.crestUrl && !crestFailed ? (
+      <img
+        src={team.crestUrl}
+        alt=""
+        className="h-8 w-8 flex-none object-contain lg:h-6 lg:w-6"
+        onError={() => setCrestFailed(true)}
+      />
+    ) : (
+      <span aria-hidden="true" className={`break-words text-sm font-semibold lg:hidden ${dimmed ? "opacity-60" : ""}`}>
+        {shortName(team)}
+      </span>
+    );
+  const name = (
+    <span aria-hidden="true" className={`hidden min-w-0 break-words lg:inline ${dimmed ? "opacity-60" : ""}`}>
+      {shortName(team)}
+    </span>
+  );
+  return (
+    <>
+      <span className="sr-only">{teamName(team)}</span>
+      {nameFirst ? name : crest}
+      {nameFirst ? crest : name}
+    </>
+  );
+}
+
 function DefiningGames({ seasonCode, playedGames }) {
   const picks = pickDefiningGames(playedGames);
 
@@ -252,35 +289,15 @@ function DefiningGames({ seasonCode, playedGames }) {
               >
                 <p className="eyebrow mb-1">{tag}</p>
                 <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2">
-                  <span className={`flex min-w-0 items-center gap-2 font-medium ${localWon ? "highlight-leader font-semibold" : "opacity-60"}`}>
-                    {game.localTeam?.crestUrl ? (
-                      <img
-                        src={game.localTeam.crestUrl}
-                        alt=""
-                        className="h-6 w-6 flex-none object-contain"
-                        onError={(event) => {
-                          event.currentTarget.style.display = "none";
-                        }}
-                      />
-                    ) : null}
-                    <span className="truncate">{teamName(game.localTeam)}</span>
+                  <span className={`flex min-w-0 items-center gap-2 font-medium ${localWon ? "highlight-leader font-semibold" : ""}`}>
+                    <TeamName team={game.localTeam} dimmed={!localWon} />
                   </span>
                   <span className="badge badge-lg tabular-nums">
                     <span className={localWon ? "highlight-leader font-semibold" : "opacity-60"}>{game.localScore}</span>-
                     <span className={roadWon ? "highlight-leader font-semibold" : "opacity-60"}>{game.roadScore}</span>
                   </span>
-                  <span className={`flex min-w-0 items-center justify-end gap-2 font-medium ${roadWon ? "highlight-leader font-semibold" : "opacity-60"}`}>
-                    <span className="truncate">{teamName(game.roadTeam)}</span>
-                    {game.roadTeam?.crestUrl ? (
-                      <img
-                        src={game.roadTeam.crestUrl}
-                        alt=""
-                        className="h-6 w-6 flex-none object-contain"
-                        onError={(event) => {
-                          event.currentTarget.style.display = "none";
-                        }}
-                      />
-                    ) : null}
+                  <span className={`flex min-w-0 items-center justify-end gap-2 font-medium ${roadWon ? "highlight-leader font-semibold" : ""}`}>
+                    <TeamName team={game.roadTeam} dimmed={!roadWon} nameFirst />
                   </span>
                 </div>
                 <p className="muted mt-1 text-xs">
@@ -299,18 +316,81 @@ function roundScoringSeries(playedGames) {
   const byRound = new Map();
   for (const game of playedGames) {
     if (game.localScore == null || game.roadScore == null || game.roundNumber == null) continue;
-    if (!byRound.has(game.roundNumber)) byRound.set(game.roundNumber, { total: 0, count: 0 });
+    if (!byRound.has(game.roundNumber)) byRound.set(game.roundNumber, { total: 0, count: 0, phaseCode: game.phaseCode ?? "RS" });
     const entry = byRound.get(game.roundNumber);
     entry.total += game.localScore + game.roadScore;
     entry.count += 1;
   }
   const rounds = [...byRound.entries()].sort(([a], [b]) => a - b);
+
+  // Rounds are numbered straight on from the regular season into the postseason, so a postseason point is named by its
+  // phase (and its place within it), not by a number that would read as one more regular-season round.
+  const roundsInPhase = new Map();
+  for (const [, entry] of rounds) roundsInPhase.set(entry.phaseCode, (roundsInPhase.get(entry.phaseCode) ?? 0) + 1);
+  const placeInPhase = new Map();
+  return rounds.map(([round, entry]) => {
+    const place = (placeInPhase.get(entry.phaseCode) ?? 0) + 1;
+    placeInPhase.set(entry.phaseCode, place);
+    const phaseName = PHASE_NAMES[entry.phaseCode] ?? entry.phaseCode;
+    const name =
+      entry.phaseCode === "RS"
+        ? `Round ${round}`
+        : roundsInPhase.get(entry.phaseCode) > 1
+          ? `${phaseName} · round ${place}`
+          : phaseName;
+    return {
+      round,
+      phaseCode: entry.phaseCode,
+      name,
+      // `entry.total` sums both teams' scores per game, so dividing by `count * 2` gives the average points scored per
+      // team rather than the combined per-game total.
+      value: entry.total / entry.count / 2,
+    };
+  });
+}
+
+// Round 1 and every fifth regular-season round get an axis label (every tenth in a very long series, every round in a
+// short one), so a phone-width axis stays horizontal and legible. The postseason is not numbered: a divider marks it, and
+// a tooltip names the phase. The chart keeps every round's data, so a tooltip can name any of them.
+function axisRoundLabel(point, count) {
+  if (point.phaseCode !== "RS") return "";
+  if (count <= 8) return String(point.round);
+  const step = count > 40 ? 10 : 5;
+  return point.round === 1 || point.round % step === 0 ? String(point.round) : "";
+}
+
+function scoringSummary(points) {
+  const values = points.map((point) => point.value);
+  return [
+    { label: "Highest", point: points[values.indexOf(Math.max(...values))] },
+    { label: "Lowest", point: points[values.indexOf(Math.min(...values))] },
+    { label: "Latest", point: points[points.length - 1] },
+  ].map(({ label, point }) => ({ label, value: formatPerGame(point.value), name: point.name }));
+}
+
+// A dashed line where the postseason begins, labelled above the plot (the label goes left of the line if it would run off).
+function postseasonDivider(startIndex, lineColor, textColor) {
   return {
-    labels: rounds.map(([roundNumber]) => formatRound(roundNumber)),
-    // `entry.total` sums both teams' scores per game, so dividing by
-    // `count * 2` gives the average points scored per team rather than
-    // the combined per-game total.
-    values: rounds.map(([, entry]) => entry.total / entry.count / 2),
+    id: "postseasonDivider",
+    afterDraw(chart) {
+      const { ctx, chartArea, scales } = chart;
+      const x = (scales.x.getPixelForValue(startIndex - 1) + scales.x.getPixelForValue(startIndex)) / 2;
+      ctx.save();
+      ctx.strokeStyle = lineColor;
+      ctx.setLineDash([4, 4]);
+      ctx.beginPath();
+      ctx.moveTo(x, chartArea.top - 16);
+      ctx.lineTo(x, chartArea.bottom);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.fillStyle = textColor;
+      ctx.font = `600 11px ${Chart.defaults.font.family}`;
+      ctx.textBaseline = "bottom";
+      const runsOff = x + 4 + ctx.measureText("Postseason").width > chart.width;
+      ctx.textAlign = runsOff ? "right" : "left";
+      ctx.fillText("Postseason", runsOff ? x - 4 : x + 4, chartArea.top - 4);
+      ctx.restore();
+    },
   };
 }
 
@@ -318,22 +398,25 @@ function ScoringTrendChart({ playedGames }) {
   const canvasRef = useRef(null);
   const chartRef = useRef(null);
   const theme = useActiveTheme();
-  const { labels, values } = useMemo(() => roundScoringSeries(playedGames), [playedGames]);
-  const axisLabels = useMemo(() => thinAxisLabels(labels, 6), [labels]);
+  const points = useMemo(() => roundScoringSeries(playedGames), [playedGames]);
+  const values = useMemo(() => points.map((point) => point.value), [points]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
-    if (!canvas || labels.length < 2) return undefined;
+    if (!canvas || points.length < 2) return undefined;
 
     const primary = themeColor(canvas, "--color-primary");
     const textColor = themeColor(canvas, "--color-base-content");
     const gridColor = `color-mix(in srgb, ${textColor} 20%, transparent)`;
     const fillColor = `color-mix(in srgb, ${primary} 15%, transparent)`;
+    const postseasonStart = points.findIndex((point) => point.phaseCode !== "RS");
+    const hasPostseason = postseasonStart > 0;
 
     chartRef.current = new Chart(canvas, {
       type: "line",
+      plugins: hasPostseason ? [postseasonDivider(postseasonStart, `color-mix(in srgb, ${textColor} 55%, transparent)`, textColor)] : [],
       data: {
-        labels: axisLabels,
+        labels: points.map((point) => point.name),
         datasets: [
           {
             label: "Average points per team",
@@ -341,8 +424,10 @@ function ScoringTrendChart({ playedGames }) {
             borderColor: primary,
             backgroundColor: fillColor,
             fill: true,
-            borderWidth: 4,
-            pointRadius: 5,
+            // A full season has dozens of rounds: thinner marks keep a narrow chart readable as a line.
+            borderWidth: (context) => (context.chart.width < SMALL_CHART_WIDTH ? 2 : 4),
+            pointRadius: (context) => (context.chart.width < SMALL_CHART_WIDTH ? 2 : 5),
+            pointHoverRadius: 6,
             pointBackgroundColor: primary,
             tension: 0.3,
           },
@@ -351,15 +436,33 @@ function ScoringTrendChart({ playedGames }) {
       options: {
         responsive: true,
         maintainAspectRatio: false,
+        layout: { padding: { top: hasPostseason ? 16 : 0 } },
         scales: {
-          x: { ticks: { color: textColor }, grid: { color: gridColor } },
+          x: {
+            title: { display: true, text: hasPostseason ? "Regular season round" : "Round", color: textColor },
+            ticks: {
+              color: textColor,
+              autoSkip: false,
+              maxRotation: 0,
+              callback: (value) => axisRoundLabel(points[value], points.length),
+            },
+            grid: { color: (context) => (axisRoundLabel(points[context.index], points.length) ? gridColor : "transparent") },
+          },
           y: { ticks: { color: textColor }, grid: { color: gridColor } },
         },
         plugins: {
           legend: { display: false },
-          tooltip: { mode: "nearest", intersect: true },
+          // A tap or hover anywhere along the chart reads the nearest round: a finger cannot hit a 2px marker.
+          tooltip: {
+            mode: "index",
+            intersect: false,
+            callbacks: {
+              title: (items) => points[items[0].dataIndex].name,
+              label: (item) => `${formatPerGame(item.parsed.y)} points per team`,
+            },
+          },
         },
-        interaction: { mode: "nearest", intersect: true },
+        interaction: { mode: "index", intersect: false },
       },
     });
 
@@ -367,23 +470,35 @@ function ScoringTrendChart({ playedGames }) {
       chartRef.current?.destroy();
       chartRef.current = null;
     };
-  }, [axisLabels, values, labels.length, theme]);
+  }, [points, values, theme]);
 
   return (
     <Panel className="p-4">
       <PanelHeader kicker="TRENDS" title="Scoring through the season" />
-      {labels.length < 2 ? (
+      {points.length < 2 ? (
         <p className="muted text-sm">Not enough played games yet to chart a trend.</p>
       ) : (
-        <div className="rounded-field border border-base-300 bg-base-100/60 p-2 sm:p-3">
-          <div className="relative h-64 w-full">
-            <canvas
-              ref={canvasRef}
-              role="img"
-              aria-label={`Average points scored per team per round across the season, from ${Math.round(Math.min(...values))} to ${Math.round(Math.max(...values))} points`}
-            />
+        <>
+          <div className="rounded-field border border-base-300 bg-base-100/60 p-2 sm:p-3">
+            <div className="relative h-64 w-full">
+              <canvas
+                ref={canvasRef}
+                role="img"
+                aria-label={`Average points scored per team per round across the season, from ${Math.round(Math.min(...values))} to ${Math.round(Math.max(...values))} points`}
+              />
+            </div>
           </div>
-        </div>
+          <p className="muted mt-3 text-xs">Average points per team, by round</p>
+          <dl className="mt-1 grid grid-cols-3 gap-2">
+            {scoringSummary(points).map(({ label, value, name }) => (
+              <div key={label} className="rounded-field border border-base-300 bg-base-100/60 p-2">
+                <dt className="micro-label">{label}</dt>
+                <dd className="text-lg font-bold leading-tight tabular-nums">{value}</dd>
+                <dd className="muted text-xs">{name}</dd>
+              </div>
+            ))}
+          </dl>
+        </>
       )}
     </Panel>
   );
@@ -439,13 +554,17 @@ function LeaderCard({ seasonCode, category, phaseCode }) {
 }
 
 function PhaseLeadersGroup({ seasonCode, phaseCode, showHeading }) {
+  const isSwipeRow = useMediaQuery("not (min-width: 40rem)");
   return (
     <div>
       {showHeading ? (
         <h3 className="mb-2 font-semibold">{PHASE_NAMES[phaseCode] ?? phaseCode}</h3>
       ) : null}
       <motion.div
-        className="season-leaders-grid grid gap-4 sm:grid-cols-2 xl:grid-cols-3"
+        className="season-leaders-grid"
+        role="group"
+        aria-label={`${PHASE_NAMES[phaseCode] ?? phaseCode} leaders`}
+        tabIndex={isSwipeRow ? 0 : undefined}
         variants={listContainer}
         initial="hidden"
         animate="show"
@@ -563,7 +682,7 @@ function RoadStep({ step, index }) {
         />
       ) : null}
       <div className="min-w-0 flex-1">
-        <p className="truncate font-medium">Defeated {teamName(step.opponent)}</p>
+        <p className="break-words font-medium">Defeated {teamName(step.opponent)}</p>
         <p className="muted text-xs">{resultText}</p>
       </div>
     </Panel>

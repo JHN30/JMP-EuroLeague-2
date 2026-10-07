@@ -1,3 +1,5 @@
+import { expect } from "@playwright/test";
+
 export const WIDTHS = [320, 390, 768, 1024];
 export const HEIGHT = 800;
 
@@ -33,7 +35,8 @@ export async function findBrokenWords(locator) {
         probe.style.cssText = `position:absolute;visibility:hidden;white-space:nowrap;font:${style.font};letter-spacing:${style.letterSpacing};text-transform:${style.textTransform}`;
         document.body.appendChild(probe);
         const widest = Math.max(
-          ...element.textContent.split(/\s+/).map((word) => {
+          // A browser may also break after a hyphen, so "MILLER-MCINTYRE," counts as two words.
+          ...element.textContent.split(/\s+|(?<=-)/).map((word) => {
             probe.textContent = word;
             return probe.getBoundingClientRect().width;
           }),
@@ -43,6 +46,69 @@ export async function findBrokenWords(locator) {
       })
       .map((element) => element.textContent),
   );
+}
+
+// How far the card nearest a swipe row's centre is from it, and which card that is.
+export const nearestCard = (row) =>
+  row.evaluate((element) => {
+    const middle = element.getBoundingClientRect().left + element.clientWidth / 2;
+    const offsets = [...element.children].map((card) => {
+      const box = card.getBoundingClientRect();
+      return Math.abs(box.left + box.width / 2 - middle);
+    });
+    const best = Math.min(...offsets);
+    return { index: offsets.indexOf(best), offset: Math.round(best) };
+  });
+
+// The swipe-row contract below 640px: snap one card at a time, a tab stop, the first card on the panel's content edge
+// with the neighbouring card peeking out, and the last card on the opposite content edge once scrolled to the end.
+export async function expectSwipeRowAtRest(row) {
+  await expect(row).toHaveCSS("scroll-snap-type", "x mandatory");
+  await expect(row).toHaveAttribute("tabindex", "0");
+  await row.evaluate((el) => el.scrollTo({ left: 0, behavior: "instant" }));
+
+  const geometry = await row.evaluate((el) => {
+    const panel = el.closest("section, .panel");
+    const panelStyle = getComputedStyle(panel);
+    const panelBox = panel.getBoundingClientRect();
+    const edge = parseFloat(panelStyle.paddingLeft) + parseFloat(panelStyle.borderLeftWidth);
+    const [first, second] = [...el.children].map((card) => card.getBoundingClientRect());
+    return {
+      contentLeft: panelBox.left + edge,
+      contentWidth: panelBox.width - 2 * edge,
+      rowRight: el.getBoundingClientRect().right,
+      first: first.toJSON(),
+      second: second.toJSON(),
+    };
+  });
+  expect(Math.abs(geometry.first.left - geometry.contentLeft)).toBeLessThanOrEqual(1);
+  expect(geometry.first.width / geometry.contentWidth).toBeGreaterThan(0.8);
+  expect(geometry.first.width / geometry.contentWidth).toBeLessThan(0.9);
+  expect(geometry.rowRight - geometry.second.left).toBeGreaterThan(20);
+  expect(geometry.second.left - geometry.first.right).toBeLessThanOrEqual(12);
+
+  await row.evaluate((el) => el.scrollTo({ left: el.scrollWidth, behavior: "instant" }));
+  await expect
+    .poll(() =>
+      row.evaluate((el) => {
+        const panel = el.closest("section, .panel");
+        const panelStyle = getComputedStyle(panel);
+        const edge = parseFloat(panelStyle.paddingRight) + parseFloat(panelStyle.borderRightWidth);
+        const last = el.lastElementChild.getBoundingClientRect();
+        return Math.abs(Math.round(panel.getBoundingClientRect().right - edge - last.right));
+      }),
+    )
+    .toBe(0);
+}
+
+export async function expectSwipeRowSettles(page, row) {
+  await row.evaluate((el) => el.scrollTo({ left: 150, behavior: "instant" }));
+  await expect.poll(async () => (await nearestCard(row)).offset).toBeLessThanOrEqual(2);
+
+  await row.evaluate((el) => el.scrollTo({ left: 0, behavior: "instant" }));
+  await row.focus();
+  await page.keyboard.press("ArrowRight");
+  await expect.poll(async () => nearestCard(row)).toEqual({ index: 1, offset: 0 });
 }
 
 export async function seasonSlug(page) {

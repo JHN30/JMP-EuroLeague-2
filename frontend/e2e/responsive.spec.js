@@ -18,6 +18,7 @@ const PAGES = [
   { name: "Page not found", route: async () => "/not-a/page" },
   staticPage("Home", "home"),
   staticPage("Overview", "overview"),
+  { name: "Overview (finished season)", route: async () => "/2025/overview" },
   staticPage("Standings", "standings"),
   staticPage("Games", "games"),
   staticPage("Teams", "teams"),

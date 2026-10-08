@@ -273,7 +273,7 @@ test("the comparison panels stack on a phone with their stat lines inside their 
     // A percentage never splits in the middle: each stat cell is as wide as its widest word.
     expect(await panels.nth(0).locator("p.tabular-nums").evaluateAll((cells) => cells.every((cell) => cell.scrollWidth <= cell.clientWidth + 1))).toBe(true);
     // The club name is the short one on a phone.
-    await expect(panels.nth(1).getByText("Crvena Zvezda", { exact: true })).toBeVisible();
+    await expect(panels.nth(1).getByText("CZV", { exact: true })).toBeVisible();
   });
   await atWidths(page, [768, 1024], async () => {
     await expectNoPageOverflow(page);

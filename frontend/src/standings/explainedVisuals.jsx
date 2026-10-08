@@ -72,7 +72,7 @@ export function DotStrip({ entries, valueOf, exampleCode, format, includeZero = 
           </circle>
         </motion.g>
         <text x={x(example.value)} y={10} textAnchor="middle" style={{ fill: "var(--color-primary)" }}>
-          {example.entry.clubCode} {format(example.value)}
+          {example.entry.clubTvCode ?? example.entry.clubCode} {format(example.value)}
         </text>
         <text className="axis-text" x={pad} y={height - 4} textAnchor="start">
           {format(Math.min(...values))}

@@ -3,6 +3,7 @@ import { motion } from "motion/react";
 import { Link, useParams } from "react-router";
 import { getSeasonStandings } from "../lib/api";
 import { listContainer, listItem } from "../lib/motion";
+import ShortLabel from "../lib/ShortLabel";
 import { WidgetPanel } from "./Dashboard";
 
 const MotionLink = motion.create(Link);
@@ -50,7 +51,11 @@ export default function StandingsSnapshot({ height }) {
                   }}
                 />
               ) : null}
-              {entry.clubName ?? entry.clubCode}
+              {entry.clubTvCode ? (
+                <ShortLabel short={entry.clubTvCode} full={entry.clubName ?? entry.clubCode} />
+              ) : (
+                (entry.clubName ?? entry.clubCode)
+              )}
             </span>
             <span className="muted font-semibold tabular-nums">
               {entry.basic?.gamesWon ?? "-"}-{entry.basic?.gamesLost ?? "-"}

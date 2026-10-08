@@ -16,6 +16,7 @@ import { useMediaQuery } from "../lib/useMediaQuery";
 import { PHASE_NAMES, PHASE_ORDER, dateRangeLabel, isChampionshipLabel, phaseSortIndex } from "../lib/phaseSummary";
 import { useActiveTheme, themeColor } from "../lib/useActiveTheme";
 import { formatDateTime, formatPerGame, formatSeasonLabel } from "../lib/format";
+import { teamCode } from "../games/gameUtils";
 
 const MotionLink = motion.create(Link);
 
@@ -220,28 +221,24 @@ function shortName(team) {
   return team?.abbreviatedName ?? team?.name ?? "TBD";
 }
 
-// Below lg a team is its crest alone and its full name stays as hidden text; from lg the short name sits beside the crest.
-// A club without a crest (or one that fails to load) shows its short name in the crest slot instead. Only text is dimmed for
-// the losing side, never the crest, which is all that names the club below lg.
+// A team is its crest and a name: its TV code below lg, where the card is narrow, and its short name from lg. Both stay hidden
+// from screen readers, which get the full name. Only text is dimmed for the losing side, never the crest. A club without a crest
+// (or one that fails to load) is just its name.
 function TeamName({ team, dimmed, nameFirst = false }) {
   const [crestFailed, setCrestFailed] = useState(false);
   const crest =
     team?.crestUrl && !crestFailed ? (
-      <img
-        src={team.crestUrl}
-        alt=""
-        className="h-8 w-8 flex-none object-contain lg:h-6 lg:w-6"
-        onError={() => setCrestFailed(true)}
-      />
-    ) : (
-      <span aria-hidden="true" className={`break-words text-sm font-semibold lg:hidden ${dimmed ? "opacity-60" : ""}`}>
+      <img src={team.crestUrl} alt="" className="h-6 w-6 flex-none object-contain" onError={() => setCrestFailed(true)} />
+    ) : null;
+  const name = (
+    <>
+      <span aria-hidden="true" className={`min-w-0 break-words text-sm font-semibold lg:hidden ${dimmed ? "opacity-60" : ""}`}>
+        {teamCode(team)}
+      </span>
+      <span aria-hidden="true" className={`hidden min-w-0 break-words lg:inline ${dimmed ? "opacity-60" : ""}`}>
         {shortName(team)}
       </span>
-    );
-  const name = (
-    <span aria-hidden="true" className={`hidden min-w-0 break-words lg:inline ${dimmed ? "opacity-60" : ""}`}>
-      {shortName(team)}
-    </span>
+    </>
   );
   return (
     <>

@@ -26,22 +26,26 @@ const activeVisible = (page) =>
     return active.left >= box.left - 1 && active.right <= box.right + 1;
   });
 
-// Words of a shown name that the browser had to cut across two lines (a multi-word name may wrap at its spaces).
+// Words of a shown name that the browser had to cut across two lines (a multi-word name may wrap at its spaces). Only the text
+// that is shown counts: the hidden short or full label of a pair, and the screen-reader copy, are skipped.
 const splitWords = (locator) =>
   locator.evaluateAll((els) => {
     const split = [];
     for (const el of els) {
-      const node = el.firstChild;
-      if (!node) continue;
-      let index = 0;
-      for (const word of node.textContent.split(/(\s+)/)) {
-        if (word.trim()) {
-          const range = document.createRange();
-          range.setStart(node, index);
-          range.setEnd(node, index + word.length);
-          if (range.getClientRects().length > 1) split.push(word);
+      const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
+      for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+        const parent = node.parentElement;
+        if (parent.getBoundingClientRect().width <= 1 || parent.closest("[aria-hidden=true]") === null && parent.classList.contains("sr-only")) continue;
+        let index = 0;
+        for (const word of node.textContent.split(/(\s+)/)) {
+          if (word.trim()) {
+            const range = document.createRange();
+            range.setStart(node, index);
+            range.setEnd(node, index + word.length);
+            if (range.getClientRects().length > 1) split.push(word);
+          }
+          index += word.length;
         }
-        index += word.length;
       }
     }
     return split;

@@ -95,11 +95,11 @@ for (const { name, label, tables: count } of VIEWS) {
           const table = tables(page).nth(index);
           const rest = await measureTeam(table);
           expect(rest.positions).toEqual(["sticky", "sticky"]);
-          expect(rest.teamWidth).toBeGreaterThan(width < 640 ? 100 : 200);
+          expect(rest.teamWidth).toBeGreaterThan(width < 640 ? 70 : 200);
 
           // A table that hardly overflows (the expected-wins table, now three numbers) does not collapse at all.
           const overflow = await table.evaluate((el) => el.parentElement.scrollWidth - el.parentElement.clientWidth);
-          if (width < 640 && overflow < 122) {
+          if (width < 640 && overflow < 80) {
             // It is left uncollapsed: the column must not stop half way, whatever the swipe.
             await swipeTo(table, 9999);
             await page.waitForTimeout(300);

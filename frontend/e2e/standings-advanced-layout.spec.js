@@ -71,9 +71,9 @@ for (const view of VIEWS) {
         const rest = await measure(table(page));
         expect(rest.stickyHead).toBe(true);
         expect(rest.stickyBody).toBe(true);
-        expect(rest.teamWidth).toBeGreaterThan(width < 640 ? 100 : 200);
+        expect(rest.teamWidth).toBeGreaterThan(width < 640 ? 70 : 200);
 
-        if (width < 640 && rest.overflow >= 122) {
+        if (width < 640 && rest.overflow >= 80) {
           await swipeTo(table(page), 18);
           await expect.poll(async () => (await measure(table(page))).scrolled).toBe(18);
           await expect.poll(async () => (await measure(table(page))).teamWidth).toBeLessThan(rest.teamWidth - 20);

@@ -5,6 +5,8 @@ import { Link, useParams } from "react-router";
 import { getSeasonGames, getSeasonStandings } from "../lib/api";
 import { formatDateTime as formatTime } from "../lib/format";
 import { cardHover, listContainer, listItem } from "../lib/motion";
+import ShortLabel from "../lib/ShortLabel";
+import { shortTeamName, teamCode } from "../games/gameUtils";
 import { WidgetPanel } from "./Dashboard";
 
 const MotionLink = motion.create(Link);
@@ -45,7 +47,9 @@ export function MatchCard({ game, standingByClubCode, seasonCode, showScore, cla
               }}
             />
           ) : null}
-          <span className="flex-1">{game.localTeam?.abbreviatedName ?? game.localTeam?.name ?? "TBD"}</span>
+          <span className="flex-1">
+            <ShortLabel short={teamCode(game.localTeam)} full={shortTeamName(game.localTeam)} />
+          </span>
           {localEntry?.basic ? (
             <span className="record">
               {localEntry.basic.gamesWon}-{localEntry.basic.gamesLost}
@@ -64,7 +68,9 @@ export function MatchCard({ game, standingByClubCode, seasonCode, showScore, cla
               }}
             />
           ) : null}
-          <span className="flex-1">{game.roadTeam?.abbreviatedName ?? game.roadTeam?.name ?? "TBD"}</span>
+          <span className="flex-1">
+            <ShortLabel short={teamCode(game.roadTeam)} full={shortTeamName(game.roadTeam)} />
+          </span>
           {roadEntry?.basic ? (
             <span className="record">
               {roadEntry.basic.gamesWon}-{roadEntry.basic.gamesLost}

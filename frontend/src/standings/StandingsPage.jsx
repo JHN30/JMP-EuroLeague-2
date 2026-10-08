@@ -61,11 +61,11 @@ export default function StandingsPage() {
     enabled: Boolean(phaseCode),
   });
 
-  // The short names the table shows on a phone come from the teams list (the standings carry only the full name). The table
+  // The short labels the tables show on a phone are the clubs' TV codes (then abbreviated names) from the teams list. The table
   // does not wait for it: until it arrives, or if it fails, the full names show.
   const teamsQuery = useQuery({ queryKey: ["teams", seasonCode], queryFn: () => getSeasonTeams(seasonCode) });
   const shortNames = new Map(
-    (teamsQuery.data?.teams ?? []).filter((team) => team.abbreviatedName).map((team) => [team.clubCode, team.abbreviatedName]),
+    (teamsQuery.data?.teams ?? []).filter((team) => team.tvCode || team.abbreviatedName).map((team) => [team.clubCode, team.tvCode || team.abbreviatedName]),
   );
 
   const round = standingsQuery.data?.round ?? null;

@@ -19,6 +19,7 @@ import HeatmapLegend from "../lib/HeatmapLegend";
 import LabelledSelect from "../lib/LabelledSelect";
 import Panel from "../lib/Panel";
 import PanelHeader from "../lib/PanelHeader";
+import ShortLabel from "../lib/ShortLabel";
 import ShootingCourt from "../lib/ShootingCourt";
 import ShootingLegend from "../lib/ShootingLegend";
 import { useDocumentTitle } from "../lib/useDocumentTitle";
@@ -199,7 +200,7 @@ function BoxScoreTable({ players, teamTotal, team, won, seasonCode, gameHighs, c
         <EmptyText>Box score not available yet.</EmptyText>
       ) : (
         <Panel className="p-2 max-sm:p-1">
-          <ScrollingTable>
+          <ScrollingTable shrink={86}>
             <table className="data-table-sticky box-score-table table table-sm hover">
               <thead>
                 {groups ? (
@@ -358,19 +359,6 @@ const PRESENTATION_MODES = [
 
 function formatPeriodOption(option) {
   return option === "all" ? "Full game" : formatPeriod(Number(option));
-}
-
-// A label that is the short one below sm, where a row of buttons has little room, and the full one from sm. Below sm the full
-// label stays in the page for screen readers, and the short one is hidden from them, so the name is read once.
-function ShortLabel({ short, full }) {
-  return (
-    <>
-      <span aria-hidden="true" className="sm:hidden">
-        {short}
-      </span>
-      <span className="max-sm:sr-only">{full}</span>
-    </>
-  );
 }
 
 // Mirrors `RacePlayback.jsx`'s controlled playback/reduced-motion pattern:

@@ -51,7 +51,7 @@ test("hero cards sit side by side, compact below 640px", async ({ page }) => {
 
 test.describe("defining games", () => {
   for (const season of [undefined, FINISHED]) {
-    test(`${season ?? "live season"}: crests below 1024px and short names from it, nothing cut`, async ({ page }) => {
+    test(`${season ?? "live season"}: crest and TV code below 1024px, short names from it, nothing cut`, async ({ page }) => {
       await openOverview(page, season);
       const cards = panel(page, "Defining games").getByRole("link");
       await expect(cards).toHaveCount(4);
@@ -72,12 +72,12 @@ test.describe("defining games", () => {
         for (const card of shape) {
           expect(card.crests).toBe(2);
           expect(card.cut).toBe(0);
-          if (width < 1024) expect(card.names).toEqual([]);
+          if (width < 1024) expect(card.names.length === 2 && card.names.every((name) => name.length > 0 && name.length <= 5)).toBe(true);
           else expect(card.names.every((name) => name.length > 0 && name.length <= 20)).toBe(true);
         }
         expect(new Set(shape.map((card) => card.left)).size).toBe(width < 640 ? 1 : 2);
 
-        // The link still names both clubs for a screen reader, though no name is drawn below 1024px.
+        // The link still names both clubs for a screen reader, though only the TV code is drawn below 1024px.
         const [first, second] = shape[0].fullNames;
         await expect(cards.first()).toHaveAccessibleName(new RegExp(`${escapeRegExp(first)}.*${escapeRegExp(second)}`));
       });

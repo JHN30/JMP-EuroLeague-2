@@ -2,6 +2,8 @@ import { motion } from "motion/react";
 import { Link } from "react-router";
 import { formatShortDate, formatTimeOfDay } from "../lib/format";
 import { centerPop, listItem, wideCardHover } from "../lib/motion";
+import ShortLabel from "../lib/ShortLabel";
+import { shortTeamName, teamCode } from "./gameUtils";
 
 const MotionLink = motion.create(Link);
 
@@ -20,7 +22,9 @@ function FixtureTeam({ team, entry, won }) {
       ) : (
         <span className="fixture-crest" />
       )}
-      <span className="fixture-team-name">{team?.abbreviatedName ?? team?.name ?? "TBD"}</span>
+      <span className="fixture-team-name">
+        <ShortLabel short={teamCode(team)} full={shortTeamName(team)} />
+      </span>
       {entry?.basic ? (
         <span className="fixture-team-record">
           {entry.basic.gamesWon}-{entry.basic.gamesLost}

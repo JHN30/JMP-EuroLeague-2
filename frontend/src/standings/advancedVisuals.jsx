@@ -229,7 +229,7 @@ export function RatingsScatter({ entries }) {
                     />
                   ) : (
                     <text textAnchor="middle" y={3} style={{ fontSize: 8, fontWeight: 800 }}>
-                      {entry.clubCode}
+                      {entry.clubTvCode ?? entry.clubCode}
                     </text>
                   )}
                 </motion.g>

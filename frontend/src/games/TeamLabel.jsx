@@ -1,19 +1,13 @@
+import ShortLabel from "../lib/ShortLabel";
 import { shortTeamName, teamName } from "./gameUtils";
 
-// A team's name: the short one below sm, where there is little room, and the full one from sm. Below sm the full name stays
-// in the page for screen readers (visually hidden), and the short one is hidden from them, so the name is read once.
+// A team's name: its TV code (else its abbreviated name) below sm, where there is little room, and the full name from sm. Below sm the full name stays
+// in the page for screen readers (visually hidden), and the code is hidden from them, so the name is read once.
 export function TeamName({ team }) {
   const full = teamName(team);
-  const short = shortTeamName(team);
+  const short = team?.tvCode ?? shortTeamName(team);
   if (short === full) return full;
-  return (
-    <>
-      <span aria-hidden="true" className="sm:hidden">
-        {short}
-      </span>
-      <span className="max-sm:sr-only">{full}</span>
-    </>
-  );
+  return <ShortLabel short={short} full={full} />;
 }
 
 // A team's crest and name on one line.

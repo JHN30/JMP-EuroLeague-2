@@ -543,8 +543,8 @@ button {
    of taking width. `.pinned-table` is what both kinds share; `.standings-table` adds the Overview table's own cell sizes. */
 .pinned-table {
   --pin-rank: 2.25rem;
-  /* 7.625rem with the name, 2.25rem with the crest alone (a difference of 5.375rem). */
-  --pin-team: calc(7.625rem - var(--collapse, 0) * 5.375rem);
+  /* 5rem with the club's TV code, 2.25rem with the crest alone (a difference of 2.75rem). */
+  --pin-team: calc(5rem - var(--collapse, 0) * 2.75rem);
   --name-fade: calc(1 - var(--collapse, 0) * 1.6);
 }
 .pinned-table thead th:nth-child(-n + 2),
@@ -579,10 +579,10 @@ button {
   width: 1.375rem;
   height: 1.375rem;
 }
-/* The name keeps the width it has at rest, so it is clipped by the narrowing cell and fades instead of re-wrapping. */
+/* The code keeps the width it has at rest, so it is clipped by the narrowing cell and fades instead of re-wrapping. */
 .pinned-table tbody tr:not(.tier-row) td:nth-child(2) a span {
   flex: none;
-  width: 5.125rem;
+  width: 2.625rem;
   opacity: var(--name-fade);
 }
 .pinned-table thead th:nth-child(2) {

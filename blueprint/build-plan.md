@@ -180,9 +180,9 @@ Scaffolding, shared layout, design tokens, database connection setup, and deploy
   - [ ] 31l. **Compare and Head-to-head** - Mobile and tablet layouts for `/:season/compare` and `/:season/compare/head-to-head`, checked at 320, 390, 768 and 1024px and added to the overflow spec.
   - [ ] 31m. **Records** - Mobile and tablet layouts for `/:season/records`, checked at 320, 390, 768 and 1024px and added to the overflow spec.
   - [ ] 31n. **Postseason** - Mobile and tablet layouts for `/:season/postseason` (the bracket below `lg`, the race table and the matchup detail), checked at 320, 390, 768 and 1024px and added to the overflow spec.
-- [ ] 32. **Club TV codes** - Show each club's TV code (the code in use that season, such as FBT for Fenerbahce; the club code is the permanent ID and can look outdated) as the short club label wherever a full name does not fit. Each page after 31f uses it in its own item (31g to 31n); the finished pages are done in 32b.
+- [x] 32. **Club TV codes** - Show each club's TV code (the code in use that season, such as FBT for Fenerbahce; the club code is the permanent ID and can look outdated) as the short club label wherever a full name does not fit. Each page after 31f uses it in its own item (31g to 31n); the finished pages are done in 32b.
   - [x] 32a. **TV code in the API** - Every team the API returns (games, teams, standings, leaders, compare and the rest) carries a `tvCode`: the club's TV code from the season's latest standings row, falling back to its abbreviated name and then its club code when the standings have none. No new table or endpoint.
-  - [ ] 32b. **TV code on the finished pages** - Home, Season overview, Standings, Games and Game detail show the TV code instead of the abbreviated name or club code where a label is too narrow for the full name, checked page by page. Full names stay where they fit.
+  - [x] 32b. **TV code on the finished pages** - Home, Season overview, Standings, Games and Game detail show the TV code instead of the abbreviated name or club code where a label is too narrow for the full name, checked page by page. Full names stay where they fit.
 
 ## Deferred beyond Phase 1
 

@@ -6,8 +6,10 @@ import AsyncState from "../lib/AsyncState";
 import EmptyText from "../lib/EmptyText";
 import { cardHover, listContainer, listItem } from "../lib/motion";
 import RevealImage from "../lib/RevealImage";
+import ShortLabel from "../lib/ShortLabel";
 import PageHeader from "../lib/PageHeader";
 import { useDocumentTitle } from "../lib/useDocumentTitle";
+import { shortTeamName } from "../games/gameUtils";
 
 const MotionLink = motion.create(Link);
 
@@ -34,7 +36,7 @@ export default function TeamsPage() {
         <EmptyText>No teams available for this season.</EmptyText>
       ) : (
         <motion.ul
-          className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3"
+          className="grid grid-cols-2 gap-3 lg:grid-cols-3"
           variants={listContainer}
           initial="hidden"
           animate="show"
@@ -47,12 +49,15 @@ export default function TeamsPage() {
                 variants={listItem}
                 {...cardHover}
               >
-                <div className="card-body flex-row items-center gap-3 p-4">
-                  {team.crestUrl ? (
-                    <RevealImage src={team.crestUrl} className="h-10 w-10 object-contain" />
-                  ) : null}
-                  <div>
-                    <p className="font-semibold">{team.name ?? team.abbreviatedName ?? team.clubCode}</p>
+                <div className="card-body items-center gap-2 p-3 text-center sm:flex-row sm:gap-3 sm:p-4 sm:text-left">
+                  {/* A fixed slot, so a club without a crest (or one that fails to load) keeps its card's height and alignment. */}
+                  <span className="flex h-10 w-10 flex-none items-center justify-center">
+                    {team.crestUrl ? <RevealImage src={team.crestUrl} className="h-10 w-10 object-contain" /> : null}
+                  </span>
+                  <div className="min-w-0">
+                    <p className="font-semibold break-words">
+                      <ShortLabel short={shortTeamName(team)} full={team.name ?? team.abbreviatedName ?? team.clubCode} />
+                    </p>
                     <p className="muted text-sm">{team.countryCode ?? "-"}</p>
                   </div>
                 </div>

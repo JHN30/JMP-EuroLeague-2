@@ -172,7 +172,7 @@ Scaffolding, shared layout, design tokens, database connection setup, and deploy
     - [x] 31f-iv. **Rotations** - The minutes timelines, assist connections and five-man units tables.
     - [x] 31f-v. **Shooting and Play-by-play** - The shot court, its filters and quarter playback, the zone table, and the play-by-play filters and rows.
     - [x] 31f-vi. **Matchup header** - The matchup header laid out like EuroLeague's: each club's large crest at its own end with its TV code and current league position in brackets beneath it (the position only for a regular-season game), and in the centre the final score with "Final" for a played game or the tip-off time for a game to come, with the date under it; the round and date on one line on a phone. Needs 32a.
-  - [ ] 31g. **Teams** - Mobile and tablet layouts for `/:season/teams`, checked at 320, 390, 768 and 1024px and added to the overflow spec.
+  - [x] 31g. **Teams** - Mobile and tablet layouts for `/:season/teams`, checked at 320, 390, 768 and 1024px and added to the overflow spec.
   - [ ] 31h. **Team page** - Mobile and tablet layouts for `/:season/teams/:clubCode` and all its tabs, checked at 320, 390, 768 and 1024px and added to the overflow spec.
   - [ ] 31i. **Players** - Mobile and tablet layouts for `/:season/players`, checked at 320, 390, 768 and 1024px and added to the overflow spec.
   - [ ] 31j. **Player page** - Mobile and tablet layouts for `/:season/players/:personKey` and all its tabs, checked at 320, 390, 768 and 1024px and added to the overflow spec.

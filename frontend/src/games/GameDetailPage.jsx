@@ -8,8 +8,6 @@ import ComparisonRow from "../lib/ComparisonRow";
 import EmptyText from "../lib/EmptyText";
 import {
   formatCount,
-  formatDate,
-  formatDateTime as formatDateTimeShared,
   formatMinutes,
   formatMissing,
   formatPercentage,
@@ -20,7 +18,6 @@ import HeaderTip from "../lib/HeaderTip";
 import HeatmapLegend from "../lib/HeatmapLegend";
 import LabelledSelect from "../lib/LabelledSelect";
 import Panel from "../lib/Panel";
-import PageHeader from "../lib/PageHeader";
 import PanelHeader from "../lib/PanelHeader";
 import ShootingCourt from "../lib/ShootingCourt";
 import ShootingLegend from "../lib/ShootingLegend";
@@ -36,6 +33,7 @@ import { computeGameFlow, momentLabel, withRunningScore } from "./gameFlowData";
 import { advancedColumns, attachAdvanced } from "./AdvancedBoxScore";
 import FourFactors from "./FourFactors";
 import ScoringProfile from "./ScoringProfile";
+import MatchupHeader from "./MatchupHeader";
 import TeamLabel, { TeamName } from "./TeamLabel";
 import OverviewTab from "./OverviewTab";
 import PlayerLink from "./PlayerLink";
@@ -52,21 +50,6 @@ const GAME_TABS = [
   { key: "shooting", label: "Shooting" },
   { key: "play-by-play", label: "Play-by-play" },
 ];
-
-function formatDateTime(scheduledAt) {
-  return formatDateTimeShared(scheduledAt, { dateStyle: "full" });
-}
-
-// The date line on a phone: "Wed, 30 Nov 2026" for a played game, "Wed, 30 Nov, 20:00" (no year) for one still to come, so the
-// round and the date fit one line.
-const PHONE_DATE = { weekday: "short", day: "numeric", month: "short" };
-function formatPhoneDate(scheduledAt, played) {
-  if (!scheduledAt) return "TBD";
-  const date = new Date(scheduledAt);
-  return played
-    ? date.toLocaleDateString(undefined, { ...PHONE_DATE, year: "numeric" })
-    : date.toLocaleString(undefined, { ...PHONE_DATE, hour: "numeric", minute: "2-digit" });
-}
 
 function madeAttempted(made, attempted) {
   if (made == null && attempted == null) return formatMissing(null);
@@ -1133,59 +1116,7 @@ export default function GameDetailPage() {
 
   return (
     <div>
-      <PageHeader
-        kicker="MATCHUP"
-        childrenBelowSm
-        title={
-          <span className="flex flex-wrap items-center gap-2">
-            <span className={`flex items-center gap-2 text-lg sm:gap-3 sm:text-2xl ${localWon ? "text-primary" : ""}`}>
-              {game.localTeam?.crestUrl ? (
-                <img
-                  src={game.localTeam.crestUrl}
-                  alt=""
-                  className="h-10 w-10 flex-none object-contain sm:h-12 sm:w-12"
-                  onError={(event) => {
-                    event.currentTarget.style.display = "none";
-                  }}
-                />
-              ) : null}
-              {teamName(game.localTeam)}
-            </span>
-            <span className="muted mx-1 text-base font-normal sm:mx-2 sm:text-lg">vs</span>
-            <span className={`flex items-center gap-2 text-lg sm:gap-3 sm:text-2xl ${roadWon ? "text-primary" : ""}`}>
-              {game.roadTeam?.crestUrl ? (
-                <img
-                  src={game.roadTeam.crestUrl}
-                  alt=""
-                  className="h-10 w-10 flex-none object-contain sm:h-12 sm:w-12"
-                  onError={(event) => {
-                    event.currentTarget.style.display = "none";
-                  }}
-                />
-              ) : null}
-              {teamName(game.roadTeam)}
-            </span>
-          </span>
-        }
-        description={
-          <p className="muted">
-            {game.roundName ?? (game.roundNumber ? `Round ${game.roundNumber}` : game.phaseName)} ·{" "}
-            <span className="sm:hidden">{formatPhoneDate(game.scheduledAt, game.played)}</span>
-            <span className="max-sm:hidden">{game.played ? formatDate(game.scheduledAt, { dateStyle: "full" }) : formatDateTime(game.scheduledAt)}</span>
-          </p>
-        }
-      >
-        {game.played ? (
-          <div className="stat-callout">
-            <span className="value">
-              {game.localScore ?? "-"} - {game.roadScore ?? "-"}
-            </span>
-            <span className="label">Final</span>
-          </div>
-        ) : (
-          <span className="stat-badge stat-badge-neutral inline-flex">{game.gameStatus ?? "Scheduled"}</span>
-        )}
-      </PageHeader>
+      <MatchupHeader game={game} seasonCode={seasonCode} localWon={localWon} roadWon={roadWon} />
 
       <TabStrip ariaLabel="Game detail" level={1} panelId="game-detail-panel" activeKey={tab} onChange={setTab} scrolling className="mb-4 lg:w-fit" tabs={GAME_TABS} />
 

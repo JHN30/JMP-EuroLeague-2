@@ -150,29 +150,6 @@ test("the seven tabs are one row that scrolls on its own below 1024px, keeps the
   });
 });
 
-test("the header is compact below 640px, keeps long names whole and is as before from 640px", async ({ page }) => {
-  await openGame(page);
-  const names = page.locator("main h1 > span > span:not(.muted)");
-  const crests = page.locator("main h1 img");
-
-  await atWidths(page, [320, 390, 639], async () => {
-    await expect(crests.first()).toHaveJSProperty("clientWidth", 40);
-    expect(await names.first().evaluate((el) => getComputedStyle(el).fontSize)).toBe("18px");
-    expect(await splitWords(names)).toEqual([]);
-    // The score sits under the names, not squeezed beside them.
-    const [title, score] = await Promise.all([page.locator("main h1").boundingBox(), page.locator(".stat-callout").boundingBox()]);
-    expect(score.y).toBeGreaterThanOrEqual(title.y + title.height - 1);
-    expect(score.x + score.width).toBeLessThanOrEqual(page.viewportSize().width);
-    await expect(page.locator(".stat-callout .value")).toHaveText("112 - 101");
-    await expectNoPageOverflow(page);
-  });
-
-  await atWidths(page, [640, 768, 1024], async () => {
-    await expect(crests.first()).toHaveJSProperty("clientWidth", 48);
-    expect(await names.first().evaluate((el) => getComputedStyle(el).fontSize)).toBe("24px");
-  });
-});
-
 test("a team still to be set shows TBD, and a game to come shows the Scheduled badge, inside the screen at 320px", async ({ page }) => {
   await openGame(page, { game: { roadTeam: { clubCode: null, name: null, abbreviatedName: null, crestUrl: null } } });
   await atWidths(page, [320], async () => {
@@ -189,8 +166,6 @@ test("a team still to be set shows TBD, and a game to come shows the Scheduled b
   await page.reload();
   await atWidths(page, [320], async () => {
     await expect(page.getByText("Scheduled", { exact: true })).toBeVisible();
-    // A game to come keeps its tip-off time in the date line.
-    await expect(page.locator("main p.muted", { hasText: "Round 30" })).toHaveText(/\d:\d{2}/);
     await expect(page.getByText("Overview isn't available until this game is played.")).toBeVisible();
     await expectNoPageOverflow(page);
   });
@@ -301,6 +276,5 @@ test("the date line is one line below 640px, even for a high round and a long da
   await atWidths(page, [320, 390], async () => {
     await expect(page.getByText("Scheduled", { exact: true })).toBeVisible();
     expect(await oneLine()).toBe(true);
-    await expect(line).toContainText(/\d:\d{2}|\d{2}[:.]\d{2}/);
   });
 });

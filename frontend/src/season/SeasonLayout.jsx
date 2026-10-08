@@ -5,6 +5,7 @@ import { getSeasons } from "../lib/api";
 import { isLegacySeasonCode, seasonSlug } from "../lib/seasonSlug";
 import AsyncState from "../lib/AsyncState";
 import { BackTargetContext } from "../lib/backTarget";
+import { useBackLinkClick } from "../lib/historyTrail";
 import RouteErrorBoundary from "../ErrorBoundary";
 import { THEMES } from "../lib/useThemePreference";
 import { useDefaultSeasonCode } from "./useDefaultSeasonCode";
@@ -53,6 +54,7 @@ export default function SeasonLayout({ themePreference }) {
   const location = useLocation();
   // Set by a detail page's back link: on a phone the sticky bar's page name becomes a link back to that page's list.
   const [backTarget, setBackTarget] = useState(null);
+  const goBack = useBackLinkClick(backTarget?.to);
   const seasonsQuery = useQuery({ queryKey: ["seasons"], queryFn: getSeasons });
   // An address from before the year-only form ("E2025") goes on to the year ("2025"), keeping the rest of the address.
   const legacy = isLegacySeasonCode(seasonCode);
@@ -118,6 +120,7 @@ export default function SeasonLayout({ themePreference }) {
               {backTarget ? (
                 <Link
                   to={backTarget.to}
+                  onClick={goBack}
                   aria-label={`Back to ${backTarget.label}`}
                   className="flex min-w-0 items-center gap-1.5 font-semibold sm:hidden"
                 >

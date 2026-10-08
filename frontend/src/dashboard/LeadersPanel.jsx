@@ -9,6 +9,7 @@ import { useMediaQuery } from "../lib/useMediaQuery";
 import { useCurrentPhaseCode } from "../lib/useCurrentPhaseCode";
 import Panel from "../lib/Panel";
 import PanelHeader from "../lib/PanelHeader";
+import { withoutComma } from "../lib/playerName";
 import RevealImage from "../lib/RevealImage";
 
 const MotionLink = motion.create(Link);
@@ -50,7 +51,7 @@ function StatLeaderCard({ seasonCode, category, phaseCode }) {
     >
       <div className="kpi-chip-body">
         <span className="label">{category.label}</span>
-        <span className="name">{leader.playerName ?? leader.personKey}</span>
+        <span className="name">{withoutComma(leader.playerName ?? leader.personKey)}</span>
         <span className="club">{leader.clubName ?? leader.clubCode}</span>
         <span className="value">{leader.traditional[category.key] ?? "-"}</span>
       </div>

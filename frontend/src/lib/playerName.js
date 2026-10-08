@@ -10,6 +10,11 @@ export function displayName(fullName) {
   return (titleCase(first) + " " + titleCase(last)).trim();
 }
 
+// "HIFI, NADIR" without the feed's comma: "HIFI NADIR".
+export function withoutComma(fullName) {
+  return (fullName ?? "").replace(/\s*,\s*/g, " ");
+}
+
 export function nameParts(fullName) {
   const [last = "", first = ""] = (fullName ?? "TBD").split(",").map((part) => part.trim());
   return { last, first };

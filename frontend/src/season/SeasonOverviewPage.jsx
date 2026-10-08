@@ -6,6 +6,7 @@ import { Link, useParams } from "react-router";
 import { getLeaderStats, getLeagueTeamStats, getPhases, getSeasonGames, getSeasonStandings } from "../lib/api";
 import AsyncState from "../lib/AsyncState";
 import { cardHover, listContainer, listItem, sectionContainer, sectionItem } from "../lib/motion";
+import { withoutComma } from "../lib/playerName";
 import Panel from "../lib/Panel";
 import PanelHeader from "../lib/PanelHeader";
 import PageHeader from "../lib/PageHeader";
@@ -539,7 +540,7 @@ function LeaderCard({ seasonCode, category, phaseCode }) {
     >
       <div className="kpi-chip-body">
         <span className="label">{category.label}</span>
-        <span className="name">{leader.playerName ?? leader.personKey}</span>
+        <span className="name">{withoutComma(leader.playerName ?? leader.personKey)}</span>
         <span className="club">{leader.clubName ?? leader.clubCode}</span>
         <span className="value">{leader.traditional[category.key] ?? "-"}</span>
       </div>

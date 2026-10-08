@@ -3,6 +3,7 @@ import { MotionConfig } from "motion/react";
 import { Navigate, Route, Routes, useLocation } from "react-router";
 import SeasonLayout from "./season/SeasonLayout";
 import AsyncState from "./lib/AsyncState";
+import ScrollToTop from "./lib/ScrollToTop";
 import NotFoundPage from "./NotFoundPage";
 import { useDefaultSeasonCode } from "./season/useDefaultSeasonCode";
 import { useThemePreference } from "./lib/useThemePreference";
@@ -55,6 +56,7 @@ function App() {
   return (
     <MotionConfig reducedMotion="user">
       <div className="app-shell min-h-screen">
+        <ScrollToTop />
         <Routes>
           <Route path="/" element={<DefaultSeasonRedirect />} />
           <Route path="/:seasonCode" element={<SeasonLayout themePreference={themePreference} />}>

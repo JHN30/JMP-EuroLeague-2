@@ -13,6 +13,7 @@ import {
   getTeamStatsSummary,
 } from "../lib/api";
 import AsyncState from "../lib/AsyncState";
+import BackLink from "../lib/BackLink";
 import EmptyText from "../lib/EmptyText";
 import { formatDateTime, formatPerGame } from "../lib/format";
 import HomeAwayIcon from "../lib/HomeAwayIcon";
@@ -479,10 +480,15 @@ export default function TeamPage() {
 
   if (teamQuery.isError) {
     const notFound = teamQuery.error?.response?.status === 404;
-    return notFound ? (
-      <EmptyText>Team not found.</EmptyText>
-    ) : (
-      <AsyncState status="error" message="Could not load this team." onRetry={() => teamQuery.refetch()} />
+    return (
+      <div>
+        <BackLink to={`/${seasonCode}/teams`} label="Teams" />
+        {notFound ? (
+          <EmptyText>Team not found.</EmptyText>
+        ) : (
+          <AsyncState status="error" message="Could not load this team." onRetry={() => teamQuery.refetch()} />
+        )}
+      </div>
     );
   }
 
@@ -491,6 +497,7 @@ export default function TeamPage() {
 
   return (
     <div>
+      <BackLink to={`/${seasonCode}/teams`} label="Teams" />
       <PageHeader
         kicker="CLUB"
         title={team.name ?? team.abbreviatedName ?? team.clubCode}

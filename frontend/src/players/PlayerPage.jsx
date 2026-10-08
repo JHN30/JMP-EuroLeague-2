@@ -9,6 +9,7 @@ import {
   getPlayerSeasonStats,
 } from "../lib/api";
 import AsyncState from "../lib/AsyncState";
+import BackLink from "../lib/BackLink";
 import EmptyText from "../lib/EmptyText";
 import { TabPanel, TabStrip } from "../lib/TabStrip";
 import { useDocumentTitle } from "../lib/useDocumentTitle";
@@ -92,15 +93,21 @@ export default function PlayerPage() {
 
   if (playerQuery.isError) {
     const notFound = playerQuery.error?.response?.status === 404;
-    return notFound ? (
-      <EmptyText>Player not found.</EmptyText>
-    ) : (
-      <AsyncState status="error" message="Could not load this player." onRetry={() => playerQuery.refetch()} />
+    return (
+      <div>
+        <BackLink to={`/${seasonCode}/players`} label="Players" />
+        {notFound ? (
+          <EmptyText>Player not found.</EmptyText>
+        ) : (
+          <AsyncState status="error" message="Could not load this player." onRetry={() => playerQuery.refetch()} />
+        )}
+      </div>
     );
   }
 
   return (
     <div>
+      <BackLink to={`/${seasonCode}/players`} label="Players" />
       <PlayerHero
         player={player}
         registrations={registrationsQuery.data?.registrations}

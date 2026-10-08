@@ -95,7 +95,7 @@ test("a club without a crest, with a failing crest or with a long name keeps its
   await page.goto(`/${slug}/teams`);
   await expect(cards(page)).toHaveCount(4);
 
-  await atWidths(page, [320, 390, 640, 768, 1024], async (width) => {
+  await atWidths(page, [320, 390, 640, 768, 1024], async () => {
     // Every card has the same crest slot, drawn or not, so the names line up.
     const slots = await page.locator("main ul > li > a > div > span.flex-none").evaluateAll((els) => els.map((el) => [Math.round(el.getBoundingClientRect().width), Math.round(el.getBoundingClientRect().height)]));
     expect(slots).toEqual([[40, 40], [40, 40], [40, 40], [40, 40]]);

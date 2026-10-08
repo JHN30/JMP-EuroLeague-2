@@ -4,6 +4,7 @@ import { motion } from "motion/react";
 import { useParams } from "react-router";
 import { getBoxScore, getGame, getGameAdvanced, getGameLineups, getGameTeamFlow, getPlayByPlay, getShots } from "../lib/api";
 import AsyncState from "../lib/AsyncState";
+import BackLink from "../lib/BackLink";
 import ComparisonRow from "../lib/ComparisonRow";
 import EmptyText from "../lib/EmptyText";
 import {
@@ -1133,18 +1134,32 @@ export default function GameDetailPage() {
 
   if (gameQuery.isError) {
     const notFound = gameQuery.error?.response?.status === 404;
-    return notFound ? (
-      <EmptyText>Game not found.</EmptyText>
-    ) : (
-      <AsyncState status="error" message="Could not load this game." onRetry={() => gameQuery.refetch()} />
+    return (
+      <div>
+        <BackLink to={`/${seasonCode}/games`} label="Games" />
+        {notFound ? (
+          <EmptyText>Game not found.</EmptyText>
+        ) : (
+          <AsyncState status="error" message="Could not load this game." onRetry={() => gameQuery.refetch()} />
+        )}
+      </div>
     );
   }
 
   const localWon = game.played && game.localScore != null && game.roadScore != null && game.localScore > game.roadScore;
   const roadWon = game.played && game.localScore != null && game.roadScore != null && game.roadScore > game.localScore;
 
+  // Back to the Games list on this game's round and phase, so a neighbouring game is one tap away.
+  const listParams = new URLSearchParams();
+  if (game.phaseCode && game.roundNumber) {
+    listParams.set("phase", game.phaseCode);
+    listParams.set("round", game.roundNumber);
+  }
+  const listQuery = listParams.size > 0 ? `?${listParams}` : "";
+
   return (
     <div>
+      <BackLink to={`/${seasonCode}/games${listQuery}`} label="Games" />
       <MatchupHeader game={game} seasonCode={seasonCode} localWon={localWon} roadWon={roadWon} />
 
       <TabStrip ariaLabel="Game detail" level={1} panelId="game-detail-panel" activeKey={tab} onChange={setTab} scrolling className="mb-4 lg:w-fit" tabs={GAME_TABS} />

@@ -1,9 +1,10 @@
-import { Suspense } from "react";
+import { Suspense, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Navigate, Outlet, useLocation, useParams } from "react-router";
+import { Link, Navigate, Outlet, useLocation, useParams } from "react-router";
 import { getSeasons } from "../lib/api";
 import { isLegacySeasonCode, seasonSlug } from "../lib/seasonSlug";
 import AsyncState from "../lib/AsyncState";
+import { BackTargetContext } from "../lib/backTarget";
 import RouteErrorBoundary from "../ErrorBoundary";
 import { THEMES } from "../lib/useThemePreference";
 import { useDefaultSeasonCode } from "./useDefaultSeasonCode";
@@ -50,6 +51,8 @@ function ThemeToggle({ themePreference }) {
 export default function SeasonLayout({ themePreference }) {
   const { seasonCode } = useParams();
   const location = useLocation();
+  // Set by a detail page's back link: on a phone the sticky bar's page name becomes a link back to that page's list.
+  const [backTarget, setBackTarget] = useState(null);
   const seasonsQuery = useQuery({ queryKey: ["seasons"], queryFn: getSeasons });
   // An address from before the year-only form ("E2025") goes on to the year ("2025"), keeping the rest of the address.
   const legacy = isLegacySeasonCode(seasonCode);
@@ -100,39 +103,54 @@ export default function SeasonLayout({ themePreference }) {
   }
 
   return (
-    <div className="min-h-screen">
-      <a href="#main-content" className="skip-link">
-        Skip to main content
-      </a>
-      <header className="app-nav">
-        <div className="flex h-12 shrink-0 items-center justify-between gap-3 px-3 sm:px-5 lg:px-8">
-          <div className="flex min-w-0 items-center gap-2">
-            <img src="/logo-header.png" alt="" aria-hidden="true" className="brand-mark" />
-            <span className="eyebrow hidden sm:inline">EuroLeague</span>
-            <span data-testid="page-name" className="truncate font-semibold sm:hidden">
-              {pageLabel(location.pathname)}
-            </span>
+    <BackTargetContext.Provider value={setBackTarget}>
+      <div className="min-h-screen">
+        <a href="#main-content" className="skip-link">
+          Skip to main content
+        </a>
+        <header className="app-nav">
+          <div className="flex h-12 shrink-0 items-center justify-between gap-3 px-3 sm:px-5 lg:px-8">
+            <div className="flex min-w-0 items-center gap-2">
+              <img src="/logo-header.png" alt="" aria-hidden="true" className="brand-mark" />
+              <span className="eyebrow hidden sm:inline">EuroLeague</span>
+              {backTarget ? (
+                <Link
+                  to={backTarget.to}
+                  aria-label={`Back to ${backTarget.label}`}
+                  className="flex min-w-0 items-center gap-1.5 font-semibold sm:hidden"
+                >
+                  <span aria-hidden="true">←</span>
+                  <span data-testid="page-name" className="truncate">
+                    {pageLabel(location.pathname)}
+                  </span>
+                </Link>
+              ) : (
+                <span data-testid="page-name" className="truncate font-semibold sm:hidden">
+                  {pageLabel(location.pathname)}
+                </span>
+              )}
+            </div>
+            <div className="hidden items-center gap-2 sm:flex">
+              <SeasonSelector />
+              <ThemeToggle themePreference={themePreference} />
+            </div>
+            <SiteMenu>
+              <SeasonSelector />
+              <ThemeToggle themePreference={themePreference} />
+            </SiteMenu>
           </div>
-          <div className="hidden items-center gap-2 sm:flex">
-            <SeasonSelector />
-            <ThemeToggle themePreference={themePreference} />
-          </div>
-          <SiteMenu>
-            <SeasonSelector />
-            <ThemeToggle themePreference={themePreference} />
-          </SiteMenu>
-        </div>
-        <NavBar />
-      </header>
-      <main id="main-content" tabIndex={-1} className="p-3 outline-none sm:p-5 lg:p-8">
-        <RouteErrorBoundary>
-          <Suspense fallback={<AsyncState status="loading" label="Loading page" />}>
-            {/* Keyed by season so each page's local view-level filters reset
-                when the archive-level season selection changes. */}
-            <Outlet key={seasonCode} />
-          </Suspense>
-        </RouteErrorBoundary>
-      </main>
-    </div>
+          <NavBar />
+        </header>
+        <main id="main-content" tabIndex={-1} className="p-3 outline-none sm:p-5 lg:p-8">
+          <RouteErrorBoundary>
+            <Suspense fallback={<AsyncState status="loading" label="Loading page" />}>
+              {/* Keyed by season so each page's local view-level filters reset
+                  when the archive-level season selection changes. */}
+              <Outlet key={seasonCode} />
+            </Suspense>
+          </RouteErrorBoundary>
+        </main>
+      </div>
+    </BackTargetContext.Provider>
   );
 }

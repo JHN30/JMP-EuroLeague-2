@@ -3,11 +3,12 @@ import { motion } from "motion/react";
 import { Link } from "react-router";
 import AsyncState from "../lib/AsyncState";
 import EmptyText from "../lib/EmptyText";
-import { formatDecimal, formatPerGame } from "../lib/format";
+import { formatCount, formatDecimal, formatPerGame } from "../lib/format";
 import { EASE_OUT, cardHover, listContainer, listItem } from "../lib/motion";
 import Panel from "../lib/Panel";
 import PlayerPortrait from "../lib/PlayerPortrait";
-import { nameParts } from "../lib/playerName";
+import ShortLabel from "../lib/ShortLabel";
+import { nameParts, withoutComma } from "../lib/playerName";
 import { formatStatValue } from "../lib/statsFields";
 import { TabPanel, TabStrip } from "../lib/TabStrip";
 import StatBarCell from "../statistics/StatBarCell";
@@ -56,9 +57,9 @@ function groupByPosition(registrations) {
     .map(([position, entries]) => ({ position, entries: entries.slice().sort((a, b) => jerseyNumber(a) - jerseyNumber(b)) }));
 }
 
-function Fact({ label, value, sub }) {
+function Fact({ label, value, sub, className = "" }) {
   return (
-    <div className="flex flex-col">
+    <div className={`flex flex-col ${className}`}>
       <span className="muted text-xs font-bold uppercase tracking-wide">{label}</span>
       <span className="text-lg font-semibold tabular-nums">{value}</span>
       {sub ? <span className="muted text-xs">{sub}</span> : null}
@@ -72,7 +73,7 @@ function RosterFacts({ registrations, statsByPersonKey }) {
   const countries = [...new Set(registrations.map((entry) => entry.player?.countryCode).filter(Boolean))].sort();
 
   return (
-    <Panel className="mb-4 flex flex-wrap gap-x-10 gap-y-3 p-4">
+    <Panel className="mb-4 grid grid-cols-2 gap-x-4 gap-y-3 p-4 sm:flex sm:flex-wrap sm:gap-x-10">
       <Fact label="Players" value={registrations.length} />
       <Fact
         label="Average age"
@@ -98,8 +99,8 @@ function RosterCard({ entry, stats, seasonCode }) {
 
   const body = (
     <>
-      <PlayerPortrait imageUrl={stats?.playerImageUrl} />
-      <div className="flex min-w-0 flex-1 flex-col justify-center gap-1.5 px-4 py-3">
+      <PlayerPortrait imageUrl={stats?.playerImageUrl} className="w-20 sm:w-28" />
+      <div className="flex min-w-0 flex-1 flex-col justify-center gap-1 px-3 py-2 sm:gap-1.5 sm:px-4 sm:py-3">
         <div className="flex items-start justify-between gap-2">
           <div className="min-w-0">
             <p className="muted truncate text-[0.7rem] font-bold uppercase tracking-[0.18em]">{first}</p>
@@ -144,7 +145,7 @@ function RosterCard({ entry, stats, seasonCode }) {
   );
 
   const className =
-    "group flex min-h-34 overflow-hidden rounded-box border border-base-300 bg-base-100 transition-colors hover:border-primary";
+    "group flex min-h-28 overflow-hidden rounded-box sm:min-h-34 border border-base-300 bg-base-100 transition-colors hover:border-primary";
   return entry.player ? (
     <MotionLink to={`/${seasonCode}/players/${entry.player.personKey}`} className={className} variants={listItem} {...cardHover}>
       {body}
@@ -164,15 +165,19 @@ function CoachCard({ coach }) {
   const { last, first } = nameParts(coach.name);
   return (
     <motion.div
-      className="flex min-h-34 overflow-hidden rounded-box border border-base-300 bg-base-100"
+      className="flex overflow-hidden rounded-box border border-base-300 bg-base-100 sm:min-h-34"
       variants={listItem}
     >
-      <PlayerPortrait imageUrl={null} />
-      <div className="flex min-w-0 flex-1 flex-col justify-center gap-1.5 px-4 py-3">
+      {/* A coach has no photo, so below sm the card is only the text. */}
+      <PlayerPortrait imageUrl={null} className="w-24 sm:w-28 max-sm:hidden" />
+      <div className="flex min-w-0 flex-1 flex-col justify-center gap-1 px-3 py-2 sm:gap-1.5 sm:px-4 sm:py-3">
         <p className="muted truncate text-[0.7rem] font-bold uppercase tracking-[0.18em]">{first}</p>
         <p className="truncate text-lg font-extrabold uppercase leading-tight">{last}</p>
-        <p className="text-xs font-bold uppercase tracking-wide text-primary">{COACH_ROLES[coach.roleCode] ?? "Staff"}</p>
-        {coach.countryCode ? <p className="muted text-xs">{coach.countryCode}</p> : null}
+        <p className="text-xs font-bold uppercase tracking-wide text-primary">
+          {COACH_ROLES[coach.roleCode] ?? "Staff"}
+          {coach.countryCode ? <span className="muted sm:hidden"> · {coach.countryCode}</span> : null}
+        </p>
+        {coach.countryCode ? <p className="muted text-xs max-sm:hidden">{coach.countryCode}</p> : null}
       </div>
     </motion.div>
   );
@@ -236,12 +241,15 @@ function RosterTable({ registrations, statsByPersonKey, seasonCode }) {
     registrations.map((entry) => statNumber(statsByPersonKey.get(entry.player?.personKey)?.traditional?.pointsScored)),
   );
 
+  // No left padding below sm: the pinned column sticks to the panel's padding edge, so a gap there showed the cells scrolling past it.
   return (
-    <Panel className="overflow-x-auto overscroll-x-contain p-2">
-      <table className="data-table-sticky table">
+    <Panel className="overflow-x-auto overscroll-x-contain p-2 max-sm:pl-0">
+      {/* Below sm the text is 12px. The pinned column sits above the points bar's number (which is positioned, with its own z-index), so
+          the number no longer shows through it while the table is swiped. */}
+      <table className="data-table-sticky table max-sm:text-xs [&_tbody_td:first-child]:z-2!">
         <thead>
           <tr>
-            <th>Player</th>
+            <th className="max-sm:px-2">Player</th>
             <th>Position</th>
             <th>GP</th>
             <th>MIN</th>
@@ -259,28 +267,30 @@ function RosterTable({ registrations, statsByPersonKey, seasonCode }) {
             const isFormer = entry.active === false;
             return (
               <tr key={entry.registrationKey}>
-                <td>
-                  <div className="flex min-w-0 items-center gap-2">
+                <td className="max-sm:px-2">
+                  <div className="flex min-w-0 items-center gap-1.5 sm:gap-2">
                     <span className="w-6 flex-none text-center text-xs text-base-content/60">{entry.dorsal ?? "-"}</span>
                     {stats?.playerImageUrl ? (
                       <img
                         src={stats.playerImageUrl}
                         alt=""
-                        className="aspect-3/4 h-8 w-auto flex-none object-contain object-bottom"
+                        className="aspect-3/4 h-8 w-auto flex-none object-contain object-bottom max-sm:hidden"
                         onError={(event) => {
                           event.currentTarget.style.display = "none";
                         }}
                       />
                     ) : null}
                     <div className="min-w-0">
-                      <div className="flex items-center gap-1">
+                      {/* The "Former" badge sits under the name below sm, so it does not widen the pinned column. */}
+                      <div className="flex items-center gap-1 max-sm:flex-col max-sm:items-start max-sm:gap-0">
                         {entry.player ? (
                           <Link
                             to={`/${seasonCode}/players/${entry.player.personKey}`}
-                            className="link link-hover max-w-32 truncate sm:max-w-48"
-                            title={entry.player.name ?? "TBD"}
+                            className="link link-hover max-w-20 truncate sm:max-w-48"
+                            title={withoutComma(entry.player.name ?? "TBD")}
                           >
-                            {entry.player.name ?? "TBD"}
+                            {/* Below sm the pinned column has room for the last name only; the full name stays for screen readers. */}
+                            <ShortLabel short={nameParts(entry.player.name).last} full={withoutComma(entry.player.name ?? "TBD")} />
                           </Link>
                         ) : (
                           <span className="max-w-32 truncate sm:max-w-48">TBD</span>
@@ -291,7 +301,8 @@ function RosterTable({ registrations, statsByPersonKey, seasonCode }) {
                   </div>
                 </td>
                 <td>{entry.positionName ?? "-"}</td>
-                <td>{traditional?.gamesPlayed ?? "-"}</td>
+                {/* Games played is a whole number; the per-game endpoint writes it as "3.0". */}
+                <td>{traditional?.gamesPlayed != null ? formatCount(traditional.gamesPlayed) : "-"}</td>
                 <td>{formatStatValue("minutesPlayed", traditional?.minutesPlayed)}</td>
                 <StatBarCell widthPct={barScale(pts)}>
                   <span className="text-primary font-semibold tabular-nums">

@@ -175,7 +175,7 @@ Scaffolding, shared layout, design tokens, database connection setup, and deploy
   - [x] 31g. **Teams** - Mobile and tablet layouts for `/:season/teams`, checked at 320, 390, 768 and 1024px and added to the overflow spec.
   - [ ] 31h. **Team page** - Mobile and tablet layouts for `/:season/teams/:clubCode` and all its tabs, checked at 320, 390, 768 and 1024px and added to the overflow spec.
     - [x] 31h-i. **Header, tabs and Overview** - The page header (crest, names and the Next game chip), the Section and Phase tab strips, and the Overview tab: record snapshot, team leaders, league profile, quick compare, recent form and upcoming games.
-    - [ ] 31h-ii. **Statistics and Roster** - The Statistics tab (stat rows and opponent bars) and the Roster tab: the player cards, the table view with the player column pinned, and the coaches.
+    - [x] 31h-ii. **Statistics and Roster** - The Statistics tab (stat rows and opponent bars) and the Roster tab: the player cards, the table view with the player column pinned, and the coaches.
     - [ ] 31h-iii. **Shooting and Games** - The Shooting tab (its four tab strips and the period select, with the Filters disclosure from 31f-v) and the Games tab (the results strip and the game list).
     - [ ] 31h-iv. **Advanced** - The Advanced tab: rating by round, splits, play-by-play, shot zones and the best-lineups filters and table.
   - [ ] 31i. **Players** - Mobile and tablet layouts for `/:season/players`, checked at 320, 390, 768 and 1024px and added to the overflow spec.

@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { motion } from "motion/react";
+import { teamCode } from "../games/gameUtils";
 import { getLeagueTeamStats } from "../lib/api";
 import AsyncState from "../lib/AsyncState";
 import EmptyText from "../lib/EmptyText";
@@ -7,14 +8,15 @@ import HeaderTip from "../lib/HeaderTip";
 import { barFill, listContainer, listItem } from "../lib/motion";
 import Panel from "../lib/Panel";
 import PanelHeader from "../lib/PanelHeader";
+import ShortLabel from "../lib/ShortLabel";
 import { ordinal, rankTier } from "./teamLeague";
 import { leagueRank, STAT_GROUPS } from "./teamStatDefs";
 
-// Every row and every group header share this grid, so the columns line up down the whole tab. On a phone the stat name
-// moves to its own line above the numbers.
+// Every row and every group header share this grid, so the columns line up down the whole tab. On a phone a row is two lines:
+// the stat name centred over the row with the club's rank at its left, then the two numbers with a bar each between them.
 const ROW_GRID =
-  "grid items-center gap-x-2 grid-cols-[2.75rem_3rem_1fr_1fr_3rem] sm:grid-cols-[8rem_3rem_3.5rem_1fr_1fr_3.5rem]";
-const LABEL_CELL = "col-span-5 sm:col-span-1";
+  "grid items-center gap-x-2 grid-cols-[3.25rem_1fr_1fr_3.25rem] sm:grid-cols-[8rem_3rem_3.5rem_1fr_1fr_3.5rem]";
+const LABEL_CELL = "col-span-4 sm:col-span-1";
 
 // One half of the butterfly: grows outwards from the middle.
 function HalfBar({ share, side, fillClass }) {
@@ -36,11 +38,11 @@ function StatRow({ stat, own, opponent, gamesPlayed, standing }) {
 
   return (
     <motion.li variants={listItem} className={`${ROW_GRID} gap-y-0.5 border-b border-base-300 py-2 text-sm last:border-0`}>
-      <span className={`${LABEL_CELL} text-xs font-bold tracking-wide uppercase sm:text-sm sm:normal-case sm:tracking-normal sm:font-medium`}>
+      <span className={`${LABEL_CELL} col-start-1 row-start-1 text-center text-xs font-bold tracking-wide uppercase sm:col-auto sm:row-auto sm:text-left sm:text-sm sm:normal-case sm:tracking-normal sm:font-medium`}>
         {stat.tip ? <HeaderTip tip={stat.tip}>{stat.label}</HeaderTip> : stat.label}
       </span>
       <span
-        className={`text-xs font-bold tabular-nums ${standing ? rankTier(standing).text : ""}`}
+        className={`col-start-1 row-start-1 text-xs font-bold tabular-nums sm:col-auto sm:row-auto ${standing ? rankTier(standing).text : ""}`}
         title={standing ? `${ordinal(standing.rank)} of ${standing.of} clubs` : undefined}
       >
         {standing ? ordinal(standing.rank) : ""}
@@ -53,19 +55,22 @@ function StatRow({ stat, own, opponent, gamesPlayed, standing }) {
   );
 }
 
-function StatGroup({ group, teamName, own, opponent, gamesPlayed, leagueTeams, clubCode }) {
+function StatGroup({ group, teamName, teamTag, own, opponent, gamesPlayed, leagueTeams, clubCode }) {
   return (
     <section aria-label={group.title}>
       <div aria-hidden="true" className={`${ROW_GRID} muted border-b border-base-300 pb-1 text-xs font-bold tracking-wide uppercase`}>
         <h3 className={`${LABEL_CELL} text-base-content text-sm normal-case tracking-normal`}>{group.title}</h3>
-        <span>Rank</span>
+        {/* The rank column has no heading: "15th" says what it is. */}
         <span />
-        <span className="truncate text-center">{teamName}</span>
+        <span className="max-sm:hidden" />
+        <span className="truncate text-center">
+          <ShortLabel short={teamTag} full={teamName} />
+        </span>
         <span className="truncate text-center">
           <span className="sm:hidden">Opp.</span>
           <span className="hidden sm:inline">Opponents</span>
         </span>
-        <span />
+        <span className="max-sm:hidden" />
       </div>
       <motion.ul variants={listContainer} initial="hidden" animate="show">
         {group.stats.map((stat) => (
@@ -110,7 +115,8 @@ export default function TeamStatisticsSection({ seasonCode, phaseCode, clubCode,
   const teamName = team.abbreviatedName ?? team.name ?? clubCode;
   const leagueTeams = leagueQuery.data?.teams ?? [];
   const [traditional, ...rest] = STAT_GROUPS;
-  const shared = { teamName, own, opponent, gamesPlayed, leagueTeams, clubCode };
+  // Over the club's numbers, below sm: its TV code, which fits a column of about 55px.
+  const shared = { teamName, teamTag: teamCode(team), own, opponent, gamesPlayed, leagueTeams, clubCode };
 
   return (
     <Panel as="section" className="p-4">

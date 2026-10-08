@@ -1,7 +1,7 @@
-import { and, asc, eq, exists, ilike, inArray, isNull, or, sql } from "drizzle-orm";
+import { and, asc, desc, eq, exists, ilike, inArray, isNull, or, sql } from "drizzle-orm";
 import { db } from "./client";
 import { catalogRead } from "./season-catalog";
-import { clubs, people, registrations, seasonStatsTraditional } from "./season-schema";
+import { clubs, people, registrations, seasonStatsTraditional, standings } from "./season-schema";
 
 const COMPETITION_CODE = "E";
 const PLAYER_ROLE_CODE = "J";
@@ -16,6 +16,9 @@ export type Team = {
   countryCode: string | null;
   crestUrl: string | null;
 };
+
+// A club as the API names it: the club's permanent code and, for the requested season, the TV code it goes by.
+export type TeamRef = Team & { tvCode: string };
 
 export type Player = {
   personKey: string;
@@ -32,6 +35,7 @@ export type PlayerListEntry = Player & {
   clubCode: string | null;
   clubName: string | null;
   crestUrl: string | null;
+  clubTvCode: string | null;
   dorsal: string | null;
   positionName: string | null;
 };
@@ -49,7 +53,7 @@ export type Registration = {
 };
 
 export type RosterEntry = Registration & { player: Player | null };
-export type PlayerRegistration = Registration & { team: Team | null };
+export type PlayerRegistration = Registration & { team: TeamRef | null };
 
 const teamFields = {
   clubCode: clubs.clubCode,
@@ -94,13 +98,62 @@ function playerScope(seasonCode: string) {
   );
 }
 
-export async function getTeams(seasonCode: string): Promise<Team[]> {
-  return catalogRead(() =>
-    db.select(teamFields)
-      .from(clubs)
-      .where(and(eq(clubs.competitionCode, COMPETITION_CODE), eq(clubs.seasonCode, seasonCode)))
-      .orderBy(asc(clubs.name), asc(clubs.clubCode)),
-  );
+// A club code mapped to the code the club goes by on TV in one season. It is the most recent non-empty `club_tv_code` the
+// season's standings hold for the club (regular-season rows first, then the highest round); a club the standings do not
+// code gets its abbreviated name, and failing that its club code. The club code is the club's permanent ID, while the TV
+// code follows sponsors and renames, so the same club can have a different one in another season.
+export type ClubTvCodes = Map<string, string>;
+
+export async function getClubTvCodes(seasonCode: string): Promise<ClubTvCodes> {
+  const [clubRows, standingRows] = await Promise.all([
+    catalogRead(() =>
+      db.select({ clubCode: clubs.clubCode, abbreviatedName: clubs.abbreviatedName })
+        .from(clubs)
+        .where(and(eq(clubs.competitionCode, COMPETITION_CODE), eq(clubs.seasonCode, seasonCode))),
+    ),
+    catalogRead(() =>
+      db.selectDistinctOn([standings.clubCode], { clubCode: standings.clubCode, tvCode: standings.clubTvCode })
+        .from(standings)
+        .where(and(
+          eq(standings.competitionCode, COMPETITION_CODE),
+          eq(standings.seasonCode, seasonCode),
+          sql`btrim(${standings.clubTvCode}) <> ''`,
+        ))
+        .orderBy(standings.clubCode, sql`(${standings.phaseCode} = 'RS') desc`, desc(standings.roundNumber)),
+    ),
+  ]);
+  const fromStandings = new Map<string, string>();
+  for (const row of standingRows) if (row.tvCode) fromStandings.set(row.clubCode, row.tvCode.trim());
+  const codes: ClubTvCodes = new Map();
+  for (const club of clubRows) {
+    codes.set(club.clubCode, fromStandings.get(club.clubCode) ?? (club.abbreviatedName?.trim() || club.clubCode));
+  }
+  for (const [clubCode, tvCode] of fromStandings) codes.set(clubCode, tvCode);
+  return codes;
+}
+
+// The TV code of a club, or `null` for no club. A club the lookup does not know (not in the season's club list) falls back
+// to its abbreviated name, then its club code.
+export function tvCodeOf(codes: ClubTvCodes, clubCode: string | null, abbreviatedName?: string | null): string | null {
+  if (clubCode === null) return null;
+  return codes.get(clubCode) ?? (abbreviatedName?.trim() || clubCode);
+}
+
+function withTvCode(team: Team, codes: ClubTvCodes): TeamRef {
+  return { ...team, tvCode: tvCodeOf(codes, team.clubCode, team.abbreviatedName) ?? team.clubCode };
+}
+
+export async function getTeams(seasonCode: string): Promise<TeamRef[]> {
+  const [rows, codes] = await Promise.all([
+    catalogRead(() =>
+      db.select(teamFields)
+        .from(clubs)
+        .where(and(eq(clubs.competitionCode, COMPETITION_CODE), eq(clubs.seasonCode, seasonCode)))
+        .orderBy(asc(clubs.name), asc(clubs.clubCode)),
+    ),
+    getClubTvCodes(seasonCode),
+  ]);
+  return rows.map((team) => withTvCode(team, codes));
 }
 
 export async function getTeam(seasonCode: string, clubCode: string): Promise<Team | null> {
@@ -115,6 +168,12 @@ export async function getTeam(seasonCode: string, clubCode: string): Promise<Tea
       .limit(1),
   );
   return rows[0] ?? null;
+}
+
+// One team with its TV code. The handlers that only need to know a team exists use getTeam, which skips the lookup.
+export async function getTeamRef(seasonCode: string, clubCode: string): Promise<TeamRef | null> {
+  const team = await getTeam(seasonCode, clubCode);
+  return team ? withTvCode(team, await getClubTvCodes(seasonCode)) : null;
 }
 
 export async function getPlayers(
@@ -140,21 +199,25 @@ export async function getPlayers(
     ),
   ]);
   const players = pageRows.slice(0, limit);
-  const details = await getPlayerListDetails(seasonCode, players.map((player) => player.personKey));
+  const [details, codes] = await Promise.all([
+    getPlayerListDetails(seasonCode, players.map((player) => player.personKey)),
+    getClubTvCodes(seasonCode),
+  ]);
   return {
-    items: players.map((player) => ({ ...player, ...listEntryDetails(details, player.personKey) })),
+    items: players.map((player) => ({ ...player, ...listEntryDetails(details, player.personKey, codes) })),
     hasMore: pageRows.length > limit,
     total: countRows[0]?.count ?? 0,
   };
 }
 
-function listEntryDetails(details: Awaited<ReturnType<typeof getPlayerListDetails>>, personKey: string) {
+function listEntryDetails(details: Awaited<ReturnType<typeof getPlayerListDetails>>, personKey: string, codes: ClubTvCodes) {
   const registration = details.registrations.get(personKey);
   return {
     imageUrl: details.images.get(personKey) ?? null,
     clubCode: registration?.clubCode ?? null,
     clubName: registration?.clubName ?? null,
     crestUrl: registration?.crestUrl ?? null,
+    clubTvCode: tvCodeOf(codes, registration?.clubCode ?? null),
     dorsal: registration?.dorsal ?? null,
     positionName: registration?.positionName ?? null,
   };
@@ -239,8 +302,8 @@ export async function getPlayer(seasonCode: string, personKey: string): Promise<
   );
   const player = rows[0];
   if (!player) return null;
-  const details = await getPlayerListDetails(seasonCode, [personKey]);
-  return { ...player, ...listEntryDetails(details, personKey) };
+  const [details, codes] = await Promise.all([getPlayerListDetails(seasonCode, [personKey]), getClubTvCodes(seasonCode)]);
+  return { ...player, ...listEntryDetails(details, personKey, codes) };
 }
 
 export async function getTeamRoster(
@@ -336,5 +399,6 @@ export async function getPlayerRegistrations(
       ))
       .orderBy(asc(registrations.sortOrder), asc(registrations.registrationKey)),
   );
-  return rows.map((row) => ({ ...row.registration, team: row.team }));
+  const codes = await getClubTvCodes(seasonCode);
+  return rows.map((row) => ({ ...row.registration, team: row.team ? withTvCode(row.team, codes) : null }));
 }

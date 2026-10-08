@@ -1,6 +1,7 @@
 import { sql, type SQL } from "drizzle-orm";
 import { db } from "./client";
 import { catalogRead } from "./season-catalog";
+import { getClubTvCodes, tvCodeOf } from "./season-identities";
 
 const COMPETITION_CODE = "E";
 
@@ -20,6 +21,7 @@ export type PlayerForm = {
   playerName: string | null;
   clubCode: string | null;
   clubName: string | null;
+  clubTvCode: string | null;
   imageUrl: string | null;
   crestUrl: string | null;
   games: number;
@@ -87,6 +89,7 @@ export async function getPlayerForm(seasonCode: string, phaseCode: string | unde
     `),
   );
 
+  const codes = await getClubTvCodes(seasonCode);
   const rows = result.rows as Row[];
   const lastRound = rows.length > 0 ? num(rows[0].last_round) : null;
   const players: PlayerForm[] = rows.map((row) => {
@@ -97,6 +100,7 @@ export async function getPlayerForm(seasonCode: string, phaseCode: string | unde
       playerName: (row.player_name as string | null) ?? null,
       clubCode: (row.club_code as string | null) ?? null,
       clubName: (row.club_name as string | null) ?? null,
+      clubTvCode: tvCodeOf(codes, (row.club_code as string | null) ?? null),
       imageUrl: (row.player_image_url as string | null) ?? null,
       crestUrl: (row.club_image_url as string | null) ?? null,
       games: Number(row.games),

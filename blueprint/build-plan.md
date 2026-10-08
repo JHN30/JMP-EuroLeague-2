@@ -171,6 +171,7 @@ Scaffolding, shared layout, design tokens, database connection setup, and deploy
     - [x] 31f-iii. **Game flow and Team comparison** - The flow metrics, lead tracker, period table and turning points; the head-to-head bars, Four Factors and scoring profile.
     - [x] 31f-iv. **Rotations** - The minutes timelines, assist connections and five-man units tables.
     - [ ] 31f-v. **Shooting and Play-by-play** - The shot court, its filters and quarter playback, the zone table, and the play-by-play filters and rows.
+    - [ ] 31f-vi. **Matchup header** - The matchup header laid out like EuroLeague's: each club's large crest at its own end with its TV code and current league position in brackets beneath it (the position only for a regular-season game), and in the centre the final score with "Final" for a played game or the tip-off time for a game to come, with the date under it; the round and date on one line on a phone. Needs 32a.
   - [ ] 31g. **Teams** - Mobile and tablet layouts for `/:season/teams`, checked at 320, 390, 768 and 1024px and added to the overflow spec.
   - [ ] 31h. **Team page** - Mobile and tablet layouts for `/:season/teams/:clubCode` and all its tabs, checked at 320, 390, 768 and 1024px and added to the overflow spec.
   - [ ] 31i. **Players** - Mobile and tablet layouts for `/:season/players`, checked at 320, 390, 768 and 1024px and added to the overflow spec.
@@ -179,17 +180,9 @@ Scaffolding, shared layout, design tokens, database connection setup, and deploy
   - [ ] 31l. **Compare and Head-to-head** - Mobile and tablet layouts for `/:season/compare` and `/:season/compare/head-to-head`, checked at 320, 390, 768 and 1024px and added to the overflow spec.
   - [ ] 31m. **Records** - Mobile and tablet layouts for `/:season/records`, checked at 320, 390, 768 and 1024px and added to the overflow spec.
   - [ ] 31n. **Postseason** - Mobile and tablet layouts for `/:season/postseason` (the bracket below `lg`, the race table and the matchup detail), checked at 320, 390, 768 and 1024px and added to the overflow spec.
-
-## Guideline deviations
-
-`UI-UX.md` is followed except where this project's own constraints override it. Record the
-reason alongside the change, not only here.
-
-- **No backdrop blur.** The guideline's panel uses a translucent fill with a backdrop blur. Section 7 of the project plan rules blur out after measured performance problems in the previous interface, so panels use an opaque fill and take their hierarchy from border and background delta alone.
-- **Chart.js stays.** The guideline hand-rolls every chart and uses no charting library. We keep Chart.js where it is already in use and apply the guideline's conventions to it instead; see 15g.
-- **One competition, four seasons.** The guideline describes a EuroCup toggle and an archive reaching back to 2006-07. Phase 1 is EuroLeague `E2023` to `E2026`, so there is no competition selector, "all-time" means archive-to-date, and career history is season-by-season.
-- **Event and shot data from the pipeline.** Play-by-play, game flow, and shot charts read the pipeline's `app_play_by_play` and `app_shots` tables (feature 18); games the pipeline has not covered show honest empty states, never fabricated values. Venue, attendance, and officials still have no source columns and remain coverage entries and empty states under feature 16.
-- **Product naming.** The guideline is written for a differently named demo product. Its naming, brand mark, and copy examples are illustrative only.
+- [ ] 32. **Club TV codes** - Show each club's TV code (the code in use that season, such as FBT for Fenerbahce; the club code is the permanent ID and can look outdated) as the short club label wherever a full name does not fit. Each page after 31f uses it in its own item (31g to 31n); the finished pages are done in 32b.
+  - [x] 32a. **TV code in the API** - Every team the API returns (games, teams, standings, leaders, compare and the rest) carries a `tvCode`: the club's TV code from the season's latest standings row, falling back to its abbreviated name and then its club code when the standings have none. No new table or endpoint.
+  - [ ] 32b. **TV code on the finished pages** - Home, Season overview, Standings, Games and Game detail show the TV code instead of the abbreviated name or club code where a label is too narrow for the full name, checked page by page. Full names stay where they fit.
 
 ## Deferred beyond Phase 1
 
@@ -199,4 +192,3 @@ reason alongside the change, not only here.
 - Per-36 and per-30 player statistics (per-100 figures are published and shown)
 - EuroCup and other competitions
 - Authentication, profiles, saved favorites, and other user-specific data
-- Automated playoff simulation or outcome prediction

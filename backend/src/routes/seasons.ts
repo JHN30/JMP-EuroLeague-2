@@ -12,12 +12,14 @@ import {
   type Season,
 } from "../db/season-catalog";
 import {
+  getClubTvCodes,
   getPlayer,
   getPlayerRegistrations,
   getPlayerImages,
   getPlayers,
   getTeam,
   getTeamCoaches,
+  getTeamRef,
   getTeamRoster,
   getTeams,
 } from "../db/season-identities";
@@ -344,12 +346,13 @@ seasonRouter.get("/:seasonCode/advanced/standings", async (req, res) => {
     getTeams(season.seasonCode),
   ]);
   const crests = new Map(teams.map((team) => [team.clubCode, team.crestUrl]));
+  const tvCodes = new Map(teams.map((team) => [team.clubCode, team.tvCode]));
   res.json({
     scope,
     scopes,
     round,
     rounds,
-    standings: rows.map((row) => ({ ...row, crestUrl: crests.get(row.clubCode) ?? null })),
+    standings: rows.map((row) => ({ ...row, crestUrl: crests.get(row.clubCode) ?? null, clubTvCode: tvCodes.get(row.clubCode) ?? row.clubCode })),
   });
 });
 
@@ -411,6 +414,7 @@ seasonRouter.get("/:seasonCode/advanced/leaders", async (req, res) => {
     clubCode,
     clubName: clubCode === null ? null : (clubs.get(clubCode)?.name ?? null),
     crestUrl: clubCode === null ? null : (clubs.get(clubCode)?.crestUrl ?? null),
+    clubTvCode: clubCode === null ? null : (clubs.get(clubCode)?.tvCode ?? clubCode),
   });
   const page = <T,>(rows: T[]) => rows.slice(offset, offset + limit);
 
@@ -548,7 +552,7 @@ seasonRouter.get("/:seasonCode/records/player-seasons", async (req, res) => {
   }
   const perSeason = await Promise.all(SUPPORTED_SEASONS.map(async (seasonCode) => {
     const result = await getSeasonStats(seasonCode, "all", "accumulated", 100, 0, undefined, metric as SortableStatsField, "desc");
-    return result.items.map((player) => ({ seasonCode, personKey: player.personKey, playerName: player.playerName, clubName: player.clubName, value: player.traditional[metric as keyof typeof player.traditional] }));
+    return result.items.map((player) => ({ seasonCode, personKey: player.personKey, playerName: player.playerName, clubName: player.clubName, clubTvCodes: player.clubTvCodes, value: player.traditional[metric as keyof typeof player.traditional] }));
   }));
   const rows = perSeason.flat().map((row) => ({ ...row, numericValue: Number(row.value) })).filter((row) => Number.isFinite(row.numericValue)).sort((a, b) => b.numericValue - a.numericValue || a.seasonCode.localeCompare(b.seasonCode));
   res.json({ metric, label: { pointsScored: "Points", totalRebounds: "Rebounds", assists: "Assists", pir: "PIR" }[metric], records: rows.slice(0, 50) });
@@ -575,6 +579,7 @@ seasonRouter.get("/:seasonCode/records/single-games", async (req, res) => {
       personKey: gamePlayerStats.personKey,
       playerName: gamePlayerStats.personName,
       clubName: gamePlayerStats.clubName,
+      clubCode: gamePlayerStats.clubCode,
       scheduledAt: games.scheduledAt,
       value: column,
     }).from(gamePlayerStats).innerJoin(games, and(
@@ -586,7 +591,8 @@ seasonRouter.get("/:seasonCode/records/single-games", async (req, res) => {
       eq(gamePlayerStats.seasonCode, seasonCode),
       eq(games.played, true),
     )).orderBy(desc(column)).limit(50));
-    return seasonRows.map((row) => ({ ...row, seasonCode }));
+    const codes = await getClubTvCodes(seasonCode);
+    return seasonRows.map(({ clubCode, ...row }) => ({ ...row, seasonCode, clubTvCode: clubCode === null ? null : (codes.get(clubCode) ?? clubCode) }));
   }))).flat().map((row) => ({ ...row, numericValue: Number(row.value) })).filter((row) => row.value !== null && row.value !== undefined && Number.isFinite(row.numericValue)).sort((a, b) => b.numericValue - a.numericValue || a.seasonCode.localeCompare(b.seasonCode) || a.gameCode - b.gameCode || a.personKey.localeCompare(b.personKey)).slice(0, 50);
   res.json({ metric, label: { points: "Points", valuation: "PIR", totalRebounds: "Rebounds", assistances: "Assists" }[metric], records: rows });
 });
@@ -624,10 +630,12 @@ seasonRouter.get("/:seasonCode/records/team-seasons", async (req, res) => {
     eq(gameTeamStats.statsKind, "total"),
     eq(games.played, true),
   )).groupBy(gameTeamStats.seasonCode, clubCode, clubName));
+  const tvCodes = new Map<string, Map<string, string>>(await Promise.all(SUPPORTED_SEASONS.map(async (seasonCode) => [seasonCode, await getClubTvCodes(seasonCode)] as const)));
   const records = rows.flatMap((row) => {
     if (row.clubCode === null || row.value === null) return [];
     const numericValue = Number(row.value);
-    return Number.isFinite(numericValue) ? [{ ...row, clubCode: row.clubCode, numericValue }] : [];
+    const clubTvCode = tvCodes.get(row.seasonCode)?.get(row.clubCode) ?? row.clubCode;
+    return Number.isFinite(numericValue) ? [{ ...row, clubCode: row.clubCode, clubTvCode, numericValue }] : [];
   })
     .sort((a, b) => b.numericValue - a.numericValue || a.seasonCode.localeCompare(b.seasonCode) || a.clubCode.localeCompare(b.clubCode))
     .slice(0, 50);
@@ -647,7 +655,7 @@ seasonRouter.get("/:seasonCode/teams/:clubCode", async (req, res) => {
     sendError(res, 400, "INVALID_TEAM_CODE", "Invalid team code");
     return;
   }
-  const team = await getTeam(season.seasonCode, clubCode);
+  const team = await getTeamRef(season.seasonCode, clubCode);
   if (!team) {
     sendError(res, 404, "TEAM_NOT_FOUND", "Team not found");
     return;
@@ -1064,6 +1072,7 @@ seasonRouter.get("/:seasonCode/players/:personKey/advanced", async (req, res) =>
       ...row,
       clubName: clubs.get(row.clubCode)?.name ?? null,
       crestUrl: clubs.get(row.clubCode)?.crestUrl ?? null,
+      clubTvCode: clubs.get(row.clubCode)?.tvCode ?? row.clubCode,
     })),
   });
 });

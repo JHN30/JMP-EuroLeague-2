@@ -2,6 +2,7 @@ import { and, asc, eq, inArray, isNotNull, isNull, or, sql } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 import { db } from "./client";
 import { CatalogDatabaseError, catalogRead } from "./season-catalog";
+import { type ClubTvCodes, getClubTvCodes, tvCodeOf } from "./season-identities";
 import { clubs, gamePeriodScores, gamePlayerStats, gameTeamStats, games, playByPlay, postseasonSeries, shots, teamSeasonStats } from "./season-schema";
 
 const COMPETITION_CODE = "E";
@@ -11,6 +12,8 @@ export type GameTeam = {
   name: string | null;
   abbreviatedName: string | null;
   crestUrl: string | null;
+  // The code the club goes by on TV this season (see getClubTvCodes); null only for a side with no club code and no name.
+  tvCode: string | null;
 };
 
 const localClubs = alias(clubs, "local_clubs");
@@ -67,10 +70,17 @@ function gameTeam(
   name: string | null,
   abbreviatedName: string | null,
   crestUrl: string | null,
+  codes: ClubTvCodes,
 ): GameTeam | null {
   return code === null && name === null && abbreviatedName === null && crestUrl === null
     ? null
-    : { clubCode: code, name, abbreviatedName, crestUrl };
+    : {
+        clubCode: code,
+        name,
+        abbreviatedName,
+        crestUrl,
+        tvCode: tvCodeOf(codes, code, abbreviatedName) ?? (abbreviatedName?.trim() || name?.trim() || null),
+      };
 }
 
 function toGame(row: {
@@ -96,7 +106,7 @@ function toGame(row: {
   roadClubCrestUrl: string | null;
   localScore: number | null;
   roadScore: number | null;
-}): Game {
+}, codes: ClubTvCodes): Game {
   return {
     gameCode: row.gameCode,
     sourceId: row.sourceId,
@@ -110,8 +120,8 @@ function toGame(row: {
     scheduledAt: row.scheduledAt?.toISOString() ?? null,
     played: row.played,
     gameStatus: row.gameStatus,
-    localTeam: gameTeam(row.localClubCode, row.localClubName, row.localClubAbbreviatedName, row.localClubCrestUrl),
-    roadTeam: gameTeam(row.roadClubCode, row.roadClubName, row.roadClubAbbreviatedName, row.roadClubCrestUrl),
+    localTeam: gameTeam(row.localClubCode, row.localClubName, row.localClubAbbreviatedName, row.localClubCrestUrl, codes),
+    roadTeam: gameTeam(row.roadClubCode, row.roadClubName, row.roadClubAbbreviatedName, row.roadClubCrestUrl, codes),
     localScore: row.localScore,
     roadScore: row.roadScore,
   };
@@ -126,6 +136,7 @@ export async function getGames(
   phaseCode?: string,
   round?: number,
 ) {
+  const codes = await getClubTvCodes(seasonCode);
   const conditions = [eq(games.competitionCode, COMPETITION_CODE), eq(games.seasonCode, seasonCode)];
   if (status === "played") conditions.push(eq(games.played, true));
   if (status === "scheduled") conditions.push(or(eq(games.played, false), isNull(games.played))!);
@@ -158,7 +169,7 @@ export async function getGames(
       db.select({ count: sql<number>`count(*)::int` }).from(games).where(and(...conditions)),
     ),
   ]);
-  return { items: rows.slice(0, limit).map(toGame), hasMore: rows.length > limit, total: countRows[0]?.count ?? 0 };
+  return { items: rows.slice(0, limit).map((row) => toGame(row, codes)), hasMore: rows.length > limit, total: countRows[0]?.count ?? 0 };
 }
 
 export async function getTeamGames(
@@ -169,6 +180,7 @@ export async function getTeamGames(
   status?: "played" | "scheduled",
   order: "asc" | "desc" = "asc",
 ) {
+  const codes = await getClubTvCodes(seasonCode);
   const conditions = [
     eq(games.competitionCode, COMPETITION_CODE),
     eq(games.seasonCode, seasonCode),
@@ -198,7 +210,7 @@ export async function getTeamGames(
       .limit(limit + 1)
       .offset(offset),
   );
-  return { items: rows.slice(0, limit).map(toGame), hasMore: rows.length > limit };
+  return { items: rows.slice(0, limit).map((row) => toGame(row, codes)), hasMore: rows.length > limit };
 }
 
 export async function getPlayerGameLog(
@@ -207,6 +219,7 @@ export async function getPlayerGameLog(
   limit: number,
   offset: number,
 ) {
+  const codes = await getClubTvCodes(seasonCode);
   const rows = await catalogRead(() =>
     db.select({
       game: gameFields,
@@ -240,12 +253,13 @@ export async function getPlayerGameLog(
       .offset(offset),
   );
   return {
-    items: rows.slice(0, limit).map(({ game, ...stats }) => ({ ...toGame(game), ...stats })),
+    items: rows.slice(0, limit).map(({ game, ...stats }) => ({ ...toGame(game, codes), ...stats })),
     hasMore: rows.length > limit,
   };
 }
 
 export async function getGame(seasonCode: string, gameCode: number): Promise<Game | null> {
+  const codes = await getClubTvCodes(seasonCode);
   const rows = await catalogRead(() =>
     db.select(gameFields)
       .from(games)
@@ -266,7 +280,7 @@ export async function getGame(seasonCode: string, gameCode: number): Promise<Gam
       ))
       .limit(1),
   );
-  return rows[0] ? toGame(rows[0]) : null;
+  return rows[0] ? toGame(rows[0], codes) : null;
 }
 
 function measureFields(table: typeof gameTeamStats | typeof gamePlayerStats) {
@@ -433,9 +447,10 @@ export async function getPlayByPlay(seasonCode: string, gameCode: number) {
   return { events };
 }
 
-type PostseasonClub = { clubCode: string; name: string | null; abbreviatedName: string | null; crestUrl: string | null };
+type PostseasonClub = { clubCode: string; name: string | null; abbreviatedName: string | null; crestUrl: string | null; tvCode: string };
 
 export async function getPostseasonSeries(seasonCode: string) {
+  const codes = await getClubTvCodes(seasonCode);
   const rows = await catalogRead(() =>
     db
       .select({
@@ -478,12 +493,14 @@ export async function getPostseasonSeries(seasonCode: string) {
       name: row.clubAName,
       abbreviatedName: row.clubAAbbreviatedName,
       crestUrl: row.clubACrestUrl,
+      tvCode: tvCodeOf(codes, row.clubACode, row.clubAAbbreviatedName) ?? row.clubACode,
     } satisfies PostseasonClub,
     clubB: {
       clubCode: row.clubBCode,
       name: row.clubBName,
       abbreviatedName: row.clubBAbbreviatedName,
       crestUrl: row.clubBCrestUrl,
+      tvCode: tvCodeOf(codes, row.clubBCode, row.clubBAbbreviatedName) ?? row.clubBCode,
     } satisfies PostseasonClub,
     gamesPlayed: row.gamesPlayed,
     clubAWins: row.clubAWins,

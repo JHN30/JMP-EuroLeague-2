@@ -168,7 +168,6 @@ Deployment rules:
 
 - JMP Rating calculations
 - Win-probability predictions and the Predictor page
-- Automated playoff simulations
 - Seasons earlier than `E2023`
 - Archive-wide records, player-career expansion and career or all-season leaders until the intended historical seasons have been loaded
 - Per-36 and per-30 player statistics (per-100 figures are published and shown)

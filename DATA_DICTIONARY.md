@@ -788,6 +788,24 @@ a season-by-season profile history. The Gold CLI rebuilds the selected
 competition in one transaction even when `-sc` names one season. Neon
 publishing replaces this table's competition scope after the approved cutover.
 
+#### Club code and TV code in the web API
+
+`club_code` is a club's permanent ID across every season. `club_tv_code`
+(`app_standings`) is the code the club goes by on TV in one season, and it
+follows sponsors and renames, so the same club can have a different TV code in
+another season (for example `ULK` is the club code of a club whose TV code was
+`FBB` in 2025). The web API (feature 32a) returns the TV code for the requested
+season on every club it names: `tvCode` on a club object (games, teams,
+postseason series, a player's registrations) and `clubTvCode` on a flat row that
+carries `clubCode` and `clubName` (advanced standings and leaders, the players
+list and a player's page, the form leaders, single-game and team-season
+records). Its value is the most recent non-empty `club_tv_code` the season's
+`app_standings` hold for the club (regular-season rows first, then the highest
+round); a club the standings do not code gets its abbreviated name, and failing
+that its club code. A game side that is still to be set is `null`. Standings
+entries keep their own nullable `clubTvCode`, and the season statistics keep
+`clubTvCodes`; player-season records pass the latter through.
+
 ### `team_round_stats`
 
 Built as `gold.team_round_stats` by `python gold_etl/main.py -sc <seasons> -tb

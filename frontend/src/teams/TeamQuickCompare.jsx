@@ -7,6 +7,7 @@ import EmptyText from "../lib/EmptyText";
 import { listContainer, listItem } from "../lib/motion";
 import Panel from "../lib/Panel";
 import PanelHeader from "../lib/PanelHeader";
+import ShortLabel from "../lib/ShortLabel";
 import { TabPanel, TabStrip } from "../lib/TabStrip";
 import { COMPARE_ROWS } from "./teamLeague";
 
@@ -24,14 +25,14 @@ function ClubLabel({ club }) {
         />
       ) : null}
       <span className="truncate font-semibold" title={club.name}>
-        {club.name}
+        {club.tvCode && club.tvCode !== club.name ? <ShortLabel short={club.tvCode} full={club.name} /> : club.name}
       </span>
     </div>
   );
 }
 
 function clubFromTeam(team) {
-  return { clubCode: team.clubCode, name: team.abbreviatedName ?? team.name ?? team.clubCode, crestUrl: team.crestUrl };
+  return { clubCode: team.clubCode, name: team.abbreviatedName ?? team.name ?? team.clubCode, tvCode: team.tvCode, crestUrl: team.crestUrl };
 }
 
 // Who this club can be set against: the next opponent, and the league leader (or the runner-up for the leader itself).
@@ -44,7 +45,7 @@ function compareTargets({ clubCode, nextOpponent, standings }) {
   const leaderIsSelf = standings.find((row) => row.basic?.position === 1)?.clubCode === clubCode;
   const rival = standings.find((row) => row.basic?.position === (leaderIsSelf ? 2 : 1));
   if (rival && rival.clubCode !== clubCode) {
-    const club = { clubCode: rival.clubCode, name: rival.clubName ?? rival.clubCode, crestUrl: rival.crestUrl };
+    const club = { clubCode: rival.clubCode, name: rival.clubName ?? rival.clubCode, tvCode: rival.clubTvCode, crestUrl: rival.crestUrl };
     const tabLabel = leaderIsSelf ? "Runner-up" : "League leader";
     if (targets[0]?.club.clubCode === rival.clubCode) {
       targets[0].tabLabel = `Next opponent · ${tabLabel.toLowerCase()}`;
@@ -103,6 +104,7 @@ export default function TeamQuickCompare({ seasonCode, clubCode, team, nextOppon
         <TabStrip
           ariaLabel="Compare against"
           panelId="team-compare-panel"
+          scrolling
           activeKey={active.key}
           onChange={setSelectedKey}
           className="mb-3 w-fit"
@@ -126,6 +128,7 @@ export default function TeamQuickCompare({ seasonCode, clubCode, team, nextOppon
                 key={row.label}
                 {...row}
                 animated
+                compact
                 rawA={own[field]}
                 rawB={other[field]}
                 displayA={format(own[field])}

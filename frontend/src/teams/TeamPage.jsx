@@ -12,6 +12,7 @@ import {
   getTeamRoster,
   getTeamStatsSummary,
 } from "../lib/api";
+import { teamCode } from "../games/gameUtils";
 import AsyncState from "../lib/AsyncState";
 import BackLink from "../lib/BackLink";
 import EmptyText from "../lib/EmptyText";
@@ -20,10 +21,13 @@ import HomeAwayIcon from "../lib/HomeAwayIcon";
 import { barFill, cardHover, listContainer, listItem } from "../lib/motion";
 import Panel from "../lib/Panel";
 import PageHeader from "../lib/PageHeader";
+import { withoutComma } from "../lib/playerName";
 import PanelHeader from "../lib/PanelHeader";
 import RevealImage from "../lib/RevealImage";
+import ShortLabel from "../lib/ShortLabel";
 import { TabPanel, TabStrip } from "../lib/TabStrip";
 import { useDocumentTitle } from "../lib/useDocumentTitle";
+import { useMediaQuery } from "../lib/useMediaQuery";
 import { usePhaseParam } from "../lib/usePhaseParam";
 import TeamAdvancedSection from "./TeamAdvancedSection";
 import TeamGamesSection from "./TeamGamesSection";
@@ -44,6 +48,11 @@ function teamLabel(team) {
   return team?.abbreviatedName ?? team?.name ?? "TBD";
 }
 
+// The opponent's name: its TV code below sm, where there is little room, and the abbreviated name from sm.
+function OpponentName({ team }) {
+  return <ShortLabel short={teamCode(team)} full={teamLabel(team)} />;
+}
+
 function opponent(game, clubCode) {
   const home = game.localTeam?.clubCode === clubCode;
   return { team: home ? game.roadTeam : game.localTeam, home };
@@ -59,11 +68,13 @@ function NextGameChip({ nextGame, clubCode }) {
   if (!nextGame) return null;
   const { team, home } = opponent(nextGame, clubCode);
   return (
-    <div className="next-chip ml-auto text-right">
+    <div className="next-chip ml-auto text-right max-sm:ml-0 max-sm:w-full max-sm:border-t max-sm:border-base-300 max-sm:pt-3 max-sm:text-center">
       <span className="tag text-primary block text-xs font-bold uppercase tracking-wide">Next game</span>
-      <span className="val flex items-center justify-end gap-1.5 font-semibold">
+      <span className="val flex items-center justify-end gap-1.5 font-semibold max-sm:justify-center">
         <HomeAwayIcon home={home} className="h-4 w-4 text-base-content/60" />
-        {home ? "vs" : "@"} {teamLabel(team)}
+        <span>
+          {home ? "vs" : "@"} <OpponentName team={team} />
+        </span>
       </span>
       <span className="sub muted block text-sm">{formatDateTime(nextGame.scheduledAt)}</span>
     </div>
@@ -77,25 +88,28 @@ function gameRoundLabel(game) {
   return game.roundName ?? (game.roundNumber ? `Round ${game.roundNumber}` : game.phaseName);
 }
 
-// One compact line that opens the game: round, opponent, then whatever ends the line (a result or a tip-off time).
+// One compact line that opens the game: round, opponent, then whatever ends the line (a result or a tip-off time). Below sm the
+// opponent has the first line with the round under it, and the result or date takes the right-hand end of both.
 function GameLinkRow({ seasonCode, game, clubCode, children }) {
   const { team, home } = opponent(game, clubCode);
   return (
     <li className="flex flex-1">
       <Link
         to={`/${seasonCode}/games/${game.gameCode}`}
-        className="flex w-full items-center gap-3 rounded-field border border-base-300 bg-base-200 px-3 py-2 text-sm transition-colors hover:border-primary"
+        className="flex w-full items-center gap-3 rounded-field border border-base-300 bg-base-200 px-3 py-2 text-sm transition-colors hover:border-primary max-sm:grid max-sm:grid-cols-[minmax(0,1fr)_auto] max-sm:gap-y-0.5"
       >
-        <span className="muted w-16 flex-none truncate text-xs font-bold uppercase tracking-wide">
+        <span className="muted w-16 flex-none truncate text-xs font-bold uppercase tracking-wide max-sm:col-start-1 max-sm:row-start-2 max-sm:w-auto">
           {gameRoundLabel(game)}
         </span>
-        <span className="flex min-w-0 flex-1 items-center gap-1.5 font-semibold">
+        <span className="flex min-w-0 flex-1 items-center gap-1.5 font-semibold max-sm:col-start-1 max-sm:row-start-1">
           <HomeAwayIcon home={home} className="h-4 w-4 text-base-content/60" />
           <span className="truncate">
-            {home ? "vs" : "@"} {teamLabel(team)}
+            {home ? "vs" : "@"} <OpponentName team={team} />
           </span>
         </span>
-        {children}
+        {children ? (
+          <span className="contents max-sm:col-start-2 max-sm:row-span-2 max-sm:row-start-1 max-sm:flex max-sm:items-center max-sm:gap-3">{children}</span>
+        ) : null}
       </Link>
     </li>
   );
@@ -196,9 +210,9 @@ function ShareBar({ share, fillClass, trackClass }) {
   );
 }
 
-function SnapshotFact({ label, value }) {
+function SnapshotFact({ label, value, className = "" }) {
   return (
-    <div className="flex flex-col">
+    <div className={`flex flex-col ${className}`}>
       <span className="muted text-xs font-bold uppercase tracking-wide">{label}</span>
       <span className="font-semibold tabular-nums">{value}</span>
     </div>
@@ -239,7 +253,7 @@ function TeamSnapshot({ standingsQuery, teamStatsQuery, clubCode, phaseGames }) 
   const diffText = diff == null ? "-" : `${diff > 0 ? "+" : ""}${formatPerGame(diff)}`;
 
   return (
-    <Panel as="section" aria-label="Phase snapshot" className="p-5">
+    <Panel as="section" aria-label="Phase snapshot" className="p-4 sm:p-5">
       <div className="grid gap-6 lg:grid-cols-2 lg:gap-10">
         <div>
           <div className="mb-2 flex items-end justify-between gap-3">
@@ -291,8 +305,9 @@ function TeamSnapshot({ standingsQuery, teamStatsQuery, clubCode, phaseGames }) 
         </div>
       </div>
 
-      <div className="mt-5 flex flex-wrap gap-x-8 gap-y-3 border-t border-base-300 pt-4">
+      <div className="mt-5 grid grid-cols-2 gap-x-4 gap-y-3 border-t border-base-300 pt-4 sm:flex sm:flex-wrap sm:gap-x-8">
         <SnapshotFact
+          className="max-sm:col-span-2"
           label="League position"
           value={basic.position != null ? `${ordinal(basic.position)} of ${standingsQuery.data.standings.length}` : "-"}
         />
@@ -313,6 +328,8 @@ const LEADER_CATEGORIES = [
 ];
 
 function TeamLeaders({ seasonCode, rosterStatsQuery }) {
+  // Below sm the four cards are one swipe row, so the row is a stop for keyboard users like Home's leader row.
+  const isSwipeRow = useMediaQuery("not (min-width: 40rem)");
   if (rosterStatsQuery.isPending) return <AsyncState status="loading" label="Loading team leaders" />;
   if (rosterStatsQuery.isError) {
     return <AsyncState status="error" message="Could not load team leaders." onRetry={() => rosterStatsQuery.refetch()} />;
@@ -326,6 +343,9 @@ function TeamLeaders({ seasonCode, rosterStatsQuery }) {
   return (
     <motion.div
       className="team-leaders-grid grid grid-cols-1 gap-3 sm:grid-cols-2 2xl:grid-cols-4"
+      role="group"
+      aria-label="Team leaders"
+      tabIndex={isSwipeRow ? 0 : undefined}
       variants={listContainer}
       initial="hidden"
       animate="show"
@@ -356,7 +376,7 @@ function TeamLeaders({ seasonCode, rosterStatsQuery }) {
           >
             <div className="kpi-chip-body">
               <span className="label">{category.label}</span>
-              <span className="name">{leader.player.playerName ?? leader.player.personKey}</span>
+              <span className="name">{withoutComma(leader.player.playerName ?? leader.player.personKey)}</span>
               <span className="value">{formatPerGame(leader.value)}</span>
             </div>
             {leader.player.playerImageUrl ? (
@@ -500,8 +520,9 @@ export default function TeamPage() {
       <BackLink to={`/${seasonCode}/teams`} label="Teams" />
       <PageHeader
         kicker="CLUB"
+        centred
         title={team.name ?? team.abbreviatedName ?? team.clubCode}
-        media={team.crestUrl ? <RevealImage src={team.crestUrl} className="h-16 w-16 object-contain" /> : null}
+        media={team.crestUrl ? <RevealImage src={team.crestUrl} className="h-16 w-16 flex-none object-contain max-sm:h-24 max-sm:w-24" /> : null}
         description={
           <p className="muted">
             {team.abbreviatedName ?? team.clubCode} · {team.countryCode ?? "-"}
@@ -514,6 +535,7 @@ export default function TeamPage() {
       <TabStrip
         ariaLabel="Section"
         level={1}
+        scrolling
         panelId="team-panel"
         activeKey={section}
         onChange={setSection}
@@ -524,6 +546,7 @@ export default function TeamPage() {
         <TabStrip
           ariaLabel="Phase"
           level={2}
+          scrolling
           panelId="team-panel"
           activeKey={phaseCode}
           onChange={setPhaseCode}

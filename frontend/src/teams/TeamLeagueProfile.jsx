@@ -63,26 +63,27 @@ export default function TeamLeagueProfile({ advancedQuery, clubCode, team }) {
   const strongest = ranked.reduce((best, entry) => (!best || entry.standing.rank < best.standing.rank ? entry : best), null);
   const weakest = ranked.reduce((worst, entry) => (!worst || entry.standing.rank > worst.standing.rank ? entry : worst), null);
   const showExtremes = strongest && weakest && strongest.standing.rank !== weakest.standing.rank;
+  const extremes = showExtremes ? (
+    <>
+      <span className="stat-badge stat-badge-positive">
+        Strongest: {strongest.metric.label} · {ordinal(strongest.standing.rank)}
+      </span>
+      <span className="stat-badge stat-badge-negative">
+        Weakest: {weakest.metric.label} · {ordinal(weakest.standing.rank)}
+      </span>
+    </>
+  ) : null;
 
   return (
     <Panel as="section" className="p-4">
       <PanelHeader
         kicker="PROFILE"
         title={`Where ${name} ranks in the league`}
-        trailing={
-          showExtremes ? (
-            <div className="flex flex-wrap justify-end gap-2">
-              <span className="stat-badge stat-badge-positive">
-                Strongest: {strongest.metric.label} · {ordinal(strongest.standing.rank)}
-              </span>
-              <span className="stat-badge stat-badge-negative">
-                Weakest: {weakest.metric.label} · {ordinal(weakest.standing.rank)}
-              </span>
-            </div>
-          ) : null
-        }
+        trailing={extremes ? <div className="flex flex-wrap justify-end gap-2 max-sm:hidden">{extremes}</div> : null}
       />
-      <div className="grid gap-x-8 gap-y-4 md:grid-cols-2">
+      {/* Below sm the badges sit under the title, where they have the panel's whole width; the other copy is hidden then. */}
+      {extremes ? <div className="-mt-2 mb-4 flex flex-wrap gap-2 sm:hidden">{extremes}</div> : null}
+      <div className="grid gap-x-8 gap-y-4 sm:grid-cols-2">
         {groups.map((group) => (
           <section key={group.title} aria-label={group.title}>
             <h3 className="muted mb-1 text-xs font-bold tracking-wide uppercase">{group.title}</h3>

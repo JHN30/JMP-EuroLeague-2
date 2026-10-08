@@ -1498,6 +1498,24 @@ button {
 .team-leaders-grid .kpi-chip {
   padding: 1.5rem 1.35rem;
 }
+/* Below sm the four cards are one swipe row, like Home's leader cards: about 85% card width, snapping, bleeding to the screen's edges
+   past the page gutter (0.75rem). */
+@media (max-width: 39.999rem) {
+  .team-leaders-grid {
+    display: flex;
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    scroll-snap-type: x mandatory;
+    margin-inline: -0.75rem;
+    padding: 0.25rem 0.75rem;
+    scroll-padding-inline: 0.75rem;
+  }
+  .team-leaders-grid .kpi-chip {
+    flex: 0 0 85%;
+    scroll-snap-align: center;
+    scroll-snap-stop: always;
+  }
+}
 .team-leaders-grid .kpi-chip-image {
   height: 8.5rem;
   max-width: 8rem;

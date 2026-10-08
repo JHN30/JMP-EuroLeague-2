@@ -278,3 +278,29 @@ test("a played game's header shows the date without a time, the key stats are va
     .toEqual({ green: 0, orange: true });
 });
 
+test("the date line is one line below 640px, even for a high round and a long date, and for a game still to come", async ({ page }) => {
+  await openGame(page, { game: { roundNumber: 38, scheduledAt: "2026-11-30T20:00:00Z" } });
+  const line = page.locator("main p.muted", { hasText: "Round 38" });
+  const oneLine = () => line.evaluate((el) => el.getBoundingClientRect().height <= parseFloat(getComputedStyle(el).lineHeight) * 1.2);
+
+  await atWidths(page, [320, 390, 639], async () => {
+    expect(await oneLine()).toBe(true);
+    await expectNoPageOverflow(page);
+  });
+  await atWidths(page, [768], async () => {
+    expect(await oneLine()).toBe(true);
+  });
+
+  await page.unroute(`**/api/seasons/${SEASON}/games/1`);
+  await page.route(`**/api/seasons/${SEASON}/games/1`, (route) =>
+    route.fulfill({
+      json: { game: { gameCode: 1, played: false, phaseName: "Regular season", roundNumber: 38, scheduledAt: "2026-11-30T20:00:00Z", gameStatus: null, localTeam: PAN, roadTeam: CZV, localScore: null, roadScore: null } },
+    }),
+  );
+  await page.reload();
+  await atWidths(page, [320, 390], async () => {
+    await expect(page.getByText("Scheduled", { exact: true })).toBeVisible();
+    expect(await oneLine()).toBe(true);
+    await expect(line).toContainText(/\d:\d{2}|\d{2}[:.]\d{2}/);
+  });
+});

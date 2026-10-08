@@ -255,6 +255,50 @@ button {
   }
 }
 
+/* The game Rotations five-man units, below sm: each unit is a card. The five names run across the full width, and the six
+   figures sit in a strip under them with their labels above (from data-label). The header row stays for screen readers. */
+@media (max-width: 39.999rem) {
+  .lineup-table,
+  .lineup-table tbody {
+    display: block;
+  }
+  .lineup-table thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+  .lineup-table tbody tr {
+    display: grid;
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+    row-gap: 0.375rem;
+    padding-block: 0.5rem;
+  }
+  .lineup-table tbody tr:not(:last-child) {
+    border-bottom: 1px solid var(--color-base-300);
+  }
+  .lineup-table tbody td {
+    display: block;
+    padding: 0;
+    border: 0;
+    text-align: center;
+  }
+  .lineup-table tbody td:first-child {
+    grid-column: 1 / -1;
+    text-align: left;
+  }
+  .lineup-table tbody td:not(:first-child)::before {
+    content: attr(data-label);
+    display: block;
+    font-size: 0.625rem;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    opacity: 0.6;
+  }
+}
+
 .eyebrow {
   color: var(--color-primary);
   font-size: 0.75rem;

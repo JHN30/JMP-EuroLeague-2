@@ -11,7 +11,10 @@ import PlayerLink from "./PlayerLink";
 import { computeConnections, computeRotations } from "./rotations";
 import TeamLabel from "./TeamLabel";
 
-const GRID = "grid grid-cols-[7rem_minmax(0,1fr)_3rem] items-center gap-2 sm:grid-cols-[11rem_minmax(0,1fr)_3.5rem] sm:gap-3";
+// Below sm a player row is two lines (the name and the minutes, then the bar across the whole panel) and the period ruler is
+// one full-width row; from sm the name, the bar and the minutes share one line.
+const ROW_GRID = "grid grid-cols-[minmax(0,1fr)_3rem] items-center gap-x-2 gap-y-1 sm:grid-cols-[11rem_minmax(0,1fr)_3.5rem] sm:gap-3";
+const RULER_GRID = "grid grid-cols-1 items-center sm:grid-cols-[11rem_minmax(0,1fr)_3.5rem] sm:gap-3";
 
 const percent = (seconds, total) => `${(seconds / total) * 100}%`;
 
@@ -22,7 +25,7 @@ function ReconciliationBadge({ side }) {
 
 function TeamTimeline({ team, side, periods, gameSeconds, seasonCode }) {
   return (
-    <Panel className="p-4">
+    <Panel className="p-4 max-sm:p-3">
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
         <TeamLabel team={team} />
         {side.status === "ok" ? <ReconciliationBadge side={side} /> : null}
@@ -32,8 +35,8 @@ function TeamTimeline({ team, side, periods, gameSeconds, seasonCode }) {
         <p className="muted text-sm">On-court times aren't available for this team.</p>
       ) : (
         <>
-          <div className={`${GRID} mb-1`} aria-hidden="true">
-            <span />
+          <div className={`${RULER_GRID} mb-1`} aria-hidden="true">
+            <span className="max-sm:hidden" />
             <div className="relative h-4">
               {periods.map((period) => (
                 <span
@@ -45,16 +48,16 @@ function TeamTimeline({ team, side, periods, gameSeconds, seasonCode }) {
                 </span>
               ))}
             </div>
-            <span className="muted text-right text-[0.65rem] font-bold tracking-wide uppercase">Min</span>
+            <span className="muted text-right text-[0.65rem] font-bold tracking-wide uppercase max-sm:hidden">Min</span>
           </div>
           <ul>
             {side.rows.map(({ player, stints, seconds }) => (
-              <li key={player.personKey} className={`${GRID} border-b border-base-300 py-1 last:border-0`}>
+              <li key={player.personKey} className={`${ROW_GRID} border-b border-base-300 py-1 max-sm:py-1.5 last:border-0`}>
                 <PlayerLink seasonCode={seasonCode} player={player} className="truncate text-sm" />
                 <span className="sr-only">
                   On court: {stints.map((stint) => `${stint.startLabel} to ${stint.endLabel}`).join(", ")}
                 </span>
-                <div className="relative h-5 rounded-sm bg-base-200" aria-hidden="true">
+                <div className="relative h-5 rounded-sm bg-base-200 max-sm:col-span-2 max-sm:row-start-2" aria-hidden="true">
                   {periods.slice(1).map((period) => (
                     <span key={period.number} className="absolute inset-y-0 w-px bg-base-300" style={{ left: percent(period.start, gameSeconds) }} />
                   ))}
@@ -67,7 +70,7 @@ function TeamTimeline({ team, side, periods, gameSeconds, seasonCode }) {
                     />
                   ))}
                 </div>
-                <span className="text-right text-sm tabular-nums">{formatMinutes(seconds)}</span>
+                <span className="text-right text-sm tabular-nums max-sm:col-start-2 max-sm:row-start-1">{formatMinutes(seconds)}</span>
               </li>
             ))}
           </ul>
@@ -108,7 +111,7 @@ function TeamConnections({ team, connections, seasonCode }) {
   const { pairs, linked, recorded, madeFieldGoals } = connections;
 
   return (
-    <Panel className="p-4">
+    <Panel className="p-4 max-sm:p-3">
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
         <TeamLabel team={team} />
         {recorded > 0 ? (
@@ -163,7 +166,7 @@ function ConnectionsSection({ game, seasonCode, playByPlayQuery }) {
   }
   if (!connections) return <AsyncState status="loading" label="Loading assist connections" compact />;
   return (
-    <div className="grid gap-4 md:grid-cols-2">
+    <div className="grid gap-4 lg:grid-cols-2">
       <TeamConnections team={game.localTeam} connections={connections.local} seasonCode={seasonCode} />
       <TeamConnections team={game.roadTeam} connections={connections.road} seasonCode={seasonCode} />
     </div>

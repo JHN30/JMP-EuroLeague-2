@@ -57,6 +57,17 @@ function formatDateTime(scheduledAt) {
   return formatDateTimeShared(scheduledAt, { dateStyle: "full" });
 }
 
+// The date line on a phone: "Wed, 30 Nov 2026" for a played game, "Wed, 30 Nov, 20:00" (no year) for one still to come, so the
+// round and the date fit one line.
+const PHONE_DATE = { weekday: "short", day: "numeric", month: "short" };
+function formatPhoneDate(scheduledAt, played) {
+  if (!scheduledAt) return "TBD";
+  const date = new Date(scheduledAt);
+  return played
+    ? date.toLocaleDateString(undefined, { ...PHONE_DATE, year: "numeric" })
+    : date.toLocaleString(undefined, { ...PHONE_DATE, hour: "numeric", minute: "2-digit" });
+}
+
 function madeAttempted(made, attempted) {
   if (made == null && attempted == null) return formatMissing(null);
   return `${formatMissing(made)}-${formatMissing(attempted)}`;
@@ -1158,7 +1169,9 @@ export default function GameDetailPage() {
         }
         description={
           <p className="muted">
-            {game.roundName ?? (game.roundNumber ? `Round ${game.roundNumber}` : game.phaseName)} · {game.played ? formatDate(game.scheduledAt, { dateStyle: "full" }) : formatDateTime(game.scheduledAt)}
+            {game.roundName ?? (game.roundNumber ? `Round ${game.roundNumber}` : game.phaseName)} ·{" "}
+            <span className="sm:hidden">{formatPhoneDate(game.scheduledAt, game.played)}</span>
+            <span className="max-sm:hidden">{game.played ? formatDate(game.scheduledAt, { dateStyle: "full" }) : formatDateTime(game.scheduledAt)}</span>
           </p>
         }
       >

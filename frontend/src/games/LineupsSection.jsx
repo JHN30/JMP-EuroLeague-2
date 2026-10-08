@@ -17,7 +17,7 @@ const DEFAULT_MINIMUM = 2;
 
 function TeamUnits({ team, units, minimum, playersByKey, seasonCode }) {
   return (
-    <Panel className="p-4">
+    <Panel className="p-4 max-sm:p-3">
       <div className="mb-3">
         <TeamLabel team={team} />
       </div>
@@ -26,23 +26,25 @@ function TeamUnits({ team, units, minimum, playersByKey, seasonCode }) {
           {minimum === 0 ? "No five-man units are available for this team." : `No five-man unit played ${minimum}+ minutes together.`}
         </p>
       ) : (
-        <div className="overflow-x-auto">
-          <table className="table table-sm">
-            <thead>
-              <tr>
-                <th>Unit</th>
-                <th className="text-right">Min</th>
-                <th className="text-right">Poss</th>
-                <th className="text-right">PF</th>
-                <th className="text-right">PA</th>
-                <th className="text-right">+/-</th>
-                <th className="text-right">Net rtg</th>
+        <div className="overflow-x-auto overscroll-x-contain">
+          {/* Below sm each unit is a card (the five names, then a strip of the six figures with their labels above); the table
+              keeps its roles so it is still a table to a screen reader. */}
+          <table className="lineup-table table table-sm" role="table">
+            <thead role="rowgroup">
+              <tr role="row">
+                <th role="columnheader">Unit</th>
+                <th role="columnheader" className="text-right">Min</th>
+                <th role="columnheader" className="text-right">Poss</th>
+                <th role="columnheader" className="text-right">PF</th>
+                <th role="columnheader" className="text-right">PA</th>
+                <th role="columnheader" className="text-right">+/-</th>
+                <th role="columnheader" className="text-right">Net rtg</th>
               </tr>
             </thead>
-            <tbody>
+            <tbody role="rowgroup">
               {units.map((unit) => (
-                <tr key={unit.players.join(",")}>
-                  <td>
+                <tr key={unit.players.join(",")} role="row">
+                  <td role="cell">
                     <ul className="flex flex-wrap gap-x-3 gap-y-0.5 text-sm">
                       {unit.players.map((personKey) => (
                         <li key={personKey}>
@@ -51,12 +53,12 @@ function TeamUnits({ team, units, minimum, playersByKey, seasonCode }) {
                       ))}
                     </ul>
                   </td>
-                  <td className="text-right tabular-nums">{formatMinutes(unit.seconds)}</td>
-                  <td className="text-right tabular-nums">{unit.possessionsFor}</td>
-                  <td className="text-right tabular-nums">{unit.pointsFor}</td>
-                  <td className="text-right tabular-nums">{unit.pointsAgainst}</td>
-                  <td className="text-right tabular-nums">{formatSignedDiff(unit.plusMinus)}</td>
-                  <td className="text-right tabular-nums">{formatSignedDecimal(unit.netRating)}</td>
+                  <td role="cell" data-label="Min" className="text-right tabular-nums">{formatMinutes(unit.seconds)}</td>
+                  <td role="cell" data-label="Poss" className="text-right tabular-nums">{unit.possessionsFor}</td>
+                  <td role="cell" data-label="PF" className="text-right tabular-nums">{unit.pointsFor}</td>
+                  <td role="cell" data-label="PA" className="text-right tabular-nums">{unit.pointsAgainst}</td>
+                  <td role="cell" data-label="+/-" className="text-right tabular-nums">{formatSignedDiff(unit.plusMinus)}</td>
+                  <td role="cell" data-label="Net rtg" className="text-right tabular-nums">{formatSignedDecimal(unit.netRating)}</td>
                 </tr>
               ))}
             </tbody>

@@ -21,7 +21,6 @@ import Panel from "../lib/Panel";
 import PanelHeader from "../lib/PanelHeader";
 import ShootingCourt from "../lib/ShootingCourt";
 import ShootingLegend from "../lib/ShootingLegend";
-import { countWithoutLocation } from "../lib/shotZones";
 import { useDocumentTitle } from "../lib/useDocumentTitle";
 import { sectionContainer, sectionItem } from "../lib/motion";
 import { usePrefersReducedMotion } from "../lib/usePrefersReducedMotion";
@@ -31,6 +30,7 @@ import { compareByName, hasMinutes, isStarter, teamName } from "./gameUtils";
 import { PeriodTable, ScoreFlowChart } from "./gameFlow";
 import { computeGameFlow, momentLabel, withRunningScore } from "./gameFlowData";
 import { advancedColumns, attachAdvanced } from "./AdvancedBoxScore";
+import FilterDisclosure from "./FilterDisclosure";
 import FourFactors from "./FourFactors";
 import ScoringProfile from "./ScoringProfile";
 import MatchupHeader from "./MatchupHeader";
@@ -360,6 +360,19 @@ function formatPeriodOption(option) {
   return option === "all" ? "Full game" : formatPeriod(Number(option));
 }
 
+// A label that is the short one below sm, where a row of buttons has little room, and the full one from sm. Below sm the full
+// label stays in the page for screen readers, and the short one is hidden from them, so the name is read once.
+function ShortLabel({ short, full }) {
+  return (
+    <>
+      <span aria-hidden="true" className="sm:hidden">
+        {short}
+      </span>
+      <span className="max-sm:sr-only">{full}</span>
+    </>
+  );
+}
+
 // Mirrors `RacePlayback.jsx`'s controlled playback/reduced-motion pattern:
 // the parent owns `playing` and hands it down, so any other filter change
 // can stop it by the same setter.
@@ -397,7 +410,7 @@ function QuarterPlayback({ periodOptions, activeOption, onSelect, playing, onPla
   }
 
   return (
-    <div className="flex flex-wrap items-center gap-2">
+    <div className="playback-row flex flex-wrap items-center gap-2">
       <button
         type="button"
         className="btn btn-xs touch-target"
@@ -406,19 +419,20 @@ function QuarterPlayback({ periodOptions, activeOption, onSelect, playing, onPla
           onPlayingChange(!playing);
         }}
       >
-        {playing ? "Pause" : "Animate quarters"}
+        {playing ? "Pause" : <ShortLabel short="Play" full="Animate quarters" />}
       </button>
       {periodOptions.map((option) => (
         <button
           key={option}
           type="button"
+          aria-pressed={option === activeOption}
           className={`btn btn-xs touch-target ${option === activeOption ? "btn-primary" : "btn-outline"}`}
           onClick={() => {
             onPlayingChange(false);
             onSelect(option);
           }}
         >
-          {formatPeriodOption(option)}
+          {option === "all" ? <ShortLabel short="Full" full="Full game" /> : formatPeriodOption(option)}
         </button>
       ))}
     </div>
@@ -428,7 +442,17 @@ function QuarterPlayback({ periodOptions, activeOption, onSelect, playing, onPla
 function miniShootingLine(shots, test) {
   const attempts = shots.filter(test);
   const made = attempts.filter((shot) => shot.actionCode.endsWith("M"));
-  return `${made.length}-${attempts.length} (${formatPercentage(shootingPercentage(made.length, attempts.length))})`;
+  return [`${made.length}-${attempts.length}`, `(${formatPercentage(shootingPercentage(made.length, attempts.length))})`];
+}
+
+// "made-attempts (FG%)", with the percentage on its own line where a cell is narrow.
+function MiniShootingLine({ shots, test }) {
+  const [attempts, percentage] = miniShootingLine(shots, test);
+  return (
+    <>
+      <span>{attempts}</span> <span className="max-sm:block">{percentage}</span>
+    </>
+  );
 }
 
 function TeamComparisonPanel({ team, shots }) {
@@ -439,7 +463,7 @@ function TeamComparisonPanel({ team, shots }) {
     shots.length === 0 ? null : ((made.length + 0.5 * made.filter(threePoint).length) / shots.length) * 100;
 
   return (
-    <Panel className="p-4">
+    <Panel className="p-3 sm:p-4">
       <div className="mb-3 flex items-center gap-2">
         {team?.crestUrl ? (
           <img
@@ -451,30 +475,36 @@ function TeamComparisonPanel({ team, shots }) {
             }}
           />
         ) : null}
-        <span className="font-semibold">{teamName(team)}</span>
+        <span className="font-semibold">
+          <TeamName team={team} />
+        </span>
       </div>
       <div className="mb-3 grid grid-cols-3 gap-2 text-center text-sm">
         <div>
           <p className="eyebrow">2PT</p>
-          <p className="tabular-nums">{miniShootingLine(shots, twoPoint)}</p>
+          <p className="tabular-nums">
+            <MiniShootingLine shots={shots} test={twoPoint} />
+          </p>
         </div>
         <div>
           <p className="eyebrow">3PT</p>
-          <p className="tabular-nums">{miniShootingLine(shots, threePoint)}</p>
+          <p className="tabular-nums">
+            <MiniShootingLine shots={shots} test={threePoint} />
+          </p>
         </div>
         <div>
           <p className="eyebrow">eFG%</p>
           <p className="tabular-nums">{formatPercentage(effectiveFg)}</p>
         </div>
       </div>
-      <div className="rounded-field border border-base-300 bg-base-100/60 p-2">
-        <ShootingCourt shots={shots} teams={[team]} mode="heatmap" ariaLabel={`${teamName(team)} shooting zones`} />
+      <div className="rounded-field border border-base-300 bg-base-100/60 p-1 sm:p-2">
+        <ShootingCourt shots={shots} teams={[team]} mode="heatmap" compactBelow={420} ariaLabel={`${teamName(team)} shooting zones`} />
       </div>
     </Panel>
   );
 }
 
-function ShootingTab({ shots, teamStats, localTeam, roadTeam }) {
+function ShootingTab({ shots, localTeam, roadTeam }) {
   const [presentationMode, setPresentationMode] = useState("map");
   const [teamFilter, setTeamFilter] = useState("both");
   const [playerFilter, setPlayerFilter] = useState("all");
@@ -528,35 +558,33 @@ function ShootingTab({ shots, teamStats, localTeam, roadTeam }) {
       : teamFilteredShots.filter((shot) => shot.personCode === effectivePlayerFilter);
   const filteredShots = applySharedFilters(playerFilteredShots);
 
-  const totals = teamStats.filter((row) => row.statsKind === "total");
-  const boxScoreAttempted = totals.reduce((sum, row) => sum + (Number(row.fieldGoalsAttemptedTotal) || 0), 0);
-  const reconciles = boxScoreAttempted > 0 && boxScoreAttempted === shots.length;
-  const withoutLocation = countWithoutLocation(shots);
+  // The quarter buttons under the strip set the period on the map and the heatmap, so a phone leaves the Period select out there.
+  const hasPlayback = !isComparison;
+  const activeFilters = [
+    !isComparison && teamFilter !== "both",
+    effectivePlayerFilter !== "all",
+    showsShotFilters && shotTypeFilter !== "all",
+    periodFilter !== "all",
+    showsShotFilters && resultFilter !== "all",
+    contextFilter !== "all",
+  ].filter(Boolean).length;
 
   return (
     <div className="flex flex-col gap-6">
-      <Panel className="p-4">
-        <PanelHeader
-          kicker="SHOOTING"
-          title="Shooting studio"
-          trailing={
-            <span className={`stat-badge ${reconciles ? "stat-badge-success" : "stat-badge-warning"}`}>
-              {reconciles ? "Box score matched" : "Partial chart coverage"} · {formatCount(shots.length - withoutLocation)} plotted
-              {withoutLocation > 0 ? ` · ${formatCount(withoutLocation)} without location` : ""}
-            </span>
-          }
-        />
+      <Panel className="p-3 sm:p-4">
+        <PanelHeader kicker="SHOOTING" title="Shooting studio" />
         <TabStrip
           ariaLabel="Shooting presentation"
           panelId="shooting-presentation-panel"
           activeKey={presentationMode}
           onChange={changeFilter(setPresentationMode)}
-          className="mb-4 w-fit"
+          scrolling
+          className="mb-4 lg:w-fit"
           tabs={PRESENTATION_MODES}
         />
-        <div className="mb-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+        <FilterDisclosure activeCount={activeFilters} gridClassName="min-[24rem]:grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
           {isComparison ? null : (
-            <LabelledSelect label="Team" value={teamFilter} onChange={(event) => changeFilter(setTeamFilter)(event.target.value)}>
+            <LabelledSelect label="Team" labelClassName="max-sm:col-span-full" value={teamFilter} onChange={(event) => changeFilter(setTeamFilter)(event.target.value)}>
               <option value="both">Both teams</option>
               {localTeam?.clubCode ? <option value={localTeam.clubCode}>{teamName(localTeam)}</option> : null}
               {roadTeam?.clubCode ? <option value={roadTeam.clubCode}>{teamName(roadTeam)}</option> : null}
@@ -564,6 +592,7 @@ function ShootingTab({ shots, teamStats, localTeam, roadTeam }) {
           )}
           <LabelledSelect
             label="Player"
+            labelClassName="max-sm:col-span-full"
             value={effectivePlayerFilter}
             onChange={(event) => changeFilter(setPlayerFilter)(event.target.value)}
           >
@@ -587,7 +616,12 @@ function ShootingTab({ shots, teamStats, localTeam, roadTeam }) {
               ))}
             </LabelledSelect>
           ) : null}
-          <LabelledSelect label="Period" value={periodFilter} onChange={(event) => changeFilter(setPeriodFilter)(event.target.value)}>
+          <LabelledSelect
+            label="Period"
+            labelClassName={hasPlayback ? "max-sm:hidden" : ""}
+            value={periodFilter}
+            onChange={(event) => changeFilter(setPeriodFilter)(event.target.value)}
+          >
             <option value="all">Full game</option>
             {periodNumbers.map((periodNumber) => (
               <option key={periodNumber} value={String(periodNumber)}>
@@ -619,7 +653,7 @@ function ShootingTab({ shots, teamStats, localTeam, roadTeam }) {
               </option>
             ))}
           </LabelledSelect>
-        </div>
+        </FilterDisclosure>
 
         <TabPanel id="shooting-presentation-panel" focusKey={presentationMode} scroll={false}>
           {presentationMode === "map" || presentationMode === "heatmap" ? (
@@ -633,11 +667,12 @@ function ShootingTab({ shots, teamStats, localTeam, roadTeam }) {
                   onPlayingChange={setQuarterPlaying}
                 />
               </div>
-              <div className="rounded-field border border-base-300 bg-base-100/60 p-2 sm:p-3">
+              <div className="rounded-field border border-base-300 bg-base-100/60 p-1 sm:p-3">
                 <ShootingCourt
                   shots={filteredShots}
                   teams={[localTeam, roadTeam]}
                   mode={presentationMode === "heatmap" ? "heatmap" : "markers"}
+                  compactBelow={420}
                   ariaLabel={`Shot chart: ${formatCount(filteredShots.length)} of ${formatCount(shots.length)} attempts shown`}
                 />
               </div>
@@ -697,15 +732,16 @@ function PlayByPlayRow({ event, localTeam, roadTeam }) {
   const isLocal = event.clubCode === localTeam?.clubCode;
   const isRoad = event.clubCode === roadTeam?.clubCode;
   const crest = isLocal ? localTeam?.crestUrl : isRoad ? roadTeam?.crestUrl : null;
-  const who = event.playerName ?? event.teamName ?? "Game event";
+  const who = (event.playerName ?? event.teamName ?? "Game event").replace(/\s*,\s*/g, " ");
   const label = PLAY_TYPE_LABELS[event.playType] ?? event.playType ?? "Event";
   const isScoring = SCORING_PLAY_TYPES.has(event.playType);
 
   return (
     <div
-      className={`grid grid-cols-[3.5rem_minmax(0,1fr)_auto] items-center gap-3 px-3 py-2 sm:grid-cols-[3.5rem_1.5rem_minmax(0,1fr)_auto] ${isScoring ? "bg-primary/6" : ""}`}
+      className={`grid grid-cols-[2.5rem_auto_minmax(0,1fr)_auto] items-center gap-x-2 gap-y-0.5 px-2 py-1.5 sm:grid-cols-[3.5rem_1.5rem_minmax(0,1fr)_auto] sm:gap-3 sm:px-3 sm:py-2 ${isScoring ? "bg-primary/6" : ""}`}
     >
-      <div>
+      {/* Below sm the name, badge, detail and score are laid straight on this grid: the name and score on the first line, the badge and detail on the second. */}
+      <div className="max-sm:row-span-2">
         <p className="text-xs font-bold text-primary uppercase">{formatPeriod(event.periodNumber)}</p>
         <p className="muted font-mono text-xs">{event.markerTime ?? "-"}</p>
       </div>
@@ -722,14 +758,16 @@ function PlayByPlayRow({ event, localTeam, roadTeam }) {
       ) : (
         <span aria-hidden="true" className="hidden h-6 w-6 sm:block" />
       )}
-      <div className="min-w-0">
-        <p className="flex flex-wrap items-center gap-2">
-          <span className="truncate font-medium">{who}</span>
-          <span className="stat-badge stat-badge-neutral text-xs">{label}</span>
+      <div className="min-w-0 max-sm:contents">
+        <p className="flex flex-wrap items-center gap-2 max-sm:contents">
+          <span className="font-medium break-words max-sm:col-[2/4] max-sm:text-sm max-sm:row-start-1 max-sm:min-w-0 sm:truncate">{who}</span>
+          <span className="stat-badge stat-badge-neutral text-xs max-sm:col-start-2 max-sm:row-start-2 max-sm:justify-self-start">{label}</span>
         </p>
-        {event.playInfo ? <p className="muted truncate text-xs">{event.playInfo}</p> : null}
+        {event.playInfo ? (
+          <p className="muted text-xs max-sm:col-[3/5] max-sm:row-start-2 max-sm:line-clamp-2 sm:truncate">{event.playInfo}</p>
+        ) : null}
       </div>
-      <div className="min-w-[4.5rem] text-right tabular-nums">
+      <div className="text-right tabular-nums max-sm:col-start-4 max-sm:row-start-1 max-sm:text-sm sm:min-w-[4.5rem]">
         {event.runningScoreA}
         <span className="muted px-0.5">:</span>
         {event.runningScoreB}
@@ -774,13 +812,16 @@ function PlayByPlaySection({ played, events, localTeam, roadTeam }) {
 
   return (
     <div>
-      <Panel className="p-4">
+      <Panel className="p-3 sm:p-4">
         <PanelHeader
           kicker="LIVE LOG"
           title="Play-by-play"
           trailing={<span className="stat-badge stat-badge-neutral">{formatCount(filtered.length)} events</span>}
         />
-        <div className="mb-4 grid gap-3 sm:grid-cols-3">
+        <FilterDisclosure
+          activeCount={[typeFilter !== "key", periodFilter !== "all", teamFilter !== "all"].filter(Boolean).length}
+          gridClassName="min-[24rem]:grid-cols-2 sm:grid-cols-3"
+        >
           <LabelledSelect label="Event type" value={typeFilter} onChange={(event) => resetPaging(setTypeFilter)(event.target.value)}>
             {EVENT_TYPE_FILTERS.map((filter) => (
               <option key={filter.key} value={filter.key}>
@@ -796,12 +837,12 @@ function PlayByPlaySection({ played, events, localTeam, roadTeam }) {
               </option>
             ))}
           </LabelledSelect>
-          <LabelledSelect label="Team" value={teamFilter} onChange={(event) => resetPaging(setTeamFilter)(event.target.value)}>
+          <LabelledSelect label="Team" labelClassName="max-sm:col-span-full" value={teamFilter} onChange={(event) => resetPaging(setTeamFilter)(event.target.value)}>
             <option value="all">Both teams</option>
             {localTeam?.clubCode ? <option value={localTeam.clubCode}>{teamName(localTeam)}</option> : null}
             {roadTeam?.clubCode ? <option value={roadTeam.clubCode}>{teamName(roadTeam)}</option> : null}
           </LabelledSelect>
-        </div>
+        </FilterDisclosure>
 
         {visible.length === 0 ? (
           <EmptyText>No events match these filters.</EmptyText>
@@ -1185,7 +1226,6 @@ export default function GameDetailPage() {
           ) : (
             <ShootingTab
               shots={shotsQuery.data.shots}
-              teamStats={boxScoreQuery.data.teamStats}
               localTeam={game.localTeam}
               roadTeam={game.roadTeam}
             />

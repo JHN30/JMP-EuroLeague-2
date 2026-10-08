@@ -178,8 +178,21 @@ function BackcourtStrip({ stat, lineColor }) {
 
 const CHIP_HEIGHT = 84;
 
-// Made/attempts over FG% on a dark chip, readable on every fill and in both themes.
-function ZoneChip({ x, y, stat }) {
+// Made/attempts over FG% on a dark chip, readable on every fill and in both themes. `percentOnly` is for a court drawn too small
+// for two lines of text: just the percentage, in larger type.
+function ZoneChip({ x, y, stat, percentOnly }) {
+  if (percentOnly) {
+    const percentage = `${((stat.made / stat.attempts) * 100).toFixed(0)}%`;
+    const width = percentage.length * 34 + 24;
+    return (
+      <g pointerEvents="none" className="court-chip">
+        <rect x={x - width / 2} y={y - 40} width={width} height={80} rx={12} fill="rgba(15, 23, 42, 0.74)" />
+        <text x={x} y={y + 2} textAnchor="middle" dominantBaseline="middle" fill="#fff" fontSize={56} fontWeight={700}>
+          {percentage}
+        </text>
+      </g>
+    );
+  }
   const lineOne = `${stat.made}/${stat.attempts}`;
   const lineTwo = `${((stat.made / stat.attempts) * 100).toFixed(0)}%`;
   const width = Math.max(lineOne.length * 17, lineTwo.length * 20, 52) + 16;
@@ -196,7 +209,7 @@ function ZoneChip({ x, y, stat }) {
   );
 }
 
-function ZoneChips({ stats }) {
+function ZoneChips({ stats, percentOnly }) {
   return (
     <g>
       {stats.map((stat) => {
@@ -204,7 +217,7 @@ function ZoneChips({ stats }) {
         const point =
           stat.zone === "Backcourt" ? { x: STRIP_LEFT + STRIP_WIDTH / 2, y: 0 } : toScreen(...(ZONE_LABEL_POINTS[stat.zone] ?? []));
         // Keyed by the numbers too, so a zone whose numbers changed fades in again.
-        return <ZoneChip key={`${stat.zone}-${stat.made}-${stat.attempts}`} x={point.x} y={point.y} stat={stat} />;
+        return <ZoneChip key={`${stat.zone}-${stat.made}-${stat.attempts}-${percentOnly}`} x={point.x} y={point.y} stat={stat} percentOnly={percentOnly} />;
       })}
     </g>
   );
@@ -236,11 +249,29 @@ function useSvgThemeColors(svgRef) {
   return colors;
 }
 
+// Whether the court is drawn narrower than `limit` pixels (never, with no limit).
+function useNarrowCourt(svgRef, limit) {
+  const [narrow, setNarrow] = useState(false);
+
+  useEffect(() => {
+    const el = svgRef.current;
+    if (!el || !limit) return undefined;
+    const measure = () => setNarrow(el.getBoundingClientRect().width < limit);
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [svgRef, limit]);
+
+  return narrow;
+}
+
 // `mode="markers"` plots individual shots; `mode="heatmap"` shades each zone by its FG% (more opaque is better) and
-// labels it with made/attempts. Shots without a usable location are not drawn. Markers take their team's colour; with
+// labels it with made/attempts (only the percentage when the court is drawn narrower than `compactBelow` pixels). Shots without a usable location are not drawn. Markers take their team's colour; with
 // `resultColors` (for a chart of one team's shots) makes are green and misses red instead.
-export default function ShootingCourt({ shots, teams, mode = "markers", ariaLabel, maxWidth = MAX_WIDTH, resultColors = false, replayKey = "" }) {
+export default function ShootingCourt({ shots, teams, mode = "markers", ariaLabel, maxWidth = MAX_WIDTH, resultColors = false, replayKey = "", compactBelow = 0 }) {
   const svgRef = useRef(null);
+  const narrow = useNarrowCourt(svgRef, compactBelow);
   const colors = useSvgThemeColors(svgRef);
   const teamColor = (clubCode) => {
     const index = teams.findIndex((team) => team?.clubCode === clubCode);
@@ -263,7 +294,7 @@ export default function ShootingCourt({ shots, teams, mode = "markers", ariaLabe
           {zoneStats ? <ZoneFills stats={zoneStats} lineColor={colors.line} /> : null}
           <CourtMarkings lineColor={colors.line} />
           <BackcourtStrip stat={zoneStats?.find((stat) => stat.zone === "Backcourt")} lineColor={colors.line} />
-          {zoneStats ? <ZoneChips stats={zoneStats} /> : null}
+          {zoneStats ? <ZoneChips stats={zoneStats} percentOnly={narrow} /> : null}
           {mode === "markers" ? (
             // Keyed by what is plotted, so a different set (a new filter or side) remounts and pops in again.
             <g key={`${replayKey}-${markerSetKey(shots)}`}>

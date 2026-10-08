@@ -117,7 +117,6 @@ test("a shot without a location is counted, not drawn", async ({ page }) => {
   await openShooting(page);
 
   // 17 attempts, one of them without a location.
-  await expect(page.getByText("16 plotted · 1 without location")).toBeVisible();
   await expect(court(page).locator("[data-zone]")).toHaveCount(16);
   await expect(zoneRow(page, "Location unknown").locator("td").nth(1)).toHaveText("1");
   await expect(zoneRow(page, "Location unknown").locator("td").nth(2)).toHaveText("—");

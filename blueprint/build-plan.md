@@ -165,12 +165,12 @@ Scaffolding, shared layout, design tokens, database connection setup, and deploy
     - [x] 31d-v. **Advanced Explained** - The Explained view's long explainer and its visuals.
     - [x] 31d-vi. **View controls on phones** - Below 640px the Standings Table tab gets one View select (Overall, Home, Away, Last 10, Streaks and form, Winning margins, Ahead/behind) instead of the view tabs plus the Breakdown select, and the Advanced tab gets one View select (Overview, Ratings, Four factors, Schedule, Splits, Explained) with Scope and Round on one row; the Round and Breakdown labels line up with the tab text. From 640px the tabs and selects are as today.
   - [x] 31e. **Games list** - Mobile and tablet layouts for `/:season/games`, checked at 320, 390, 768 and 1024px and added to the overflow spec.
-  - [ ] 31f. **Game detail** - Mobile and tablet layouts for `/:season/games/:gameCode` and all its tabs, checked at 320, 390, 768 and 1024px and added to the overflow spec.
+  - [x] 31f. **Game detail** - Mobile and tablet layouts for `/:season/games/:gameCode` and all its tabs, checked at 320, 390, 768 and 1024px and added to the overflow spec.
     - [x] 31f-i. **Header, tabs and Overview** - The matchup header (two crests, long names, the score), the seven-tab strip, and the Overview tab: line score, best-player and leader cards, key stats and the score flow chart.
     - [x] 31f-ii. **Box score** - The Traditional and Advanced box scores at 320px: the player column pinned, the stat columns reachable by swiping, and the Traditional/Advanced switch.
     - [x] 31f-iii. **Game flow and Team comparison** - The flow metrics, lead tracker, period table and turning points; the head-to-head bars, Four Factors and scoring profile.
     - [x] 31f-iv. **Rotations** - The minutes timelines, assist connections and five-man units tables.
-    - [ ] 31f-v. **Shooting and Play-by-play** - The shot court, its filters and quarter playback, the zone table, and the play-by-play filters and rows.
+    - [x] 31f-v. **Shooting and Play-by-play** - The shot court, its filters and quarter playback, the zone table, and the play-by-play filters and rows.
     - [x] 31f-vi. **Matchup header** - The matchup header laid out like EuroLeague's: each club's large crest at its own end with its TV code and current league position in brackets beneath it (the position only for a regular-season game), and in the centre the final score with "Final" for a played game or the tip-off time for a game to come, with the date under it; the round and date on one line on a phone. Needs 32a.
   - [ ] 31g. **Teams** - Mobile and tablet layouts for `/:season/teams`, checked at 320, 390, 768 and 1024px and added to the overflow spec.
   - [ ] 31h. **Team page** - Mobile and tablet layouts for `/:season/teams/:clubCode` and all its tabs, checked at 320, 390, 768 and 1024px and added to the overflow spec.

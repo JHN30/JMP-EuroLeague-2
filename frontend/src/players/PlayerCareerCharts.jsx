@@ -19,9 +19,12 @@ const TREND_METRICS = [
   { key: "pts", label: "Points", digits: 1 },
   { key: "reb", label: "Rebounds", digits: 1 },
   { key: "ast", label: "Assists", digits: 1 },
+  { key: "stl", label: "Steals", digits: 1 },
+  { key: "blk", label: "Blocks", digits: 1 },
   { key: "pir", label: "Valuation (PIR)", digits: 1 },
   { key: "min", label: "Minutes", digits: 1 },
   { key: "ts", label: "True shooting %", digits: 1, suffix: "%" },
+  { key: "p3", label: "3-point %", digits: 1, suffix: "%" },
   { key: "per", label: "PER", digits: 1 },
   { key: "usg", label: "Usage %", digits: 1, suffix: "%" },
   { key: "ws", label: "Win shares", digits: 2 },
@@ -127,7 +130,7 @@ export function TrendGrid({ lines }) {
   return (
     <Panel className="p-4">
       <PanelHeader kicker="SEASON TO SEASON" title="Trends" />
-      <motion.div className="grid grid-cols-2 gap-3 md:grid-cols-3" variants={listContainer} initial="hidden" animate="show">
+      <motion.div className="grid grid-cols-2 gap-3 sm:grid-cols-3" variants={listContainer} initial="hidden" animate="show">
         {TREND_METRICS.map((metric) => (
           <TrendCard key={metric.key} lines={lines} metric={metric} />
         ))}

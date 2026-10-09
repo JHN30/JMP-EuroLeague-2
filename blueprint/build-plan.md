@@ -181,7 +181,7 @@ Scaffolding, shared layout, design tokens, database connection setup, and deploy
   - [x] 31i. **Players** - Mobile and tablet layouts for `/:season/players`, checked at 320, 390, 768 and 1024px and added to the overflow spec.
   - [ ] 31j. **Player page** - Mobile and tablet layouts for `/:season/players/:personKey` and all its tabs, checked at 320, 390, 768 and 1024px and added to the overflow spec.
     - [x] 31j-i. **Header, tabs and Overview** - The page header (back link, portrait, names, club, position and key facts), the six-tab strip, and the Overview tab: season line, form, league ranks and percentiles, and recent games. The player page joins the overflow spec.
-    - [ ] 31j-ii. **Season by season and Statistics** - The career table and charts (Season by season) and the Statistics tab: the ranked stat sheet with its phase and mode controls.
+    - [x] 31j-ii. **Season by season and Statistics** - The career table and charts (Season by season) and the Statistics tab: the ranked stat sheet with its phase and mode controls.
     - [ ] 31j-iii. **Advanced** - The Advanced tab: the gauges, ranked ratings, on/off and RAPM.
     - [ ] 31j-iv. **Shooting and Games** - The Shooting tab (the shared shot court, filters and zone table from 31f-v and 31h-iii) and the Games tab (the game log, splits and box scores).
   - [ ] 31k. **Leaders** - Mobile and tablet layouts for `/:season/leaders` (the board rows and the statistic pickers), checked at 320, 390, 768 and 1024px and added to the overflow spec.

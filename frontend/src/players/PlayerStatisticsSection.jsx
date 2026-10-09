@@ -108,10 +108,10 @@ function Highlights({ groups }) {
     .slice(0, HIGHLIGHT_COUNT);
   if (best.length === 0) return null;
   return (
-    <div className="mb-5 flex flex-wrap items-center gap-2">
+    <div className="mb-5 flex flex-wrap items-center gap-1.5 sm:gap-2">
       <span className="muted text-xs font-bold tracking-wide uppercase">Top {TOP_RANK} in the league</span>
       {best.map((stat) => (
-        <span key={`${stat.group}-${stat.field}`} className="badge badge-success badge-outline gap-1">
+        <span key={`${stat.group}-${stat.field}`} className="badge badge-success badge-outline h-auto gap-1 py-0.5 max-sm:badge-sm">
           <b className="tabular-nums">{ordinal(stat.standing.rank)}</b> {stat.label}
         </span>
       ))}
@@ -198,6 +198,7 @@ export default function PlayerStatisticsSection({ seasonCode, personKey, phases,
       <div className="mb-4 flex flex-wrap items-center gap-4">
         <TabStrip
           ariaLabel="Phase"
+          scrolling
           level={2}
           panelId={PANEL_ID}
           activeKey={phaseCode}

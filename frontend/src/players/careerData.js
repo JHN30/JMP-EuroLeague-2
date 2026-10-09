@@ -142,6 +142,7 @@ export const CAREER_HIGHS = [
   { label: "Steals", field: "steals" },
   { label: "Blocks", field: "blocksFavour" },
   { label: "Threes made", field: "fieldGoalsMade3" },
+  { label: "Free throws made", field: "freeThrowsMade" },
   { label: "Valuation (PIR)", field: "valuation" },
 ];
 

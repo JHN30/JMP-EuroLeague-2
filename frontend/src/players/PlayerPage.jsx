@@ -26,7 +26,8 @@ import { fetchLeagueLeaderboard, leaderboardQueryKey } from "./leagueLeaderboard
 
 const GAMES_LIMIT = 100;
 
-// The Shooting tab waits for the game log (every shot list is read per game) and then hands over to the shared layout.
+// The Shooting tab waits for the game log (to tell a phase with no games from one with no shots) and then hands over to
+// the shared layout.
 function PlayerShootingTab({ seasonCode, phaseCode, player, gamesQuery, personKey }) {
   if (gamesQuery.isPending) return <AsyncState status="loading" label="Loading this player's shot locations" />;
   if (gamesQuery.isError) {

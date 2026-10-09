@@ -7,7 +7,7 @@ import Panel from "../lib/Panel";
 import PanelHeader from "../lib/PanelHeader";
 import { nameParts, titleCase } from "../lib/playerName";
 import ShootingBreakdown from "../lib/ShootingBreakdown";
-import { PRESENTATION_TABS, RESULT_TABS, isMade, shootingLine, useSeasonShots } from "../lib/shootingData";
+import { PRESENTATION_TABS, RESULT_TABS, isMade, shootingLine, usePlayerShots } from "../lib/shootingData";
 import { GAME_SEGMENTS, RESULT_OPTIONS } from "../lib/shotFilters";
 import { situationRows, zoneRows } from "../lib/shotBreakdown";
 import { TabPanel, TabStrip } from "../lib/TabStrip";
@@ -15,14 +15,14 @@ import { TabPanel, TabStrip } from "../lib/TabStrip";
 const PANEL_ID = "player-shooting-panel";
 
 // One player's shots on a half court, with the zones and game situations they come from: the team Shooting tab's layout
-// over a single player. `games` is the player's game log; their shots are picked out of each game's shot list.
+// over a single player. `games` is the player's game log, used to tell a phase with no games from one with no shots.
 export default function PlayerShootingSection({ seasonCode, phaseCode, player, games, personKey }) {
   const [presentation, setPresentation] = useState("heatmap");
   const [gameSegment, setGameSegment] = useState("all");
   const [result, setResult] = useState("all");
 
   const playedGames = games.filter((game) => game.phaseCode === phaseCode);
-  const { loading, errored, shots, retry } = useSeasonShots(seasonCode, playedGames);
+  const { loading, errored, shots, retry } = usePlayerShots(seasonCode, personKey, phaseCode, playedGames.length > 0);
   const name = titleCase(nameParts(player.name ?? player.jerseyName ?? "Player").last);
 
   if (playedGames.length === 0) {
@@ -39,7 +39,7 @@ export default function PlayerShootingSection({ seasonCode, phaseCode, player, g
   // Makes and misses only mean something on the every-attempt view: on the heatmap a made-only zone is always 100%.
   const activeResult = presentation === "markers" ? result : "all";
   const resultTest = RESULT_OPTIONS.find((option) => option.key === activeResult)?.test ?? (() => true);
-  const filtered = shots.filter((shot) => shot.personCode === personKey && segmentTest(shot) && resultTest(shot));
+  const filtered = shots.filter((shot) => segmentTest(shot) && resultTest(shot));
 
   const twoPoint = filtered.filter((shot) => shot.actionCode.startsWith("2"));
   const threePoint = filtered.filter((shot) => shot.actionCode.startsWith("3"));

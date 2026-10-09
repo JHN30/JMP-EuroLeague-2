@@ -210,9 +210,16 @@ export async function getPerLeaders(
   round: number,
   minSeconds: number,
   limit: number,
-): Promise<PlayerRoundRatingsRow[]> {
+) {
   return catalogRead(() =>
-    db.select()
+    db.select({
+      personKey: playerRoundRatings.personKey,
+      playerName: playerRoundRatings.playerName,
+      clubCode: playerRoundRatings.clubCode,
+      gamesPlayed: playerRoundRatings.gamesPlayed,
+      secondsPlayed: playerRoundRatings.secondsPlayed,
+      per: playerRoundRatings.per,
+    })
       .from(playerRoundRatings)
       .where(and(
         ...inScope(playerRoundRatings, seasonCode, scope),
@@ -376,9 +383,17 @@ export async function getWinShareLeaders(
   round: number,
   minSeconds: number,
   limit: number,
-): Promise<PlayerRoundWinSharesRow[]> {
+) {
   return catalogRead(() =>
-    db.select()
+    db.select({
+      personKey: playerRoundWinShares.personKey,
+      playerName: playerRoundWinShares.playerName,
+      clubCode: playerRoundWinShares.clubCode,
+      gamesPlayed: playerRoundWinShares.gamesPlayed,
+      secondsPlayed: playerRoundWinShares.secondsPlayed,
+      winShares: playerRoundWinShares.winShares,
+      winSharesPer40: playerRoundWinShares.winSharesPer40,
+    })
       .from(playerRoundWinShares)
       .where(and(
         ...inScope(playerRoundWinShares, seasonCode, scope),
@@ -470,6 +485,26 @@ export async function getPlayerOnOff(seasonCode: string, scope: string, filter: 
   );
 }
 
+// Every player's on/off line in a scope, for leaderboards and ranks: only the columns they read.
+export async function getOnOffLeaders(seasonCode: string, scope: string, minSeconds: number, limit: number) {
+  return catalogRead(() =>
+    db.select({
+      personKey: playerOnOff.personKey,
+      playerName: playerOnOff.playerName,
+      clubCode: playerOnOff.clubCode,
+      games: playerOnOff.games,
+      onSeconds: playerOnOff.onSeconds,
+      netRatingDiff: playerOnOff.netRatingDiff,
+      onNetRating: playerOnOff.onNetRating,
+      offNetRating: playerOnOff.offNetRating,
+    })
+      .from(playerOnOff)
+      .where(and(...inScope(playerOnOff, seasonCode, scope), gte(playerOnOff.onSeconds, minSeconds)))
+      .orderBy(nullsLast(playerOnOff.netRatingDiff), asc(playerOnOff.personKey), asc(playerOnOff.clubCode))
+      .limit(limit),
+  );
+}
+
 export type LineupFilter = {
   clubCode: string;
   lineupSize: 2 | 3 | 5;
@@ -510,6 +545,24 @@ export async function getPlayerRapm(seasonCode: string, filter: PlayerRapmFilter
       .where(and(...conditions))
       .orderBy(nullsLast(playerRapm.rapm), asc(playerRapm.personKey))
       .limit(filter.limit),
+  );
+}
+
+// Every tracked player's RAPM, for leaderboards and ranks: only the columns they read.
+export async function getRapmLeaders(seasonCode: string, minSeconds: number, limit: number) {
+  return catalogRead(() =>
+    db.select({
+      personKey: playerRapm.personKey,
+      playerName: playerRapm.playerName,
+      seconds: playerRapm.seconds,
+      rapm: playerRapm.rapm,
+      offense: playerRapm.offense,
+      defense: playerRapm.defense,
+    })
+      .from(playerRapm)
+      .where(and(...inScope(playerRapm, seasonCode, RAPM_SCOPE), gte(playerRapm.seconds, minSeconds)))
+      .orderBy(nullsLast(playerRapm.rapm), asc(playerRapm.personKey))
+      .limit(limit),
   );
 }
 

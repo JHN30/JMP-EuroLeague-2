@@ -23,7 +23,7 @@ import {
   getTeamRoster,
   getTeams,
 } from "../db/season-identities";
-import { getBoxScore, getGame, getGames, getLeagueTeamStats, getPhaseResults, getPlayByPlay, getPlayerGameLog, getPostseasonSeries, getShots, getTeamGames, getTeamStatsSummary } from "../db/season-games";
+import { getBoxScore, getGame, getGames, getLeagueTeamStats, getPhaseResults, getPlayByPlay, getPlayerGameLog, getPlayerShots, getPostseasonSeries, getShots, getTeamGames, getTeamStatsSummary } from "../db/season-games";
 import { getCoverage } from "../db/season-coverage";
 import { getLatestStandingsRound, getStandings } from "../db/season-standings";
 import {
@@ -32,7 +32,9 @@ import {
   getGameLineups,
   getGameTeamFlow,
   getLineupRatings,
+  getOnOffLeaders,
   getPerLeaders,
+  getRapmLeaders,
   getRoundStatLeaders,
   getRoundStatRows,
   getClubPlayersAdvanced,
@@ -61,7 +63,7 @@ import {
   getWinShareLeaders,
 } from "../db/season-advanced";
 import { getPlayerForm } from "../db/season-form";
-import { getSeasonStats, SORTABLE_STATS_FIELDS, type SortableStatsField, type StatsFilters } from "../db/season-stats";
+import { getSeasonRecordRows, getSeasonStats, SORTABLE_STATS_FIELDS, type RecordMetric, type SortableStatsField, type StatsFilters } from "../db/season-stats";
 import { gamePlayerStats, gameTeamStats, games } from "../db/season-schema";
 
 export const seasonRouter = Router();
@@ -423,7 +425,7 @@ seasonRouter.get("/:seasonCode/advanced/leaders", async (req, res) => {
   let total = 0;
   let entries: Record<string, unknown>[];
   if (metric === "rapm") {
-    const rows = await getPlayerRapm(season.seasonCode, { minSeconds, limit: LEADERS_EVERYONE });
+    const rows = await getRapmLeaders(season.seasonCode, minSeconds, LEADERS_EVERYONE);
     total = rows.length;
     const shown = page(rows);
     const lastRound = allRounds[allRounds.length - 1];
@@ -435,7 +437,7 @@ seasonRouter.get("/:seasonCode/advanced/leaders", async (req, res) => {
       games: null, seconds: row.seconds, value: row.rapm, offense: row.offense, defense: row.defense,
     }));
   } else if (metric === "onOff") {
-    const rows = await getPlayerOnOff(season.seasonCode, scope, { minSeconds, limit: LEADERS_EVERYONE });
+    const rows = await getOnOffLeaders(season.seasonCode, scope, minSeconds, LEADERS_EVERYONE);
     total = rows.length;
     entries = page(rows).map((row) => ({
       personKey: row.personKey, playerName: row.playerName, ...club(row.clubCode),
@@ -552,8 +554,8 @@ seasonRouter.get("/:seasonCode/records/player-seasons", async (req, res) => {
     return;
   }
   const perSeason = await Promise.all(SUPPORTED_SEASONS.map(async (seasonCode) => {
-    const result = await getSeasonStats(seasonCode, "all", "accumulated", 100, 0, undefined, metric as SortableStatsField, "desc");
-    return result.items.map((player) => ({ seasonCode, personKey: player.personKey, playerName: player.playerName, clubName: player.clubName, clubTvCodes: player.clubTvCodes, value: player.traditional[metric as keyof typeof player.traditional] }));
+    const rows = await getSeasonRecordRows(seasonCode, metric as RecordMetric, 50);
+    return rows.map((player) => ({ seasonCode, personKey: player.personKey, playerName: player.playerName, clubName: player.clubName, clubTvCodes: player.clubTvCodes, value: player.value }));
   }));
   const rows = perSeason.flat().map((row) => ({ ...row, numericValue: Number(row.value) })).filter((row) => Number.isFinite(row.numericValue)).sort((a, b) => b.numericValue - a.numericValue || a.seasonCode.localeCompare(b.seasonCode));
   res.json({ metric, label: { pointsScored: "Points", totalRebounds: "Rebounds", assists: "Assists", pir: "PIR" }[metric], records: rows.slice(0, 50) });
@@ -962,8 +964,8 @@ async function getPlayerAdvancedRanks(seasonCode: string, scope: string, personK
     round === undefined ? [] : getPerLeaders(seasonCode, scope, round, minutesFor("per") * 60, everyone),
     round === undefined ? [] : getWinShareLeaders(seasonCode, scope, round, minutesFor("winSharesPer40") * 60, everyone),
     round === undefined ? [] : getUsageLeaders(seasonCode, scope, round, minutesFor("per") * 60, everyone),
-    getPlayerRapm(seasonCode, { minSeconds: minutesFor("rapm") * 60, limit: everyone }),
-    getPlayerOnOff(seasonCode, scope, { minSeconds: minutesFor("onOff") * 60, limit: everyone }),
+    getRapmLeaders(seasonCode, minutesFor("rapm") * 60, everyone),
+    getOnOffLeaders(seasonCode, scope, minutesFor("onOff") * 60, everyone),
   ]);
   const ownOnOff = onOffRows
     .filter((row) => row.personKey === personKey && row.netRatingDiff !== null)
@@ -1112,6 +1114,26 @@ seasonRouter.get("/:seasonCode/players/:personKey/games", async (req, res) => {
   if (!page) return;
   const result = await getPlayerGameLog(season.seasonCode, personKey, page.limit, page.offset);
   res.json({ games: result.items, pagination: { ...page, hasMore: result.hasMore } });
+});
+
+seasonRouter.get("/:seasonCode/players/:personKey/shots", async (req, res) => {
+  const season = await requestedSeason(req, res);
+  if (!season) return;
+  const personKey = req.params.personKey;
+  if (!validIdentity(personKey)) {
+    sendError(res, 400, "INVALID_PLAYER_KEY", "Invalid player key");
+    return;
+  }
+  const phase = req.query.phase;
+  if (typeof phase !== "string" || !FORM_PHASES.includes(phase)) {
+    sendError(res, 400, "INVALID_PHASE", "Invalid phase");
+    return;
+  }
+  if (!await getPlayer(season.seasonCode, personKey)) {
+    sendError(res, 404, "PLAYER_NOT_FOUND", "Player not found");
+    return;
+  }
+  res.json(await getPlayerShots(season.seasonCode, personKey, phase));
 });
 
 function requestedGameStatus(req: Request, res: Response): "played" | "scheduled" | undefined | null {

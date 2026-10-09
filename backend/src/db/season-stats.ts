@@ -323,3 +323,28 @@ export async function getSeasonStats(
   ]);
   return { items: rows.slice(0, limit), hasMore: rows.length > limit, total: countRows[0]?.count ?? 0 };
 }
+
+export type RecordMetric = "pointsScored" | "totalRebounds" | "assists" | "pir";
+
+// A season's top players on one whole-season total, for the records page: only the fields it shows.
+export async function getSeasonRecordRows(seasonCode: string, metric: RecordMetric, limit: number) {
+  const column = SORTABLE_FIELDS[metric];
+  return catalogRead(() =>
+    db.select({
+      personKey: seasonStatsTraditional.personKey,
+      playerName: seasonStatsTraditional.playerName,
+      clubName: seasonStatsTraditional.clubName,
+      clubTvCodes: seasonStatsTraditional.clubTvCodes,
+      value: column,
+    })
+      .from(seasonStatsTraditional)
+      .where(and(
+        eq(seasonStatsTraditional.competitionCode, COMPETITION_CODE),
+        eq(seasonStatsTraditional.seasonCode, seasonCode),
+        eq(seasonStatsTraditional.phaseCode, "all"),
+        eq(seasonStatsTraditional.mode, "accumulated"),
+      ))
+      .orderBy(sql`${column} DESC NULLS LAST`, asc(seasonStatsTraditional.entryOrdinal))
+      .limit(limit),
+  );
+}

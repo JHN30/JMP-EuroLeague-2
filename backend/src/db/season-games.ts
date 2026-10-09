@@ -514,28 +514,30 @@ export async function getPostseasonSeries(seasonCode: string) {
 
 const FIELD_GOAL_ACTION_CODES = ["2FGM", "2FGA", "3FGM", "3FGA"] as const;
 
+const SHOT_COLUMNS = {
+  shotOrdinal: shots.shotOrdinal,
+  clubCode: shots.clubCode,
+  personCode: shots.personCode,
+  playerName: shots.playerName,
+  actionCode: shots.actionCode,
+  points: shots.points,
+  coordX: shots.coordX,
+  coordY: shots.coordY,
+  fastbreak: shots.fastbreak,
+  secondChance: shots.secondChance,
+  pointsOffTurnover: shots.pointsOffTurnover,
+  minute: shots.minute,
+  markerTime: shots.markerTime,
+  pointsA: shots.pointsA,
+  pointsB: shots.pointsB,
+};
+
 // Free throws have no real court coordinates in the source feed, so this
 // scopes to field-goal attempts only - the domain of a shot chart.
 export async function getShots(seasonCode: string, gameCode: number) {
   const rows = await catalogRead(() =>
     db
-      .select({
-        shotOrdinal: shots.shotOrdinal,
-        clubCode: shots.clubCode,
-        personCode: shots.personCode,
-        playerName: shots.playerName,
-        actionCode: shots.actionCode,
-        points: shots.points,
-        coordX: shots.coordX,
-        coordY: shots.coordY,
-        fastbreak: shots.fastbreak,
-        secondChance: shots.secondChance,
-        pointsOffTurnover: shots.pointsOffTurnover,
-        minute: shots.minute,
-        markerTime: shots.markerTime,
-        pointsA: shots.pointsA,
-        pointsB: shots.pointsB,
-      })
+      .select(SHOT_COLUMNS)
       .from(shots)
       .where(and(
         eq(shots.competitionCode, COMPETITION_CODE),
@@ -544,6 +546,31 @@ export async function getShots(seasonCode: string, gameCode: number) {
         inArray(shots.actionCode, FIELD_GOAL_ACTION_CODES),
       ))
       .orderBy(asc(shots.shotOrdinal)),
+  );
+
+  return { shots: rows };
+}
+
+// One player's field-goal attempts across the season's games of one phase, so the player Shooting tab does not
+// download both teams' shots for every game.
+export async function getPlayerShots(seasonCode: string, personKey: string, phaseCode: string) {
+  const rows = await catalogRead(() =>
+    db
+      .select(SHOT_COLUMNS)
+      .from(shots)
+      .innerJoin(games, and(
+        eq(games.competitionCode, shots.competitionCode),
+        eq(games.seasonCode, shots.seasonCode),
+        eq(games.gameCode, shots.gameCode),
+      ))
+      .where(and(
+        eq(shots.competitionCode, COMPETITION_CODE),
+        eq(shots.seasonCode, seasonCode),
+        eq(shots.personCode, personKey),
+        eq(games.phaseCode, phaseCode),
+        inArray(shots.actionCode, FIELD_GOAL_ACTION_CODES),
+      ))
+      .orderBy(asc(shots.gameCode), asc(shots.shotOrdinal)),
   );
 
   return { shots: rows };

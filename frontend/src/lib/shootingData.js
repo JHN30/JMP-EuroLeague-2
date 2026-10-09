@@ -1,5 +1,5 @@
-import { useQueries } from "@tanstack/react-query";
-import { getShots } from "./api";
+import { useQueries, useQuery } from "@tanstack/react-query";
+import { getPlayerShots, getShots } from "./api";
 import { formatPercentage } from "./format";
 
 // What the team and player Shooting tabs share: a shot's result, the "made-attempted (percent)" line, the view
@@ -36,5 +36,20 @@ export function useSeasonShots(seasonCode, playedGames) {
     mappedGames: queries.filter((query) => query.isSuccess).length,
     shots: queries.flatMap((query) => query.data?.shots ?? []),
     retry: () => queries.forEach((query) => query.refetch()),
+  };
+}
+
+// One player's shots in a phase, in a single request.
+export function usePlayerShots(seasonCode, personKey, phaseCode, enabled) {
+  const query = useQuery({
+    queryKey: ["playerShots", seasonCode, personKey, phaseCode],
+    queryFn: () => getPlayerShots(seasonCode, personKey, phaseCode),
+    enabled,
+  });
+  return {
+    loading: query.isLoading,
+    errored: query.isError,
+    shots: query.data?.shots ?? [],
+    retry: () => query.refetch(),
   };
 }

@@ -54,6 +54,7 @@ import {
   getTeamRoundRatings,
   getTeamRoundSplits,
   getTeamRoundStats,
+  teamRoundOwnRatings,
   getTeamShotZoneStats,
   getTeamsSeasonToDate,
   getTeamStatsScopes,
@@ -787,7 +788,8 @@ seasonRouter.get("/:seasonCode/teams/:clubCode/players-advanced", async (req, re
 });
 
 // Trend, splits, play-by-play and shot zones for one club in one scope. The trend is one point per round of
-// cumulative values (never summed); the splits are the state after the club's latest round in the scope.
+// cumulative values (never summed), each with the round's own ratings beside it (`round...` fields: what the club did in that round
+// alone, from the difference of the cumulative points and possessions); the splits are the state after the club's latest round in the scope.
 seasonRouter.get("/:seasonCode/teams/:clubCode/advanced", async (req, res) => {
   const season = await requestedSeason(req, res);
   if (!season) return;
@@ -819,14 +821,16 @@ seasonRouter.get("/:seasonCode/teams/:clubCode/advanced", async (req, res) => {
     getTeamShotZoneStats(season.seasonCode, scope, clubCode),
   ]);
   const ratingsByRound = new Map(ratings.map((row) => [row.roundNumber, row]));
+  const roundOwn = teamRoundOwnRatings(stats);
   res.json({
     scope,
     scopes,
-    trend: stats.map((row) => {
+    trend: stats.map((row, index) => {
       const rating = ratingsByRound.get(row.roundNumber);
       return {
         round: row.roundNumber,
         gamesPlayed: row.gamesPlayed,
+        ...roundOwn[index],
         offensiveRating: row.offensiveRating,
         defensiveRating: row.defensiveRating,
         netRating: row.netRating,

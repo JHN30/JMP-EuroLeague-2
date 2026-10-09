@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { motion } from "motion/react";
 import { getTeamAdvanced, getTeamLineups } from "../lib/api";
@@ -52,12 +52,25 @@ function DivergingBar({ value, maxAbs }) {
   );
 }
 
+// The ratings chart: each round's own offensive and defensive rating, the season averages (the cumulative values after the last round)
+// as dashed lines, and the same averages as figures under it.
 function RatingsCard({ trend }) {
   const rows = trend.filter((point) => point.offensiveRating !== null && point.defensiveRating !== null);
   const latest = rows.at(-1);
+  const played = trend.filter((point) => point.roundOffensiveRating !== null && point.roundDefensiveRating !== null);
+  const chart = useMemo(
+    () => ({
+      rounds: trend.map((point) => `R${point.round}`),
+      offense: trend.map((point) => (point.roundOffensiveRating === null ? null : Number(point.roundOffensiveRating.toFixed(1)))),
+      defense: trend.map((point) => (point.roundDefensiveRating === null ? null : Number(point.roundDefensiveRating.toFixed(1)))),
+      games: trend.map((point) => point.roundGames),
+      averages: latest ? { offense: Number(latest.offensiveRating.toFixed(1)), defense: Number(latest.defensiveRating.toFixed(1)) } : null,
+    }),
+    [trend, latest],
+  );
   const netBadge = latest ? (
     <span className={`stat-badge ${latest.netRating >= 0 ? "stat-badge-positive" : "stat-badge-negative"}`}>
-      Net {formatSignedDecimal(latest.netRating)} after R{latest.round}
+      Season net {formatSignedDecimal(latest.netRating)} after R{latest.round}
     </span>
   ) : null;
 
@@ -70,19 +83,28 @@ function RatingsCard({ trend }) {
       />
       {/* Below sm the badge sits under the title, where the title has the panel's whole width; the other copy is hidden then. */}
       {netBadge ? <div className="-mt-2 mb-3 sm:hidden">{netBadge}</div> : null}
-      {rows.length < 2 ? (
+      {played.length < 2 || !chart.averages ? (
         <EmptyText>Not enough rounds played yet to chart the ratings.</EmptyText>
       ) : (
         <>
-          <RatingsChart
-            rounds={rows.map((point) => `R${point.round}`)}
-            offense={rows.map((point) => Number(point.offensiveRating.toFixed(1)))}
-            defense={rows.map((point) => Number(point.defensiveRating.toFixed(1)))}
-          />
-          <p className="muted mt-3 text-sm">
-            Season to date, in points scored and allowed per 100 possessions: each point covers all of the club&apos;s games up to
-            that round, not just that round&apos;s game. The shaded gap between the lines is the net rating (offense minus
-            defense): green when the offense is ahead, red when it is behind.
+          <RatingsChart rounds={chart.rounds} offense={chart.offense} defense={chart.defense} games={chart.games} averages={chart.averages} />
+          <p className="mt-3 flex flex-wrap items-baseline gap-x-6 gap-y-1 text-sm" data-testid="ratings-averages">
+            <span className="muted text-xs font-bold tracking-wide uppercase">Season average</span>
+            <span>
+              Offense <b className="tabular-nums">{formatDecimal(latest.offensiveRating)}</b>
+            </span>
+            <span>
+              Defense <b className="tabular-nums">{formatDecimal(latest.defensiveRating)}</b>
+            </span>
+            <span>
+              Net <b className={`tabular-nums ${signedTone(latest.netRating)}`}>{formatSignedDecimal(latest.netRating)}</b>
+            </span>
+            <span className="muted">over {latest.gamesPlayed === 1 ? "1 game" : `${latest.gamesPlayed} games`}</span>
+          </p>
+          <p className="muted mt-2 text-sm">
+            Each point is that round&apos;s own rating, in points scored and allowed per 100 possessions; the dashed lines are the
+            season averages. The shaded gap between the round lines is the round&apos;s net rating (offense minus defense): green
+            when the offense was ahead, red when it was behind.
           </p>
         </>
       )}

@@ -122,6 +122,41 @@ export async function getTeamRoundStats(seasonCode: string, scope: string, clubC
   );
 }
 
+// What a club did in one round alone, from the cumulative rows of `app_team_round_stats`: each row holds the points and possessions of
+// every game up to its round, so a round's own numbers are the difference from the row before (the first round's row stands alone).
+// A round with no new possessions (the club did not play it) has no ratings, and `roundGames` is 0.
+export type TeamRoundOwnRatings = {
+  roundGames: number;
+  roundPossessions: number | null;
+  roundOffensiveRating: number | null;
+  roundDefensiveRating: number | null;
+  roundNetRating: number | null;
+};
+
+type CumulativeRound = Pick<TeamRoundStatsRow, "gamesPlayed" | "pointsFor" | "pointsAgainst" | "possessions">;
+
+export function teamRoundOwnRatings(rows: CumulativeRound[]): TeamRoundOwnRatings[] {
+  const present = (value: number | null | undefined): value is number => value !== null && value !== undefined && Number.isFinite(value);
+  const round2 = (value: number) => Math.round(value * 100) / 100;
+  return rows.map((row, index) => {
+    const before = index === 0 ? { gamesPlayed: 0, pointsFor: 0, pointsAgainst: 0, possessions: 0 } : rows[index - 1];
+    const roundGames = row.gamesPlayed - before.gamesPlayed;
+    const known = [row.pointsFor, row.pointsAgainst, row.possessions, before.pointsFor, before.pointsAgainst, before.possessions].every(present);
+    if (!known) return { roundGames, roundPossessions: null, roundOffensiveRating: null, roundDefensiveRating: null, roundNetRating: null };
+    const possessions = row.possessions! - before.possessions!;
+    if (!(possessions > 0)) return { roundGames, roundPossessions: null, roundOffensiveRating: null, roundDefensiveRating: null, roundNetRating: null };
+    const offensive = ((row.pointsFor! - before.pointsFor!) / possessions) * 100;
+    const defensive = ((row.pointsAgainst! - before.pointsAgainst!) / possessions) * 100;
+    return {
+      roundGames,
+      roundPossessions: round2(possessions),
+      roundOffensiveRating: round2(offensive),
+      roundDefensiveRating: round2(defensive),
+      roundNetRating: round2(offensive - defensive),
+    };
+  });
+}
+
 export async function getTeamRoundRatings(seasonCode: string, scope: string, clubCode: string): Promise<TeamRoundRatingsRow[]> {
   return catalogRead(() =>
     db.select()

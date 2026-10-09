@@ -52,17 +52,38 @@ const LINEUPS_URL = (url) => /\/api\/seasons\/[^/]+\/teams\/[^/]+\/lineups$/.tes
 
 // ---- Mocked answers, in the live shapes ----
 
-function trendOf(rounds) {
-  return Array.from({ length: rounds }, (_, index) => ({
-    round: index + 1,
-    gamesPlayed: index + 1,
-    offensiveRating: 110 + 6 * Math.sin(index / 3) + index * 0.05,
-    defensiveRating: 112 + 4 * Math.cos(index / 4),
-    netRating: -2 + 6 * Math.sin(index / 3) - 4 * Math.cos(index / 4),
-    pace: 72,
-    srs: null,
-    adjNetRating: null,
-  }));
+// Rounds with their own ratings (jagged) and the cumulative season-to-date ratings that are their running mean; `gaps` are rounds the
+// club did not play (no ratings, no games).
+function trendOf(rounds, { gaps = [] } = {}) {
+  let played = 0;
+  let offenseSum = 0;
+  let defenseSum = 0;
+  return Array.from({ length: rounds }, (_, index) => {
+    const skipped = gaps.includes(index + 1);
+    const own = { offense: 112 + 14 * Math.sin(index * 1.7), defense: 110 + 12 * Math.cos(index * 1.3) };
+    if (!skipped) {
+      played += 1;
+      offenseSum += own.offense;
+      defenseSum += own.defense;
+    }
+    const offensive = offenseSum / Math.max(played, 1);
+    const defensive = defenseSum / Math.max(played, 1);
+    return {
+      round: index + 1,
+      gamesPlayed: played,
+      roundGames: skipped ? 0 : 1,
+      roundPossessions: skipped ? null : 72,
+      roundOffensiveRating: skipped ? null : own.offense,
+      roundDefensiveRating: skipped ? null : own.defense,
+      roundNetRating: skipped ? null : own.offense - own.defense,
+      offensiveRating: offensive,
+      defensiveRating: defensive,
+      netRating: offensive - defensive,
+      pace: 72,
+      srs: null,
+      adjNetRating: null,
+    };
+  });
 }
 
 function splitsOf({ home = [19, 11], away = [19, 5], last5 = [5, 3], last10 = [10, 7] } = {}) {
@@ -122,12 +143,20 @@ test("the Ratings title has the panel's width below 640px with the badge under i
   await expect(ratings).toBeVisible({ timeout: 30_000 });
   const canvas = ratings.locator("canvas");
   await expect(canvas).toBeVisible();
-  // The caption says what the points are: the season to date, not one round.
-  await expect(ratings.locator("p.muted")).toContainText("Season to date");
+  // The caption says what the points and the dashed lines are, and the season averages are the cumulative values after the last round.
+  await expect(ratings.locator("p.muted").last()).toContainText("Each point is that round's own rating");
+  await expect(ratings.locator("p.muted").last()).toContainText("dashed lines are the season averages");
+  const last = advancedOf().trend.at(-1);
+  await expect(canvas).toHaveAttribute("data-average-offense", String(Number(last.offensiveRating.toFixed(1))));
+  await expect(canvas).toHaveAttribute("data-average-defense", String(Number(last.defensiveRating.toFixed(1))));
+  const averages = ratings.getByTestId("ratings-averages");
+  await expect(averages).toContainText(`Offense ${last.offensiveRating.toFixed(1)}`);
+  await expect(averages).toContainText(`Defense ${last.defensiveRating.toFixed(1)}`);
+  await expect(averages).toContainText("over 38 games");
 
   await atWidths(page, WIDTHS, async (width) => {
     const phone = width < 640;
-    // One copy of the "Net ... after R38" badge is drawn: under the title on a phone, beside it from 640px.
+    // One copy of the "Season net ... after R38" badge is drawn: under the title on a phone, beside it from 640px.
     await expect
       .poll(() =>
         ratings.evaluate((el) => {

@@ -178,7 +178,7 @@ Scaffolding, shared layout, design tokens, database connection setup, and deploy
     - [x] 31h-ii. **Statistics and Roster** - The Statistics tab (stat rows and opponent bars) and the Roster tab: the player cards, the table view with the player column pinned, and the coaches.
     - [x] 31h-iii. **Shooting and Games** - The Shooting tab (its four tab strips and the period select, with the Filters disclosure from 31f-v) and the Games tab (the results strip and the game list).
     - [x] 31h-iv. **Advanced** - The Advanced tab: rating by round, splits, play-by-play, shot zones and the best-lineups filters and table.
-  - [ ] 31i. **Players** - Mobile and tablet layouts for `/:season/players`, checked at 320, 390, 768 and 1024px and added to the overflow spec.
+  - [x] 31i. **Players** - Mobile and tablet layouts for `/:season/players`, checked at 320, 390, 768 and 1024px and added to the overflow spec.
   - [ ] 31j. **Player page** - Mobile and tablet layouts for `/:season/players/:personKey` and all its tabs, checked at 320, 390, 768 and 1024px and added to the overflow spec.
   - [ ] 31k. **Leaders** - Mobile and tablet layouts for `/:season/leaders` (the board rows and the statistic pickers), checked at 320, 390, 768 and 1024px and added to the overflow spec.
   - [ ] 31l. **Compare and Head-to-head** - Mobile and tablet layouts for `/:season/compare` and `/:season/compare/head-to-head`, checked at 320, 390, 768 and 1024px and added to the overflow spec.

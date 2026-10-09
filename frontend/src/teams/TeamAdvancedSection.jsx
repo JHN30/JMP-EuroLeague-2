@@ -55,20 +55,21 @@ function DivergingBar({ value, maxAbs }) {
 function RatingsCard({ trend }) {
   const rows = trend.filter((point) => point.offensiveRating !== null && point.defensiveRating !== null);
   const latest = rows.at(-1);
+  const netBadge = latest ? (
+    <span className={`stat-badge ${latest.netRating >= 0 ? "stat-badge-positive" : "stat-badge-negative"}`}>
+      Net {formatSignedDecimal(latest.netRating)} after R{latest.round}
+    </span>
+  ) : null;
 
   return (
     <Panel as="section" className="p-4">
       <PanelHeader
         kicker="RATINGS"
         title="Offense and defense through the season"
-        trailing={
-          latest ? (
-            <span className={`stat-badge ${latest.netRating >= 0 ? "stat-badge-positive" : "stat-badge-negative"}`}>
-              Net {formatSignedDecimal(latest.netRating)} after R{latest.round}
-            </span>
-          ) : null
-        }
+        trailing={netBadge ? <div className="max-sm:hidden">{netBadge}</div> : null}
       />
+      {/* Below sm the badge sits under the title, where the title has the panel's whole width; the other copy is hidden then. */}
+      {netBadge ? <div className="-mt-2 mb-3 sm:hidden">{netBadge}</div> : null}
       {rows.length < 2 ? (
         <EmptyText>Not enough rounds played yet to chart the ratings.</EmptyText>
       ) : (
@@ -79,8 +80,9 @@ function RatingsCard({ trend }) {
             defense={rows.map((point) => Number(point.defensiveRating.toFixed(1)))}
           />
           <p className="muted mt-3 text-sm">
-            Points scored and allowed per 100 possessions, cumulative through each round. The shaded gap between the lines is
-            the net rating: green when the offense is ahead of the defense, red when it is behind, and the wider the better.
+            Season to date, in points scored and allowed per 100 possessions: each point covers all of the club&apos;s games up to
+            that round, not just that round&apos;s game. The shaded gap between the lines is the net rating (offense minus
+            defense): green when the offense is ahead, red when it is behind.
           </p>
         </>
       )}
@@ -98,18 +100,18 @@ const SPLITS = [
 function SplitCard({ label, split, maxAbs }) {
   const { games, wins, mov, ortg, drtg, net, pace } = split;
   return (
-    <Panel className="p-4">
-      <div className="flex items-baseline justify-between gap-2">
+    <Panel className="p-3 sm:p-4">
+      <div className="flex flex-wrap items-baseline justify-between gap-x-2">
         <span className="eyebrow">{label}</span>
         <span className="muted text-xs">{games === 1 ? "1 game" : `${games} games`}</span>
       </div>
       {games > 0 ? (
         <>
           <div className="mt-1 flex items-baseline justify-between gap-2">
-            <span className="text-3xl font-black tracking-tight tabular-nums">
+            <span className="text-2xl font-black tracking-tight tabular-nums sm:text-3xl">
               {wins}-{games - wins}
             </span>
-            <span className={`text-lg font-bold tabular-nums ${signedTone(net)}`}>{formatSignedDecimal(net)}</span>
+            <span className={`text-base font-bold tabular-nums sm:text-lg ${signedTone(net)}`}>{formatSignedDecimal(net)}</span>
           </div>
           <div className="mt-1">
             <DivergingBar value={net} maxAbs={maxAbs} />
@@ -152,7 +154,8 @@ function SplitsCards({ splits }) {
   return (
     <section>
       <PanelHeader kicker="SPLITS" title="Home, away and recent form" />
-      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+      {/* Two by two on a phone: four full-width cards were about 1,000px of scrolling. */}
+      <div className="grid grid-cols-2 gap-2 sm:gap-3 xl:grid-cols-4">
         {items.map((item) => (
           <SplitCard key={item.label} label={item.label} split={item.split} maxAbs={maxAbs} />
         ))}
@@ -249,7 +252,7 @@ function GameFlowCard({ pbp }) {
         </div>
       </div>
 
-      <div className="mt-5 flex flex-wrap gap-x-8 gap-y-3 border-t border-base-300 pt-4">
+      <div className="mt-5 grid grid-cols-2 gap-x-4 gap-y-3 border-t border-base-300 pt-4 sm:flex sm:flex-wrap sm:gap-x-8">
         <Fact label="Lead changes / game" value={formatDecimal(pbp.leadChangesPerGame)} />
         <Fact label="Ties / game" value={formatDecimal(pbp.tiesPerGame)} />
         <Fact label="Largest lead" value={formatDecimal(pbp.largestLead, 0)} />
@@ -303,7 +306,8 @@ function LineupRow({ lineup, photos, maxAbsNet, badges }) {
       className="grid items-center gap-x-10 gap-y-2 border-b border-base-300 py-3 last:border-0 lg:grid-cols-[24rem_minmax(0,1fr)]"
     >
       <div className="min-w-0">
-        <div className="flex items-center gap-3">
+        {/* Below sm the badges wrap under the faces: beside five faces they pushed the page wider. */}
+        <div className="flex items-center gap-3 max-sm:flex-wrap max-sm:gap-y-2">
           <div className="flex -space-x-2">
             {keys.map((key, index) => (
               <PlayerFace key={key} name={names[index] ?? key} imageUrl={photos?.get(key)?.playerImageUrl} />
@@ -421,7 +425,8 @@ function LineupsCard({ seasonCode, clubCode, scope }) {
           <Panel className="p-4">
             {useFallback ? (
               <p className="mb-2">
-                <span className="stat-badge stat-badge-neutral">
+                {/* The badge class keeps its text on one line; below sm this long note wraps inside the panel. */}
+                <span className="stat-badge stat-badge-neutral max-sm:rounded-lg! max-sm:whitespace-normal!">
                   No {sizeNumber}-man lineup has reached {TARGET_POSSESSIONS} possessions yet, so this shows {FALLBACK_POSSESSIONS}+
                 </span>
               </p>
@@ -453,22 +458,7 @@ function LineupsCard({ seasonCode, clubCode, scope }) {
   );
 }
 
-function ShootingPointer({ onOpenShooting }) {
-  if (!onOpenShooting) return null;
-  return (
-    <Panel className="flex flex-wrap items-center justify-between gap-3 p-4">
-      <div>
-        <p className="eyebrow mb-1">SHOOTING</p>
-        <p className="text-sm">Shot zones, the court map and how opponents shoot against the club are on the Shooting tab.</p>
-      </div>
-      <button type="button" className="btn btn-sm btn-outline" onClick={onOpenShooting}>
-        Open Shooting →
-      </button>
-    </Panel>
-  );
-}
-
-export default function TeamAdvancedSection({ seasonCode, clubCode, onOpenShooting }) {
+export default function TeamAdvancedSection({ seasonCode, clubCode }) {
   const [scope, setScope] = useState(null);
 
   const query = useQuery({
@@ -512,9 +502,6 @@ export default function TeamAdvancedSection({ seasonCode, clubCode, onOpenShooti
           </motion.div>
           <motion.div variants={sectionItem}>
             <LineupsCard seasonCode={seasonCode} clubCode={clubCode} scope={activeScope} />
-          </motion.div>
-          <motion.div variants={sectionItem}>
-            <ShootingPointer onOpenShooting={onOpenShooting} />
           </motion.div>
         </motion.div>
       </TabPanel>

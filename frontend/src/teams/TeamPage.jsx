@@ -594,7 +594,6 @@ export default function TeamPage() {
             key={`${seasonCode}-${clubCode}`}
             seasonCode={seasonCode}
             clubCode={clubCode}
-            onOpenShooting={() => setSection("shooting")}
           />
         ) : section === "roster" ? (
           <TeamRosterSection

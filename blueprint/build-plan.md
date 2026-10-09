@@ -200,3 +200,5 @@ Scaffolding, shared layout, design tokens, database connection setup, and deploy
 - Per-36 and per-30 player statistics (per-100 figures are published and shown)
 - EuroCup and other competitions
 - Authentication, profiles, saved favorites, and other user-specific data
+- Cloudflare edge caching for the API: switch the `www` record from DNS-only to proxied (SSL mode Full (strict), with Render's certificate still renewing), send `Cache-Control` on `/api/seasons` replies, and add a Cloudflare cache rule for `/api/*`, so repeat requests are answered by Cloudflare without reaching Render or Neon
+- Cache clearing on pipeline publish: a protected endpoint the pipeline calls after publishing that empties the server cache (and purges Cloudflare once edge caching is on), so cached replies can live much longer than 10 minutes

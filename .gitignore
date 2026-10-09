@@ -8,3 +8,8 @@ coverage
 *.tsbuildinfo
 *.log
 .DS_Store
+
+# Local-only Claude Code setup (browser-test pause until the Neon transfer allowance resets)
+CLAUDE.local.md
+.claude/settings.local.json
+.claude/hooks/

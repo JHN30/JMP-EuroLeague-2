@@ -1757,6 +1757,8 @@ button {
 .stat-bar-cell {
   position: relative;
   min-width: 5.5rem;
+  /* the bar and the number stack inside the cell only, so a scrolled cell never paints over a pinned column */
+  isolation: isolate;
 }
 .stat-bar-cell .bar {
   position: absolute;
@@ -1779,6 +1781,15 @@ button {
 .stat-bar-cell .num-val {
   position: relative;
   z-index: 1;
+}
+/* a cell that shows only its number on a phone (the game log): no bar, no minimum width */
+@media (max-width: 39.999rem) {
+  .stat-bar-cell-numbers {
+    min-width: 0;
+  }
+  .stat-bar-cell-numbers .bar {
+    display: none;
+  }
 }
 
 @media (prefers-reduced-motion: no-preference) {

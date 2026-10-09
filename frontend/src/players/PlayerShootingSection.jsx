@@ -1,6 +1,7 @@
 import { useState } from "react";
 import AsyncState from "../lib/AsyncState";
 import EmptyText from "../lib/EmptyText";
+import FilterDisclosure from "../games/FilterDisclosure";
 import { formatCount, formatPercentage } from "../lib/format";
 import Panel from "../lib/Panel";
 import PanelHeader from "../lib/PanelHeader";
@@ -21,7 +22,7 @@ export default function PlayerShootingSection({ seasonCode, phaseCode, player, g
   const [result, setResult] = useState("all");
 
   const playedGames = games.filter((game) => game.phaseCode === phaseCode);
-  const { loading, errored, mappedGames, shots, retry } = useSeasonShots(seasonCode, playedGames);
+  const { loading, errored, shots, retry } = useSeasonShots(seasonCode, playedGames);
   const name = titleCase(nameParts(player.name ?? player.jerseyName ?? "Player").last);
 
   if (playedGames.length === 0) {
@@ -48,38 +49,36 @@ export default function PlayerShootingSection({ seasonCode, phaseCode, player, g
   const pointsPerShot = filtered.length === 0 ? null : made.reduce((sum, shot) => sum + (shot.points ?? 0), 0) / filtered.length;
   // The court colours shots by club; one colour is enough for one player.
   const courtShots = filtered.map((shot) => ({ ...shot, clubCode: "SIDE" }));
+  // The segment and the result are the two filters that sit behind the Filters button below sm.
+  const activeFilters = (gameSegment !== "all" ? 1 : 0) + (presentation === "markers" && result !== "all" ? 1 : 0);
 
   return (
     <Panel as="section" className="p-4">
-      <PanelHeader
-        kicker="SHOOTING"
-        title={`Where ${name} shoots`}
-        trailing={
-          <span className="stat-badge stat-badge-neutral">
-            {formatCount(mappedGames)} games mapped · {formatCount(filtered.length)} attempts plotted
-          </span>
-        }
-      />
+      <PanelHeader kicker="SHOOTING" title={`Where ${name} shoots`} />
 
       <div className="mb-4 flex flex-wrap items-center gap-x-6 gap-y-3">
         <TabStrip ariaLabel="Presentation" panelId={PANEL_ID} activeKey={presentation} onChange={setPresentation} tabs={PRESENTATION_TABS} />
-        {presentation === "markers" ? (
-          <TabStrip ariaLabel="Result" panelId={PANEL_ID} activeKey={result} onChange={setResult} tabs={RESULT_TABS} />
-        ) : null}
-        <label className="flex items-center gap-2 text-sm font-medium whitespace-nowrap">
-          Game segment
-          <select
-            className="select select-bordered select-sm"
-            value={gameSegment}
-            onChange={(event) => setGameSegment(event.target.value)}
-          >
-            {GAME_SEGMENTS.map((segment) => (
-              <option key={segment.key} value={segment.key}>
-                {segment.label}
-              </option>
-            ))}
-          </select>
-        </label>
+        {/* Below sm the result strip and the segment select are behind one button; from sm the wrapper and the grid vanish and the
+            controls sit in this row as before. */}
+        <FilterDisclosure activeCount={activeFilters} className="max-sm:w-full sm:contents" gridClassName="sm:contents">
+          {presentation === "markers" ? (
+            <TabStrip ariaLabel="Result" panelId={PANEL_ID} activeKey={result} onChange={setResult} tabs={RESULT_TABS} />
+          ) : null}
+          <label className="flex items-center gap-2 text-sm font-medium whitespace-nowrap">
+            Game segment
+            <select
+              className="select select-bordered select-sm"
+              value={gameSegment}
+              onChange={(event) => setGameSegment(event.target.value)}
+            >
+              {GAME_SEGMENTS.map((segment) => (
+                <option key={segment.key} value={segment.key}>
+                  {segment.label}
+                </option>
+              ))}
+            </select>
+          </label>
+        </FilterDisclosure>
       </div>
 
       <TabPanel id={PANEL_ID} focusKey={`${presentation}-${activeResult}`} scroll={false}>
@@ -103,6 +102,8 @@ export default function PlayerShootingSection({ seasonCode, phaseCode, player, g
           situationRows={situationRows(filtered)}
           zonesTitle="Where the shots come from"
           situationsTitle={`How ${name} scores`}
+          phoneLayout
+          plainWording
         />
       </TabPanel>
     </Panel>

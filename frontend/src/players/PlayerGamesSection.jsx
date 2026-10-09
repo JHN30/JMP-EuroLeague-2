@@ -10,6 +10,7 @@ import { EASE_OUT, denseListContainer, listContainer, listItem } from "../lib/mo
 import Panel from "../lib/Panel";
 import PanelHeader from "../lib/PanelHeader";
 import RevealImage from "../lib/RevealImage";
+import ShortLabel from "../lib/ShortLabel";
 import { TabStrip } from "../lib/TabStrip";
 import StatBarCell from "../statistics/StatBarCell";
 import { barWidthScale } from "../statistics/statBarScale";
@@ -24,6 +25,11 @@ const BAR_AREA_REM = 7;
 
 function opponentName(opponent) {
   return opponent?.abbreviatedName ?? opponent?.name ?? "TBD";
+}
+
+// The club's TV code, for the small screens where a name would be cut.
+function opponentCode(opponent) {
+  return opponent?.tvCode ?? opponentName(opponent);
 }
 
 function roundLabel(game) {
@@ -57,27 +63,32 @@ function GameBars({ views, seasonCode }) {
   const best = Math.max(...values);
   const wins = views.filter((view) => view.won).length;
 
+  const badges = (
+    <>
+      <span className="stat-badge stat-badge-neutral">
+        Team {wins}-{views.length - wins}
+      </span>
+      <span className="stat-badge stat-badge-neutral">
+        {formatDecimal(average)} {stat.short} a game
+      </span>
+    </>
+  );
+
   return (
     <Panel as="section" className="p-4">
       <PanelHeader
         kicker="GAME BY GAME"
         title="How each game went"
-        trailing={
-          <div className="flex flex-wrap justify-end gap-2">
-            <span className="stat-badge stat-badge-neutral">
-              Team {wins}-{views.length - wins}
-            </span>
-            <span className="stat-badge stat-badge-neutral">
-              {formatDecimal(average)} {stat.short} a game
-            </span>
-          </div>
-        }
+        trailing={<div className="flex flex-wrap justify-end gap-2 max-sm:hidden">{badges}</div>}
       />
+      {/* Below sm the badges sit under the title, where they have the panel's whole width; the other copy is hidden then. */}
+      <div className="-mt-2 mb-3 flex flex-wrap gap-2 sm:hidden">{badges}</div>
       <TabStrip
         ariaLabel="Stat to chart"
         panelId="player-games-bars"
         activeKey={statKey}
         onChange={setStatKey}
+        scrolling
         className="mb-3 w-fit"
         tabs={BAR_STATS.map((entry) => ({ key: entry.key, label: entry.short }))}
       />
@@ -151,7 +162,7 @@ const SPLIT_STATS = [
 function Splits({ views }) {
   const overall = Object.fromEntries(SPLIT_STATS.map((stat) => [stat.key, averageOf(views, stat.key)]));
   return (
-    <motion.div className="grid grid-cols-2 gap-3 xl:grid-cols-4" variants={listContainer} initial="hidden" animate="show">
+    <motion.div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4" variants={listContainer} initial="hidden" animate="show">
       {SPLITS.map((split) => {
         const subset = views.filter(split.test);
         return (
@@ -216,27 +227,30 @@ function GameTable({ views, highs, seasonCode }) {
             setFilterKey(key);
             setShowAll(false);
           }}
+          scrolling
           className="w-fit"
           tabs={GAME_FILTERS.map((entry) => ({ key: entry.key, label: entry.label }))}
         />
-        <LabelledSelect label="Sort by" value={sortKey} onChange={(event) => setSortKey(event.target.value)}>
-          {SORTS.map((entry) => (
-            <option key={entry.key} value={entry.key}>
-              {entry.label}
-            </option>
-          ))}
-        </LabelledSelect>
-        <span className="muted pb-1 text-sm">{rows.length} games</span>
+        <div className="flex items-end gap-x-6">
+          <LabelledSelect label="Sort by" value={sortKey} onChange={(event) => setSortKey(event.target.value)}>
+            {SORTS.map((entry) => (
+              <option key={entry.key} value={entry.key}>
+                {entry.label}
+              </option>
+            ))}
+          </LabelledSelect>
+          <span className="muted pb-1 text-sm">{rows.length} games</span>
+        </div>
       </div>
 
       {rows.length === 0 ? (
         <EmptyText>No games match this filter.</EmptyText>
       ) : (
-        <div id="player-games-table" className="overflow-x-auto overscroll-x-contain">
-          <table className="data-table-sticky table">
+        <div id="player-games-table" className="overflow-x-auto overscroll-x-contain" role="region" aria-label="Every game, box scores" tabIndex={0}>
+          <table className="data-table-sticky table max-sm:table-sm">
             <thead>
               <tr>
-                <th>Opponent</th>
+                <th className="max-sm:px-2">Opponent</th>
                 <th>Result</th>
                 <th>MIN</th>
                 <th>PTS</th>
@@ -254,20 +268,21 @@ function GameTable({ views, highs, seasonCode }) {
             <motion.tbody key={`${filterKey}-${sortKey}-${seasonSeed}`} variants={denseListContainer} initial="hidden" animate="show">
               {visible.map((view) => (
                 <motion.tr key={view.game.gameCode} variants={listItem}>
-                  <td>
-                    <div className="flex min-w-0 items-center gap-2">
+                  <td className="max-sm:px-2">
+                    <div className="flex min-w-0 items-center gap-2 max-sm:gap-1.5">
                       <HomeAwayIcon home={view.home} className="h-4 w-4 text-base-content/60" />
-                      {view.opponent?.crestUrl ? <RevealImage src={view.opponent.crestUrl} className="h-6 w-6 flex-none object-contain" /> : null}
+                      {view.opponent?.crestUrl ? <RevealImage src={view.opponent.crestUrl} className="h-6 w-6 flex-none object-contain max-sm:hidden" /> : null}
                       <div className="min-w-0">
                         <Link
                           to={`/${seasonCode}/games/${view.game.gameCode}`}
                           className="link link-hover block max-w-28 truncate font-medium sm:max-w-56"
                           title={describe(view)}
                         >
-                          {view.home ? "vs" : "@"} {opponentName(view.opponent)}
+                          {view.home ? "vs" : "@"} <ShortLabel short={opponentCode(view.opponent)} full={opponentName(view.opponent)} />
                         </Link>
-                        <span className="muted block max-w-28 truncate text-xs whitespace-nowrap sm:max-w-none">
-                          {roundLabel(view.game)} · {formatShortDate(view.game.scheduledAt)}
+                        <span className="muted relative block max-w-28 truncate text-xs whitespace-nowrap sm:max-w-none">
+                          <span className="max-sm:sr-only">{roundLabel(view.game)} · </span>
+                          {formatShortDate(view.game.scheduledAt)}
                         </span>
                       </div>
                     </div>
@@ -281,7 +296,7 @@ function GameTable({ views, highs, seasonCode }) {
                     </span>
                   </td>
                   <td className="tabular-nums">{formatMinutes(view.seconds)}</td>
-                  <StatBarCell widthPct={ptsScale(view.pts)}>
+                  <StatBarCell numbersOnPhone widthPct={ptsScale(view.pts)}>
                     <span className={`tabular-nums ${high(view, "pts") || "font-semibold"}`} title={high(view, "pts") ? "Season high" : undefined}>
                       {Math.round(view.pts)}
                     </span>
@@ -297,7 +312,7 @@ function GameTable({ views, highs, seasonCode }) {
                   <td className="tabular-nums whitespace-nowrap">{view.two}</td>
                   <td className="tabular-nums whitespace-nowrap">{view.three}</td>
                   <td className="tabular-nums whitespace-nowrap">{view.ft}</td>
-                  <StatBarCell widthPct={pirScale(view.pir)}>
+                  <StatBarCell numbersOnPhone widthPct={pirScale(view.pir)}>
                     <span className={`tabular-nums ${high(view, "pir") || "font-semibold"}`} title={high(view, "pir") ? "Season high" : undefined}>
                       {Math.round(view.pir)}
                     </span>
@@ -317,8 +332,9 @@ function GameTable({ views, highs, seasonCode }) {
         </div>
       ) : null}
       <p className="muted mt-3 text-xs">
-        2P, 3P and FT are made over attempted. A season high in points, rebounds, assists or PIR is in colour. The bars in the PTS and PIR
-        columns compare the games shown.
+        2P, 3P and FT are made over attempted. A season high in points, rebounds, assists or PIR is in colour. <span className="max-sm:hidden">
+          The bars in the PTS and PIR columns compare the games shown.
+        </span>
       </p>
     </Panel>
   );
@@ -335,6 +351,7 @@ function PhaseSwitch({ phases, activeKey, onChange }) {
       panelId="player-games-panel"
       activeKey={activeKey}
       onChange={onChange}
+      scrolling
       className="w-fit"
       tabs={[{ key: "all", label: "All games" }, ...phases.map((phase) => ({ key: phase.code, label: phase.name ?? phase.code }))]}
     />

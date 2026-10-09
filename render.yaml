@@ -3,6 +3,7 @@ services:
   - type: web
     name: jmp-euroleague
     runtime: node
+    region: frankfurt # next to the Neon database (AWS Europe Central 1)
     plan: starter
     buildCommand: npm run install:ci && npm run build
     startCommand: npm start

@@ -71,6 +71,24 @@ const holdsContent = (locator) =>
     }),
   );
 
+// The early-season note appears once, under the scope strip and above the scorecard, and not inside the on/off or RAPM sections.
+async function expectOneNoteAboveScorecard(page) {
+  await expect(page.getByText(/Small sample of data/)).toHaveCount(1);
+  const note = page.getByText(/Small sample of data/);
+  await expect(note).toBeVisible();
+  const above = await page.evaluate(() => {
+    const note = [...document.querySelectorAll("p")].find((p) => p.textContent.includes("Small sample of data"));
+    const heading = [...document.querySelectorAll("#player-advanced-panel section")].find((section) => section.textContent.includes("SCORECARD"));
+    const strip = document.querySelector("[aria-label='Advanced stats scope']");
+    return {
+      belowStrip: note.getBoundingClientRect().top >= strip.getBoundingClientRect().bottom - 1,
+      aboveScorecard: note.getBoundingClientRect().bottom <= heading.getBoundingClientRect().top + 1,
+      outsideSections: !note.closest("#player-advanced-panel section"),
+    };
+  });
+  expect(above).toEqual({ belowStrip: true, aboveScorecard: true, outsideSections: true });
+}
+
 const columns = (locator) => locator.evaluateAll((els) => new Set(els.map((el) => Math.round(el.getBoundingClientRect().left))).size);
 
 // Whether a strip is one row with its selected tab inside it.
@@ -138,6 +156,8 @@ test("the chart, the on/off cards and the RAPM rows fit at every width", async (
   const ratings = page.getByRole("tablist", { name: "Rating to chart" });
   await expect(onOff.locator(".panel")).toHaveCount(2, { timeout: 60_000 });
   await expect(trend.locator("canvas")).toBeVisible();
+  await expectOneNoteAboveScorecard(page);
+  await expect(page.getByText(/Based on only/)).toHaveCount(0);
   await trend.locator("details summary").click();
 
   await atWidths(page, WIDTHS, async (width) => {
@@ -208,6 +228,7 @@ test("the empty, small-sample, unranked and failing states fit a phone", async (
   await expect(page.getByText("Not enough rounds yet to chart a trend.")).toBeVisible();
   await expect(page.getByText(/Sample too small to show: 5 minutes tracked/)).toBeVisible();
   await expect(page.getByText("Not ranked: under 100 minutes played.")).toBeVisible();
+  await expectOneNoteAboveScorecard(page);
   await check();
   await page.unroute(ADVANCED);
 
@@ -218,7 +239,10 @@ test("the empty, small-sample, unranked and failing states fit a phone", async (
   });
   await page.reload();
   await page.getByRole("tab", { name: "Advanced" }).click();
-  await expect(page.getByText(/Sample too small to show: 55 minutes on court/)).toBeVisible({ timeout: 60_000 });
+  // A small on-court sample is shown, with a line saying how small: on the scorecard card and on the on/off card.
+  await expect(page.getByText("Based on only 55 of 300 minutes on court.")).toHaveCount(2, { timeout: 60_000 });
+  await expect(page.getByText(/Sample too small to show: 55 minutes on court/)).toHaveCount(0);
+  await expect(page.locator("#player-advanced-panel section", { hasText: "SCORECARD" }).locator("div.grid > div").nth(5)).toContainText("+8.0");
   await expect(page.getByText("No RAPM estimate for this player.")).toBeVisible();
   await check();
   await page.unroute(ADVANCED);
@@ -226,10 +250,13 @@ test("the empty, small-sample, unranked and failing states fit a phone", async (
   // No rounds: only the message (and the RAPM section when there is one).
   await patchAdvanced(page, (json) => {
     json.rounds = [];
+    json.earlySeason = true;
+    json.roundsPlayed = 4;
   });
   await page.reload();
   await page.getByRole("tab", { name: "Advanced" }).click();
   await expect(page.getByText("Advanced stats are not available yet for this player.")).toBeVisible({ timeout: 60_000 });
+  await expect(page.getByText(/Small sample of data/)).toHaveCount(1);
   await expectNoSidewaysScroll(page);
   await page.unroute(ADVANCED);
 

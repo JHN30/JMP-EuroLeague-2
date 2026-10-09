@@ -38,11 +38,24 @@ function minutes(seconds) {
   return seconds === null || seconds === undefined ? null : seconds / 60;
 }
 
-function EarlySeasonNote({ roundsPlayed }) {
+function EarlySeasonNote() {
   return (
     <p className="rounded-field border border-warning/40 bg-warning/10 px-3 py-2 text-sm">
-      <span className="font-semibold">Not reliable yet:</span> only {roundsPlayed} round{roundsPlayed === 1 ? "" : "s"} played
-      this season, so this is mostly noise.
+      <span className="font-semibold">Small sample of data:</span> these ratings and ranks may not be accurate yet, and they can change a
+      lot early in the season.
+    </p>
+  );
+}
+
+// On/off is shown whatever the sample, with this line when the player was on the court for less than the minimum.
+function isSmallOnCourtSample(seconds) {
+  return seconds > 0 && seconds < ON_OFF_MIN_SECONDS;
+}
+
+function SmallSampleLine({ seconds }) {
+  return (
+    <p className="text-xs font-semibold text-warning">
+      Based on only {formatDecimal(minutes(seconds), 0)} of {ON_OFF_MIN_SECONDS / 60} minutes on court.
     </p>
   );
 }
@@ -91,7 +104,7 @@ const STATS = {
 };
 const SCORECARD = ["per", "winShares", "winSharesPer40", "usgPct", "rapm", "onOffNet"];
 
-function ScoreCard({ statKey, value, rank, hint }) {
+function ScoreCard({ statKey, value, rank, hint, caution }) {
   const stat = STATS[statKey];
   const ranked = rank?.rank ? rank : null;
   const verdict = ranked ? verdictFor(ranked.percentile, stat.neutral) : null;
@@ -120,6 +133,7 @@ function ScoreCard({ statKey, value, rank, hint }) {
       ) : (
         <p className="muted mt-3 text-sm">{rank ? `Not ranked: under ${rank.minMinutes} minutes played.` : (hint ?? "")}</p>
       )}
+      {caution ? <div className="mt-2">{caution}</div> : null}
       <p className="muted mt-3 text-xs leading-snug">{stat.what}</p>
     </motion.div>
   );
@@ -192,8 +206,8 @@ function Scorecard({ rounds, ranks, rapm, onOff }) {
     winSharesPer40: latest.winSharesPer40,
     usgPct: latest.usgPct,
     rapm: rapm?.rapm ?? null,
-    // The on/off section hides a sample under the minimum, so the scorecard does too.
-    onOffNet: mainOnOff && (mainOnOff.onSeconds ?? 0) >= ON_OFF_MIN_SECONDS ? mainOnOff.netRatingDiff : null,
+    // A club with no on-court time has nothing to show; a small sample is shown with a line saying so.
+    onOffNet: mainOnOff && (mainOnOff.onSeconds ?? 0) > 0 ? mainOnOff.netRatingDiff : null,
   };
   return (
     <section className="flex flex-col gap-3">
@@ -207,6 +221,7 @@ function Scorecard({ rounds, ranks, rapm, onOff }) {
             value={values[key]}
             rank={ranks?.[key]}
             hint={key === "onOffNet" && onOff.length === 0 ? "No on/off data for this scope." : undefined}
+            caution={key === "onOffNet" && isSmallOnCourtSample(mainOnOff?.onSeconds) ? <SmallSampleLine seconds={mainOnOff.onSeconds} /> : undefined}
           />
         ))}
       </motion.div>
@@ -275,20 +290,6 @@ function OnOffCard({ row, rank, isMain }) {
   const heading = row.clubName ?? row.clubCode;
   const crest = row.crestUrl ? <RevealImage src={row.crestUrl} className="h-7 w-7 flex-none object-contain" /> : null;
 
-  if (onMinutes === null || row.onSeconds < ON_OFF_MIN_SECONDS) {
-    return (
-      <Panel className="p-4">
-        <h3 className="flex items-center gap-2 font-semibold">
-          {crest}
-          {heading}
-        </h3>
-        <p className="muted mt-1 text-sm">
-          Sample too small to show: {formatDecimal(onMinutes, 0)} minutes on court, at least {ON_OFF_MIN_SECONDS / 60} needed.
-        </p>
-      </Panel>
-    );
-  }
-
   const net = row.netRatingDiff;
   const better = net !== null && net > 0;
   return (
@@ -310,6 +311,11 @@ function OnOffCard({ row, rank, isMain }) {
           <p className="muted text-xs">net rating with him on court, per 100 possessions</p>
         </div>
       </div>
+      {isSmallOnCourtSample(row.onSeconds) ? (
+        <div className="mb-3">
+          <SmallSampleLine seconds={row.onSeconds} />
+        </div>
+      ) : null}
       <p className="muted mb-1 grid grid-cols-2 gap-4 text-center text-xs font-bold tracking-wide uppercase">
         <span>On court · {formatDecimal(onMinutes, 0)} min</span>
         <span>Off court · {formatDecimal(offMinutes, 0)} min</span>
@@ -347,18 +353,19 @@ function OnOffCard({ row, rank, isMain }) {
   );
 }
 
-function OnOffSection({ onOff, rank, earlySeason, roundsPlayed }) {
-  const mainClub = [...onOff].sort((x, y) => (y.onSeconds ?? 0) - (x.onSeconds ?? 0))[0]?.clubCode;
+function OnOffSection({ onOff, rank }) {
+  // A club the player was never on the court for has no card.
+  const rows = onOff.filter((row) => (row.onSeconds ?? 0) > 0);
+  const mainClub = [...rows].sort((x, y) => (y.onSeconds ?? 0) - (x.onSeconds ?? 0))[0]?.clubCode;
   return (
     <section className="flex flex-col gap-3">
       <PanelHeader kicker="ON / OFF" title="Team rating with and without him" />
-      {onOff.length === 0 ? (
+      {rows.length === 0 ? (
         <EmptyText>No on/off data for this scope.</EmptyText>
       ) : (
         <>
-          {earlySeason ? <EarlySeasonNote roundsPlayed={roundsPlayed} /> : null}
-          <div className={`grid grid-cols-1 gap-3 ${onOff.length > 1 ? "xl:grid-cols-2" : ""}`}>
-            {onOff.map((row) => (
+          <div className={`grid grid-cols-1 gap-3 ${rows.length > 1 ? "xl:grid-cols-2" : ""}`}>
+            {rows.map((row) => (
               <OnOffCard key={row.clubCode} row={row} rank={rank} isMain={row.clubCode === mainClub} />
             ))}
           </div>
@@ -396,7 +403,7 @@ function ImpactBar({ label, tip, value }) {
   );
 }
 
-function RapmSection({ rapm, rank, earlySeason, roundsPlayed }) {
+function RapmSection({ rapm, rank }) {
   let body;
   if (!rapm) {
     body = <EmptyText>No RAPM estimate for this player.</EmptyText>;
@@ -407,10 +414,8 @@ function RapmSection({ rapm, rank, earlySeason, roundsPlayed }) {
       </EmptyText>
     );
   } else {
-    // The early-season note sits above the card, as it does above the on/off cards.
     body = (
       <>
-        {earlySeason ? <EarlySeasonNote roundsPlayed={roundsPlayed} /> : null}
         <Panel className="p-4">
           <div className="mb-2 flex flex-wrap items-baseline justify-between gap-2">
             <span className="muted text-xs font-bold tracking-wide uppercase">Points per 100 possessions against an average player</span>
@@ -474,13 +479,14 @@ export default function PlayerAdvancedSection({ seasonCode, personKey }) {
     return <AsyncState status="error" message="Could not load advanced player stats." onRetry={() => query.refetch()} />;
   }
 
-  const { scopes, rounds, onOff, rapm, ranks, earlySeason, roundsPlayed } = query.data;
+  const { scopes, rounds, onOff, rapm, ranks, earlySeason } = query.data;
   const activeScope = query.data.scope;
   if (!activeScope || rounds.length === 0) {
     return (
       <div className="flex flex-col gap-8">
+        {earlySeason ? <EarlySeasonNote /> : null}
         <EmptyText>Advanced stats are not available yet for this player.</EmptyText>
-        {rapm ? <RapmSection rapm={rapm} earlySeason={earlySeason} roundsPlayed={roundsPlayed} /> : null}
+        {rapm ? <RapmSection rapm={rapm} /> : null}
       </div>
     );
   }
@@ -497,6 +503,7 @@ export default function PlayerAdvancedSection({ seasonCode, personKey }) {
         className="w-fit"
         tabs={scopes.map((code) => ({ key: code, label: SCOPE_LABELS[code] ?? code }))}
       />
+      {earlySeason ? <EarlySeasonNote /> : null}
       <TabPanel id="player-advanced-panel" focusKey={activeScope} scroll={false}>
         <motion.div className="flex flex-col gap-8" variants={sectionContainer} initial="hidden" animate="show" key={activeScope}>
           <motion.div variants={sectionItem}>
@@ -506,10 +513,10 @@ export default function PlayerAdvancedSection({ seasonCode, personKey }) {
             <RoundTrend key={activeScope} rounds={rounds} />
           </motion.div>
           <motion.div variants={sectionItem}>
-            <OnOffSection onOff={onOff} rank={ranks?.onOffNet} earlySeason={earlySeason} roundsPlayed={roundsPlayed} />
+            <OnOffSection onOff={onOff} rank={ranks?.onOffNet} />
           </motion.div>
           <motion.div variants={sectionItem}>
-            <RapmSection rapm={rapm} rank={ranks?.rapm} earlySeason={earlySeason} roundsPlayed={roundsPlayed} />
+            <RapmSection rapm={rapm} rank={ranks?.rapm} />
           </motion.div>
         </motion.div>
       </TabPanel>

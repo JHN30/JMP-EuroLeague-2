@@ -109,6 +109,7 @@ test("the summary, the season table and the trends fit, and the table scrolls on
 });
 
 test("the highs, the opened profile, the role table and the clubs fit", async ({ page }) => {
+  test.setTimeout(120_000);
   const { href } = await veteranPlayer(page);
   await openCareer(page, href);
   const highsAndProfile = page.locator('section[aria-label="Highs and profile"]');

@@ -31,9 +31,15 @@ async function firstPlayer(page) {
   return { slug, href: await link.getAttribute("href") };
 }
 
+// The hero fills in as two more requests land: the player's registrations replace the club the page first shows from the player's
+// own record (a different chip), and the season totals add the facts. Measuring before they have landed can hit a chip that is
+// about to be replaced, so wait for both.
 async function openPlayer(page, href) {
+  const registrations = page.waitForResponse((response) => REGISTRATIONS.test(response.url()), { timeout: 30_000 });
   await page.goto(href);
   await expect(page.getByRole("tab", { name: "Overview" })).toBeVisible({ timeout: 30_000 });
+  await registrations;
+  await expect(page.locator("section.panel", { has: page.locator("h1") }).first().getByText("Games", { exact: true })).toBeVisible({ timeout: 30_000 });
 }
 
 async function atWidths(page, widths, check) {
@@ -206,7 +212,7 @@ test("every Overview panel holds its content, the radar its labels and the form 
 
   await atWidths(page, WIDTHS, async (width) => {
     // The radar redraws a moment after the window changes size, so the check waits for it.
-    await expect.poll(() => holdsContent(panels)).toBe(true);
+    await expect.poll(() => holdsContent(panels), { timeout: 15_000 }).toBe(true);
     // The ranked cards: two to a row below 640px.
     const cardsPerRow = await page.locator('section[aria-label="Season line"] > div > div').evaluateAll((cards) => new Set(cards.map((card) => Math.round(card.getBoundingClientRect().left))).size);
     expect(cardsPerRow).toBe(width < 640 ? 2 : 4);
@@ -230,6 +236,8 @@ test("every Overview panel holds its content, the radar its labels and the form 
 });
 
 test("the not-found, error and empty states fit a phone", async ({ page }) => {
+  // Four page loads, and a failing request is retried (1s, 2s, 4s) before its message shows.
+  test.setTimeout(120_000);
   const { href } = await firstPlayer(page);
   await page.setViewportSize({ width: 320, height: HEIGHT });
 

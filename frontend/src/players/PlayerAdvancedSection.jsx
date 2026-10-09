@@ -170,7 +170,7 @@ function ReadingGuide({ minMinutes }) {
           From left to right: the bottom 10%, 10-25%, 25-40%, the middle 20%, 60-75%, 75-90% and the top 10%. Usage uses blue shades because a
           high or low usage is a role, not good or bad.
         </p>
-        <dl className="grid gap-x-6 gap-y-2 md:grid-cols-2">
+        <dl className="grid grid-cols-1 gap-x-6 gap-y-2 sm:grid-cols-2">
           {SCORECARD.map((key) => (
             <div key={key}>
               <dt className="font-semibold">{STATS[key].tip}</dt>
@@ -199,7 +199,7 @@ function Scorecard({ rounds, ranks, rapm, onOff }) {
     <section className="flex flex-col gap-3">
       <PanelHeader kicker="SCORECARD" title={`After round ${latest.round}`} />
       <ScorecardSummary ranks={ranks} />
-      <motion.div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3" variants={listContainer} initial="hidden" animate="show">
+      <motion.div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3" variants={listContainer} initial="hidden" animate="show">
         {SCORECARD.map((key) => (
           <ScoreCard
             key={key}
@@ -249,6 +249,7 @@ function RoundTrend({ rounds }) {
           <div className="flex flex-wrap items-center gap-3">
             <TabStrip
               ariaLabel="Rating to chart"
+              scrolling
               panelId="player-advanced-trend"
               activeKey={metricKey}
               onChange={setMetricKey}
@@ -297,7 +298,7 @@ function OnOffCard({ row, rank, isMain }) {
           {crest}
           {heading}
         </h3>
-        <div className="text-right">
+        <div className="text-left sm:text-right">
           <span className={`text-3xl font-black tabular-nums ${net === null ? "" : better ? "text-success" : "text-error"}`}>
             {formatSignedDecimal(net)}
           </span>
@@ -318,6 +319,7 @@ function OnOffCard({ row, rank, isMain }) {
           label="Offensive rating"
           tip="Points the team scores per 100 possessions"
           direction="higher"
+          compact
           animated
           rawA={row.onOrtg}
           rawB={row.offOrtg}
@@ -328,6 +330,7 @@ function OnOffCard({ row, rank, isMain }) {
           label="Defensive rating"
           tip="Points the team allows per 100 possessions"
           direction="lower"
+          compact
           animated
           rawA={row.onDrtg}
           rawB={row.offDrtg}
@@ -354,7 +357,7 @@ function OnOffSection({ onOff, rank, earlySeason, roundsPlayed }) {
       ) : (
         <>
           {earlySeason ? <EarlySeasonNote roundsPlayed={roundsPlayed} /> : null}
-          <div className={`grid gap-3 ${onOff.length > 1 ? "xl:grid-cols-2" : ""}`}>
+          <div className={`grid grid-cols-1 gap-3 ${onOff.length > 1 ? "xl:grid-cols-2" : ""}`}>
             {onOff.map((row) => (
               <OnOffCard key={row.clubCode} row={row} rank={rank} isMain={row.clubCode === mainClub} />
             ))}
@@ -376,7 +379,7 @@ function ImpactBar({ label, tip, value }) {
   const half = (Math.abs(clamped) / RAPM_SCALE) * 50;
   const positive = clamped >= 0;
   return (
-    <div className="grid grid-cols-[6rem_1fr_4rem] items-center gap-3 py-2">
+    <div className="grid grid-cols-[4.5rem_1fr_3.25rem] items-center gap-3 py-2 sm:grid-cols-[6rem_1fr_4rem]">
       <span className="text-sm font-medium">{tip ? <HeaderTip tip={tip}>{label}</HeaderTip> : label}</span>
       <div aria-hidden="true" className="relative h-2.5 rounded-full bg-base-300">
         <span className="absolute top-[-3px] bottom-[-3px] left-1/2 w-px bg-base-content/40" />
@@ -404,40 +407,48 @@ function RapmSection({ rapm, rank, earlySeason, roundsPlayed }) {
       </EmptyText>
     );
   } else {
+    // The early-season note sits above the card, as it does above the on/off cards.
     body = (
-      <Panel className="p-4">
+      <>
         {earlySeason ? <EarlySeasonNote roundsPlayed={roundsPlayed} /> : null}
-        <div className="mb-2 flex flex-wrap items-baseline justify-between gap-2">
-          <span className="muted text-xs font-bold tracking-wide uppercase">Points per 100 possessions against an average player</span>
-          {rank?.rank ? (
-            <span className="flex items-center gap-2 text-sm font-bold tabular-nums">
-              <VerdictPill percentile={rank.percentile} />
-              <span className={rankTier({ rank: rank.rank, of: rank.of }).text}>
-                {ordinal(rank.rank)} of {rank.of} players
+        <Panel className="p-4">
+          <div className="mb-2 flex flex-wrap items-baseline justify-between gap-2">
+            <span className="muted text-xs font-bold tracking-wide uppercase">Points per 100 possessions against an average player</span>
+            {rank?.rank ? (
+              <span className="flex items-center gap-2 text-sm font-bold tabular-nums">
+                <VerdictPill percentile={rank.percentile} />
+                <span className={rankTier({ rank: rank.rank, of: rank.of }).text}>
+                  {ordinal(rank.rank)} of {rank.of} players
+                </span>
+              </span>
+            ) : rank ? (
+              <span className="muted text-sm">Not ranked: under {rank.minMinutes} minutes</span>
+            ) : null}
+          </div>
+          <ImpactBar label="Overall" tip="Regularized adjusted plus-minus: his estimated effect on the team's scoring margin" value={rapm.rapm} />
+          <ImpactBar label="Offense" value={rapm.offense} />
+          <ImpactBar label="Defense" tip="Positive means fewer points allowed" value={rapm.defense} />
+          <div aria-hidden="true" className="muted grid grid-cols-[4.5rem_1fr_3.25rem] gap-3 text-[0.65rem] tabular-nums sm:grid-cols-[6rem_1fr_4rem]">
+            <span />
+            <span className="flex justify-between">
+              <span>
+                −{RAPM_SCALE}
+                <span className="max-sm:hidden"> worse</span>
+              </span>
+              <span>0</span>
+              <span>
+                <span className="max-sm:hidden">better </span>+{RAPM_SCALE}
               </span>
             </span>
-          ) : rank ? (
-            <span className="muted text-sm">Not ranked: under {rank.minMinutes} minutes</span>
-          ) : null}
-        </div>
-        <ImpactBar label="Overall" tip="Regularized adjusted plus-minus: his estimated effect on the team's scoring margin" value={rapm.rapm} />
-        <ImpactBar label="Offense" value={rapm.offense} />
-        <ImpactBar label="Defense" tip="Positive means fewer points allowed" value={rapm.defense} />
-        <div aria-hidden="true" className="muted grid grid-cols-[6rem_1fr_4rem] gap-3 text-[0.65rem] tabular-nums">
-          <span />
-          <span className="flex justify-between">
-            <span>−{RAPM_SCALE} worse</span>
-            <span>0</span>
-            <span>better +{RAPM_SCALE}</span>
-          </span>
-          <span />
-        </div>
-        <p className="muted mt-3 text-xs">
-          {formatDecimal(minutes(rapm.seconds), 0)} minutes tracked over {rapm.possessionsOffense ?? EM_DASH} offensive and{" "}
-          {rapm.possessionsDefense ?? EM_DASH} defensive possessions. An estimate, not a measurement: whole season, shrunk toward zero.
-          Differences of a few tenths mean little.
-        </p>
-      </Panel>
+            <span />
+          </div>
+          <p className="muted mt-3 text-xs">
+            {formatDecimal(minutes(rapm.seconds), 0)} minutes tracked over {rapm.possessionsOffense ?? EM_DASH} offensive and{" "}
+            {rapm.possessionsDefense ?? EM_DASH} defensive possessions. An estimate, not a measurement: whole season, shrunk toward zero.
+            Differences of a few tenths mean little.
+          </p>
+        </Panel>
+      </>
     );
   }
 
@@ -479,6 +490,7 @@ export default function PlayerAdvancedSection({ seasonCode, personKey }) {
       <TabStrip
         ariaLabel="Advanced stats scope"
         level={2}
+        scrolling
         panelId="player-advanced-panel"
         activeKey={activeScope}
         onChange={setScope}

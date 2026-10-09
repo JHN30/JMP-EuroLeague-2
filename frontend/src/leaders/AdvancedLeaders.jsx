@@ -4,12 +4,13 @@ import { motion } from "motion/react";
 import { getAdvancedLeaders } from "../lib/api";
 import AsyncState from "../lib/AsyncState";
 import EmptyText from "../lib/EmptyText";
+import FilterDisclosure from "../games/FilterDisclosure";
 import LabelledSelect from "../lib/LabelledSelect";
 import { listContainer } from "../lib/motion";
 import Panel from "../lib/Panel";
 import { nameParts, titleCase } from "../lib/playerName";
 import { TabStrip } from "../lib/TabStrip";
-import { Avatar, BoardHeader, BoardRow, BoardTopLine, CardGrid, CategoryCard, StatChips, TeamTag } from "./LeaderParts";
+import { Avatar, BoardHeader, BoardRow, BoardTopLine, CardGrid, CategoryCard, StatChips, StatSelect, TeamTag } from "./LeaderParts";
 import { barShare, formatAdvancedValue } from "./leaderData";
 import { ADVANCED_CARDS, ADVANCED_FAMILIES, ADVANCED_SCOPES, ADVANCED_STATS } from "./leaderDefs";
 
@@ -21,7 +22,7 @@ const displayName = (entry) => {
   const { last, first } = nameParts(entry.playerName ?? entry.personKey);
   return `${titleCase(first)} ${titleCase(last)}`.trim();
 };
-const teamOf = (entry) => ({ code: entry.clubCode, name: entry.clubName, crestUrl: entry.crestUrl });
+const teamOf = (entry) => ({ code: entry.clubCode, name: entry.clubName, tvCode: entry.clubTvCode, crestUrl: entry.crestUrl });
 const order = (stat) => (stat.lowerIsBetter ? "asc" : "desc");
 
 // ---- Landing ----
@@ -96,14 +97,21 @@ function AdvancedBoard({ seasonCode, scope, metric, params, setParams, backToCar
     });
   }
 
+  const chooseStat = (key) => {
+    setFamily(statByKey(key)?.family ?? family);
+    update({ metric: key, direction: undefined, offset: undefined });
+  };
+
   return (
     <div className="flex flex-col gap-4">
       <BoardTopLine onBack={backToCards}>
         <p className="muted text-sm">{stat.tip ?? stat.label}</p>
         {pageQuery.data?.earlySeason ? <span className="badge badge-warning badge-outline">Early season: small samples</span> : null}
       </BoardTopLine>
-      <div>
+      <StatSelect families={ADVANCED_FAMILIES} stats={ADVANCED_STATS} activeKey={stat.key} onChoose={chooseStat} />
+      <div className="max-sm:hidden">
         <TabStrip
+          scrolling
           ariaLabel="Advanced statistic family"
           panelId="leaders-advanced-stats"
           activeKey={family}
@@ -115,22 +123,24 @@ function AdvancedBoard({ seasonCode, scope, metric, params, setParams, backToCar
           id="leaders-advanced-stats"
           items={ADVANCED_STATS.filter((entry) => entry.family === family)}
           activeKey={stat.key}
-          onChoose={(key) => update({ metric: key, direction: undefined, offset: undefined })}
+          onChoose={chooseStat}
         />
       </div>
-      <div className="flex flex-wrap items-end gap-3">
+      <div className="grid grid-cols-2 items-end gap-3 max-sm:[&_select]:w-full sm:flex sm:flex-wrap">
         <LabelledSelect label="Order" ariaLabel="Advanced sort direction" value={direction} onChange={(event) => update({ direction: event.target.value, offset: undefined })} disabled={["rapm", "onOff", "per", "winShares", "winSharesPer40"].includes(stat.key)}>
           <option value="desc">Highest first</option>
           <option value="asc">Lowest first</option>
         </LabelledSelect>
-        <LabelledSelect label="Minimum minutes" ariaLabel="Minimum minutes played" value={minutesParam ?? ""} onChange={(event) => update({ minMinutes: event.target.value, offset: undefined })}>
-          <option value="">{defaultMinutes !== null ? `Default (${defaultMinutes}+ min)` : "Default"}</option>
-          {MINUTE_OPTIONS.map((value) => (
-            <option key={value} value={value}>
-              {value === 0 ? "No minimum" : `${value}+ minutes`}
-            </option>
-          ))}
-        </LabelledSelect>
+        <FilterDisclosure activeCount={minutesParam ? 1 : 0} className="col-span-2 sm:contents" gridClassName="sm:contents">
+          <LabelledSelect label="Minimum minutes" ariaLabel="Minimum minutes played" value={minutesParam ?? ""} onChange={(event) => update({ minMinutes: event.target.value, offset: undefined })}>
+            <option value="">{defaultMinutes !== null ? `Default (${defaultMinutes}+ min)` : "Default"}</option>
+            {MINUTE_OPTIONS.map((value) => (
+              <option key={value} value={value}>
+                {value === 0 ? "No minimum" : `${value}+ minutes`}
+              </option>
+            ))}
+          </LabelledSelect>
+        </FilterDisclosure>
       </div>
 
       {pageQuery.isLoading ? (
@@ -207,6 +217,7 @@ export default function AdvancedLeaders({ seasonCode, params, setParams }) {
   return (
     <div className="flex flex-col gap-4">
       <TabStrip
+        scrolling
         ariaLabel="Advanced leaders scope"
         level={2}
         panelId="leaders-advanced-panel"

@@ -2,12 +2,13 @@ import { useState } from "react";
 import { motion } from "motion/react";
 import AsyncState from "../lib/AsyncState";
 import EmptyText from "../lib/EmptyText";
+import FilterDisclosure from "../games/FilterDisclosure";
 import LabelledSelect from "../lib/LabelledSelect";
 import { listContainer } from "../lib/motion";
 import Panel from "../lib/Panel";
 import SearchField from "../lib/SearchField";
 import { TabStrip } from "../lib/TabStrip";
-import { Avatar, BoardHeader, BoardRow, BoardTopLine, CardGrid, CategoryCard, StatChips } from "./LeaderParts";
+import { Avatar, BoardHeader, BoardRow, BoardTopLine, CardGrid, CategoryCard, StatChips, StatSelect } from "./LeaderParts";
 import { barShare, rankRows } from "./leaderData";
 import { TEAM_CARDS, TEAM_FAMILIES, TEAM_STATS, formatTeamValue, statByKey, useTeamRows, usable } from "./teamData";
 
@@ -76,28 +77,36 @@ function TeamsBoard({ seasonCode, metric, source, params, setParams, backToCards
     });
   }
 
+  const families = TEAM_FAMILIES.filter((entry) => TEAM_STATS.some((candidate) => candidate.family === entry && usable(candidate, source)));
+  const chooseStat = (key) => {
+    setFamily(statByKey(key)?.family ?? family);
+    update({ metric: key, direction: undefined, offset: undefined });
+  };
+
   return (
     <div className="flex flex-col gap-4">
       <BoardTopLine onBack={backToCards}>
         <p className="muted text-sm">{hasMode ? (mode === "perGame" ? "Per game" : "Season totals") : "Whole phase"} · overtime counted</p>
       </BoardTopLine>
-      <div>
+      <StatSelect families={families} stats={TEAM_STATS.filter((entry) => usable(entry, source))} activeKey={stat.key} onChoose={chooseStat} />
+      <div className="max-sm:hidden">
         <TabStrip
+          scrolling
           ariaLabel="Team statistic family"
           panelId="leaders-team-stats"
           activeKey={family}
           onChange={setFamily}
           className="mb-3 w-fit"
-          tabs={TEAM_FAMILIES.filter((entry) => TEAM_STATS.some((candidate) => candidate.family === entry && usable(candidate, source))).map((entry) => ({ key: entry, label: entry }))}
+          tabs={families.map((entry) => ({ key: entry, label: entry }))}
         />
         <StatChips
           id="leaders-team-stats"
           items={TEAM_STATS.filter((entry) => entry.family === family && usable(entry, source))}
           activeKey={stat.key}
-          onChoose={(key) => update({ metric: key, direction: undefined, offset: undefined })}
+          onChoose={chooseStat}
         />
       </div>
-      <div className="flex flex-wrap items-end gap-3">
+      <div className="grid grid-cols-2 items-end gap-3 max-sm:[&_select]:w-full sm:flex sm:flex-wrap">
         {hasMode ? (
           <LabelledSelect label="Team statistics" ariaLabel="Team statistics mode" value={mode} onChange={(event) => update({ mode: event.target.value === "perGame" ? undefined : event.target.value })}>
             <option value="perGame">Per game</option>
@@ -108,7 +117,9 @@ function TeamsBoard({ seasonCode, metric, source, params, setParams, backToCards
           <option value="desc">Highest first</option>
           <option value="asc">Lowest first</option>
         </LabelledSelect>
-        <SearchField label="Search teams by name" placeholder="Search teams..." value={search} onChange={(event) => update({ search: event.target.value || undefined })} />
+        <FilterDisclosure activeCount={search ? 1 : 0} className="col-span-2 sm:contents" gridClassName="sm:contents">
+          <SearchField label="Search teams by name" placeholder="Search teams..." value={search} onChange={(event) => update({ search: event.target.value || undefined })} />
+        </FilterDisclosure>
       </div>
       {source.isLoading ? (
         <AsyncState status="loading" label="Loading the team leaderboard" />

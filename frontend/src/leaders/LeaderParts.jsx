@@ -2,9 +2,11 @@ import { motion } from "motion/react";
 import { Link } from "react-router";
 import AsyncState from "../lib/AsyncState";
 import EmptyText from "../lib/EmptyText";
+import LabelledSelect from "../lib/LabelledSelect";
 import { EASE_OUT, listContainer, listItem } from "../lib/motion";
 import Panel from "../lib/Panel";
 import RevealImage from "../lib/RevealImage";
+import ShortLabel from "../lib/ShortLabel";
 
 // ---- Small pieces shared by the three leaderboards ----
 
@@ -24,12 +26,15 @@ export function Avatar({ imageUrl, crest = false, size = "h-8 w-8 sm:h-10 sm:w-1
   );
 }
 
-export function TeamTag({ code, name, crestUrl }) {
+// The club's TV code below sm and its full name from sm; a traded player's codes come joined with ";".
+export function TeamTag({ code, name, tvCode, crestUrl }) {
   if (!code && !name) return null;
+  const full = name ?? code;
+  const short = (tvCode ?? code ?? name).replaceAll(";", "/");
   return (
     <span className="muted flex min-w-0 items-center gap-1.5 text-xs">
       {crestUrl ? <RevealImage src={crestUrl} className="h-4 w-4 flex-none object-contain" /> : null}
-      <span className="truncate">{name ?? code}</span>
+      <span className="min-w-0 line-clamp-2 wrap-break-word">{name ? <ShortLabel short={short} full={full} /> : full}</span>
     </span>
   );
 }
@@ -86,11 +91,11 @@ export function CategoryCard({ kicker, title, tip, entries, isLoading, isError, 
         <motion.ol className="flex flex-1 flex-col" variants={listContainer} initial="hidden" animate="show">
           {entries.map((entry) => (
             <motion.li key={entry.key} variants={listItem} className="border-b border-base-300 py-2 last:border-0">
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2 sm:gap-3">
                 <RankBadge rank={entry.rank} />
                 <Avatar imageUrl={entry.imageUrl} crest={entry.crest} size={entry.rank === 1 ? "h-12 w-12" : "h-10 w-10"} />
                 <div className="min-w-0 flex-1">
-                  <p className={`truncate font-semibold ${entry.rank === 1 ? "text-base" : "text-sm"}`}>{entry.name}</p>
+                  <p className={`font-semibold max-sm:line-clamp-2 max-sm:wrap-break-word sm:truncate ${entry.rank === 1 ? "text-base" : "text-sm"}`}>{entry.name}</p>
                   <TeamTag {...entry.team} />
                 </div>
                 <span className={`font-black tabular-nums ${entry.rank === 1 ? "text-2xl text-primary" : "text-lg"}`}>{entry.valueText}</span>
@@ -117,7 +122,7 @@ export function CategoryCard({ kicker, title, tip, entries, isLoading, isError, 
 }
 
 export function CardGrid({ children }) {
-  return <div className="grid grid-cols-[minmax(0,1fr)] gap-4 md:grid-cols-2 xl:grid-cols-3">{children}</div>;
+  return <div className="grid grid-cols-[minmax(0,1fr)] gap-4 lg:grid-cols-2 xl:grid-cols-3">{children}</div>;
 }
 
 // ---- Controls shared by the full boards ----
@@ -147,6 +152,25 @@ export function StatChips({ id, items, activeKey, onChoose }) {
   );
 }
 
+// Below sm the family tabs and the chips give way to this one select, grouped by family, so the board starts on the first screen.
+export function StatSelect({ families, stats, activeKey, onChoose }) {
+  return (
+    <LabelledSelect label="Statistic" labelClassName="sm:hidden" className="w-full" value={activeKey} onChange={(event) => onChoose(event.target.value)}>
+      {families.map((family) => (
+        <optgroup key={family} label={family}>
+          {stats
+            .filter((entry) => entry.family === family)
+            .map((entry) => (
+              <option key={entry.key} value={entry.key}>
+                {entry.label}
+              </option>
+            ))}
+        </optgroup>
+      ))}
+    </LabelledSelect>
+  );
+}
+
 // ---- A full-board row ----
 
 // The column header over the rows; `columns` are the same extra figures the rows carry.
@@ -156,7 +180,7 @@ export function BoardHeader({ columns = [], valueLabel }) {
       <span>#</span>
       <span>Name</span>
       {columns.map((column) => (
-        <span key={column} className="hidden text-right md:block">
+        <span key={column} className="hidden text-right sm:block">
           {column}
         </span>
       ))}
@@ -169,19 +193,19 @@ export function BoardHeader({ columns = [], valueLabel }) {
 export function BoardRow({ rank, change, avatar, name, sub, columns = [], valueText, share, to }) {
   const content = (
     <>
-      <span className="flex items-center gap-1">
+      <span className="flex flex-col items-center gap-0.5 sm:flex-row sm:gap-1">
         <RankBadge rank={rank} />
         <Movement change={change} />
       </span>
       <span className="flex min-w-0 items-center gap-2 sm:gap-3">
         {avatar}
         <span className="min-w-0">
-          <span className="block font-semibold leading-tight sm:truncate">{name}</span>
+          <span className="block font-semibold leading-tight max-sm:line-clamp-2 max-sm:wrap-break-word sm:truncate">{name}</span>
           <span className="block min-w-0">{sub}</span>
         </span>
       </span>
       {columns.map((column) => (
-        <span key={column.label} className="muted hidden text-right text-sm tabular-nums md:block" title={column.label}>
+        <span key={column.label} className="muted hidden text-right text-sm tabular-nums sm:block" title={column.label}>
           {column.value}
         </span>
       ))}

@@ -184,7 +184,7 @@ Scaffolding, shared layout, design tokens, database connection setup, and deploy
     - [x] 31j-ii. **Season by season and Statistics** - The career table and charts (Season by season) and the Statistics tab: the ranked stat sheet with its phase and mode controls.
     - [x] 31j-iii. **Advanced** - The Advanced tab: the gauges, ranked ratings, on/off and RAPM.
     - [x] 31j-iv. **Shooting and Games** - The Shooting tab (the shared shot court, filters and zone table from 31f-v and 31h-iii) and the Games tab (the game log, splits and box scores).
-  - [ ] 31k. **Leaders** - Mobile and tablet layouts for `/:season/leaders` (the board rows and the statistic pickers), checked at 320, 390, 768 and 1024px and added to the overflow spec.
+  - [x] 31k. **Leaders** - Mobile and tablet layouts for `/:season/leaders` (the board rows and the statistic pickers), checked at 320, 390, 768 and 1024px and added to the overflow spec.
   - [ ] 31l. **Compare and Head-to-head** - Mobile and tablet layouts for `/:season/compare` and `/:season/compare/head-to-head`, checked at 320, 390, 768 and 1024px and added to the overflow spec.
   - [ ] 31m. **Records** - Mobile and tablet layouts for `/:season/records`, checked at 320, 390, 768 and 1024px and added to the overflow spec.
   - [ ] 31n. **Postseason** - Mobile and tablet layouts for `/:season/postseason` (the bracket below `lg`, the race table and the matchup detail), checked at 320, 390, 768 and 1024px and added to the overflow spec.

@@ -57,9 +57,10 @@ export default function LeadersPage() {
     <div>
       <PageHeader kicker="LEADERBOARDS" title="Leaders" />
 
-      <TabStrip ariaLabel="Leaderboard scope" level={1} panelId="leaders-panel" activeKey={scope} onChange={chooseScope} className={`w-fit ${showPhase ? "mb-4" : "mb-6"}`} tabs={SCOPES} />
+      <TabStrip scrolling ariaLabel="Leaderboard scope" level={1} panelId="leaders-panel" activeKey={scope} onChange={chooseScope} className={`w-fit ${showPhase ? "mb-4" : "mb-6"}`} tabs={SCOPES} />
       {showPhase ? (
         <TabStrip
+          scrolling
           ariaLabel="Statistics phase"
           level={2}
           panelId="leaders-panel"

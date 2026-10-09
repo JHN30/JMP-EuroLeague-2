@@ -4,6 +4,7 @@ import { motion } from "motion/react";
 import { getLeaderForm, getLeaderStats, getSeasonGames } from "../lib/api";
 import AsyncState from "../lib/AsyncState";
 import EmptyText from "../lib/EmptyText";
+import FilterDisclosure from "../games/FilterDisclosure";
 import { formatSignedDecimal } from "../lib/format";
 import LabelledSelect from "../lib/LabelledSelect";
 import { listContainer } from "../lib/motion";
@@ -12,7 +13,7 @@ import PanelHeader from "../lib/PanelHeader";
 import { nameParts, titleCase } from "../lib/playerName";
 import SearchField from "../lib/SearchField";
 import { TabStrip } from "../lib/TabStrip";
-import { Avatar, BoardHeader, BoardRow, BoardTopLine, CardGrid, CategoryCard, RankBadge, StatChips, TeamTag } from "./LeaderParts";
+import { Avatar, BoardHeader, BoardRow, BoardTopLine, CardGrid, CategoryCard, RankBadge, StatChips, StatSelect, TeamTag } from "./LeaderParts";
 import { barShare, fetchFullPlayerBoard, formatPlayerValue, hasVolume, playerValue, rankRows, statNumber } from "./leaderData";
 import { FORM_STATS, PLAYER_CARDS, PLAYER_FAMILIES, PLAYER_STATS } from "./leaderDefs";
 
@@ -32,7 +33,7 @@ const displayName = (player) => {
   const { last, first } = nameParts(player.playerName ?? player.personKey);
   return `${titleCase(first)} ${titleCase(last)}`.trim();
 };
-const teamOf = (player) => ({ code: player.clubCode, name: player.clubName, crestUrl: player.clubImageUrl });
+const teamOf = (player) => ({ code: player.clubCode, name: player.clubName, tvCode: player.clubTvCodes, crestUrl: player.clubImageUrl });
 
 // ---- Landing: a card per category, then who is hot and who has moved ----
 
@@ -114,6 +115,7 @@ function FormSection({ seasonCode, phaseCode, openMetric }) {
       <div className="flex flex-wrap items-end justify-between gap-3">
         <PanelHeader kicker={live ? "FORM" : "THE CLOSING STRETCH"} title={live ? "Hot right now" : "Strong finish"} />
         <TabStrip
+          scrolling
           ariaLabel="Form statistic"
           panelId="leaders-form-panel"
           activeKey={statKey}
@@ -131,14 +133,14 @@ function FormSection({ seasonCode, phaseCode, openMetric }) {
               const recent = player.recent[statKey];
               const difference = recent - player.season[statKey];
               return (
-                <li key={player.personKey} className="flex items-center gap-3 border-b border-base-300 py-2 last:border-0">
+                <li key={player.personKey} className="flex items-center gap-2 border-b border-base-300 py-2 last:border-0 sm:gap-3">
                   <RankBadge rank={index + 1} />
                   <Avatar imageUrl={player.imageUrl} />
                   <div className="min-w-0 flex-1">
-                    <p className="truncate font-semibold">{displayName({ playerName: player.playerName, personKey: player.personKey })}</p>
-                    <TeamTag code={player.clubCode} name={player.clubName} crestUrl={player.crestUrl} />
+                    <p className="font-semibold max-sm:line-clamp-2 max-sm:wrap-break-word sm:truncate">{displayName({ playerName: player.playerName, personKey: player.personKey })}</p>
+                    <TeamTag code={player.clubCode} name={player.clubName} tvCode={player.clubTvCode} crestUrl={player.crestUrl} />
                   </div>
-                  <div className="text-right">
+                  <div className="flex-none text-right">
                     <p className="text-xl font-black tabular-nums">{recent.toFixed(1)}</p>
                     <p className={`text-xs tabular-nums ${difference >= 0 ? "text-success" : "text-error"}`} title="Against their season average">
                       {formatSignedDecimal(difference)} vs {player.season[statKey].toFixed(1)}
@@ -157,14 +159,14 @@ function FormSection({ seasonCode, phaseCode, openMetric }) {
           ) : (
             <ul className="flex flex-col">
               {[...climbers, ...fallers].map(({ player, change }) => (
-                <li key={player.personKey} className="flex items-center gap-3 border-b border-base-300 py-2 last:border-0">
+                <li key={player.personKey} className="flex items-center gap-2 border-b border-base-300 py-2 last:border-0 sm:gap-3">
                   <span className={`w-10 text-sm font-bold tabular-nums ${change > 0 ? "text-success" : "text-error"}`}>
                     {change > 0 ? "▲" : "▼"}
                     {Math.abs(change)}
                   </span>
                   <Avatar imageUrl={player.imageUrl} size="h-9 w-9" />
                   <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-semibold">{displayName({ playerName: player.playerName, personKey: player.personKey })}</p>
+                    <p className="text-sm font-semibold max-sm:line-clamp-2 max-sm:wrap-break-word sm:truncate">{displayName({ playerName: player.playerName, personKey: player.personKey })}</p>
                     <p className="muted text-xs tabular-nums">
                       #{player.rank[statKey].before} → #{player.rank[statKey].now}
                     </p>
@@ -267,6 +269,11 @@ function PlayersBoard({ seasonCode, phaseCode, metric, params, setParams, backTo
     });
   }
   const chooseStat = (key) => update({ metric: key, direction: undefined, offset: undefined, mode: stat.kind === "games" ? mode : params.get("mode") });
+  const pickStat = (key) => {
+    setFamily(statByKey(key)?.family ?? family);
+    chooseStat(key);
+  };
+  const activeFilters = [minGames > 0, team, position, search].filter(Boolean).length;
 
   return (
     <div className="flex flex-col gap-4">
@@ -276,8 +283,10 @@ function PlayersBoard({ seasonCode, phaseCode, metric, params, setParams, backTo
         </p>
       </BoardTopLine>
 
-      <div>
+      <StatSelect families={PLAYER_FAMILIES} stats={PLAYER_STATS} activeKey={stat.key} onChoose={pickStat} />
+      <div className="max-sm:hidden">
         <TabStrip
+          scrolling
           ariaLabel="Statistic family"
           panelId="leaders-player-stats"
           activeKey={family}
@@ -288,7 +297,7 @@ function PlayersBoard({ seasonCode, phaseCode, metric, params, setParams, backTo
         <StatChips id="leaders-player-stats" items={PLAYER_STATS.filter((entry) => entry.family === family)} activeKey={stat.key} onChoose={chooseStat} />
       </div>
 
-      <div className="flex flex-wrap items-end gap-3">
+      <div className="grid grid-cols-2 items-end gap-3 max-sm:[&_select]:w-full sm:flex sm:flex-wrap">
         <LabelledSelect label="Player statistics" ariaLabel="Player statistics mode" value={mode} onChange={(event) => update({ mode: event.target.value === "perGame" ? undefined : event.target.value, offset: undefined })}>
           {MODES.map((option) => (
             <option key={option.key} value={option.key}>
@@ -300,31 +309,33 @@ function PlayersBoard({ seasonCode, phaseCode, metric, params, setParams, backTo
           <option value="desc">Highest first</option>
           <option value="asc">Lowest first</option>
         </LabelledSelect>
-        <LabelledSelect label="Minimum games" ariaLabel="Minimum games played" value={String(minGames)} onChange={(event) => update({ minGames: Number(event.target.value) || undefined, offset: undefined })}>
-          <option value="0">{phaseMinGames ? `Qualified (${phaseMinGames}+ games)` : "Qualified players"}</option>
-          {MIN_GAMES_OPTIONS.map((value) => (
-            <option key={value} value={value}>
-              {value === 1 ? "All players" : `${value}+ games`}
-            </option>
-          ))}
-        </LabelledSelect>
-        <LabelledSelect label="Team" ariaLabel="Team" value={team} onChange={(event) => update({ team: event.target.value || undefined, offset: undefined })}>
-          <option value="">All teams</option>
-          {teams.map(([code, name]) => (
-            <option key={code} value={code}>
-              {name}
-            </option>
-          ))}
-        </LabelledSelect>
-        <LabelledSelect label="Position" ariaLabel="Position" value={position} onChange={(event) => update({ position: event.target.value || undefined, offset: undefined })}>
-          <option value="">All positions</option>
-          {positions.map((value) => (
-            <option key={value} value={value}>
-              {value}
-            </option>
-          ))}
-        </LabelledSelect>
-        <SearchField label="Search players by name" placeholder="Search players..." value={search} onChange={(event) => update({ search: event.target.value || undefined, offset: undefined })} />
+        <FilterDisclosure activeCount={activeFilters} className="col-span-2 sm:contents" gridClassName="sm:contents">
+          <LabelledSelect label="Minimum games" ariaLabel="Minimum games played" value={String(minGames)} onChange={(event) => update({ minGames: Number(event.target.value) || undefined, offset: undefined })}>
+            <option value="0">{phaseMinGames ? `Qualified (${phaseMinGames}+ games)` : "Qualified players"}</option>
+            {MIN_GAMES_OPTIONS.map((value) => (
+              <option key={value} value={value}>
+                {value === 1 ? "All players" : `${value}+ games`}
+              </option>
+            ))}
+          </LabelledSelect>
+          <LabelledSelect label="Team" ariaLabel="Team" value={team} onChange={(event) => update({ team: event.target.value || undefined, offset: undefined })}>
+            <option value="">All teams</option>
+            {teams.map(([code, name]) => (
+              <option key={code} value={code}>
+                {name}
+              </option>
+            ))}
+          </LabelledSelect>
+          <LabelledSelect label="Position" ariaLabel="Position" value={position} onChange={(event) => update({ position: event.target.value || undefined, offset: undefined })}>
+            <option value="">All positions</option>
+            {positions.map((value) => (
+              <option key={value} value={value}>
+                {value}
+              </option>
+            ))}
+          </LabelledSelect>
+          <SearchField label="Search players by name" placeholder="Search players..." value={search} onChange={(event) => update({ search: event.target.value || undefined, offset: undefined })} />
+        </FilterDisclosure>
       </div>
       {stat.volume ? <p className="muted text-sm">Ranked among players with {stat.volume.label}.</p> : null}
 
@@ -351,7 +362,7 @@ function PlayersBoard({ seasonCode, phaseCode, metric, params, setParams, backTo
                   avatar={<Avatar imageUrl={row.playerImageUrl} />}
                   name={displayName(row)}
                   sub={
-                    <span className="flex min-w-0 items-center gap-2">
+                    <span className="flex min-w-0 flex-wrap items-center gap-x-2">
                       <TeamTag {...teamOf(row)} />
                       {row.positionName ? <span className="muted text-xs">· {row.positionName}</span> : null}
                     </span>

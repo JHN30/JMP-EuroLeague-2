@@ -120,6 +120,7 @@ export default function PlayerPage() {
           ariaLabel="Player detail section"
 
           level={1}
+          scrolling
           panelId="player-detail-panel"
           activeKey={section}
           onChange={setSection}

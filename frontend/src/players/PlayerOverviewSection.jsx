@@ -340,7 +340,7 @@ function ShootingPanel({ own, players, personKey }) {
   const hasSources = sources.some((source) => source.value !== null && source.value > 0);
 
   return (
-    <div className="grid gap-4 lg:grid-cols-2">
+    <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
       <Panel className="p-4">
         <PanelHeader kicker="PER GAME" title="Shooting" />
         <ul className="flex flex-col gap-3">
@@ -411,7 +411,7 @@ export default function PlayerOverviewSection({ leaderboardQuery, gamesQuery, pe
         ) : null}
         <SeasonLine players={players} personKey={personKey} minGames={own.minGames} />
       </motion.section>
-      <motion.section className="grid gap-4 lg:grid-cols-2" variants={sectionItem} aria-label="Profile and form">
+      <motion.section className="grid grid-cols-1 gap-4 lg:grid-cols-2" variants={sectionItem} aria-label="Profile and form">
         <ProfilePanel players={players} personKey={personKey} />
         <FormPanel gamesQuery={gamesQuery} own={own} seasonCode={seasonCode} />
       </motion.section>

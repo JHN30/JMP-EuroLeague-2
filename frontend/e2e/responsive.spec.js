@@ -13,7 +13,7 @@ const detailPage = (name, listPath, linkSelector) => ({
 });
 
 // Every page here is checked for sideways page scroll at all four widths. A page that still overflows
-// at 320px is added when its own mobile layout lands (the player page is the one left today).
+// at 320px is added when its own mobile layout lands.
 const PAGES = [
   { name: "Page not found", route: async () => "/not-a/page" },
   staticPage("Home", "home"),
@@ -30,6 +30,7 @@ const PAGES = [
   staticPage("Postseason", "postseason"),
   detailPage("Game detail", "games", 'a[href*="/games/"]'),
   detailPage("Team page", "teams", 'a[href*="/teams/"]'),
+  detailPage("Player page", "players", 'main a[href*="/players/"]'),
 ];
 
 test.describe("the page header", () => {

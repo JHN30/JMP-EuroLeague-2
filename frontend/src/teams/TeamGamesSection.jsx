@@ -4,10 +4,12 @@ import { Link } from "react-router";
 import AsyncState from "../lib/AsyncState";
 import EmptyText from "../lib/EmptyText";
 import HomeAwayIcon from "../lib/HomeAwayIcon";
+import { teamCode } from "../games/gameUtils";
 import { formatShortDate, formatSignedDecimal, formatTimeOfDay } from "../lib/format";
 import { EASE_OUT, listContainer, listItem, wideCardHover } from "../lib/motion";
 import Panel from "../lib/Panel";
 import PanelHeader from "../lib/PanelHeader";
+import ShortLabel from "../lib/ShortLabel";
 import { TabPanel, TabStrip } from "../lib/TabStrip";
 
 const MotionLink = motion.create(Link);
@@ -51,6 +53,11 @@ function opponentName(opponent) {
   return opponent?.abbreviatedName ?? opponent?.name ?? "TBD";
 }
 
+// The opponent's name in a row: its TV code below sm, where there is little room beside the date, the abbreviated name from sm.
+function OpponentLabel({ opponent }) {
+  return <ShortLabel short={teamCode(opponent)} full={opponentName(opponent)} />;
+}
+
 function roundLabel(game) {
   const round = game.roundName ?? (game.roundNumber ? `Round ${game.roundNumber}` : null);
   if (game.phaseCode && game.phaseCode !== "RS") return [game.phaseName, round].filter(Boolean).join(" · ");
@@ -91,6 +98,16 @@ function MarginStrip({ played, seasonCode, clubCode }) {
 
   const wins = sides.filter(({ side }) => side.won).length;
   const average = sides.reduce((sum, { side }) => sum + side.margin, 0) / sides.length;
+  const badges = (
+    <>
+      <span className="stat-badge stat-badge-neutral">
+        {wins}-{sides.length - wins}
+      </span>
+      <span className={`stat-badge ${average >= 0 ? "stat-badge-positive" : "stat-badge-negative"}`}>
+        {formatSignedDecimal(average)} average margin
+      </span>
+    </>
+  );
   const scale = Math.max(MIN_STRIP_SCALE, ...sides.map(({ side }) => Math.abs(side.margin)));
 
   return (
@@ -98,17 +115,10 @@ function MarginStrip({ played, seasonCode, clubCode }) {
       <PanelHeader
         kicker="FORM"
         title="How the games went"
-        trailing={
-          <div className="flex flex-wrap justify-end gap-2">
-            <span className="stat-badge stat-badge-neutral">
-              {wins}-{sides.length - wins}
-            </span>
-            <span className={`stat-badge ${average >= 0 ? "stat-badge-positive" : "stat-badge-negative"}`}>
-              {formatSignedDecimal(average)} average margin
-            </span>
-          </div>
-        }
+        trailing={<div className="flex flex-wrap justify-end gap-2 max-sm:hidden">{badges}</div>}
       />
+      {/* Below sm the badges sit under the title, where they have the panel's whole width; the other copy is hidden then. */}
+      <div className="-mt-2 mb-3 flex flex-wrap gap-2 sm:hidden">{badges}</div>
       <div ref={scrollRef} className="overflow-x-auto overscroll-x-contain pb-1">
         <ul className="flex" style={{ minWidth: `${sides.length * STRIP_COLUMN_REM}rem` }}>
           {sides.map(({ game, side }, index) => {
@@ -159,8 +169,7 @@ function MarginStrip({ played, seasonCode, clubCode }) {
         </ul>
       </div>
       <p className="muted mt-2 text-sm">
-        One bar per game, oldest on the left: green up for a win, red down for a loss, as tall as the margin. A house under
-        a bar is a home game and a plane an away game. Pick a bar to open the game.
+        Oldest on the left. Click a bar to open the game.
       </p>
     </Panel>
   );
@@ -182,22 +191,37 @@ function GameRow({ seasonCode, game, clubCode, isNext }) {
         <p className="flex min-w-0 items-center gap-1.5 font-semibold">
           <HomeAwayIcon home={side.home} className="h-4 w-4 text-base-content/60" />
           <span className="muted font-normal">{side.home ? "vs" : "@"}</span>
-          <span className="truncate">{opponentName(side.opponent)}</span>
+          <span className="truncate">
+            <OpponentLabel opponent={side.opponent} />
+          </span>
         </p>
-        <p className="muted truncate text-xs">{roundLabel(game)}</p>
+        <p className="muted truncate text-xs">
+          {roundLabel(game)}
+          {/* Below sm the "Next" badge sits after the round, so it does not squeeze the opponent beside the date (the badge class sets
+              its own display, so the wrapper is what is hidden). */}
+          {isNext ? (
+            <span className="ms-2 sm:hidden">
+              <span className="stat-badge stat-badge-neutral">Next</span>
+            </span>
+          ) : null}
+        </p>
       </div>
       {played ? (
         side.hasScore ? (
           <div className="flex flex-none items-center gap-2">
             <span className={`stat-badge ${side.won ? "stat-badge-positive" : "stat-badge-negative"}`}>{side.won ? "W" : "L"}</span>
-            <span className="w-16 text-right text-lg font-bold tabular-nums">
+            <span className="text-right text-lg font-bold tabular-nums sm:w-16">
               {side.clubScore}-{side.opponentScore}
             </span>
           </div>
         ) : null
       ) : (
         <div className="flex flex-none items-center gap-3 text-right">
-          {isNext ? <span className="stat-badge stat-badge-neutral">Next</span> : null}
+          {isNext ? (
+            <span className="max-sm:hidden">
+              <span className="stat-badge stat-badge-neutral">Next</span>
+            </span>
+          ) : null}
           <div>
             <p className="text-sm font-semibold">{formatShortDate(game.scheduledAt)}</p>
             <p className="muted text-xs">{formatTimeOfDay(game.scheduledAt)}</p>
@@ -284,7 +308,7 @@ export default function TeamGamesSection({ gamesQuery, seasonCode, clubCode }) {
   return (
     <div className="flex flex-col gap-6">
       <MarginStrip played={played} seasonCode={seasonCode} clubCode={clubCode} />
-      <div className="grid items-start gap-6 lg:grid-cols-2">
+      <div className="grid grid-cols-[minmax(0,1fr)] items-start gap-6 lg:grid-cols-2">
         <GameColumn
           kicker="UPCOMING"
           title="Next games"

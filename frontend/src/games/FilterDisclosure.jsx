@@ -2,12 +2,13 @@ import { useId, useState } from "react";
 
 // A tab's filter selects. Below sm they sit behind one button that says how many differ from their default, so they do not
 // push the content off the screen; from sm they are always shown. Closing the button never resets a filter.
-export default function FilterDisclosure({ activeCount, gridClassName = "", children }) {
+// `className` replaces the wrapper's default bottom margin, for a caller that lays the disclosure out among other controls.
+export default function FilterDisclosure({ activeCount, gridClassName = "", className = "mb-4", children }) {
   const [open, setOpen] = useState(false);
   const contentId = useId();
 
   return (
-    <div className="mb-4">
+    <div className={className}>
       <button
         type="button"
         className="btn btn-sm btn-outline touch-target w-full justify-between sm:hidden"

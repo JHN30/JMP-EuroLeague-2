@@ -82,7 +82,8 @@ export default function SiteMenu({ children }) {
               aria-hidden="true"
               className="fixed inset-x-0 bottom-0 top-(--app-nav-height) bg-black/40"
               initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
+              // Leaving sets pointer-events to none; coming back before the exit has finished must turn them on again.
+              animate={{ opacity: 1, pointerEvents: "auto" }}
               exit={{ opacity: 0, pointerEvents: "none" }}
               transition={fade}
               onClick={() => setOpen(false)}
@@ -93,19 +94,24 @@ export default function SiteMenu({ children }) {
               id={MENU_ID}
               className="absolute inset-x-0 top-full max-h-[calc(100dvh-var(--app-nav-height))] overflow-y-auto border-b border-base-300 bg-base-200 shadow-lg"
               initial={{ opacity: 0, y: -12 }}
-              animate={{ opacity: 1, y: 0 }}
+              animate={{ opacity: 1, y: 0, pointerEvents: "auto" }}
               exit={{ opacity: 0, y: -12, pointerEvents: "none" }}
               transition={fade}
             >
               <motion.nav
                 aria-label="Sections"
-                className="flex flex-col gap-1 p-2"
+                className="grid grid-cols-2 gap-1 p-2"
                 variants={rowsContainer}
                 initial={reduced ? false : "hidden"}
                 animate="show"
               >
-                {TABS.map((tab) => (
-                  <motion.div key={tab.label} variants={reduced ? undefined : row}>
+                {TABS.map((tab, index) => (
+                  // Two columns; an odd last tab takes the whole row.
+                  <motion.div
+                    key={tab.label}
+                    variants={reduced ? undefined : row}
+                    className={index === TABS.length - 1 && TABS.length % 2 === 1 ? "col-span-2" : undefined}
+                  >
                     <NavLink
                       to={`/${seasonCode}/${tab.path}`}
                       onClick={() => setOpen(false)}

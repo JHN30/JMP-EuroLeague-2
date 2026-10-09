@@ -143,8 +143,13 @@ for (const width of MOBILE_WIDTHS) {
       await page.keyboard.press("Escape");
       await expect(menu).toHaveAttribute("aria-expanded", "false");
 
+      // The tap waits until the menu is open (a click is dispatched before React has drawn the overlay, and a tap that lands
+      // first hits the page) and lands below the panel, on the dimmed overlay, by construction.
       await menu.click();
-      await page.mouse.click(width / 2, HEIGHT - 20);
+      const panel = page.locator("#site-menu");
+      await expect(panel).toBeVisible();
+      const bottom = await panel.evaluate((el) => el.getBoundingClientRect().bottom);
+      await page.mouse.click(width / 2, (bottom + HEIGHT) / 2);
       await expect(menu).toHaveAttribute("aria-expanded", "false");
     });
 

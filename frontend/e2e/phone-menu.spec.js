@@ -31,7 +31,7 @@ for (const width of [320, 390, 639]) {
   test.describe(`${width}px`, () => {
     test.use({ viewport: { width, height: HEIGHT } });
 
-    test("the menu is a one-column list that fades and slides in, with a labelled footer", async ({ page }) => {
+    test("the menu is a two-column grid that fades and slides in, with a labelled footer", async ({ page }) => {
       await seasonSlug(page);
       const samples = await opacityWhileOpening(page);
       // It faded in: some frame was part-way, and it ended fully visible.
@@ -44,17 +44,23 @@ for (const width of [320, 390, 639]) {
       const links = page.getByRole("navigation", { name: "Sections" }).getByRole("link");
       await expect(links).toHaveText(SECTIONS);
 
-      // One column: every row is as wide as the panel's list, one under the other, all settled in place.
+      // Two columns: the first eight rows share two left edges and one width, reading left to right and then down, and the odd
+      // last row takes the whole row; all settled in place.
       const geometry = await links.evaluateAll((els) =>
         els.map((el) => {
           const rect = el.getBoundingClientRect();
-          return { left: Math.round(rect.left), width: Math.round(rect.width), top: rect.top, opacity: getComputedStyle(el.parentElement).opacity };
+          return { left: Math.round(rect.left), width: Math.round(rect.width), top: Math.round(rect.top), opacity: getComputedStyle(el.parentElement).opacity };
         }),
       );
-      expect(new Set(geometry.map((row) => row.left)).size).toBe(1);
-      expect(new Set(geometry.map((row) => row.width)).size).toBe(1);
+      const pairs = geometry.slice(0, -1);
+      const last = geometry.at(-1);
+      expect(new Set(pairs.map((row) => row.left)).size).toBe(2);
+      expect(new Set(pairs.map((row) => row.width)).size).toBe(1);
       expect(geometry.every((row) => row.opacity === "1")).toBe(true);
-      for (let i = 1; i < geometry.length; i++) expect(geometry[i].top).toBeGreaterThan(geometry[i - 1].top);
+      for (let i = 1; i < geometry.length; i++) expect(geometry[i].top).toBeGreaterThanOrEqual(geometry[i - 1].top);
+      expect(last.left).toBe(Math.min(...pairs.map((row) => row.left)));
+      expect(last.width).toBeGreaterThan(pairs[0].width * 1.9);
+      expect(last.top).toBeGreaterThan(Math.max(...pairs.map((row) => row.top)));
 
       // The current page is marked, by more than colour.
       const current = links.filter({ hasText: "Home" });
@@ -129,3 +135,85 @@ test("from 640px the logo and the wordmark are one link to Home", async ({ page 
   await logo(page).click();
   await expect(page).toHaveURL(new RegExp(`/${season}/home$`));
 });
+
+// The open menu on a short phone and on a tall one: all of it is on screen without scrolling.
+for (const size of [{ width: 320, height: 568 }, { width: 390, height: 844 }]) {
+  test.describe(`${size.width}x${size.height}`, () => {
+    test.use({ viewport: size });
+
+    test("the open menu fits the screen: nine tabs, the season picker and the theme switch, without scrolling", async ({ page }) => {
+      await seasonSlug(page);
+      await menuButton(page).click();
+      await expect(panel(page)).toBeVisible();
+      // It has finished sliding in once its top is under the bar.
+      await expect.poll(() => panel(page).evaluate((el) => Math.round(el.getBoundingClientRect().top))).toBeLessThanOrEqual(48);
+      const fit = await panel(page).evaluate((el) => ({
+        scrolls: el.scrollHeight > el.clientHeight,
+        bottom: Math.round(el.getBoundingClientRect().bottom),
+        window: window.innerHeight,
+      }));
+      expect(fit.scrolls).toBe(false);
+      expect(fit.bottom).toBeLessThanOrEqual(fit.window);
+      for (const control of [page.getByRole("combobox", { name: "Selected season" }), page.getByRole("button", { name: /^Switch to/ })]) {
+        const box = await control.boundingBox();
+        expect(box.y + box.height).toBeLessThanOrEqual(fit.window);
+        expect(box.height).toBeGreaterThanOrEqual(44);
+      }
+      const links = page.getByRole("navigation", { name: "Sections" }).getByRole("link");
+      await expect(links).toHaveText(SECTIONS);
+      const heights = await links.evaluateAll((els) => els.map((el) => Math.round(el.getBoundingClientRect().height)));
+      expect(Math.min(...heights)).toBeGreaterThanOrEqual(44);
+      await expectNoSidewaysScroll(page);
+    });
+
+    test("a menu reopened while it is still leaving still closes on a tap outside", async ({ page }) => {
+      // The page's clock is ours, so the exit animation can be stopped half way: leaving sets pointer-events to none on the
+      // overlay and the panel, and coming back during that must turn them on again.
+      await page.clock.install();
+      await seasonSlug(page);
+      await menuButton(page).click();
+      await page.clock.runFor(1000);
+      await expect(panel(page)).toBeVisible();
+
+      await page.keyboard.press("Escape");
+      await page.clock.runFor(60);
+      await menuButton(page).click();
+      await page.clock.runFor(1000);
+
+      await expect(menuButton(page)).toHaveAttribute("aria-expanded", "true");
+      await expect(page.locator("div.fixed[aria-hidden='true']")).toHaveCSS("pointer-events", "auto");
+      await expect(panel(page)).toHaveCSS("pointer-events", "auto");
+      const bottom = await panel(page).evaluate((el) => el.getBoundingClientRect().bottom);
+      await page.mouse.click(size.width / 2, (bottom + size.height) / 2);
+      await page.clock.runFor(1000);
+      await expect(menuButton(page)).toHaveAttribute("aria-expanded", "false");
+    });
+
+    test("page content never paints over the open menu, such as the Player hero's accent line", async ({ page }) => {
+      const season = await seasonSlug(page);
+      await page.goto(`/${season}/players`);
+      const link = page.locator('main a[href*="/players/"]').first();
+      await expect(link).toBeVisible({ timeout: 30_000 });
+      await link.click();
+      const accent = page.locator("main section.panel > div[aria-hidden='true']").first();
+      await expect(accent).toBeAttached({ timeout: 30_000 });
+      await menuButton(page).click();
+      await expect(panel(page)).toBeVisible();
+      await expect.poll(() => panel(page).evaluate((el) => Math.round(el.getBoundingClientRect().top))).toBeLessThanOrEqual(48);
+      // Whatever is drawn at the line's place belongs to the menu, not to the line.
+      const hit = await accent.evaluate((el) => {
+        const rect = el.getBoundingClientRect();
+        const top = document.elementFromPoint(rect.left + rect.width / 2, rect.top + rect.height / 2);
+        return { inMenu: Boolean(top?.closest("#site-menu, .app-nav")), isLine: top === el };
+      });
+      expect(hit.isLine).toBe(false);
+      // That is only the line: the header outranks every z-index the page itself uses.
+      const stacking = await page.evaluate(() => {
+        const header = Number(getComputedStyle(document.querySelector(".app-nav")).zIndex);
+        const page = [...document.querySelectorAll("main *")].map((el) => Number(getComputedStyle(el).zIndex)).filter((value) => Number.isFinite(value));
+        return { header, highest: Math.max(0, ...page) };
+      });
+      expect(stacking.header).toBeGreaterThan(stacking.highest);
+    });
+  });
+}

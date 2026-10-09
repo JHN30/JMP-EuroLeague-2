@@ -1,0 +1,43 @@
+# Fix: Mobile menu stacking, fit and flaky test
+
+**Type:** Fix
+**Status:** verified
+**Branch:** fix/mobile-menu-stacking-fit-and-flaky-test
+
+## The problem
+
+On phones (below 640px) the hamburger menu has three defects, found while building the Player page:
+
+1. **Page content paints over the open menu.** The header (`.app-nav` in `frontend/src/index.css`, near line 758) is `position: sticky` with `z-index: 10`, and the menu panel lives inside it. Page content that is `z-10` and comes later in the DOM paints over it, for example the 2px orange accent line at the top of the Player hero (`frontend/src/players/PlayerHero.jsx`, `absolute inset-x-0 top-0 z-10`) shows over the open menu and over the bar. Other page elements use `z-10` or `z-20` (the Compare player dropdown in `frontend/src/comparisons/ComparisonsPage.jsx`, the playback line in `frontend/src/players/PlayerGamesSection.jsx`) and can do the same. The skip link is `z-50`.
+2. **The open menu does not fit a short phone.** The panel in `frontend/src/season/SiteMenu.jsx` is nine `min-h-12` rows in one column (`flex flex-col gap-1 p-2`) plus the "Season" picker and theme row, about 570px, capped at `max-h-[calc(100dvh-var(--app-nav-height))]` with `overflow-y-auto`. On a 320x568 phone it scrolls and the last row sits at the edge. The 31a spec planned a two-column grid for the nine tabs; it was built as one column.
+3. **A header test is flaky.** `frontend/e2e/responsive.spec.js`, "closes on a tab, a season change, Escape and a tap outside, and the bar names the page", fails intermittently at 320px and 390px when the whole suite runs in parallel (the menu stays open after the tap outside, `mouse.click(width / 2, HEIGHT - 20)`) and passes when run alone. It has failed in several full runs during this work and passes on `master` when run alone, so it is a timing or stacking problem, not tied to any one change.
+
+## The fix
+
+1. **Stacking.** Give the header a `z-index` above every page element (above the page's `z-10` and `z-20`; for example 30, with the skip link staying above at 50), so the bar and the menu always cover page content. Check that nothing intended to sit above the header (a dialog, a toast, a tooltip portal such as `HeaderTip`, which is drawn in a portal) is now hidden under it; if one is, raise that one instead of lowering the header.
+2. **Fit.** Make the whole menu visible with no scrolling at 320x568 and up. Use the planned two-column grid for the nine tabs below `sm` (the last tab, Postseason, spans both columns), keeping the rows' active style, 44px or taller touch targets, their animation, the "Season" picker and the theme switch. If a simpler change fits (for example tighter rows on a short screen), say so and use it; whichever is used must fit at 320x568. Keep the overlay and the panel's `max-h` and `overflow-y-auto` as a safety net for even shorter screens (landscape).
+3. **Flaky test.** First reproduce it (`cd frontend && npx playwright test responsive.spec.js -g "closes on a tab" --repeat-each=15 --workers=4`, or with the whole file), find the real cause (candidates: the overlay still mounting or animating when the tap lands, a previous close still exiting when the menu is reopened, the tap point landing on the panel, or the tap landing before the click handler is attached), and fix that cause in the component if it is a component bug, or in the test if it is only the test's timing or tap point. Do not add retries or fixed sleeps that hide it. The tap-outside step must click a point that is outside the panel by construction (for example read the panel's bottom edge, or click the overlay locator) once the menu is fully open.
+
+Must not break: the slim 48px bar (`header` height 48 on mobile), the nine tabs, the season picker, the theme switch, closing on a tab, a season change, Escape, a tap outside and a window growing to 640px, focus return on Escape, the tablet and desktop header (`sm` and up), and the `--app-nav-height` the page's scroll offsets use.
+
+## Build steps
+
+- [x] 1. **Stacking, fit, flaky test and checks.** Make the three changes above. Extend `frontend/e2e/responsive.spec.js` (or a new `frontend/e2e/phone-menu.spec.js` if the existing `phone-menu.spec.js` is the better home) with: the open menu is inside the window with no scrolling (panel `scrollHeight <= clientHeight`, bottom edge inside the window) at 320x568 and 390x844; the panel is above page content, using the Player page's hero accent line (the point on the line returns an element inside the menu or the bar) and a page with a `z-20` dropdown not covering the bar; the nine tabs are two columns at 320px and 390px; the existing header tests pass repeatedly. *Done when:* at 320x568 and 390x844 the open menu shows all nine tabs, the season picker and the theme switch without scrolling; the orange line no longer shows over the open menu on the Player page (the new check), the "closes on a tab..." test passes 15 of 15 with `--repeat-each=15 --workers=4` at both widths; `cd frontend && npm run lint`, root `npm run build`, and `npx playwright test responsive.spec.js phone-menu.spec.js player-overview-layout.spec.js detail-back-links.spec.js smoke.spec.js` pass.
+
+## Verify
+
+Open the app at 320x568 (a device toolbar's iPhone SE size works), open the menu on a Player page: nothing orange shows over it, all nine tabs, the Season picker and the theme switch are visible without scrolling, and a tap on the dimmed area outside the panel closes it. Open it on the Compare page with the player dropdown open: the bar and menu stay on top. Browser evidence is the Playwright spec; nothing here proves how it looks in the user's browser.
+
+Verify command: none declared in `AGENTS.md`; the final gate is `cd frontend && npm run lint` plus root `npm run build`, with the Playwright files above.
+
+## Built as
+
+- **Stacking:** `.app-nav` is `z-index: 30` (was 10), above the page's `z-10` and `z-20`; the skip link (50) and the header tips (60) stay above it. The new checks fail with the old value (the Player hero's accent line was what showed over the menu).
+- **Fit:** the nine tabs are a two-column grid below `sm` (`grid grid-cols-2`; Postseason takes the whole last row), same rows, active style, animation, season picker and theme switch. At 320x568 the open menu has no scrolling and its bottom is inside the window; the panel's `max-h` and `overflow-y-auto` stay as a safety net.
+- **Flaky test, real cause (a component bug):** reproduced by overloading the machine (`--repeat-each=40 --workers=10`: 2 failures in 120 runs, twice; 1 in 100 with diagnostics). At the failure the overlay had `pointer-events: none` with its opacity back at 0.999998, so a tap on the dimmed area went through to the page. Leaving sets `pointer-events: none` through the exit animation, and reopening the menu just before the exit ends brought the overlay back without turning pointer events on again. `animate` now includes `pointerEvents: "auto"` on the overlay and the panel. The tap in the test now waits for the open panel and taps below its bottom edge, so it lands on the overlay by construction. After the fix: 0 failures in 120 and in 210 overloaded runs, and 45 of 45 at `--workers=4`.
+- **Honest limit:** the added test "a menu reopened while it is still leaving still closes on a tap outside" uses the fake clock and passes against the old component too (the stale `pointer-events: none` only appeared with real timing), so it guards the behaviour but does not by itself prove the fix; the proof is the overload runs above.
+- **Tests:** `phone-menu.spec.js` now expects a two-column grid and has new checks at 320x568 and 390x844 (the open menu fits without scrolling, all controls on screen with 44px targets; the Player hero's line is not drawn over the menu, and the header's z-index is above everything in `main`). `responsive.spec.js`'s tap-outside step waits for the panel and taps below it.
+- Checks run: the whole Playwright suite (441 passed, 1 failed), `cd frontend && npm run lint`, root `npm run build`. The one failure is "the hero keeps a long surname whole..." in `player-overview-layout.spec.js` at 1024px, a timing flake in an earlier spec that also fails on `master` under load (2 of 20 runs) and passes when run alone; it is not part of this fix.
+
+
+<!-- blueprint:completion {"schemaVersion":1,"specBytes":8325,"specSha256":"758e925b56e28058efcf6b28a7f182c03e9180c84bb18ab1cad2739539b551b0","branch":"refs/heads/fix/mobile-menu-stacking-fit-and-flaky-test","head":"6ce0eb8899dc4b5bf1b74c0f65cbf0aa40b32ddb","baseRef":"refs/heads/master","baseCommit":"6ce0eb8899dc4b5bf1b74c0f65cbf0aa40b32ddb","sourceTree":"2714c5e45e31130e680cf5f17188d5bf3c33d23f","absentOptional":[]} -->

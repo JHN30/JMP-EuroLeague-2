@@ -93,12 +93,13 @@ export function CategoryCard({ kicker, title, tip, entries, isLoading, isError, 
             <motion.li key={entry.key} variants={listItem} className="border-b border-base-300 py-2 last:border-0">
               <div className="flex items-center gap-2 sm:gap-3">
                 <RankBadge rank={entry.rank} />
-                <Avatar imageUrl={entry.imageUrl} crest={entry.crest} size={entry.rank === 1 ? "h-12 w-12" : "h-10 w-10"} />
+                {/* The top row stands out with larger sizes from sm; on a phone they would leave too little room for a long name. */}
+                <Avatar imageUrl={entry.imageUrl} crest={entry.crest} size={entry.rank === 1 ? "h-10 w-10 sm:h-12 sm:w-12" : "h-10 w-10"} />
                 <div className="min-w-0 flex-1">
-                  <p className={`font-semibold max-sm:line-clamp-2 max-sm:wrap-break-word sm:truncate ${entry.rank === 1 ? "text-base" : "text-sm"}`}>{entry.name}</p>
+                  <p className={`font-semibold max-sm:line-clamp-2 max-sm:wrap-break-word sm:truncate ${entry.rank === 1 ? "text-sm sm:text-base" : "text-sm"}`}>{entry.name}</p>
                   <TeamTag {...entry.team} />
                 </div>
-                <span className={`font-black tabular-nums ${entry.rank === 1 ? "text-2xl text-primary" : "text-lg"}`}>{entry.valueText}</span>
+                <span className={`font-black tabular-nums ${entry.rank === 1 ? "text-xl text-primary sm:text-2xl" : "text-lg"}`}>{entry.valueText}</span>
               </div>
               <div aria-hidden="true" className="mt-1.5 ml-10 h-1 overflow-hidden rounded-full bg-base-300">
                 <motion.div

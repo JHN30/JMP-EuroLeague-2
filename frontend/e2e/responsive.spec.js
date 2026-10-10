@@ -28,6 +28,21 @@ const PAGES = [
   staticPage("Leaders (team board)", "leaders?scope=teams&metric=points"),
   staticPage("Leaders (advanced board)", "leaders?scope=advanced&metric=per"),
   staticPage("Compare", "compare"),
+  // An opened comparison needs two real teams or players of the season, so it reads the first two from the API.
+  {
+    name: "Compare (two teams)",
+    route: async (page, season) => {
+      const { teams } = await (await page.request.get(`http://localhost:3000/api/seasons/${season}/teams`)).json();
+      return `/${season}/compare?teamA=${teams[0].clubCode}&teamB=${teams[1].clubCode}`;
+    },
+  },
+  {
+    name: "Compare (two players)",
+    route: async (page, season) => {
+      const { players } = await (await page.request.get(`http://localhost:3000/api/seasons/${season}/players?limit=2`)).json();
+      return `/${season}/compare?view=players&playerA=${players[0].personKey}&playerB=${players[1].personKey}`;
+    },
+  },
   staticPage("Head-to-head", "compare/head-to-head"),
   staticPage("Records", "records"),
   staticPage("Postseason", "postseason"),

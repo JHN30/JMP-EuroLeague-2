@@ -186,6 +186,10 @@ Scaffolding, shared layout, design tokens, database connection setup, and deploy
     - [x] 31j-iv. **Shooting and Games** - The Shooting tab (the shared shot court, filters and zone table from 31f-v and 31h-iii) and the Games tab (the game log, splits and box scores).
   - [x] 31k. **Leaders** - Mobile and tablet layouts for `/:season/leaders` (the board rows and the statistic pickers), checked at 320, 390, 768 and 1024px and added to the overflow spec.
   - [ ] 31l. **Compare and Head-to-head** - Mobile and tablet layouts for `/:season/compare` and `/:season/compare/head-to-head`, checked at 320, 390, 768 and 1024px and added to the overflow spec.
+    - [x] 31l-i. **Compare landing and header** - The games panel, the team and player pickers, and the top of an opened comparison (the way back and game line, Copy link, the section strip and the phase and mode selects). Opened comparisons join the overflow spec.
+    - [ ] 31l-ii. **Team comparison tabs** - Overview (matchup edges, form and venue records, top scorers, meetings), Statistics, Rosters and Trends.
+    - [ ] 31l-iii. **Player comparison tabs** - Overview (the percentile radar, season line and form), Statistics, Advanced and Trends.
+    - [ ] 31l-iv. **Head-to-head** - The Head-to-head page, including the KPI strip it kept from before 31d-i.
   - [ ] 31m. **Records** - Mobile and tablet layouts for `/:season/records`, checked at 320, 390, 768 and 1024px and added to the overflow spec.
   - [ ] 31n. **Postseason** - Mobile and tablet layouts for `/:season/postseason` (the bracket below `lg`, the race table and the matchup detail), checked at 320, 390, 768 and 1024px and added to the overflow spec.
 - [x] 32. **Club TV codes** - Show each club's TV code (the code in use that season, such as FBT for Fenerbahce; the club code is the permanent ID and can look outdated) as the short club label wherever a full name does not fit. Each page after 31f uses it in its own item (31g to 31n); the finished pages are done in 32b.

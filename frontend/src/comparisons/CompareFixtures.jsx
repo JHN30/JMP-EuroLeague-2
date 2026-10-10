@@ -4,8 +4,10 @@ import { Link } from "react-router";
 import { getGame, getSeasonGames, getSeasonStandings } from "../lib/api";
 import AsyncState from "../lib/AsyncState";
 import { formatDateTime, formatShortDate, formatTimeOfDay } from "../lib/format";
+import { shortTeamName, teamCode } from "../games/gameUtils";
 import { listContainer, listItem, wideCardHover } from "../lib/motion";
 import RevealImage from "../lib/RevealImage";
+import ShortLabel from "../lib/ShortLabel";
 import Panel from "../lib/Panel";
 
 // A round never holds more than a handful of games; this is the API's page cap (the Games page asks the same).
@@ -21,7 +23,9 @@ function Side({ team, record, alignEnd }) {
     <span className={`flex min-w-0 items-center ${alignEnd ? "flex-row-reverse text-right" : ""} gap-1.5 sm:gap-2`}>
       {crest}
       <span className="min-w-0">
-        <span className="block truncate text-sm font-semibold leading-tight">{team?.abbreviatedName ?? team?.name ?? "TBD"}</span>
+        <span className="block truncate text-sm font-semibold leading-tight">
+          <ShortLabel short={teamCode(team)} full={shortTeamName(team)} />
+        </span>
         {record ? <span className="muted block text-xs leading-tight">{record}</span> : null}
       </span>
     </span>

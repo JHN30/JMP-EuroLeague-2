@@ -8,6 +8,7 @@ import Panel from "../lib/Panel";
 import ComparisonRow from "../lib/ComparisonRow";
 import { EASE_OUT, denseListContainer, listItem } from "../lib/motion";
 import RevealImage from "../lib/RevealImage";
+import ShortLabel from "../lib/ShortLabel";
 import PageHeader from "../lib/PageHeader";
 import { useDocumentTitle } from "../lib/useDocumentTitle";
 import { useDebouncedValue } from "../lib/useDebouncedValue";
@@ -151,8 +152,8 @@ function PlayerPicker({ seasonCode, label, selected, excludeId, onSelect }) {
 
   const isSearchResult = typed.length > 0;
   const rows = isSearchResult
-    ? (searchQuery.data?.players ?? []).map((player) => ({ key: player.personKey, name: player.name, sub: player.clubName }))
-    : (suggestionQuery.data?.players ?? []).map((player) => ({ key: player.personKey, name: player.playerName, sub: player.clubName }));
+    ? (searchQuery.data?.players ?? []).map((player) => ({ key: player.personKey, name: player.name, sub: player.clubName, subShort: player.clubTvCode ?? player.clubCode }))
+    : (suggestionQuery.data?.players ?? []).map((player) => ({ key: player.personKey, name: player.playerName, sub: player.clubName, subShort: (player.clubTvCodes ?? player.clubCode)?.replaceAll(";", "/") }));
   const visible = rows.filter((row) => row.key !== excludeId).slice(0, 8);
   const waiting = isSearchResult ? typed !== debounced || searchQuery.isPending : suggestionQuery.isPending;
   const showList = open && (isSearchResult || suggestionQuery.isPending || visible.length > 0);
@@ -197,9 +198,14 @@ function PlayerPicker({ seasonCode, label, selected, excludeId, onSelect }) {
           ) : (
             visible.map((row) => (
               <li key={row.key}>
-                <button type="button" onClick={() => choose(row.key, row.name)}>
-                  <span className="min-w-0 flex-1 truncate">{row.name ?? row.key}</span>
-                  {row.sub ? <span className="muted truncate text-xs">{row.sub}</span> : null}
+                {/* Below lg the two pickers are narrow, so a row puts the club under the name rather than beside it. */}
+                <button type="button" className="max-lg:flex max-lg:flex-col max-lg:items-start max-lg:gap-0" onClick={() => choose(row.key, row.name)}>
+                  <span className="min-w-0 flex-1 line-clamp-2 wrap-break-word">{row.name ?? row.key}</span>
+                  {row.sub ? (
+                    <span className="muted text-xs line-clamp-2 wrap-break-word lg:max-w-[45%] lg:text-right">
+                      <ShortLabel short={row.subShort ?? row.sub} full={row.sub} />
+                    </span>
+                  ) : null}
                 </button>
               </li>
             ))
@@ -449,6 +455,7 @@ function ComparisonsBody({
       <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3, ease: EASE_OUT }}>
         <PageHeader kicker="HEAD-TO-HEAD" title="Compare" />
         <TabStrip
+          scrolling
           ariaLabel="Comparison type"
           level={1}
           panelId="comparison-panel"
@@ -497,7 +504,8 @@ function ComparisonsBody({
     <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3, ease: EASE_OUT }}>
       <PageHeader kicker="HEAD-TO-HEAD" title="Compare">
         <button type="button" className="btn btn-sm" onClick={handleCopyLink}>
-          {copyLabel}
+          <span className="sm:hidden">{copyLabel === "Link copied" ? copyLabel : "Copy link"}</span>
+          <span className="max-sm:hidden">{copyLabel}</span>
         </button>
       </PageHeader>
 
@@ -514,6 +522,7 @@ function ComparisonsBody({
 
       <div className="mb-6 flex flex-wrap items-end justify-between gap-x-6 gap-y-3">
         <TabStrip
+          scrolling
           ariaLabel="Comparison section"
           level={1}
           panelId="comparison-section-panel"
@@ -522,7 +531,7 @@ function ComparisonsBody({
           className="w-fit"
           tabs={sections}
         />
-        <div className="flex flex-wrap items-end gap-3">
+        <div className="grid grid-cols-2 items-end gap-3 max-sm:w-full max-sm:[&_select]:w-full sm:flex sm:flex-wrap">
           {view === "players" && section === "statistics" ? (
             <LabelledSelect label="Player statistics" ariaLabel="Player comparison mode" value={mode} onChange={(event) => setMode(event.target.value)}>
               <option value="accumulated">Accumulated</option>

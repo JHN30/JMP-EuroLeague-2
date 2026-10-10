@@ -310,8 +310,13 @@ Run each command from the repository root. Each app has its own
 - Database switch: `DB_TARGET` in `backend/.env` picks Neon (`neon`, the default and production) or a local PostgreSQL
   copy (`local`, via `LOCAL_DB_URL`, tables in `LOCAL_DB_SCHEMA`, default `gold`); see `backend/.env.example`. A dev
   backend's `/api/health` reports its `target`. Never open the real `.env`.
-- Browser tests: `cd frontend && npm run test:browser` (Playwright; starts the
-  backend and frontend dev servers itself when they aren't already running)
+- Browser tests: `cd frontend && npx playwright test <spec files>` (Playwright; starts the
+  backend and frontend dev servers itself when they aren't already running). Run only the specs
+  that cover what changed, by file name: the page's own specs (for example
+  `leaders.spec.js leaders-layout.spec.js`) plus `responsive.spec.js` for layout work. Run the
+  full suite (`npm run test:browser`, every page) only when the user asks, or for a change that
+  reaches many pages (shared components, routing, the API client, global CSS). Before any run,
+  `/api/health` must report `"target":"local"`.
 
 There is no unit test command or required test gate yet. Use `/tests` or
 `$tests` to set one up explicitly. Browser tests are opt-in evidence, not part

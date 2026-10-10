@@ -48,7 +48,7 @@ function TeamCard({ stat, rows, onOpen, isLoading, isError, onRetry }) {
 
 const PAGE_SIZE = 25;
 
-function TeamsBoard({ seasonCode, metric, source, params, setParams, backToCards }) {
+function TeamsBoard({ seasonCode, metric, source, params, setParams }) {
   const stat = statByKey(metric) ?? TEAM_STATS[0];
   const mode = params.get("mode") === "accumulated" ? "accumulated" : "perGame";
   const direction = params.get("direction") ?? (stat.lowerIsBetter ? "asc" : "desc");
@@ -85,7 +85,7 @@ function TeamsBoard({ seasonCode, metric, source, params, setParams, backToCards
 
   return (
     <div className="flex flex-col gap-4">
-      <BoardTopLine onBack={backToCards}>
+      <BoardTopLine>
         <p className="muted text-sm">{hasMode ? (mode === "perGame" ? "Per game" : "Season totals") : "Whole phase"} · overtime counted</p>
       </BoardTopLine>
       <StatSelect families={families} stats={TEAM_STATS.filter((entry) => usable(entry, source))} activeKey={stat.key} onChoose={chooseStat} />
@@ -156,8 +156,8 @@ function TeamsBoard({ seasonCode, metric, source, params, setParams, backToCards
 export default function TeamsLeaders({ seasonCode, phaseCode, params, setParams }) {
   const metric = params.get("metric");
   const source = useTeamRows(seasonCode, phaseCode);
-// Opening a category or going back to the categories swaps the page's view on one path (only `?metric=` changes), so ScrollToTop does not run:
-// the page goes to the top by itself.
+  // Opening a category swaps the page's view on one path (only `?metric=` changes), so ScrollToTop does not run: the page goes to the top
+  // by itself. Going back to the categories does the same, from the page's back link (LeadersPage).
   const openMetric = (key) => {
     window.scrollTo(0, 0);
     setParams((current) => {
@@ -166,16 +166,8 @@ export default function TeamsLeaders({ seasonCode, phaseCode, params, setParams 
       return next;
     });
   };
-  const backToCards = () => {
-    window.scrollTo(0, 0);
-    setParams((current) => {
-      const next = new URLSearchParams(current);
-      for (const key of ["metric", "mode", "direction", "search"]) next.delete(key);
-      return next;
-    });
-  };
 
-  if (metric) return <TeamsBoard seasonCode={seasonCode} metric={metric} source={source} params={params} setParams={setParams} backToCards={backToCards} />;
+  if (metric) return <TeamsBoard seasonCode={seasonCode} metric={metric} source={source} params={params} setParams={setParams} />;
   if (source.isError) return <AsyncState status="error" message="Could not load the team leaderboard." onRetry={source.refetch} />;
   return (
     <div className="flex flex-col gap-4">

@@ -30,8 +30,11 @@ for (const width of WIDTHS) {
           await last.click();
           await expect.poll(() => scrollY(page)).toBe(0);
           await page.evaluate(() => window.scrollTo(0, 500));
-          await page.getByRole("button", { name: /All categories/ }).click();
+          await page.getByRole("link", { name: "Back to Categories" }).click();
           await expect.poll(() => scrollY(page)).toBe(0);
+          // Back on the cards of the same scope.
+          if (query) await expect(page).toHaveURL(new RegExp(query.slice(1)));
+          await expect(page.getByRole("link", { name: "Back to Categories" })).toHaveCount(0);
         }
       });
     }

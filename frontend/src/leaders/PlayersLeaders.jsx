@@ -205,7 +205,7 @@ const MODES = [
   { key: "accumulated", label: "Totals" },
 ];
 
-function PlayersBoard({ seasonCode, phaseCode, metric, params, setParams, backToCards }) {
+function PlayersBoard({ seasonCode, phaseCode, metric, params, setParams }) {
   const stat = statByKey(metric) ?? PLAYER_STATS[0];
   const mode = params.get("mode") === "accumulated" ? "accumulated" : "perGame";
   const direction = params.get("direction") ?? (stat.lowerIsBetter ? "asc" : "desc");
@@ -283,7 +283,7 @@ function PlayersBoard({ seasonCode, phaseCode, metric, params, setParams, backTo
 
   return (
     <div className="flex flex-col gap-4">
-      <BoardTopLine onBack={backToCards}>
+      <BoardTopLine>
         <p className="muted text-sm">
           {mode === "perGame" ? "Per game" : "Season totals"} · {phaseMinGames && minGames === 0 ? `qualified players (${phaseMinGames}+ games)` : minGames > 1 ? `${minGames}+ games` : "all players"}
         </p>
@@ -400,8 +400,8 @@ function PlayersBoard({ seasonCode, phaseCode, metric, params, setParams, backTo
 
 export default function PlayersLeaders({ seasonCode, phaseCode, params, setParams }) {
   const metric = params.get("metric");
-// Opening a category or going back to the categories swaps the page's view on one path (only `?metric=` changes), so ScrollToTop does not run:
-// the page goes to the top by itself.
+  // Opening a category swaps the page's view on one path (only `?metric=` changes), so ScrollToTop does not run: the page goes to the top
+  // by itself. Going back to the categories does the same, from the page's back link (LeadersPage).
   const openMetric = (key) => {
     window.scrollTo(0, 0);
     setParams((current) => {
@@ -411,17 +411,9 @@ export default function PlayersLeaders({ seasonCode, phaseCode, params, setParam
       return next;
     });
   };
-  const backToCards = () => {
-    window.scrollTo(0, 0);
-    setParams((current) => {
-      const next = new URLSearchParams(current);
-      for (const key of ["metric", "mode", "direction", "minGames", "team", "position", "search", "offset"]) next.delete(key);
-      return next;
-    });
-  };
 
   return metric ? (
-    <PlayersBoard seasonCode={seasonCode} phaseCode={phaseCode} metric={metric} params={params} setParams={setParams} backToCards={backToCards} />
+    <PlayersBoard seasonCode={seasonCode} phaseCode={phaseCode} metric={metric} params={params} setParams={setParams} />
   ) : (
     <PlayersLanding seasonCode={seasonCode} phaseCode={phaseCode} openMetric={openMetric} />
   );

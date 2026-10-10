@@ -19,8 +19,10 @@ test("Leaders opens on category cards, opens a full leaderboard and goes back", 
   await page.getByLabel("Position", { exact: true }).selectOption({ index: 1 });
   await expect(page.getByText(/Showing 1-\d+ of \d+ players/)).toBeVisible();
 
-  await page.getByRole("button", { name: "← All categories" }).click();
+  await page.getByRole("link", { name: "Back to Categories" }).click();
   await expect(page.getByRole("heading", { name: "Rebounds", exact: true })).toBeVisible();
+  // The cards have no way back to themselves.
+  await expect(page.getByRole("link", { name: "Back to Categories" })).toHaveCount(0);
 
   // Teams and Advanced have their own cards.
   await page.getByRole("tab", { name: "Teams", exact: true }).click();

@@ -61,7 +61,7 @@ function AdvancedCard({ stat, seasonCode, scope, onOpen }) {
 
 // ---- The full board ----
 
-function AdvancedBoard({ seasonCode, scope, metric, params, setParams, backToCards }) {
+function AdvancedBoard({ seasonCode, scope, metric, params, setParams }) {
   const stat = statByKey(metric) ?? ADVANCED_STATS[0];
   const offset = Number(params.get("offset")) || 0;
   const minutesParam = params.get("minMinutes");
@@ -118,7 +118,7 @@ function AdvancedBoard({ seasonCode, scope, metric, params, setParams, backToCar
 
   return (
     <div className="flex flex-col gap-4">
-      <BoardTopLine onBack={backToCards}>
+      <BoardTopLine>
         <p className="muted text-sm">{stat.tip ?? stat.label}</p>
         {pageQuery.data?.earlySeason ? <span className="badge badge-warning badge-outline">Early season: small samples</span> : null}
       </BoardTopLine>
@@ -221,15 +221,11 @@ export default function AdvancedLeaders({ seasonCode, params, setParams }) {
       }
       return next;
     });
-// Opening a category or going back to the categories swaps the page's view on one path (only `?metric=` changes), so ScrollToTop does not run:
-// the page goes to the top by itself.
+  // Opening a category swaps the page's view on one path (only `?metric=` changes), so ScrollToTop does not run: the page goes to the top
+  // by itself. Going back to the categories does the same, from the page's back link (LeadersPage).
   const openMetric = (key) => {
     window.scrollTo(0, 0);
     set({ metric: key, offset: undefined });
-  };
-  const backToCards = () => {
-    window.scrollTo(0, 0);
-    set({ metric: undefined, direction: undefined, minMinutes: undefined, offset: undefined });
   };
 
   if (scopesQuery.isLoading) return <AsyncState status="loading" label="Loading advanced leaders" />;
@@ -250,7 +246,7 @@ export default function AdvancedLeaders({ seasonCode, params, setParams }) {
       />
       <div id="leaders-advanced-panel">
         {metric ? (
-          <AdvancedBoard seasonCode={seasonCode} scope={scope} metric={metric} params={params} setParams={setParams} backToCards={backToCards} />
+          <AdvancedBoard seasonCode={seasonCode} scope={scope} metric={metric} params={params} setParams={setParams} />
         ) : (
           <CardGrid>
             {ADVANCED_CARDS.map((key) => (

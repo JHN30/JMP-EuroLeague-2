@@ -128,16 +128,9 @@ export function CardGrid({ children }) {
 
 // ---- Controls shared by the full boards ----
 
-// The line above a board: the way back to the cards, then what the board shows, kept together on the left.
-export function BoardTopLine({ onBack, children }) {
-  return (
-    <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
-      <button type="button" className="btn btn-ghost btn-sm -ml-2" onClick={onBack}>
-        ← All categories
-      </button>
-      {children}
-    </div>
-  );
+// The line above a board: what the board shows. The way back to the cards is the page's back link (LeadersPage).
+export function BoardTopLine({ children }) {
+  return <div className="flex flex-wrap items-center gap-x-4 gap-y-1">{children}</div>;
 }
 
 // The statistics of one family as large, tappable chips; the chosen one is filled.

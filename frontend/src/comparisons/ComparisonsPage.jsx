@@ -1,7 +1,7 @@
 import { useEffect, useId, useRef, useState } from "react";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { motion } from "motion/react";
-import { Link, useParams, useSearchParams } from "react-router";
+import { useParams, useSearchParams } from "react-router";
 import AsyncState from "../lib/AsyncState";
 import LabelledSelect from "../lib/LabelledSelect";
 import Panel from "../lib/Panel";
@@ -14,7 +14,8 @@ import { useDocumentTitle } from "../lib/useDocumentTitle";
 import { useDebouncedValue } from "../lib/useDebouncedValue";
 import { usePhaseParam } from "../lib/usePhaseParam";
 import { TabPanel, TabStrip } from "../lib/TabStrip";
-import CompareFixtures, { GameContext } from "./CompareFixtures";
+import BackLink from "../lib/BackLink";
+import CompareFixtures, { ComparisonContext } from "./CompareFixtures";
 import PickerPanel, { PickerImage, PickerOption } from "./PickerPanel";
 import CompareRosters from "./CompareRosters";
 import ComparePlayerAdvanced from "./ComparePlayerAdvanced";
@@ -447,7 +448,6 @@ function ComparisonsBody({
     const team = allTeams.find((candidate) => candidate.clubCode === initialTeamB);
     return team ? { id: team.clubCode, label: team.name ?? team.clubCode } : null;
   });
-  const [copyLabel, setCopyLabel] = useState("Copy comparison link");
   // The game the comparison was opened from (a pick on the upcoming-games panel), kept in the URL so the context survives a refresh.
   const [gameCode, setGameCode] = useState(initialGame);
 
@@ -507,13 +507,21 @@ function ComparisonsBody({
     persistEntities(value, null, null);
   }
 
+  // Opening or closing a comparison changes what is on the page, not its path, so the app's scroll reset (ScrollToTop) does not run: the
+  // page goes to the top by itself.
+  function toTop() {
+    window.scrollTo(0, 0);
+  }
+
   function handleSelectA(next) {
+    if (next && effectiveEntityB) toTop();
     setEntityA(next);
     setGameCode(null);
     persistEntities(view, next, effectiveEntityB);
   }
 
   function handleSelectB(next) {
+    if (next && effectiveEntityA) toTop();
     setEntityB(next);
     setGameCode(null);
     persistEntities(view, effectiveEntityA, next);
@@ -529,6 +537,7 @@ function ComparisonsBody({
   // A game picked on the upcoming-games panel: its home club is Team A, and the statistics follow the game's phase.
   function handlePickGame(game) {
     const asEntity = (team) => ({ id: team.clubCode, label: team.name ?? team.clubCode });
+    toTop();
     const home = asEntity(game.localTeam);
     const road = asEntity(game.roadTeam);
     setView("teams");
@@ -541,18 +550,12 @@ function ComparisonsBody({
   }
 
   function handleBack() {
+    toTop();
     setEntityA(null);
     setEntityB(null);
     setGameCode(null);
     setSection(firstSection(view));
     persistEntities(view, null, null);
-  }
-
-  function handleCopyLink() {
-    navigator.clipboard.writeText(window.location.href).then(() => {
-      setCopyLabel("Link copied");
-      setTimeout(() => setCopyLabel("Copy comparison link"), 3000);
-    });
   }
 
   // Changing the archive-level phase resets the view-level per-game/totals
@@ -635,23 +638,22 @@ function ComparisonsBody({
         ];
   return (
     <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3, ease: EASE_OUT }}>
-      <PageHeader kicker="HEAD-TO-HEAD" title="Compare">
-        <button type="button" className="btn btn-sm" onClick={handleCopyLink}>
-          <span className="sm:hidden">{copyLabel === "Link copied" ? copyLabel : "Copy link"}</span>
-          <span className="max-sm:hidden">{copyLabel}</span>
-        </button>
-      </PageHeader>
-
-      <GameContext seasonCode={seasonCode} gameCode={gameCode} backLabel={view === "teams" ? "← Games" : "← Players"} onBack={handleBack}>
-        {view === "teams" ? (
-          <Link
-            to={`/${seasonCode}/compare/head-to-head?teamA=${encodeURIComponent(effectiveEntityA.id)}&teamB=${encodeURIComponent(effectiveEntityB.id)}`}
-            className="link link-hover text-sm"
-          >
-            All-time head-to-head
-          </Link>
-        ) : null}
-      </GameContext>
+      <BackLink to={`/${seasonCode}/compare?view=${view}`} label={view === "teams" ? "Games" : "Players"} onBack={handleBack} />
+      <PageHeader
+        kicker="HEAD-TO-HEAD"
+        title="Compare"
+        description={
+          <ComparisonContext
+            seasonCode={seasonCode}
+            gameCode={gameCode}
+            headToHeadTo={
+              view === "teams"
+                ? `/${seasonCode}/compare/head-to-head?teamA=${encodeURIComponent(effectiveEntityA.id)}&teamB=${encodeURIComponent(effectiveEntityB.id)}`
+                : null
+            }
+          />
+        }
+      />
 
       <div className="mb-6 flex flex-wrap items-end justify-between gap-x-6 gap-y-3">
         <TabStrip

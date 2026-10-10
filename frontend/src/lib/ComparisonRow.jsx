@@ -33,7 +33,8 @@ function Track({ width, position, anchor, title, animated }) {
 // average) and `avgA`/`avgB` (their printed text, shown under the bar). `animated` makes the row take part in a
 // staggered entrance (it must sit inside a motion parent using the list variants) and grows its bars. `bars={false}` leaves
 // the bars out and shows only the printed values and the highlight on the better side. `compact` tightens the row's padding
-// and gaps below sm.
+// and gaps below sm. `sideA`/`sideB` (a crest and a code, say) sit over each side's value below sm only, for a row whose two
+// sides are not labelled nearby.
 export default function ComparisonRow({
   label,
   rawA,
@@ -49,6 +50,8 @@ export default function ComparisonRow({
   animated = false,
   bars = true,
   compact = false,
+  sideA = null,
+  sideB = null,
 }) {
   const winner = winnerSide(rawA, rawB, direction);
   const { widthA, widthB } = comparisonBand(rawA, rawB);
@@ -71,6 +74,7 @@ export default function ComparisonRow({
       </div>
       <div className={`grid grid-cols-2 gap-4 ${compact ? "max-sm:gap-2" : ""}`}>
         <div className={`rounded-field p-2 ${compact ? "max-sm:p-1.5" : ""} ${winner === "a" ? "bg-primary/10 text-primary" : ""}`}>
+          {sideA ? <div className="mb-1 flex justify-end sm:hidden">{sideA}</div> : null}
           <div className={`${bars ? "mb-1 " : ""}text-right font-semibold tabular-nums`}>{aMissing ? "—" : displayA}</div>
           {bars ? (
             <Track
@@ -84,6 +88,7 @@ export default function ComparisonRow({
           {avgA ? <div className="muted mt-1 text-right text-xs tabular-nums">{avgA}</div> : null}
         </div>
         <div className={`rounded-field p-2 ${compact ? "max-sm:p-1.5" : ""} ${winner === "b" ? "bg-primary/10 text-primary" : ""}`}>
+          {sideB ? <div className="mb-1 flex justify-start sm:hidden">{sideB}</div> : null}
           <div className={`${bars ? "mb-1 " : ""}text-left font-semibold tabular-nums`}>{bMissing ? "—" : displayB}</div>
           {bars ? (
             <Track

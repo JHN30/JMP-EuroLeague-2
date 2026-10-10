@@ -106,7 +106,7 @@ test("the player pickers and their list fit, with names on two lines and clubs u
   });
 });
 
-test("an opened comparison keeps its top tidy: a short Copy link, a scrolling section strip and the phase under it", async ({ page }) => {
+test("an opened comparison keeps its top tidy: the game info and links, a scrolling section strip and the phase under it", async ({ page }) => {
   test.setTimeout(90_000);
   const { slug, code } = await liveSeason(page);
   const { teams } = await (await page.request.get(`${API}/${code}/teams`)).json();
@@ -114,12 +114,9 @@ test("an opened comparison keeps its top tidy: a short Copy link, a scrolling se
   const strip = page.getByRole("tablist", { name: "Comparison section" });
   await expect(strip).toBeVisible({ timeout: 30_000 });
   const phase = page.getByLabel("Comparison phase");
-  const copy = page.getByRole("button", { name: /Copy/ });
 
   await atWidths(page, WIDTHS, async (width) => {
-    // Both labels are in the page and one is hidden, so the shown one is the button's accessible name.
-    await expect(copy).toHaveAccessibleName(width < 640 ? "Copy link" : "Copy comparison link");
-    // The kicker stays on one line beside the button.
+    // The kicker stays on one line.
     const kickerOnOneLine = await page.locator("main section .eyebrow").first().evaluate((el) => el.getBoundingClientRect().height < 2 * parseFloat(getComputedStyle(el).fontSize));
     expect(kickerOnOneLine).toBe(true);
     if (width < 1024) expect(await stripScrolls(strip)).toBe(true);
@@ -131,8 +128,7 @@ test("an opened comparison keeps its top tidy: a short Copy link, a scrolling se
       expect(phaseBox.width).toBeGreaterThan(width * 0.4);
     }
     // The header, the line above the sections and the selects; the sections' own content is 31l-ii.
-    expect(await insideWindow(page.locator("main section").first().locator("button"), width)).toBe(true);
-    expect(await insideWindow(page.getByRole("button", { name: "← Games" }), width)).toBe(true);
+    expect(await insideWindow(page.getByRole("link", { name: "Back to Games" }), width)).toBe(true);
     expect(await insideWindow(page.getByRole("link", { name: /head-to-head|Game (preview|overview)/ }), width)).toBe(true);
     expect(await insideWindow(phase, width)).toBe(true);
     await expectNoSidewaysScroll(page);

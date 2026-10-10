@@ -9,11 +9,13 @@ import { formatDecimal, formatPerGame } from "../lib/format";
 import { listContainer, listItem, tableBody, tableRow } from "../lib/motion";
 import Panel from "../lib/Panel";
 import RevealImage from "../lib/RevealImage";
+import ShortLabel from "../lib/ShortLabel";
 import { nameParts, titleCase } from "../lib/playerName";
 import { Avatar } from "../leaders/LeaderParts";
 import { formatAdvancedValue } from "../leaders/leaderData";
 import { advancedScopeForPhase } from "../teams/teamLeague";
 import { fetchTeamRosterStats } from "../teams/teamRosterStats";
+import useClubEntities from "./useClubEntities";
 
 const ROSTER_LIMIT = 100;
 
@@ -78,6 +80,20 @@ function Crest({ url }) {
   ) : null;
 }
 
+// A player's name in a pinned table cell: below sm the last name only (the full name stays for screen readers), from sm the full name.
+function PlayerName({ name, to }) {
+  const { last, first } = nameParts(name);
+  const label = <ShortLabel short={titleCase(last)} full={`${titleCase(first)} ${titleCase(last)}`.trim()} />;
+  const className = "block font-semibold max-sm:max-w-24 max-sm:wrap-break-word";
+  return to ? (
+    <Link to={to} className={`${className} hover:underline`}>
+      {label}
+    </Link>
+  ) : (
+    <span className={className}>{label}</span>
+  );
+}
+
 function SummaryRows({ a, b, entityA, entityB, crestA, crestB }) {
   const rows = [
     { label: "Players", raw: [a.players, b.players], show: (value) => value, direction: "neutral" },
@@ -100,7 +116,7 @@ function SummaryRows({ a, b, entityA, entityB, crestA, crestB }) {
         </div>
       </motion.div>
       {rows.map((row) => (
-        <ComparisonRow animated key={row.label} label={row.label} rawA={row.raw[0]} rawB={row.raw[1]} displayA={row.show(row.raw[0])} displayB={row.show(row.raw[1])} direction={row.direction} />
+        <ComparisonRow animated compact key={row.label} label={row.label} rawA={row.raw[0]} rawB={row.raw[1]} displayA={row.show(row.raw[0])} displayB={row.show(row.raw[1])} direction={row.direction} />
       ))}
     </motion.div>
   );
@@ -129,7 +145,7 @@ function ImpactTable({ seasonCode, entity, crestUrl, players, imageOf }) {
       <div className="mb-3 flex items-center gap-3">
         {crestUrl ? <RevealImage src={crestUrl} className="h-9 w-9 flex-none object-contain" /> : null}
         <div className="min-w-0">
-          <h3 className="truncate font-bold">{entity.label}</h3>
+          <h3 className="font-bold">{entity.label}</h3>
           <p className="muted text-xs">Top {IMPACT_SHOWN} by Win Shares</p>
         </div>
       </div>
@@ -137,7 +153,7 @@ function ImpactTable({ seasonCode, entity, crestUrl, players, imageOf }) {
         <p className="muted text-sm">No advanced numbers for this club yet.</p>
       ) : (
         <div className="overflow-x-auto overscroll-x-contain">
-          <table className="table table-sm w-full">
+          <table className="data-table-sticky table table-sm w-full">
             <thead>
               <tr className="muted text-xs uppercase">
                 <th>Player</th>
@@ -150,18 +166,14 @@ function ImpactTable({ seasonCode, entity, crestUrl, players, imageOf }) {
             </thead>
             <motion.tbody variants={tableBody} initial="hidden" animate="show">
               {top.map((player) => {
-                const { last, first } = nameParts(player.playerName);
-                const name = (titleCase(first) + " " + titleCase(last)).trim();
                 return (
                   <motion.tr key={player.personKey} variants={tableRow}>
                     <td>
                       <div className="flex min-w-0 items-center gap-2">
-                        <Avatar imageUrl={imageOf(player.personKey)} size="h-8 w-8" />
+                        <Avatar imageUrl={imageOf(player.personKey)} size="h-8 w-8 max-sm:hidden" />
                         <div className="min-w-0 flex-1">
-                          <Link to={"/" + seasonCode + "/players/" + player.personKey} className="block truncate font-semibold hover:underline">
-                            {name}
-                          </Link>
-                          <div aria-hidden="true" className="mt-1 h-1 w-24 overflow-hidden rounded-full bg-base-300">
+                          <PlayerName name={player.playerName} to={"/" + seasonCode + "/players/" + player.personKey} />
+                          <div aria-hidden="true" className="mt-1 h-1 w-24 overflow-hidden rounded-full bg-base-300 max-sm:w-full">
                             <div className="h-full rounded-full bg-primary" style={{ width: (best > 0 ? Math.max(6, (Number(player.winShares) / best) * 100) : 0) + "%" }} />
                           </div>
                         </div>
@@ -191,15 +203,14 @@ function RosterTable({ seasonCode, entity, crestUrl, rows }) {
           <RevealImage src={crestUrl} className="h-9 w-9 flex-none object-contain" />
         ) : null}
         <div className="min-w-0">
-          <h3 className="truncate font-bold">{entity.label}</h3>
+          <h3 className="font-bold">{entity.label}</h3>
           <p className="muted text-xs">{rows.length} players · per game</p>
         </div>
       </div>
       <div className="overflow-x-auto overscroll-x-contain">
-        <table className="table table-sm w-full">
+        <table className="data-table-sticky table table-sm w-full">
           <thead>
             <tr className="muted text-xs uppercase">
-              <th className="w-8 text-right">#</th>
               <th>Player</th>
               <th className="text-right">GP</th>
               <th className="text-right">MIN</th>
@@ -211,24 +222,17 @@ function RosterTable({ seasonCode, entity, crestUrl, rows }) {
           </thead>
           <motion.tbody variants={tableBody} initial="hidden" animate="show">
             {rows.map((row) => {
-              const { last, first } = nameParts(row.name);
-              const name = `${titleCase(first)} ${titleCase(last)}`.trim();
               const played = row.games > 0;
+              // A player who has not played is dimmed cell by cell: dimming the row would let the swiped numbers show through the pinned player.
               return (
-                <motion.tr key={row.key} variants={tableRow} className={played ? "" : "opacity-60"}>
-                  <td className="muted text-right tabular-nums">{row.dorsal ?? "—"}</td>
+                <motion.tr key={row.key} variants={tableRow} className={played ? "" : "[&>td:not(:first-child)]:opacity-60"}>
                   <td>
-                    <div className="flex min-w-0 items-center gap-2">
-                      <Avatar imageUrl={row.imageUrl} size="h-8 w-8" />
+                    <div className={`flex min-w-0 items-center gap-2 ${played ? "" : "opacity-60"}`}>
+                      <span className="muted w-6 flex-none text-right tabular-nums">{row.dorsal ?? "—"}</span>
+                      <Avatar imageUrl={row.imageUrl} size="h-8 w-8 max-sm:hidden" />
                       <div className="min-w-0">
-                        {row.personKey ? (
-                          <Link to={`/${seasonCode}/players/${row.personKey}`} className="block truncate font-semibold hover:underline">
-                            {name}
-                          </Link>
-                        ) : (
-                          <span className="block truncate font-semibold">{name}</span>
-                        )}
-                        <span className="muted block truncate text-xs">{[row.position, row.heightCm ? `${row.heightCm} cm` : null].filter(Boolean).join(" · ")}</span>
+                        <PlayerName name={row.name} to={row.personKey ? `/${seasonCode}/players/${row.personKey}` : null} />
+                        <span className="muted block text-xs max-sm:hidden">{[row.position, row.heightCm ? `${row.heightCm} cm` : null].filter(Boolean).join(" · ")}</span>
                       </div>
                     </div>
                   </td>
@@ -249,7 +253,8 @@ function RosterTable({ seasonCode, entity, crestUrl, rows }) {
 }
 
 // The rosters of the two clubs side by side: a few facts about each squad, then every player with the season's numbers.
-export default function CompareRosters({ seasonCode, phaseCode, entityA, entityB }) {
+export default function CompareRosters({ seasonCode, phaseCode, entityA: pickedA, entityB: pickedB }) {
+  const [entityA, entityB] = useClubEntities(seasonCode, pickedA, pickedB);
   const teamsQuery = useQuery({ queryKey: ["teams", seasonCode], queryFn: () => getSeasonTeams(seasonCode) });
   const rosterA = useQuery({ queryKey: ["team-roster", seasonCode, entityA.id], queryFn: () => getTeamRoster(seasonCode, entityA.id, { limit: ROSTER_LIMIT }) });
   const rosterB = useQuery({ queryKey: ["team-roster", seasonCode, entityB.id], queryFn: () => getTeamRoster(seasonCode, entityB.id, { limit: ROSTER_LIMIT }) });

@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { motion } from "motion/react";
 import { Link } from "react-router";
+import { shortTeamName, teamCode } from "../games/gameUtils";
 import { getTeamGames } from "../lib/api";
 import AsyncState from "../lib/AsyncState";
 import ComparisonRow from "../lib/ComparisonRow";
@@ -9,11 +10,13 @@ import { sectionContainer, sectionItem } from "../lib/motion";
 import Panel from "../lib/Panel";
 import { nameParts, titleCase } from "../lib/playerName";
 import RevealImage from "../lib/RevealImage";
+import ShortLabel from "../lib/ShortLabel";
 import { Avatar } from "../leaders/LeaderParts";
 import { statNumber } from "../leaders/leaderData";
 import { useTeamRows } from "../leaders/teamData";
 import { fetchTeamRosterStats } from "../teams/teamRosterStats";
 import { edgesBetween } from "./teamCompare";
+import useClubEntities from "./useClubEntities";
 
 const GAMES_LIMIT = 100;
 const EDGES_SHOWN = 3;
@@ -42,7 +45,7 @@ function EdgeColumn({ row, label, leads, edges, side }) {
       <div className="mb-3 flex items-center gap-3">
         <Crest url={row?.crestUrl} />
         <div className="min-w-0">
-          <p className="truncate font-bold">{label}</p>
+          <p className="font-bold">{label}</p>
           <p className="muted text-xs">
             <b className="text-base-content text-lg tabular-nums">{leads}</b> measures ranked higher
           </p>
@@ -57,7 +60,7 @@ function EdgeColumn({ row, label, leads, edges, side }) {
             const other = side === "a" ? edge.b : edge.a;
             return (
               <li key={edge.stat.key} className="flex items-baseline justify-between gap-3 text-sm">
-                <span className="truncate" title={edge.stat.tip}>
+                <span className="min-w-0" title={edge.stat.tip}>
                   {edge.stat.label}
                 </span>
                 <span className="flex-none tabular-nums">
@@ -92,7 +95,7 @@ function EdgesPanel({ source, entityA, entityB }) {
         title="Where each club is stronger"
         note={`Their places among the ${source.rows.length} clubs on ${edges.length} measures of how a team plays${tied ? `; ${tied} are level` : ""}.`}
       />
-      <div className="grid gap-3 md:grid-cols-2">
+      <div className="grid grid-cols-[minmax(0,1fr)] gap-3 sm:grid-cols-2">
         <EdgeColumn row={rowA} label={entityA.label} leads={aLeads.length} edges={biggest(aLeads, 1)} side="a" />
         <EdgeColumn row={rowB} label={entityB.label} leads={bLeads.length} edges={biggest(bLeads, -1)} side="b" />
       </div>
@@ -119,11 +122,24 @@ function venueRecord(games, clubCode, home) {
   return { wins, losses: results.length - wins, share: results.length ? wins / results.length : null };
 }
 
-function FormList({ games, clubCode, label, seasonCode }) {
+function ClubHeading({ club, suffix = "" }) {
+  return (
+    <p className="mb-2 flex items-center gap-2 font-semibold">
+      <Crest url={club.crestUrl} className="h-6 w-6" />
+      <span>
+        {club.label}
+        {suffix}
+      </span>
+    </p>
+  );
+}
+
+function FormList({ games, club, seasonCode }) {
+  const clubCode = club.id;
   const last = games.slice(-5).reverse();
   return (
     <div>
-      <p className="mb-2 font-semibold">{label}</p>
+      <ClubHeading club={club} suffix=": last 5" />
       {last.length === 0 ? (
         <p className="muted text-sm">No games played yet.</p>
       ) : (
@@ -139,7 +155,9 @@ function FormList({ games, clubCode, label, seasonCode }) {
                   <span className={`badge badge-sm w-6 flex-none font-bold ${result.won ? "badge-success" : "badge-error"}`}>{result.won ? "W" : "L"}</span>
                   <span className="muted flex-none text-xs">{result.home ? "vs" : "at"}</span>
                   <Crest url={result.opponent?.crestUrl} className="h-5 w-5" />
-                  <span className="min-w-0 flex-1 truncate">{result.opponent?.abbreviatedName ?? result.opponent?.name ?? "TBD"}</span>
+                  <span className="min-w-0 flex-1">
+                    <ShortLabel short={teamCode(result.opponent)} full={shortTeamName(result.opponent)} />
+                  </span>
                   <span className="flex-none tabular-nums">
                     {result.own}-{result.other}
                   </span>
@@ -150,6 +168,16 @@ function FormList({ games, clubCode, label, seasonCode }) {
         </ul>
       )}
     </div>
+  );
+}
+
+// A club's crest and TV code, over its side of a record row below sm (where the two lists above are stacked, not side by side).
+function SideTag({ club }) {
+  return (
+    <span className="inline-flex items-center gap-1.5 text-xs font-semibold">
+      <Crest url={club.crestUrl} className="h-5 w-5" />
+      {club.tvCode ?? club.label}
+    </span>
   );
 }
 
@@ -170,6 +198,8 @@ function FormPanel({ seasonCode, phaseCode, entityA, entityB, hosted }) {
   const awayA = venueRecord(playedA, entityA.id, false);
   const homeB = venueRecord(playedB, entityB.id, true);
   const awayB = venueRecord(playedB, entityB.id, false);
+  const sideA = <SideTag club={entityA} />;
+  const sideB = <SideTag club={entityB} />;
   const show = (record) => (record.wins + record.losses === 0 ? "—" : `${record.wins}-${record.losses}`);
   return (
     <Panel className="p-4">
@@ -178,12 +208,12 @@ function FormPanel({ seasonCode, phaseCode, entityA, entityB, hosted }) {
         title="Recent results and venue"
         note={hosted ? `${entityA.label} host this game, so their home record and ${entityB.label}'s away record are the ones that count.` : null}
       />
-      <div className="mb-2 grid gap-6 md:grid-cols-2">
-        <FormList games={playedA} clubCode={entityA.id} label={`${entityA.label}: last 5`} seasonCode={seasonCode} />
-        <FormList games={playedB} clubCode={entityB.id} label={`${entityB.label}: last 5`} seasonCode={seasonCode} />
+      <div className="mb-2 grid grid-cols-[minmax(0,1fr)] gap-6 sm:grid-cols-2">
+        <FormList games={playedA} club={entityA} seasonCode={seasonCode} />
+        <FormList games={playedB} club={entityB} seasonCode={seasonCode} />
       </div>
-      <ComparisonRow label="Home record" rawA={homeA.share} rawB={homeB.share} displayA={show(homeA)} displayB={show(homeB)} direction="higher" />
-      <ComparisonRow label="Away record" rawA={awayA.share} rawB={awayB.share} displayA={show(awayA)} displayB={show(awayB)} direction="higher" />
+      <ComparisonRow label="Home record" rawA={homeA.share} rawB={homeB.share} displayA={show(homeA)} displayB={show(homeB)} direction="higher" sideA={sideA} sideB={sideB} />
+      <ComparisonRow label="Away record" rawA={awayA.share} rawB={awayB.share} displayA={show(awayA)} displayB={show(awayB)} direction="higher" sideA={sideA} sideB={sideB} />
     </Panel>
   );
 }
@@ -202,10 +232,10 @@ function displayName(player) {
   return `${titleCase(first)} ${titleCase(last)}`.trim();
 }
 
-function ScorerList({ players, seasonCode, label }) {
+function ScorerList({ players, seasonCode, club }) {
   return (
     <div>
-      <p className="mb-2 font-semibold">{label}</p>
+      <ClubHeading club={club} />
       {players.length === 0 ? (
         <p className="muted text-sm">No one has played yet.</p>
       ) : (
@@ -215,7 +245,7 @@ function ScorerList({ players, seasonCode, label }) {
               <Link to={`/${seasonCode}/players/${player.personKey}`} className="flex items-center gap-3 rounded-field px-1 py-1 hover:bg-base-200">
                 <Avatar imageUrl={player.playerImageUrl} />
                 <span className="min-w-0 flex-1">
-                  <span className="block truncate font-semibold">{displayName(player)}</span>
+                  <span className="block font-semibold">{displayName(player)}</span>
                   <span className="muted block text-xs tabular-nums">
                     {Number(player.traditional.assists).toFixed(1)} AST · {Number(player.traditional.totalRebounds).toFixed(1)} REB
                   </span>
@@ -250,13 +280,13 @@ function WatchPanel({ seasonCode, phaseCode, entityA, entityB }) {
   return (
     <Panel className="p-4">
       <PanelTitle kicker="PLAYERS TO WATCH" title="Top scorers" note="The three highest scorers of each club, per game." />
-      <div className="grid gap-6 md:grid-cols-2">
-        <ScorerList players={playersA} seasonCode={seasonCode} label={entityA.label} />
-        <ScorerList players={playersB} seasonCode={seasonCode} label={entityB.label} />
+      <div className="grid grid-cols-[minmax(0,1fr)] gap-6 sm:grid-cols-2">
+        <ScorerList players={playersA} seasonCode={seasonCode} club={entityA} />
+        <ScorerList players={playersB} seasonCode={seasonCode} club={entityB} />
       </div>
       {lead ? (
         <div className="mt-4">
-          <Link to={`/${seasonCode}/compare?view=players&playerA=${encodeURIComponent(lead[0].personKey)}&playerB=${encodeURIComponent(lead[1].personKey)}`} className="btn btn-outline btn-sm">
+          <Link to={`/${seasonCode}/compare?view=players&playerA=${encodeURIComponent(lead[0].personKey)}&playerB=${encodeURIComponent(lead[1].personKey)}`} className="btn btn-outline btn-sm h-auto py-1.5 text-center whitespace-normal">
             Compare {displayName(lead[0])} and {displayName(lead[1])}
           </Link>
         </div>
@@ -288,9 +318,9 @@ function MeetingsPanel({ seasonCode, entityA, entityB }) {
                 {game.roundName ?? (game.roundNumber ? `Round ${game.roundNumber}` : game.phaseName)} · {formatShortDate(game.scheduledAt)}
               </span>
               <span className="text-sm">
-                {game.localTeam?.abbreviatedName ?? game.localTeam?.name}{" "}
+                <ShortLabel short={teamCode(game.localTeam)} full={shortTeamName(game.localTeam)} />{" "}
                 <b className="tabular-nums">{game.played ? `${game.localScore}-${game.roadScore}` : "vs"}</b>{" "}
-                {game.roadTeam?.abbreviatedName ?? game.roadTeam?.name}
+                <ShortLabel short={teamCode(game.roadTeam)} full={shortTeamName(game.roadTeam)} />
               </span>
             </Link>
           </li>
@@ -302,7 +332,8 @@ function MeetingsPanel({ seasonCode, entityA, entityB }) {
 
 // The preview of a pairing: where each club is stronger in the league, how they have been playing, who to watch and how
 // they have met this season.
-export default function CompareTeamOverview({ seasonCode, phaseCode, entityA, entityB, hosted }) {
+export default function CompareTeamOverview({ seasonCode, phaseCode, entityA: pickedA, entityB: pickedB, hosted }) {
+  const [entityA, entityB] = useClubEntities(seasonCode, pickedA, pickedB);
   const source = useTeamRows(seasonCode, phaseCode);
   return (
     <motion.div className="flex flex-col gap-6" variants={sectionContainer} initial="hidden" animate="show">

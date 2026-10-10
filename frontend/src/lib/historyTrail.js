@@ -16,6 +16,9 @@ export function useRecordHistory() {
   }, [pathname, search]);
 }
 
+// A left click with no modifier key, which a link handles itself instead of leaving to the browser (new tab, new window).
+export const isPlainClick = (event) => !event.defaultPrevented && event.button === 0 && !event.metaKey && !event.ctrlKey && !event.shiftKey && !event.altKey;
+
 // The click handler of a back link to `to` (an address that may carry a query string). When the entry before this one is the same
 // page, it goes back one step instead of opening a new entry, so the list is back as it was left (its filters and its scroll,
 // which the browser restores on Back). Otherwise, and for a click that asks for a new tab or window, the link works as a link.

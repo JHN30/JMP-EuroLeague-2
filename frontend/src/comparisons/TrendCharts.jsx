@@ -18,7 +18,8 @@ function ChartPanel({ kicker, title, note, ariaLabel, canvasRef, height }) {
 
 // Two lines (or one) over a shared axis, drawn without a table. A series is { label, points, notes? }: one value per label, null for
 // a gap, and an optional line of text per point for the tooltip (the opponent, say). `zero` draws the zero line stronger.
-export function LineTrend({ kicker, title, note, labels, series, digits = 1, zero = false, axisTitle }) {
+// `markers` draws a dot on every point and straight segments, for series of single values (each game) rather than a smoothed average.
+export function LineTrend({ kicker, title, note, labels, series, digits = 1, zero = false, axisTitle, markers = false }) {
   const canvasRef = useRef(null);
   const theme = useActiveTheme();
 
@@ -41,9 +42,9 @@ export function LineTrend({ kicker, title, note, labels, series, digits = 1, zer
           backgroundColor: `color-mix(in srgb, ${colors[index % colors.length]} 14%, transparent)`,
           borderWidth: 2.5,
           borderDash: index === 0 ? [] : [7, 4],
-          pointRadius: 0,
+          pointRadius: markers ? 3 : 0,
           pointHoverRadius: 5,
-          tension: 0.3,
+          tension: markers ? 0 : 0.3,
           spanGaps: false,
         })),
       },
@@ -71,7 +72,7 @@ export function LineTrend({ kicker, title, note, labels, series, digits = 1, zer
       },
     });
     return () => chart.destroy();
-  }, [labels, series, digits, zero, axisTitle, theme]);
+  }, [labels, series, digits, zero, axisTitle, markers, theme]);
 
   return <ChartPanel kicker={kicker} title={title} note={note} canvasRef={canvasRef} height="h-64" ariaLabel={`${title}: ${series.map((entry) => entry.label).join(" and ")}`} />;
 }

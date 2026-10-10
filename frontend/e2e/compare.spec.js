@@ -36,7 +36,7 @@ test("Compare opens on the games of a round, and a game opens the comparison of 
   await expect(page.getByRole("heading", { name: "Most impactful players" })).toBeVisible();
   await expect(page.getByRole("table")).toHaveCount(4);
 
-  await page.getByRole("button", { name: "← Games" }).click();
+  await page.getByRole("link", { name: "Back to Games" }).click();
   await expect(page.getByRole("heading", { name: "Compare any two teams" })).toBeVisible();
 
   // Two clubs picked by hand open the same comparison.
@@ -65,7 +65,7 @@ test("two players open a comparison with a profile, advanced numbers and the way
   await sections.getByRole("tab", { name: "Advanced" }).click();
   await expect(page.getByText("Per 100 possessions", { exact: true })).toBeVisible();
 
-  await page.getByRole("button", { name: "← Players" }).click();
+  await page.getByRole("link", { name: "Back to Players" }).click();
   await expect(page.getByLabel("Player A")).toBeVisible();
 
   // The player page offers the way in.

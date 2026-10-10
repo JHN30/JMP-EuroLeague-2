@@ -141,8 +141,9 @@ export default function CompareFixtures({ seasonCode, onPick }) {
   );
 }
 
-// The line above an opened comparison: the way back to the games, and, when it was opened from a game, which one.
-export function GameContext({ seasonCode, gameCode, backLabel = "← Games", onBack, children }) {
+// What an opened comparison is about, for the page header: when it was opened from a game, which one (round, date and host), with the
+// ways on to that game and, for two clubs, to their all-time record.
+export function ComparisonContext({ seasonCode, gameCode, headToHeadTo }) {
   const gameQuery = useQuery({
     queryKey: ["game", seasonCode, gameCode],
     queryFn: () => getGame(seasonCode, gameCode),
@@ -150,21 +151,29 @@ export function GameContext({ seasonCode, gameCode, backLabel = "← Games", onB
     retry: false,
   });
   const game = gameQuery.data?.game;
+  if (!game && !headToHeadTo) return null;
   return (
-    <div className="mb-4 flex flex-wrap items-center gap-x-4 gap-y-1">
-      <button type="button" className="btn btn-ghost btn-sm -ml-2" onClick={onBack}>
-        {backLabel}
-      </button>
+    <div className="mt-2">
       {game ? (
-        <p className="muted text-sm">
-          {game.roundName ?? (game.roundNumber ? `Round ${game.roundNumber}` : game.phaseName)} · {formatDateTime(game.scheduledAt)} ·{" "}
-          {game.localTeam?.abbreviatedName ?? game.localTeam?.name} at home ·{" "}
-          <Link to={`/${seasonCode}/games/${gameCode}`} className="link link-hover">
+        <>
+          <p className="muted text-sm">
+            {game.roundName ?? (game.roundNumber ? `Round ${game.roundNumber}` : game.phaseName)} · {formatDateTime(game.scheduledAt)}
+          </p>
+          <p className="muted text-sm">Hosted by {game.localTeam?.abbreviatedName ?? game.localTeam?.name}</p>
+        </>
+      ) : null}
+      <div className="mt-3 flex flex-wrap gap-2">
+        {game ? (
+          <Link to={`/${seasonCode}/games/${gameCode}`} className="btn btn-outline btn-sm">
             {game.played ? "Game overview" : "Game preview"}
           </Link>
-        </p>
-      ) : null}
-      {children}
+        ) : null}
+        {headToHeadTo ? (
+          <Link to={headToHeadTo} className="btn btn-outline btn-sm">
+            All-time head-to-head
+          </Link>
+        ) : null}
+      </div>
     </div>
   );
 }

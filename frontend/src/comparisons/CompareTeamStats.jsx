@@ -6,6 +6,7 @@ import { denseListContainer, listItem } from "../lib/motion";
 import Panel from "../lib/Panel";
 import RevealImage from "../lib/RevealImage";
 import { formatTeamValue, usable, useTeamRows } from "../leaders/teamData";
+import useClubEntities from "./useClubEntities";
 import { STAT_FAMILY_ORDER, directionOf, placeOn, statsOfFamily } from "./teamCompare";
 
 function ClubHead({ row, label }) {
@@ -23,7 +24,8 @@ function ClubHead({ row, label }) {
 }
 
 // Every team statistic of the phase side by side, grouped, with each club's place among the league under its bar.
-export default function CompareTeamStats({ seasonCode, phaseCode, entityA, entityB }) {
+export default function CompareTeamStats({ seasonCode, phaseCode, entityA: pickedA, entityB: pickedB }) {
+  const [entityA, entityB] = useClubEntities(seasonCode, pickedA, pickedB);
   const source = useTeamRows(seasonCode, phaseCode);
   if (source.isLoading) return <AsyncState status="loading" label="Loading the comparison" />;
   if (source.isError) return <AsyncState status="error" message="Could not load the comparison." onRetry={source.refetch} />;
@@ -59,6 +61,7 @@ export default function CompareTeamStats({ seasonCode, phaseCode, entityA, entit
                 <ComparisonRow
                   key={stat.key}
                   animated
+                  compact
                   label={stat.label}
                   tip={stat.tip}
                   rawA={a?.value ?? null}

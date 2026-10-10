@@ -5,7 +5,7 @@ import { getSeasons } from "../lib/api";
 import { isLegacySeasonCode, seasonSlug } from "../lib/seasonSlug";
 import AsyncState from "../lib/AsyncState";
 import { BackTargetContext } from "../lib/backTarget";
-import { useBackLinkClick } from "../lib/historyTrail";
+import { isPlainClick, useBackLinkClick } from "../lib/historyTrail";
 import RouteErrorBoundary from "../ErrorBoundary";
 import { THEMES } from "../lib/useThemePreference";
 import { useDefaultSeasonCode } from "./useDefaultSeasonCode";
@@ -120,7 +120,12 @@ export default function SeasonLayout({ themePreference }) {
               {backTarget ? (
                 <Link
                   to={backTarget.to}
-                  onClick={goBack}
+                  onClick={(event) => {
+                    if (backTarget.onBack && isPlainClick(event)) {
+                      event.preventDefault();
+                      backTarget.onBack();
+                    } else goBack(event);
+                  }}
                   aria-label={`Back to ${backTarget.label}`}
                   className="flex min-w-0 items-center gap-1.5 font-semibold sm:hidden"
                 >

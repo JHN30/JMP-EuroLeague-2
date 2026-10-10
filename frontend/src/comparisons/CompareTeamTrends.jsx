@@ -9,7 +9,8 @@ import { sectionContainer, sectionItem } from "../lib/motion";
 import Panel from "../lib/Panel";
 import RevealImage from "../lib/RevealImage";
 import { LineTrend, MarginTrend } from "./TrendCharts";
-import { average, cumulative, padTo, rolling } from "./trendMath";
+import { average, padTo } from "./trendMath";
+import useClubEntities from "./useClubEntities";
 
 const GAMES_LIMIT = 100;
 const WINDOW = 5;
@@ -57,7 +58,7 @@ function FormColumn({ label, crestUrl, games }) {
       <div className="mb-3 flex items-center gap-3">
         {crestUrl ? <RevealImage src={crestUrl} className="h-10 w-10 flex-none object-contain" /> : <span className="h-10 w-10 flex-none" />}
         <div className="min-w-0">
-          <p className="truncate font-bold">{label}</p>
+          <p className="font-bold">{label}</p>
           <p className="muted text-xs">
             Last {recent.length}: {wins}-{recent.length - wins}
             {streakOf(games) ? " · streak " + streakOf(games) : ""}
@@ -87,7 +88,8 @@ function FormColumn({ label, crestUrl, games }) {
 
 // How each club has been playing through the season: the last five games against the season, scoring and defence as five-game
 // averages, the running point differential and every game's margin.
-export default function CompareTeamTrends({ seasonCode, phaseCode, entityA, entityB }) {
+export default function CompareTeamTrends({ seasonCode, phaseCode, entityA: pickedA, entityB: pickedB }) {
+  const [entityA, entityB] = useClubEntities(seasonCode, pickedA, pickedB);
   const teamsQuery = useQuery({ queryKey: ["teams", seasonCode], queryFn: () => getSeasonTeams(seasonCode) });
   const queryA = useQuery({ queryKey: ["team-games", seasonCode, entityA.id], queryFn: () => getTeamGames(seasonCode, entityA.id, { limit: GAMES_LIMIT, order: "asc" }) });
   const queryB = useQuery({ queryKey: ["team-games", seasonCode, entityB.id], queryFn: () => getTeamGames(seasonCode, entityB.id, { limit: GAMES_LIMIT, order: "asc" }) });
@@ -97,7 +99,7 @@ export default function CompareTeamTrends({ seasonCode, phaseCode, entityA, enti
   const length = Math.max(gamesA.length, gamesB.length);
   const labels = useMemo(() => Array.from({ length }, (_, index) => "Game " + (index + 1)), [length]);
   const charts = useMemo(() => {
-    const line = (games, pick) => padTo(rolling(games.map(pick), WINDOW), length);
+    const line = (games, pick) => padTo(games.map(pick), length);
     return {
       scored: [
         { label: entityA.label, points: line(gamesA, (game) => game.own), notes: gamesA.map((game) => game.note) },
@@ -108,8 +110,8 @@ export default function CompareTeamTrends({ seasonCode, phaseCode, entityA, enti
         { label: entityB.label, points: line(gamesB, (game) => game.other), notes: gamesB.map((game) => game.note) },
       ],
       margin: [
-        { label: entityA.label, points: padTo(cumulative(gamesA.map((game) => game.margin)), length), notes: gamesA.map((game) => game.note) },
-        { label: entityB.label, points: padTo(cumulative(gamesB.map((game) => game.margin)), length), notes: gamesB.map((game) => game.note) },
+        { label: entityA.label, points: line(gamesA, (game) => game.margin), notes: gamesA.map((game) => game.note) },
+        { label: entityB.label, points: line(gamesB, (game) => game.margin), notes: gamesB.map((game) => game.note) },
       ],
     };
   }, [gamesA, gamesB, length, entityA.label, entityB.label]);
@@ -130,27 +132,27 @@ export default function CompareTeamTrends({ seasonCode, phaseCode, entityA, enti
   if (gamesA.length < MIN_GAMES || gamesB.length < MIN_GAMES) return <EmptyText>Not enough games played in this phase to show a trend yet.</EmptyText>;
 
   const crestOf = (id) => (teamsQuery.data?.teams ?? []).find((team) => team.clubCode === id)?.crestUrl;
-  const averageNote = "Five-game average, from the third game on. Hover a point for the game.";
+  const gameNote = "Every game, in order. Hover or tap a point for the game.";
   return (
     <motion.div className="flex flex-col gap-6" variants={sectionContainer} initial="hidden" animate="show">
       <motion.div variants={sectionItem}>
         <Panel className="p-4">
           <p className="eyebrow mb-0.5">FORM</p>
           <h3 className="mb-3 text-lg font-bold">The last {WINDOW} games against the season</h3>
-          <div className="grid gap-3 md:grid-cols-2">
+          <div className="grid grid-cols-[minmax(0,1fr)] gap-3 sm:grid-cols-2">
             <FormColumn label={entityA.label} crestUrl={crestOf(entityA.id)} games={gamesA} />
             <FormColumn label={entityB.label} crestUrl={crestOf(entityB.id)} games={gamesB} />
           </div>
         </Panel>
       </motion.div>
-      <motion.div className="grid gap-6 xl:grid-cols-2" variants={sectionItem}>
-        <LineTrend kicker="SCORING" title="Points scored" note={averageNote} labels={labels} series={charts.scored} />
-        <LineTrend kicker="DEFENSE" title="Points allowed" note={averageNote + " Lower is better."} labels={labels} series={charts.allowed} />
+      <motion.div className="grid grid-cols-[minmax(0,1fr)] gap-6 xl:grid-cols-2" variants={sectionItem}>
+        <LineTrend kicker="SCORING" title="Points scored" note={gameNote} labels={labels} series={charts.scored} markers />
+        <LineTrend kicker="DEFENSE" title="Points allowed" note={gameNote + " Lower is better."} labels={labels} series={charts.allowed} markers />
       </motion.div>
       <motion.div variants={sectionItem}>
-        <LineTrend kicker="SEASON SO FAR" title="Running point differential" note="Points scored minus points allowed, added up game by game. A rising line is a club winning by more than it loses by." labels={labels} series={charts.margin} digits={0} zero />
+        <LineTrend kicker="MARGIN" title="Point differential" note="Points scored minus points allowed in each game: above the line is a win, below it a loss. Hover or tap a point for the game." labels={labels} series={charts.margin} digits={0} zero markers />
       </motion.div>
-      <motion.div className="grid gap-6 xl:grid-cols-2" variants={sectionItem}>
+      <motion.div className="grid grid-cols-[minmax(0,1fr)] gap-6 xl:grid-cols-2" variants={sectionItem}>
         <MarginTrend kicker={entityA.label.toUpperCase()} title="Margin in every game" note="Green: won. Red: lost." labels={labels.slice(0, gamesA.length)} margins={gamesA.map((game) => game.margin)} notes={gamesA.map((game) => game.note)} label={entityA.label} />
         <MarginTrend kicker={entityB.label.toUpperCase()} title="Margin in every game" note="Green: won. Red: lost." labels={labels.slice(0, gamesB.length)} margins={gamesB.map((game) => game.margin)} notes={gamesB.map((game) => game.note)} label={entityB.label} />
       </motion.div>

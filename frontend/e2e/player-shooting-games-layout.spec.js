@@ -254,7 +254,9 @@ test("the Games tab states fit a phone: a few games, none, no match for the filt
 
 // ---- The Shooting tab ----
 
-const SHOTS_URL = (url) => /\/api\/seasons\/[^/]+\/games\/\d+\/shots$/.test(url.pathname);
+// The Shooting tab reads one request for the player's shots in the phase; a game's own shots are a separate request.
+const PLAYER_SHOTS_URL = (url) => /\/api\/seasons\/[^/]+\/players\/[^/]+\/shots$/.test(url.pathname);
+const SHOTS_URL = (url) => PLAYER_SHOTS_URL(url) || /\/api\/seasons\/[^/]+\/games\/\d+\/shots$/.test(url.pathname);
 
 // One field-goal attempt by `personCode`; coordinates are centimetres from the hoop.
 const shot = (ordinal, personCode, actionCode, coordX, coordY, overrides = {}) => ({
@@ -289,9 +291,14 @@ function shotsFor(personCode, { located = true } = {}) {
   return { shots: rows };
 }
 
-const mockShots = async (page, payload) => {
+// `payload` is one game's attempts; the player's request answers with that many attempts for each of the log's three games.
+const mockShots = async (page, payload, games = 3) => {
   await page.unroute(SHOTS_URL).catch(() => {});
-  await page.route(SHOTS_URL, (route) => route.fulfill({ json: payload }));
+  await page.route(SHOTS_URL, (route) => {
+    if (!PLAYER_SHOTS_URL(new URL(route.request().url()))) return route.fulfill({ json: payload });
+    const shots = Array.from({ length: games }, (_, game) => payload.shots.map((row) => ({ ...row, shotOrdinal: game * 1000 + row.shotOrdinal }))).flat();
+    return route.fulfill({ json: { shots } });
+  });
 };
 
 async function openShooting(page, player, { payload = shotsFor(player.personKey), log } = {}) {
@@ -430,8 +437,8 @@ test("the Shooting states fit a phone: no games in the phase, a failing request,
   await expect(page.getByRole("button", { name: /retry/i })).toBeVisible();
   await expectNoSidewaysScroll(page);
 
-  // The mocked attempts all belong to someone else: nothing to show for this player.
-  await mockShots(page, shotsFor("SOMEONE-ELSE"));
+  // The player has no attempts in the phase (the server returns only the player's own shots): nothing to show.
+  await mockShots(page, { shots: [] });
   await openTab(page, player.href, "Shooting");
   await expect(page.getByText("No attempts match these filters.")).toBeVisible({ timeout: 60_000 });
   await expectNoSidewaysScroll(page);

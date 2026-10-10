@@ -173,8 +173,10 @@ test("loads a player game log once for the Overview form and the Games tab, and 
   expect(leaderboardRequests).toEqual([{ offset: 0, limit: 100 }]);
 
   await page.goto(`/${SEASON}/compare?phase=RS`);
-  await page.getByLabel("Team A").selectOption("A");
-  await page.getByLabel("Team B").selectOption("B");
+  await page.getByRole("combobox", { name: "Team A" }).click();
+  await page.getByRole("listbox", { name: "Team A" }).getByRole("option", { name: "Team A", exact: true }).click();
+  await page.getByRole("combobox", { name: "Team B" }).click();
+  await page.getByRole("listbox", { name: "Team B" }).getByRole("option", { name: "Team B", exact: true }).click();
   await expect(page.getByRole("tab", { name: "Trends", exact: true })).toBeVisible();
   expect(roundRequests).toBe(0);
 

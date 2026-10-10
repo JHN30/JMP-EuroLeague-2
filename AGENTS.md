@@ -307,6 +307,9 @@ Run each command from the repository root. Each app has its own
 - Frontend lint: `cd frontend && npm run lint`
 - Backend dev server: `cd backend && npm run dev`
 - Backend build and TypeScript check: `cd backend && npm run build`
+- Database switch: `DB_TARGET` in `backend/.env` picks Neon (`neon`, the default and production) or a local PostgreSQL
+  copy (`local`, via `LOCAL_DB_URL`, tables in `LOCAL_DB_SCHEMA`, default `gold`); see `backend/.env.example`. A dev
+  backend's `/api/health` reports its `target`. Never open the real `.env`.
 - Browser tests: `cd frontend && npm run test:browser` (Playwright; starts the
   backend and frontend dev servers itself when they aren't already running)
 

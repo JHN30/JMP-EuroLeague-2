@@ -117,7 +117,8 @@ test("an opened comparison keeps its top tidy: a short Copy link, a scrolling se
   const copy = page.getByRole("button", { name: /Copy/ });
 
   await atWidths(page, WIDTHS, async (width) => {
-    await expect(copy).toHaveText(width < 640 ? "Copy link" : "Copy comparison link");
+    // Both labels are in the page and one is hidden, so the shown one is the button's accessible name.
+    await expect(copy).toHaveAccessibleName(width < 640 ? "Copy link" : "Copy comparison link");
     // The kicker stays on one line beside the button.
     const kickerOnOneLine = await page.locator("main section .eyebrow").first().evaluate((el) => el.getBoundingClientRect().height < 2 * parseFloat(getComputedStyle(el).fontSize));
     expect(kickerOnOneLine).toBe(true);

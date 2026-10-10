@@ -23,7 +23,8 @@ app.use("/api/seasons", responseCache, seasonRouter);
 app.get("/api/health", async (req, res) => {
   try {
     await db.execute(sql`select 1`);
-    res.json({ status: "ok", database: "connected" });
+    // Outside production the answer also says which database the server reads, so a dev backend can be checked without its .env.
+    res.json({ status: "ok", database: "connected", ...(ENV.NODE_ENV === "production" ? {} : { target: ENV.DB_TARGET }) });
   } catch {
     res.status(503).json({
       error: { code: "DATABASE_UNAVAILABLE", message: "Database unavailable" },
@@ -58,4 +59,5 @@ if (fs.existsSync(frontendIndex)) {
 
 app.listen(ENV.PORT, () => {
   console.log(`Server is running on port ${ENV.PORT}`);
+  console.log(`Database: ${ENV.DB_TARGET}${ENV.DB_SCHEMA ? ` (${ENV.DB_SCHEMA})` : ""}`);
 });

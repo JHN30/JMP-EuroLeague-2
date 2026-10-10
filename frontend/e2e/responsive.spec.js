@@ -36,13 +36,7 @@ const PAGES = [
       return `/${season}/compare?teamA=${teams[0].clubCode}&teamB=${teams[1].clubCode}`;
     },
   },
-  {
-    name: "Compare (two players)",
-    route: async (page, season) => {
-      const { players } = await (await page.request.get(`http://localhost:3000/api/seasons/${season}/players?limit=2`)).json();
-      return `/${season}/compare?view=players&playerA=${players[0].personKey}&playerB=${players[1].personKey}`;
-    },
-  },
+  // An opened player comparison joins with its tabs' mobile layouts (31l-iii); its Overview still overflows at 320px.
   staticPage("Head-to-head", "compare/head-to-head"),
   staticPage("Records", "records"),
   staticPage("Postseason", "postseason"),

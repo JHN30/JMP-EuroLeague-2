@@ -1,8 +1,8 @@
 import { useQuery } from "@tanstack/react-query";
 import { AnimatePresence, motion } from "motion/react";
-import { useLayoutEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useParams } from "react-router";
-import { getSeasonStandings } from "../lib/api";
+import { getSeasonGames, getSeasonStandings } from "../lib/api";
 import AsyncState from "../lib/AsyncState";
 import { formatSeasonLabel } from "../lib/format";
 import { sectionContainer, sectionItem } from "../lib/motion";
@@ -15,6 +15,7 @@ import LeadersPanel from "./LeadersPanel";
 import LeaderTrend from "./LeaderTrend";
 import RecentResults from "./RecentResults";
 import StandingsSnapshot from "./StandingsSnapshot";
+import { roundStatus } from "./roundStatus";
 import UpcomingGames from "./UpcomingGames";
 
 export function WidgetPanel({ kicker, title, isLoading, isError, onRetry, isEmpty, emptyMessage, className = "", style, children }) {
@@ -63,6 +64,16 @@ function useMeasuredHeight() {
   return [ref, height];
 }
 
+// The current time, refreshed every minute, so the header's round line moves on ("in 3 days", "tomorrow", "under way") without a reload.
+function useNow(intervalMs) {
+  const [now, setNow] = useState(() => new Date());
+  useEffect(() => {
+    const timer = setInterval(() => setNow(new Date()), intervalMs);
+    return () => clearInterval(timer);
+  }, [intervalMs]);
+  return now;
+}
+
 export default function Dashboard() {
   useDocumentTitle("Home");
   const { seasonCode } = useParams();
@@ -73,13 +84,42 @@ export default function Dashboard() {
   const round = standingsQuery.data?.round ?? null;
   const [resultsRef, resultsHeight] = useMeasuredHeight();
 
+  // The current round is the round of the next unplayed game (the first of Upcoming games' own query); its games, under the key the
+  // Compare page uses for the same request, say where it stands.
+  const now = useNow(60_000);
+  const nextQuery = useQuery({
+    queryKey: ["games", seasonCode, "scheduled", "asc"],
+    queryFn: () => getSeasonGames(seasonCode, { status: "scheduled", order: "asc", limit: 10 }),
+  });
+  const nextGame = nextQuery.data?.games?.[0] ?? null;
+  const roundQuery = useQuery({
+    queryKey: ["fixtures", seasonCode, nextGame?.phaseCode, nextGame?.roundNumber],
+    queryFn: () => getSeasonGames(seasonCode, { phase: nextGame.phaseCode, round: nextGame.roundNumber, limit: 100, order: "asc" }),
+    enabled: Boolean(nextGame?.phaseCode) && nextGame?.roundNumber != null,
+  });
+  const hasPlayed = (standingsQuery.data?.standings ?? []).some((entry) => (entry.basic?.gamesPlayed ?? 0) > 0);
+
+  let title = round != null ? `Round ${round}` : "Season overview";
+  let statusLine = null;
+  if (nextQuery.isPending || (nextGame && roundQuery.isPending)) {
+    // Until the games arrive the latest played round would be the wrong one to name.
+    title = "Season overview";
+  } else if (nextGame && roundQuery.isSuccess) {
+    title = nextGame.roundName ?? `Round ${nextGame.roundNumber}`;
+    statusLine = roundStatus(roundQuery.data.games ?? [], now)?.line ?? null;
+  } else if (nextQuery.isSuccess && !nextGame && hasPlayed) {
+    title = "Season overview";
+    statusLine = "The season has finished.";
+  }
+
   return (
     <motion.div className="flex flex-col gap-6" variants={sectionContainer} initial="hidden" animate="show">
       <motion.div variants={sectionItem}>
         <PageHeader
           stacked
           kicker={formatSeasonLabel(seasonCode)}
-          title={round != null ? `Round ${round}` : "Season overview"}
+          title={title}
+          description={statusLine ? <p className="muted mt-1 text-sm">{statusLine}</p> : null}
         />
       </motion.div>
       <motion.div variants={sectionItem}>

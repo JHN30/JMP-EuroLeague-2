@@ -156,18 +156,24 @@ function TeamsBoard({ seasonCode, metric, source, params, setParams, backToCards
 export default function TeamsLeaders({ seasonCode, phaseCode, params, setParams }) {
   const metric = params.get("metric");
   const source = useTeamRows(seasonCode, phaseCode);
-  const openMetric = (key) =>
+// Opening a category or going back to the categories swaps the page's view on one path (only `?metric=` changes), so ScrollToTop does not run:
+// the page goes to the top by itself.
+  const openMetric = (key) => {
+    window.scrollTo(0, 0);
     setParams((current) => {
       const next = new URLSearchParams(current);
       next.set("metric", key);
       return next;
     });
-  const backToCards = () =>
+  };
+  const backToCards = () => {
+    window.scrollTo(0, 0);
     setParams((current) => {
       const next = new URLSearchParams(current);
       for (const key of ["metric", "mode", "direction", "search"]) next.delete(key);
       return next;
     });
+  };
 
   if (metric) return <TeamsBoard seasonCode={seasonCode} metric={metric} source={source} params={params} setParams={setParams} backToCards={backToCards} />;
   if (source.isError) return <AsyncState status="error" message="Could not load the team leaderboard." onRetry={source.refetch} />;

@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { motion } from "motion/react";
 import { getLeaderForm, getLeaderStats, getSeasonGames } from "../lib/api";
@@ -274,6 +274,12 @@ function PlayersBoard({ seasonCode, phaseCode, metric, params, setParams, backTo
     chooseStat(key);
   };
   const activeFilters = [minGames > 0, team, position, search].filter(Boolean).length;
+  // The page buttons are under the list, so a new page brings the top of the list back into view.
+  const listRef = useRef(null);
+  const changePage = (nextOffset) => {
+    update({ offset: nextOffset });
+    listRef.current?.scrollIntoView({ block: "start" });
+  };
 
   return (
     <div className="flex flex-col gap-4">
@@ -346,7 +352,7 @@ function PlayersBoard({ seasonCode, phaseCode, metric, params, setParams, backTo
       ) : shown.length === 0 ? (
         <EmptyText>No players match these filters.</EmptyText>
       ) : (
-        <Panel className="p-2 sm:p-3">
+        <Panel ref={listRef} className="scroll-mt-28 p-2 sm:p-3">
           <p className="muted px-2 pb-2 text-sm">
             Showing {offset + 1}-{offset + page.length} of {shown.length} players
           </p>
@@ -379,10 +385,10 @@ function PlayersBoard({ seasonCode, phaseCode, metric, params, setParams, backTo
             })}
           </motion.ol>
           <div className="mt-3 flex justify-center gap-2">
-            <button type="button" className="btn btn-sm" disabled={offset === 0} onClick={() => update({ offset: Math.max(0, offset - PAGE_SIZE) || undefined })}>
+            <button type="button" className="btn btn-sm" disabled={offset === 0} onClick={() => changePage(Math.max(0, offset - PAGE_SIZE) || undefined)}>
               Previous page
             </button>
-            <button type="button" className="btn btn-sm" disabled={offset + PAGE_SIZE >= shown.length} onClick={() => update({ offset: offset + PAGE_SIZE })}>
+            <button type="button" className="btn btn-sm" disabled={offset + PAGE_SIZE >= shown.length} onClick={() => changePage(offset + PAGE_SIZE)}>
               Next page
             </button>
           </div>
@@ -394,19 +400,25 @@ function PlayersBoard({ seasonCode, phaseCode, metric, params, setParams, backTo
 
 export default function PlayersLeaders({ seasonCode, phaseCode, params, setParams }) {
   const metric = params.get("metric");
-  const openMetric = (key) =>
+// Opening a category or going back to the categories swaps the page's view on one path (only `?metric=` changes), so ScrollToTop does not run:
+// the page goes to the top by itself.
+  const openMetric = (key) => {
+    window.scrollTo(0, 0);
     setParams((current) => {
       const next = new URLSearchParams(current);
       next.set("metric", key);
       next.delete("offset");
       return next;
     });
-  const backToCards = () =>
+  };
+  const backToCards = () => {
+    window.scrollTo(0, 0);
     setParams((current) => {
       const next = new URLSearchParams(current);
       for (const key of ["metric", "mode", "direction", "minGames", "team", "position", "search", "offset"]) next.delete(key);
       return next;
     });
+  };
 
   return metric ? (
     <PlayersBoard seasonCode={seasonCode} phaseCode={phaseCode} metric={metric} params={params} setParams={setParams} backToCards={backToCards} />

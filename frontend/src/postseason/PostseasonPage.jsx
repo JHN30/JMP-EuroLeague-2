@@ -154,7 +154,8 @@ export default function PostseasonPage() {
   const selected = bracket.all.find((slot) => slot.id === selectedId) ?? null;
   function select(id) {
     setSelectedId(id);
-    if (window.innerWidth < 1024) requestAnimationFrame(() => detailRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" }));
+    // The detail sits under the bracket at every width, so it is brought into view whenever it is partly below the fold.
+    requestAnimationFrame(() => detailRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" }));
   }
 
   const seasonLabel = formatSeasonLabel(seasonCode);

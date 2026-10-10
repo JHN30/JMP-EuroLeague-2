@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { motion } from "motion/react";
 import { getAdvancedLeaders } from "../lib/api";
@@ -97,6 +97,20 @@ function AdvancedBoard({ seasonCode, scope, metric, params, setParams, backToCar
     });
   }
 
+  // The page buttons are under the list, so a new page brings the top of the list back into view once it has loaded (the list is
+  // replaced by a loading state meanwhile, which shortens the page).
+  const listRef = useRef(null);
+  const pageChanged = useRef(false);
+  const changePage = (nextOffset) => {
+    pageChanged.current = true;
+    update({ offset: nextOffset });
+  };
+  useEffect(() => {
+    if (!pageChanged.current || pageQuery.isLoading) return;
+    pageChanged.current = false;
+    listRef.current?.scrollIntoView({ block: "start" });
+  }, [offset, pageQuery.isLoading]);
+
   const chooseStat = (key) => {
     setFamily(statByKey(key)?.family ?? family);
     update({ metric: key, direction: undefined, offset: undefined });
@@ -150,7 +164,7 @@ function AdvancedBoard({ seasonCode, scope, metric, params, setParams, backToCar
       ) : entries.length === 0 ? (
         <EmptyText>No players meet the minimum yet.</EmptyText>
       ) : (
-        <Panel className="p-2 sm:p-3">
+        <Panel ref={listRef} className="scroll-mt-28 p-2 sm:p-3">
           <p className="muted px-2 pb-2 text-sm">
             Showing {offset + 1}-{offset + entries.length} of {total} players
           </p>
@@ -174,10 +188,10 @@ function AdvancedBoard({ seasonCode, scope, metric, params, setParams, backToCar
             ))}
           </motion.ol>
           <div className="mt-3 flex justify-center gap-2">
-            <button type="button" className="btn btn-sm" disabled={offset === 0} onClick={() => update({ offset: Math.max(0, offset - PAGE_SIZE) || undefined })}>
+            <button type="button" className="btn btn-sm" disabled={offset === 0} onClick={() => changePage(Math.max(0, offset - PAGE_SIZE) || undefined)}>
               Previous page
             </button>
-            <button type="button" className="btn btn-sm" disabled={offset + PAGE_SIZE >= total} onClick={() => update({ offset: offset + PAGE_SIZE })}>
+            <button type="button" className="btn btn-sm" disabled={offset + PAGE_SIZE >= total} onClick={() => changePage(offset + PAGE_SIZE)}>
               Next page
             </button>
           </div>
@@ -207,8 +221,16 @@ export default function AdvancedLeaders({ seasonCode, params, setParams }) {
       }
       return next;
     });
-  const openMetric = (key) => set({ metric: key, offset: undefined });
-  const backToCards = () => set({ metric: undefined, direction: undefined, minMinutes: undefined, offset: undefined });
+// Opening a category or going back to the categories swaps the page's view on one path (only `?metric=` changes), so ScrollToTop does not run:
+// the page goes to the top by itself.
+  const openMetric = (key) => {
+    window.scrollTo(0, 0);
+    set({ metric: key, offset: undefined });
+  };
+  const backToCards = () => {
+    window.scrollTo(0, 0);
+    set({ metric: undefined, direction: undefined, minMinutes: undefined, offset: undefined });
+  };
 
   if (scopesQuery.isLoading) return <AsyncState status="loading" label="Loading advanced leaders" />;
   if (scopesQuery.isError) return <AsyncState status="error" message="Could not load advanced leaders." onRetry={() => scopesQuery.refetch()} />;

@@ -86,17 +86,18 @@ test("the player pickers and their list fit, with names on two lines and clubs u
   await page.goto(`/${slug}/compare?view=players`);
   const box = page.getByLabel("Player A", { exact: true });
   await box.focus();
-  const list = page.getByRole("list", { name: "Top scorers" });
-  await expect(list.getByRole("button").first()).toBeVisible({ timeout: 30_000 });
+  const list = page.getByRole("listbox", { name: "Top scorers" });
+  await expect(list.getByRole("option").first()).toBeVisible({ timeout: 30_000 });
 
   await atWidths(page, WIDTHS, async (width) => {
     await box.focus();
     await expect(list).toBeVisible();
-    expect(await insideWindow(list, width)).toBe(true);
+    // The panel around the listbox is what must stay inside the window.
+    expect(await insideWindow(list.locator(".."), width)).toBe(true);
     expect(await cutTexts(page)).toEqual([]);
     // Below 1024px a row puts the club under the name; from 1024px beside it.
-    const stacked = await list.getByRole("button").first().evaluate((row) => {
-      const [name, club] = row.children;
+    const stacked = await list.getByRole("option").first().evaluate((row) => {
+      const [name, club] = row.querySelector(".flex-col").children;
       return club ? club.getBoundingClientRect().top >= name.getBoundingClientRect().bottom - 1 : null;
     });
     if (stacked !== null) expect(stacked).toBe(width < 1024);

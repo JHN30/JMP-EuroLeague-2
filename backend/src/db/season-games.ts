@@ -483,7 +483,14 @@ export async function getPostseasonSeries(seasonCode: string) {
       .where(and(
         eq(postseasonSeries.competitionCode, COMPETITION_CODE),
         eq(postseasonSeries.seasonCode, seasonCode),
-      )),
+      ))
+      // The phases in the order they are played, each by its first game, so every database returns the same order.
+      .orderBy(
+        sql`case ${postseasonSeries.phaseCode} when 'PI' then 1 when 'PO' then 2 when 'FF' then 3 else 4 end`,
+        sql`(${postseasonSeries.games}->0->>'gameCode')::int`,
+        asc(postseasonSeries.clubACode),
+        asc(postseasonSeries.clubBCode),
+      ),
   );
 
   const series = rows.map((row) => ({

@@ -3,9 +3,32 @@ import { AnimatePresence, motion } from "motion/react";
 import { NavLink, useLocation, useParams } from "react-router";
 import { EASE_OUT } from "../lib/motion";
 import { usePrefersReducedMotion } from "../lib/usePrefersReducedMotion";
+import IconArrowsExchange from "@tabler/icons-react/dist/esm/icons/IconArrowsExchange.mjs";
+import IconBallBasketball from "@tabler/icons-react/dist/esm/icons/IconBallBasketball.mjs";
+import IconChartBar from "@tabler/icons-react/dist/esm/icons/IconChartBar.mjs";
+import IconHome from "@tabler/icons-react/dist/esm/icons/IconHome.mjs";
+import IconLayoutDashboard from "@tabler/icons-react/dist/esm/icons/IconLayoutDashboard.mjs";
+import IconListNumbers from "@tabler/icons-react/dist/esm/icons/IconListNumbers.mjs";
+import IconTrophy from "@tabler/icons-react/dist/esm/icons/IconTrophy.mjs";
+import IconUserCircle from "@tabler/icons-react/dist/esm/icons/IconUserCircle.mjs";
+import IconUsersGroup from "@tabler/icons-react/dist/esm/icons/IconUsersGroup.mjs";
 import { TABS } from "./sections";
 
 const MENU_ID = "site-menu";
+
+// The icon before each tab's label, by the tab's path. Each icon is imported from its own file so the bundle holds only these nine; a
+// tab without one shows its label alone.
+const TAB_ICONS = {
+  home: IconHome,
+  overview: IconLayoutDashboard,
+  standings: IconListNumbers,
+  games: IconBallBasketball,
+  teams: IconUsersGroup,
+  players: IconUserCircle,
+  leaders: IconChartBar,
+  compare: IconArrowsExchange,
+  postseason: IconTrophy,
+};
 
 // Three bars that turn into a cross: the outer two move to the middle and tilt, the middle one fades.
 function MenuIcon({ open, reduced }) {
@@ -100,31 +123,35 @@ export default function SiteMenu({ children }) {
             >
               <motion.nav
                 aria-label="Sections"
-                className="grid grid-cols-2 gap-1 p-2"
+                className="divide-y divide-base-300"
                 variants={rowsContainer}
                 initial={reduced ? false : "hidden"}
                 animate="show"
               >
-                {TABS.map((tab, index) => (
-                  // Two columns; an odd last tab takes the whole row.
-                  <motion.div
-                    key={tab.label}
-                    variants={reduced ? undefined : row}
-                    className={index === TABS.length - 1 && TABS.length % 2 === 1 ? "col-span-2" : undefined}
-                  >
+                {TABS.map((tab) => {
+                  const Icon = TAB_ICONS[tab.path];
+                  return (
+                  // One column of rows with a hairline between them.
+                  <motion.div key={tab.label} variants={reduced ? undefined : row}>
                     <NavLink
                       to={`/${seasonCode}/${tab.path}`}
                       onClick={() => setOpen(false)}
                       className={({ isActive }) =>
-                        `relative flex min-h-12 items-center rounded-field px-4 text-base font-semibold before:absolute before:inset-y-2 before:left-0 before:w-1 before:rounded-full ${
+                        `relative flex min-h-11 items-center gap-3 px-4 text-base font-semibold before:absolute before:inset-y-2 before:left-0 before:w-1 before:rounded-full ${
                           isActive ? "bg-primary/10 text-primary before:bg-primary" : "hover:bg-base-300"
                         }`
                       }
                     >
-                      {tab.label}
+                      {({ isActive }) => (
+                        <>
+                          {Icon ? <Icon aria-hidden="true" size={20} stroke={1.75} className={`flex-none ${isActive ? "" : "opacity-70"}`} /> : null}
+                          {tab.label}
+                        </>
+                      )}
                     </NavLink>
                   </motion.div>
-                ))}
+                  );
+                })}
               </motion.nav>
               <div className="border-t border-base-300 p-3">
                 <p aria-hidden="true" className="eyebrow mb-2">

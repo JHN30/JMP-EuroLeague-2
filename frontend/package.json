@@ -11,6 +11,7 @@
     "test:browser": "playwright test"
   },
   "dependencies": {
+    "@tabler/icons-react": "^3.49.0",
     "@tailwindcss/vite": "^4.3.3",
     "@tanstack/react-query": "^5.103.1",
     "axios": "^1.20.0",

@@ -31,7 +31,7 @@ for (const width of [320, 390, 639]) {
   test.describe(`${width}px`, () => {
     test.use({ viewport: { width, height: HEIGHT } });
 
-    test("the menu is a two-column grid that fades and slides in, with a labelled footer", async ({ page }) => {
+    test("the menu is a single column of icon rows that fades and slides in, with a labelled footer", async ({ page }) => {
       await seasonSlug(page);
       const samples = await opacityWhileOpening(page);
       // It faded in: some frame was part-way, and it ended fully visible.
@@ -44,23 +44,21 @@ for (const width of [320, 390, 639]) {
       const links = page.getByRole("navigation", { name: "Sections" }).getByRole("link");
       await expect(links).toHaveText(SECTIONS);
 
-      // Two columns: the first eight rows share two left edges and one width, reading left to right and then down, and the odd
-      // last row takes the whole row; all settled in place.
+      // One column: every row has the same left edge and width, 44px or taller, reading top to bottom with a line between rows, and
+      // each carries an icon that the link's name does not include; all settled in place.
       const geometry = await links.evaluateAll((els) =>
         els.map((el) => {
           const rect = el.getBoundingClientRect();
-          return { left: Math.round(rect.left), width: Math.round(rect.width), top: Math.round(rect.top), opacity: getComputedStyle(el.parentElement).opacity };
+          return { left: Math.round(rect.left), width: Math.round(rect.width), top: Math.round(rect.top), height: Math.round(rect.height), icon: Boolean(el.querySelector("svg[aria-hidden=true]")), opacity: getComputedStyle(el.parentElement).opacity };
         }),
       );
-      const pairs = geometry.slice(0, -1);
-      const last = geometry.at(-1);
-      expect(new Set(pairs.map((row) => row.left)).size).toBe(2);
-      expect(new Set(pairs.map((row) => row.width)).size).toBe(1);
-      expect(geometry.every((row) => row.opacity === "1")).toBe(true);
-      for (let i = 1; i < geometry.length; i++) expect(geometry[i].top).toBeGreaterThanOrEqual(geometry[i - 1].top);
-      expect(last.left).toBe(Math.min(...pairs.map((row) => row.left)));
-      expect(last.width).toBeGreaterThan(pairs[0].width * 1.9);
-      expect(last.top).toBeGreaterThan(Math.max(...pairs.map((row) => row.top)));
+      expect(new Set(geometry.map((row) => row.left)).size).toBe(1);
+      expect(new Set(geometry.map((row) => row.width)).size).toBe(1);
+      expect(geometry.every((row) => row.opacity === "1" && row.icon && row.height >= 44)).toBe(true);
+      for (let i = 1; i < geometry.length; i++) expect(geometry[i].top).toBeGreaterThan(geometry[i - 1].top);
+      const dividers = await links.evaluateAll((els) => els.map((el) => getComputedStyle(el.parentElement).borderBottomWidth));
+      expect(dividers.slice(0, -1).every((width) => width === "1px")).toBe(true);
+      expect(dividers.at(-1)).toBe("0px");
 
       // The current page is marked, by more than colour.
       const current = links.filter({ hasText: "Home" });

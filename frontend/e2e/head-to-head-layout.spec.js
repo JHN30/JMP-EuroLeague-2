@@ -214,7 +214,17 @@ test("the pickers and the way back fit at every width", async ({ page }) => {
     const swap = page.getByRole("button", { name: "Swap teams" });
     const box = await swap.boundingBox();
     const [teamA, teamB] = await Promise.all([page.getByRole("combobox", { name: "Team A" }).boundingBox(), page.getByRole("combobox", { name: "Team B" }).boundingBox()]);
+    // Team A sits on the panel's left content edge and Team B on its right one from 640px; below it both stay on the left edge, one under the other.
+    const edges = await page.getByRole("combobox", { name: "Team A" }).evaluate((el) => {
+      const panel = el.closest(".panel");
+      const rect = panel.getBoundingClientRect();
+      const style = getComputedStyle(panel);
+      return { left: rect.left + parseFloat(style.borderLeftWidth) + parseFloat(style.paddingLeft), right: rect.right - parseFloat(style.borderRightWidth) - parseFloat(style.paddingRight) };
+    });
+    expect(Math.abs(teamA.x - edges.left), "Team A left").toBeLessThanOrEqual(1);
+    if (width >= 640) expect(Math.abs(teamB.x + teamB.width - edges.right), "Team B right").toBeLessThanOrEqual(1);
     if (width < 640) {
+      expect(Math.abs(teamB.x - edges.left), "Team B left").toBeLessThanOrEqual(1);
       expect(box.y).toBeGreaterThan(teamA.y + teamA.height - 1);
       expect(teamB.y).toBeGreaterThan(box.y + box.height - 1);
       expect(Math.min(box.width, box.height)).toBeGreaterThanOrEqual(43.9);

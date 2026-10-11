@@ -199,10 +199,11 @@ function currentStreak(playedMatchups, teamAId) {
   return { won: first, count };
 }
 
-function TeamPicker({ label, teams, selected, excludeId, onSelect }) {
+function TeamPicker({ label, teams, selected, excludeId, onSelect, className = "" }) {
   return (
     <CompactFilterSelect
       label={label}
+      className={className}
       value={selected ?? ""}
       onChange={(event) => onSelect(event.target.value || null)}
     >
@@ -343,7 +344,7 @@ function HeadToHeadBody({ seasonCode, seasons, allTeams }) {
           >
             &#8646;
           </button>
-          <TeamPicker label="Team B" teams={allTeams} selected={teamBId} excludeId={teamAId} onSelect={(v) => selectTeam("teamB", v)} />
+          <TeamPicker label="Team B" teams={allTeams} selected={teamBId} excludeId={teamAId} onSelect={(v) => selectTeam("teamB", v)} className="sm:justify-self-end" />
         </div>
       </Panel>
 

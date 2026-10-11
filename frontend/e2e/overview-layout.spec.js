@@ -84,6 +84,30 @@ test.describe("defining games", () => {
     });
   }
 
+  // 2004-05 has games with three-digit scores, which make the score badge wide: the club codes must stay on one line inside the card.
+  test("2004: a three-digit score does not wrap or push out a club code on a phone", async ({ page }) => {
+    await openOverview(page, "2004");
+    const cards = panel(page, "Defining games").getByRole("link");
+    await expect(cards).toHaveCount(4);
+
+    await atWidths(page, [320, 390], async () => {
+      const shape = await cards.evaluateAll((els) =>
+        els.map((card) => {
+          const right = card.getBoundingClientRect().right;
+          const codes = [...card.querySelectorAll('span[aria-hidden="true"]')].filter((el) => el.offsetParent !== null);
+          return {
+            wrapped: codes.filter((el) => el.getBoundingClientRect().height > parseFloat(getComputedStyle(el).lineHeight) * 1.5).map((el) => el.textContent),
+            outside: [...card.querySelectorAll("*")].filter((el) => el.offsetWidth > 0 && el.getBoundingClientRect().right > right + 1).length,
+          };
+        }),
+      );
+      for (const card of shape) {
+        expect(card.wrapped).toEqual([]);
+        expect(card.outside).toBe(0);
+      }
+    });
+  });
+
   test("show a short name where a crest cannot load, once", async ({ page }) => {
     await page.route("**/*", (route) => (route.request().resourceType() === "image" ? route.abort() : route.continue()));
     await openOverview(page);

@@ -233,7 +233,7 @@ function TeamName({ team, dimmed, nameFirst = false }) {
     ) : null;
   const name = (
     <>
-      <span aria-hidden="true" className={`min-w-0 break-words text-sm font-semibold lg:hidden ${dimmed ? "opacity-60" : ""}`}>
+      <span aria-hidden="true" className={`min-w-0 whitespace-nowrap text-sm font-semibold lg:hidden ${dimmed ? "opacity-60" : ""}`}>
         {teamCode(team)}
       </span>
       <span aria-hidden="true" className={`hidden min-w-0 break-words lg:inline ${dimmed ? "opacity-60" : ""}`}>
@@ -286,15 +286,15 @@ function DefiningGames({ seasonCode, playedGames }) {
                 {...cardHover}
               >
                 <p className="eyebrow mb-1">{tag}</p>
-                <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2">
-                  <span className={`flex min-w-0 items-center gap-2 font-medium ${localWon ? "highlight-leader font-semibold" : ""}`}>
+                <div className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-1.5 sm:gap-2">
+                  <span className={`flex min-w-0 items-center gap-1.5 font-medium sm:gap-2 ${localWon ? "highlight-leader font-semibold" : ""}`}>
                     <TeamName team={game.localTeam} dimmed={!localWon} />
                   </span>
-                  <span className="badge badge-lg tabular-nums">
+                  <span className="badge badge-lg px-2 tabular-nums">
                     <span className={localWon ? "highlight-leader font-semibold" : "opacity-60"}>{game.localScore}</span>-
                     <span className={roadWon ? "highlight-leader font-semibold" : "opacity-60"}>{game.roadScore}</span>
                   </span>
-                  <span className={`flex min-w-0 items-center justify-end gap-2 font-medium ${roadWon ? "highlight-leader font-semibold" : ""}`}>
+                  <span className={`flex min-w-0 items-center justify-end gap-1.5 font-medium sm:gap-2 ${roadWon ? "highlight-leader font-semibold" : ""}`}>
                     <TeamName team={game.roadTeam} dimmed={!roadWon} nameFirst />
                   </span>
                 </div>

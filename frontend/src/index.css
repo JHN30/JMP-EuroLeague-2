@@ -2458,12 +2458,15 @@ button {
   .select:hover {
     border-color: color-mix(in srgb, var(--color-primary) 55%, var(--color-base-300));
   }
+  /* The arrow turns over while the list is open. A variable on the select carries it, as a pseudo-class after a pseudo-element
+     (`::picker-icon` with `:open`) is dropped by the CSS minifier of the production build. */
   .select::picker-icon {
     color: color-mix(in srgb, var(--color-base-content) 65%, transparent);
+    rotate: var(--picker-turn, 0deg);
     transition: rotate 200ms ease;
   }
-  .select:open::picker-icon {
-    rotate: 180deg;
+  .select:open {
+    --picker-turn: 180deg;
   }
   .select::picker(select) {
     margin-block: 0.3rem;
@@ -2474,20 +2477,12 @@ button {
     color: var(--color-base-content);
     box-shadow: 0 14px 34px -10px color-mix(in srgb, #000 55%, transparent);
     max-block-size: min(24rem, 60vh);
-    opacity: 0;
-    scale: 0.97;
-    transition:
-      opacity 160ms ease,
-      scale 160ms ease,
-      overlay 160ms allow-discrete,
-      display 160ms allow-discrete;
+    /* The list fades in each time it opens. A keyframe animation, not a transition from `@starting-style` with `:popover-open`: the
+       minifier of the production build drops those rules, which left the list at opacity 0. */
+    animation: picker-in 160ms ease-out;
   }
-  .select::picker(select):popover-open {
-    opacity: 1;
-    scale: 1;
-  }
-  @starting-style {
-    .select::picker(select):popover-open {
+  @keyframes picker-in {
+    from {
       opacity: 0;
       scale: 0.97;
     }
@@ -2541,7 +2536,9 @@ button {
     }
   }
   @media (prefers-reduced-motion: reduce) {
-    .select::picker(select),
+    .select::picker(select) {
+      animation: none;
+    }
     .select::picker-icon,
     .select option {
       transition: none;

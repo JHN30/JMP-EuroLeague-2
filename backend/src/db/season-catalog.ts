@@ -1,9 +1,15 @@
 import { and, desc, eq, inArray } from "drizzle-orm";
+import { ENV } from "../config/env";
 import { db } from "./client";
 import { games, rounds, seasons } from "./season-schema";
 
 const COMPETITION_CODE = "E";
-export const SUPPORTED_SEASONS = ["E2023", "E2024", "E2025", "E2026"] as const;
+// The seasons the API serves. Neon holds the four the site shows. A local development database has no such limit and may hold any season from
+// 2000, so with DB_TARGET=local every season from E2000 to E2026 is accepted; one the database lacks answers as a season it lacks (omitted from the
+// list, 404 on its own address, no rows in the records).
+const NEON_SEASONS = ["E2023", "E2024", "E2025", "E2026"];
+const LOCAL_SEASONS = Array.from({ length: 27 }, (_, index) => `E${2000 + index}`);
+export const SUPPORTED_SEASONS: readonly string[] = ENV.DB_TARGET === "local" ? LOCAL_SEASONS : NEON_SEASONS;
 
 export type Season = {
   seasonCode: string;

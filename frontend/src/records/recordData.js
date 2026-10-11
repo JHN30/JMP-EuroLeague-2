@@ -62,7 +62,8 @@ export function pickKey(entries, value, fallback) {
 }
 
 // One record row as the page shows it. The picture of a player is the headshot (`portraitUrl`), of a club its crest (`crestUrl`); the second line is
-// a player's club (with its crest beside it) or the opponent of a team game. A part the row does not have is null.
+// a player's club (with its crest beside it) or the opponent of a team game. A part the row does not have is null. `shortName` and
+// `shortLine` are the same two with the club's TV code, for the places with little room (below sm).
 export function describeRecord(family, group, row) {
   const slug = seasonSlug(row.seasonCode);
   const isClub = FAMILIES.find((entry) => entry.key === family)?.club ?? false;
@@ -78,6 +79,8 @@ export function describeRecord(family, group, row) {
     portraitUrl: isClub ? null : (row.playerImageUrl ?? null),
     crestUrl: isClub ? (row.clubImageUrl ?? null) : null,
     line: isClub ? (opponent ? `vs ${opponent}` : null) : (clubName ?? clubCode),
+    shortName: isClub ? (row.clubTvCode ?? row.clubCode ?? null) : null,
+    shortLine: isClub ? (row.opponentTvCode ? `vs ${row.opponentTvCode}` : null) : clubCode,
     lineCrestUrl: isClub ? null : (row.clubImageUrl ?? null),
     seasonCode: row.seasonCode,
     season: formatSeasonLabel(row.seasonCode),

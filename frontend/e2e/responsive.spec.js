@@ -56,6 +56,7 @@ const PAGES = [
     },
   },
   staticPage("Records", "records"),
+  staticPage("Records (team games)", "records?type=teamgame&metric=netRating"),
   staticPage("Postseason", "postseason"),
   detailPage("Game detail", "games", 'a[href*="/games/"]'),
   detailPage("Team page", "teams", 'a[href*="/teams/"]'),

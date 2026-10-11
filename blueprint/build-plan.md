@@ -190,7 +190,7 @@ Scaffolding, shared layout, design tokens, database connection setup, and deploy
     - [x] 31l-ii. **Team comparison tabs** - Overview (matchup edges, form and venue records, top scorers, meetings), Statistics, Rosters and Trends.
     - [x] 31l-iii. **Player comparison tabs** - Overview (the percentile radar, season line and form), Statistics, Advanced and Trends.
     - [x] 31l-iv. **Head-to-head** - The Head-to-head page, including the KPI strip it kept from before 31d-i.
-  - [ ] 31m. **Records** - Mobile and tablet layouts for `/:season/records`, checked at 320, 390, 768 and 1024px and added to the overflow spec.
+  - [x] 31m. **Records** - Mobile and tablet layouts for `/:season/records`, checked at 320, 390, 768 and 1024px and added to the overflow spec.
   - [ ] 31n. **Postseason** - Mobile and tablet layouts for `/:season/postseason` (the bracket below `lg`, the race table and the matchup detail), checked at 320, 390, 768 and 1024px and added to the overflow spec.
 - [x] 32. **Club TV codes** - Show each club's TV code (the code in use that season, such as FBT for Fenerbahce; the club code is the permanent ID and can look outdated) as the short club label wherever a full name does not fit. Each page after 31f uses it in its own item (31g to 31n); the finished pages are done in 32b.
   - [x] 32a. **TV code in the API** - Every team the API returns (games, teams, standings, leaders, compare and the rest) carries a `tvCode`: the club's TV code from the season's latest standings row, falling back to its abbreviated name and then its club code when the standings have none. No new table or endpoint.

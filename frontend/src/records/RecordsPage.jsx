@@ -8,6 +8,7 @@ import { EASE_OUT } from "../lib/motion";
 import PageHeader from "../lib/PageHeader";
 import Panel from "../lib/Panel";
 import { TabStrip } from "../lib/TabStrip";
+import ViewSelect from "../lib/ViewSelect";
 import { useDocumentTitle } from "../lib/useDocumentTitle";
 import { Board, BestOfEachSeason, Podium, Progression } from "./RecordParts";
 import { DEFAULT_FAMILY, DEFAULT_METRIC, FAMILIES, GROUPS, allMetrics, bestOfEachSeason, describeRecord, metricsOf, pickKey, recordProgression } from "./recordData";
@@ -88,8 +89,10 @@ export default function RecordsPage() {
       <PageHeader kicker="ARCHIVE" title="Records" description={<p className="muted">{familyInfo.description}</p>} />
 
       <TabStrip scrolling ariaLabel="Record type" level={1} panelId={PANEL_ID} activeKey={family} onChange={chooseFamily} className="mb-4 w-fit" tabs={FAMILIES} />
-      <TabStrip scrolling ariaLabel="Metric group" level={2} panelId={PANEL_ID} activeKey={group} onChange={chooseGroup} className="mb-3 w-fit" tabs={GROUPS} />
-      <TabStrip scrolling ariaLabel="Record metric" level={3} panelId={PANEL_ID} activeKey={metric} onChange={chooseMetric} className="mb-6" tabs={metricsOf(family, group)} />
+      <TabStrip scrolling ariaLabel="Metric group" level={2} panelId={PANEL_ID} activeKey={group} onChange={chooseGroup} className="mb-3 w-fit max-sm:[--tab-height:2.75rem]!" tabs={GROUPS} />
+      {/* The metrics of a group are one select below sm, where a strip of eleven tabs would be a long swipe, and the strip from sm. */}
+      <ViewSelect className="mb-6 sm:hidden" label="Metric" value={metric} options={metricsOf(family, group)} onChange={chooseMetric} />
+      <TabStrip scrolling ariaLabel="Record metric" level={3} panelId={PANEL_ID} activeKey={metric} onChange={chooseMetric} className="mb-6 max-sm:hidden" tabs={metricsOf(family, group)} />
 
       <div id={PANEL_ID} aria-busy={query.isPlaceholderData} className={query.isPlaceholderData ? "opacity-60 transition-opacity" : "transition-opacity"}>
         {query.isError ? (

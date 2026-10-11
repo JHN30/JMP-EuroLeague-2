@@ -2442,3 +2442,109 @@ button {
     border-top: 2px solid color-mix(in srgb, var(--color-base-content) 30%, transparent);
   }
 }
+
+/* Pickers: where the browser has customizable selects (Chrome and Edge 135+) the closed select keeps its box and the open list becomes a
+   rounded panel that fades in and out, with soft option rows and the check mark on the right. Other browsers keep the native select. */
+@supports (appearance: base-select) {
+  .select,
+  .select::picker(select) {
+    appearance: base-select;
+  }
+  .select {
+    transition:
+      border-color 160ms ease,
+      box-shadow 160ms ease;
+  }
+  .select:hover {
+    border-color: color-mix(in srgb, var(--color-primary) 55%, var(--color-base-300));
+  }
+  .select::picker-icon {
+    color: color-mix(in srgb, var(--color-base-content) 65%, transparent);
+    transition: rotate 200ms ease;
+  }
+  .select:open::picker-icon {
+    rotate: 180deg;
+  }
+  .select::picker(select) {
+    margin-block: 0.3rem;
+    padding: 0.3rem;
+    border: 1px solid var(--color-base-300);
+    border-radius: var(--radius-box);
+    background: var(--color-base-100);
+    color: var(--color-base-content);
+    box-shadow: 0 14px 34px -10px color-mix(in srgb, #000 55%, transparent);
+    max-block-size: min(24rem, 60vh);
+    opacity: 0;
+    scale: 0.97;
+    transition:
+      opacity 160ms ease,
+      scale 160ms ease,
+      overlay 160ms allow-discrete,
+      display 160ms allow-discrete;
+  }
+  .select::picker(select):popover-open {
+    opacity: 1;
+    scale: 1;
+  }
+  @starting-style {
+    .select::picker(select):popover-open {
+      opacity: 0;
+      scale: 0.97;
+    }
+  }
+  .select option {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    min-block-size: 2.25rem;
+    padding: 0.4rem 0.7rem;
+    border-radius: var(--radius-field);
+    cursor: pointer;
+    transition: background-color 120ms ease;
+  }
+  .select option:hover,
+  .select option:focus-visible {
+    background: color-mix(in srgb, var(--color-base-content) 9%, transparent);
+  }
+  .select option:checked {
+    background: color-mix(in srgb, var(--color-primary) 14%, transparent);
+    color: var(--color-primary);
+    font-weight: 600;
+  }
+  .select option::checkmark {
+    order: 1;
+    margin-inline-start: auto;
+    color: var(--color-primary);
+  }
+  .select optgroup {
+    padding-block-start: 0.4rem;
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: color-mix(in srgb, var(--color-base-content) 60%, transparent);
+  }
+  .select optgroup option {
+    font-size: 0.875rem;
+    font-weight: 400;
+    letter-spacing: normal;
+    text-transform: none;
+    color: var(--color-base-content);
+  }
+  .select optgroup option:checked {
+    font-weight: 600;
+    color: var(--color-primary);
+  }
+  @media (pointer: coarse) {
+    .select option {
+      min-block-size: 2.75rem;
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .select::picker(select),
+    .select::picker-icon,
+    .select option {
+      transition: none;
+    }
+  }
+}

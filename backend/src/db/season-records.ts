@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, inArray, isNotNull, sql } from "drizzle-orm";
+import { and, asc, desc, eq, gte, inArray, isNotNull, sql } from "drizzle-orm";
 import type { PgColumn } from "drizzle-orm/pg-core";
 import { db } from "./client";
 import { gamePlayerAdvanced, gameTeamAdvanced, playerRoundRatings, playerRoundWinShares, standingsStats } from "./season-advanced-schema";
@@ -12,9 +12,13 @@ import { getSeasonRecordRows, type RecordMetric } from "./season-stats";
 export const RECORD_KINDS = ["player-seasons", "single-games", "team-seasons", "team-games"] as const;
 export type RecordKind = (typeof RECORD_KINDS)[number];
 export type RecordGroup = "traditional" | "advanced";
-export type RecordMetricDef = { key: string; label: string; group: RecordGroup };
+// `minGames`: a record of a season's rating counts only players or clubs with at least that many games, so a season still being played does not
+// put a club at the top after a few games.
+export type RecordMetricDef = { key: string; label: string; group: RecordGroup; minGames?: number };
 
 const LIMIT = 50;
+// A regular season is 34 games: 20 leaves a finished season whole and keeps a season in progress out until it is past the middle.
+const MIN_SEASON_GAMES = 20;
 const COMPETITION_CODE = "E";
 
 const TRADITIONAL: RecordMetricDef[] = [
@@ -36,11 +40,14 @@ const NET_RATING: RecordMetricDef = { key: "netRating", label: "Net rating", gro
 
 const ADVANCED: Record<RecordKind, RecordMetricDef[]> = {
   "player-seasons": [
-    { key: "per", label: "PER", group: "advanced" },
+    { key: "per", label: "PER", group: "advanced", minGames: MIN_SEASON_GAMES },
     { key: "winShares", label: "Win Shares", group: "advanced" },
   ],
   "single-games": [{ key: "gameScore", label: "Game Score", group: "advanced" }],
-  "team-seasons": [OFFENSIVE_RATING, NET_RATING],
+  "team-seasons": [
+    { ...OFFENSIVE_RATING, minGames: MIN_SEASON_GAMES },
+    { ...NET_RATING, minGames: MIN_SEASON_GAMES },
+  ],
   "team-games": [OFFENSIVE_RATING, NET_RATING],
 };
 
@@ -116,7 +123,7 @@ async function clubLooks(seasonCode: string) {
 
 // PER and Win Shares after the season's latest round (scope `all`, as the Leaders Advanced board reads them), for the players the season
 // statistics mark qualified, so that nobody sets a record in a handful of games.
-async function advancedPlayerSeasonRows(seasonCode: string, key: string) {
+async function advancedPlayerSeasonRows(seasonCode: string, key: string, minGames: number | undefined) {
   const table = key === "per" ? playerRoundRatings : playerRoundWinShares;
   const column = key === "per" ? playerRoundRatings.per : playerRoundWinShares.winShares;
   const inSeason = and(eq(table.competitionCode, COMPETITION_CODE), eq(table.seasonCode, seasonCode), eq(table.scope, "all"));
@@ -131,6 +138,7 @@ async function advancedPlayerSeasonRows(seasonCode: string, key: string) {
       clubTvCodes: seasonStatsTraditional.clubTvCodes,
       playerImageUrl: seasonStatsTraditional.playerImageUrl,
       clubImageUrl: seasonStatsTraditional.clubImageUrl,
+      gamesPlayed: seasonStatsTraditional.gamesPlayed,
       value: column,
     })
       .from(table)
@@ -142,7 +150,7 @@ async function advancedPlayerSeasonRows(seasonCode: string, key: string) {
         eq(seasonStatsTraditional.mode, "accumulated"),
         eq(seasonStatsTraditional.qualified, true),
       ))
-      .where(and(inSeason, eq(table.roundNumber, round), isNotNull(column)))
+      .where(and(inSeason, eq(table.roundNumber, round), isNotNull(column), minGames === undefined ? undefined : sql`${seasonStatsTraditional.gamesPlayed} >= ${minGames}`))
       .orderBy(desc(column), asc(table.personKey))
       .limit(LIMIT),
   );
@@ -151,8 +159,10 @@ async function advancedPlayerSeasonRows(seasonCode: string, key: string) {
 async function playerSeasonRecords(metric: RecordMetricDef) {
   const perSeason = await Promise.all(
     SUPPORTED_SEASONS.map(async (seasonCode) => {
-      const rows = metric.group === "traditional" ? await getSeasonRecordRows(seasonCode, metric.key as RecordMetric, LIMIT) : await advancedPlayerSeasonRows(seasonCode, metric.key);
+      const rows = metric.group === "traditional" ? await getSeasonRecordRows(seasonCode, metric.key as RecordMetric, LIMIT) : await advancedPlayerSeasonRows(seasonCode, metric.key, metric.minGames);
       return rows.map((player) => ({
+        // The games behind a rating that has a minimum.
+        ...(metric.minGames !== undefined && "gamesPlayed" in player ? { gamesPlayed: Number(player.gamesPlayed) } : {}),
         seasonCode,
         personKey: player.personKey,
         playerName: player.playerName,
@@ -236,9 +246,9 @@ async function teamSeasonRecords(metric: RecordMetricDef) {
         const round = latest.round;
         const [rows, looks] = await Promise.all([
           catalogRead(() =>
-            db.select({ clubCode: standingsStats.clubCode, clubName: standingsStats.clubName, value: column })
+            db.select({ clubCode: standingsStats.clubCode, clubName: standingsStats.clubName, gamesPlayed: standingsStats.gamesPlayed, value: column })
               .from(standingsStats)
-              .where(and(inSeason, eq(standingsStats.roundNumber, round), isNotNull(column)))
+              .where(and(inSeason, eq(standingsStats.roundNumber, round), isNotNull(column), metric.minGames === undefined ? undefined : gte(standingsStats.gamesPlayed, metric.minGames)))
               .orderBy(desc(column), asc(standingsStats.clubCode))
               .limit(LIMIT),
           ),

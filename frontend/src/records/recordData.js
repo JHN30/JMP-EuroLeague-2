@@ -1,41 +1,84 @@
-import { formatDate, formatSeasonLabel } from "../lib/format";
+import { formatCount, formatDate, formatDecimal, formatSeasonLabel } from "../lib/format";
 import { displayName } from "../lib/playerName";
 import { seasonSlug } from "../lib/seasonSlug";
 
-// The three kinds of record. `description` says what a record of that kind is; it sits under the page title.
+// The four kinds of record, each answered by one route of the records API. `description` says what a record of that kind is; it sits under the
+// page title. `club` is true when the holder is a club rather than a player.
 export const FAMILIES = [
-  { key: "player", label: "Player seasons", description: "The highest season totals by one player." },
-  { key: "game", label: "Single-game", description: "The best single games by one player." },
-  { key: "team", label: "Team-season", description: "The highest season totals by one club." },
+  { key: "player", label: "Player seasons", description: "The highest season totals by one player.", club: false },
+  { key: "game", label: "Player games", description: "The best single games by one player.", club: false },
+  { key: "team", label: "Team seasons", description: "The highest season totals by one club.", club: true },
+  { key: "teamgame", label: "Team games", description: "The best single games by one club.", club: true },
 ];
 
-export const METRICS = [
+export const GROUPS = [
+  { key: "traditional", label: "Traditional" },
+  { key: "advanced", label: "Advanced" },
+];
+
+// The metrics of the API's catalogue (backend/src/db/season-records.ts), by group. The server validates the key, and records-layout.spec.js loads
+// every metric listed here against it.
+const TRADITIONAL = [
   { key: "pointsScored", label: "Points" },
   { key: "totalRebounds", label: "Rebounds" },
+  { key: "offensiveRebounds", label: "Offensive rebounds" },
+  { key: "defensiveRebounds", label: "Defensive rebounds" },
   { key: "assists", label: "Assists" },
+  { key: "steals", label: "Steals" },
+  { key: "blocks", label: "Blocks" },
+  { key: "twoPointersMade", label: "2-pointers made" },
+  { key: "threePointersMade", label: "3-pointers made" },
+  { key: "freeThrowsMade", label: "Free throws made" },
   { key: "pir", label: "PIR" },
 ];
+const RATINGS = [
+  { key: "offensiveRating", label: "Offensive rating" },
+  { key: "netRating", label: "Net rating" },
+];
+const ADVANCED = {
+  player: [
+    { key: "per", label: "PER" },
+    { key: "winShares", label: "Win Shares" },
+  ],
+  game: [{ key: "gameScore", label: "Game Score" }],
+  team: RATINGS,
+  teamgame: RATINGS,
+};
 
-// The single-game and team-season routes name the metrics differently from the player-season one.
-export const ROUTE_METRICS = { pointsScored: "points", totalRebounds: "totalRebounds", assists: "assistances", pir: "valuation" };
+export const DEFAULT_FAMILY = "player";
+export const DEFAULT_METRIC = "pointsScored";
+
+export const metricsOf = (family, group) => (group === "advanced" ? ADVANCED[family] : TRADITIONAL);
+
+// Every metric a family offers, each with its group.
+export const allMetrics = (family) => [
+  ...TRADITIONAL.map((metric) => ({ ...metric, group: "traditional" })),
+  ...ADVANCED[family].map((metric) => ({ ...metric, group: "advanced" })),
+];
 
 // A value from the address, or the default when it is not one of the keys.
 export function pickKey(entries, value, fallback) {
   return entries.some((entry) => entry.key === value) ? value : fallback;
 }
 
-// One record row as the page shows it. `crestOf` finds a club's crest by its club code. A part the row does not have is null.
-export function describeRecord(family, row, crestOf) {
+// One record row as the page shows it. The picture of a player is the headshot (`portraitUrl`), of a club its crest (`crestUrl`); the second line is
+// a player's club (with its crest beside it) or the opponent of a team game. A part the row does not have is null.
+export function describeRecord(family, group, row) {
   const slug = seasonSlug(row.seasonCode);
-  const isClub = family === "team";
+  const isClub = FAMILIES.find((entry) => entry.key === family)?.club ?? false;
   const clubName = row.clubName ?? null;
   const clubCode = row.clubTvCodes ?? row.clubTvCode ?? null;
+  const opponent = row.opponentName ?? row.opponentTvCode ?? null;
+  // A rating or a Game Score has decimals; a total is a whole number.
+  const format = (value) => (group === "advanced" ? formatDecimal(value, 1) : formatCount(value));
   return {
     key: `${row.seasonCode}-${row.personKey ?? row.clubCode}-${row.gameCode ?? "season"}`,
     name: isClub ? (clubName ?? row.clubCode ?? "-") : displayName(row.playerName),
     to: isClub ? (row.clubCode ? `/${slug}/teams/${row.clubCode}` : null) : row.personKey ? `/${slug}/players/${row.personKey}` : null,
-    club: isClub ? null : clubName || clubCode ? { name: clubName, code: clubCode } : null,
-    crestUrl: isClub ? (crestOf?.(row.clubCode) ?? null) : null,
+    portraitUrl: isClub ? null : (row.playerImageUrl ?? null),
+    crestUrl: isClub ? (row.clubImageUrl ?? null) : null,
+    line: isClub ? (opponent ? `vs ${opponent}` : null) : (clubName ?? clubCode),
+    lineCrestUrl: isClub ? null : (row.clubImageUrl ?? null),
     seasonCode: row.seasonCode,
     season: formatSeasonLabel(row.seasonCode),
     date: row.scheduledAt ? formatDate(row.scheduledAt) : null,
@@ -43,6 +86,8 @@ export function describeRecord(family, row, crestOf) {
     gameCode: row.gameCode ?? null,
     gameTo: row.gameCode ? `/${slug}/games/${row.gameCode}` : null,
     value: row.numericValue,
+    valueText: format(row.numericValue),
+    format,
   };
 }
 

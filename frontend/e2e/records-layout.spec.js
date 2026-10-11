@@ -1,15 +1,19 @@
 import { test, expect } from "@playwright/test";
+import { FAMILIES, allMetrics } from "../src/records/recordData.js";
 import { HEIGHT, seasonSlug } from "./support/layout";
 
 // The Records page on a desktop screen, for each record type, on the live data: nothing outside its panel, the podium three across from
 // 1024px and stacked below it, the Top 50 table inside its panel with its columns, and every link to a player, club or game in a season's
 // address (the year, not "E2025"). The tablet and phone layouts are item 31m.
 const WIDTHS = [1280, 1024, 1023];
-const FAMILIES = [
-  { name: "player seasons", query: "", column: "Player" },
-  { name: "single games", query: "?type=game&metric=pir", column: "Player", game: true },
-  { name: "team seasons", query: "?type=team&metric=totalRebounds", column: "Club" },
+const CASES = [
+  { name: "player seasons", query: "", column: "Player", pictures: true },
+  { name: "player seasons, a rating", query: "?metric=per", column: "Player", pictures: true },
+  { name: "player games", query: "?type=game&metric=pir", column: "Player", game: true, pictures: true },
+  { name: "team seasons", query: "?type=team&metric=totalRebounds", column: "Club", pictures: true },
+  { name: "team games", query: "?type=teamgame&metric=netRating", column: "Club", game: true, pictures: true },
 ];
+const ROUTES = { player: "player-seasons", game: "single-games", team: "team-seasons", teamgame: "team-games" };
 
 const expectNoSidewaysScroll = (page) =>
   expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
@@ -32,7 +36,7 @@ const outsidePanels = (page) =>
     }),
   );
 
-for (const family of FAMILIES) {
+for (const family of CASES) {
   test(`${family.name}: the panels fit, the podium is three across from 1024px and the links use the season's address`, async ({ page }) => {
     test.setTimeout(90_000);
     await page.setViewportSize({ width: 1280, height: HEIGHT });
@@ -62,6 +66,13 @@ for (const family of FAMILIES) {
       expect(table.table).toBeLessThanOrEqual(table.panel + 1);
     }
 
+    // The pictures the rows carry are on the page, and the strips (type, group, metric) sit inside the window.
+    if (family.pictures) expect(await page.locator("main img").count()).toBeGreaterThan(0);
+    for (const strip of await page.getByRole("tablist").all()) {
+      const box = await strip.boundingBox();
+      expect(box.x + box.width, await strip.getAttribute("aria-label")).toBeLessThanOrEqual(page.viewportSize().width + 1);
+    }
+
     // A link to a player, a club or a game goes through the season's year, never the feed's code ("E2025").
     const hrefs = await page.locator("main a[href^='/']").evaluateAll((els) => els.map((el) => el.getAttribute("href")));
     const records = hrefs.filter((href) => /\/(players|teams|games)\//.test(href));
@@ -69,3 +80,17 @@ for (const family of FAMILIES) {
     for (const href of records) expect(href, href).toMatch(/^\/\d{4}\//);
   });
 }
+
+test("every metric the page offers answers from the live API with records", async ({ request }) => {
+  test.setTimeout(120_000);
+  const API = "http://localhost:3000/api/seasons/2025/records";
+  for (const family of FAMILIES) {
+    for (const metric of allMetrics(family.key)) {
+      const response = await request.get(`${API}/${ROUTES[family.key]}?metric=${metric.key}`);
+      expect(response.status(), `${family.key} ${metric.key}`).toBe(200);
+      const body = await response.json();
+      expect(body.group, `${family.key} ${metric.key}`).toBe(metric.group);
+      expect(body.records.length, `${family.key} ${metric.key}`).toBeGreaterThan(0);
+    }
+  }
+});

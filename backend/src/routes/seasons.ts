@@ -555,7 +555,7 @@ for (const kind of RECORD_KINDS) {
       sendError(res, 400, "INVALID_RECORD_METRIC", "Invalid record metric");
       return;
     }
-    res.json({ metric: requested, label: metric.label, group: metric.group, records: await getRecordRows(kind, metric) });
+    res.json({ metric: requested, label: metric.label, group: metric.group, minGames: metric.minGames ?? null, records: await getRecordRows(kind, metric) });
   });
 }
 

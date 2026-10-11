@@ -3,16 +3,15 @@ import { Link } from "react-router";
 import { Avatar, RankBadge } from "../leaders/LeaderParts";
 import { PLAYER_STATS } from "../leaders/leaderDefs";
 import HeaderTip from "../lib/HeaderTip";
-import { formatCount } from "../lib/format";
 import { denseListContainer, listContainer, listItem } from "../lib/motion";
 import Panel from "../lib/Panel";
 import PanelHeader from "../lib/PanelHeader";
 
 const PIR_TIP = PLAYER_STATS.find((stat) => stat.key === "pir")?.tip;
 
-// The name of whoever holds a record, linked when the row says where they are, with their club under it (a player) or their crest beside it
-// (a club). A part the row does not carry is left out.
-export function Holder({ record }) {
+// Whoever holds a record: their picture (a player's headshot, a club's crest), the name linked when the row says where they are, and a second line
+// under it (a player's club with its crest, the opponent of a team game). A part the row does not carry is left out. `size` is the picture's.
+export function Holder({ record, size = "h-9 w-9" }) {
   const name = record.to ? (
     <Link to={record.to} className="font-semibold hover:underline">
       {record.name}
@@ -20,13 +19,18 @@ export function Holder({ record }) {
   ) : (
     <span className="font-semibold">{record.name}</span>
   );
-  const clubText = record.club?.name ?? record.club?.code ?? null;
   return (
     <div className="flex min-w-0 items-center gap-2.5">
-      {record.crestUrl ? <Avatar crest imageUrl={record.crestUrl} size="h-9 w-9" /> : null}
+      {record.portraitUrl ? <Avatar imageUrl={record.portraitUrl} size={`${size} flex-none`} /> : null}
+      {record.crestUrl ? <Avatar crest imageUrl={record.crestUrl} size={`${size} flex-none`} /> : null}
       <div className="min-w-0">
         <p className="wrap-break-word">{name}</p>
-        {clubText ? <p className="muted text-sm wrap-break-word">{clubText}</p> : null}
+        {record.line ? (
+          <p className="muted flex items-center gap-1.5 text-sm">
+            {record.lineCrestUrl ? <Avatar crest imageUrl={record.lineCrestUrl} size="h-4 w-4" /> : null}
+            <span className="wrap-break-word">{record.line}</span>
+          </p>
+        ) : null}
       </div>
     </div>
   );
@@ -44,10 +48,10 @@ function PodiumCard({ record, rank, label }) {
           <span className="muted text-sm">{whenText(record)}</span>
         </div>
         <p className="flex flex-wrap items-baseline gap-x-2">
-          <span className={`text-4xl font-black tabular-nums ${rank === 1 ? "text-primary" : ""}`}>{formatCount(record.value)}</span>
+          <span className={`text-4xl font-black tabular-nums ${rank === 1 ? "text-primary" : ""}`}>{record.valueText}</span>
           <span className="muted text-sm font-semibold">{label}</span>
         </p>
-        <Holder record={record} />
+        <Holder record={record} size="h-14 w-14" />
         {record.gameTo ? (
           <Link to={record.gameTo} className="btn btn-outline btn-xs mt-auto w-fit">
             Game
@@ -86,20 +90,14 @@ export function Progression({ steps }) {
             <motion.li key={record.key} variants={listItem} className="relative pb-5 pl-6 last:pb-0">
               <span aria-hidden="true" className={`absolute top-1.5 -left-1.5 size-3 rounded-full border-2 border-base-100 ${current ? "bg-primary" : "bg-base-content/40"}`} />
               <p className="flex flex-wrap items-baseline gap-x-2">
-                <span className="text-xl font-bold tabular-nums">{formatCount(record.value)}</span>
-                {gain !== null ? <span className="text-sm font-semibold text-success">+{formatCount(gain)}</span> : null}
+                <span className="text-xl font-bold tabular-nums">{record.valueText}</span>
+                {gain !== null ? <span className="text-sm font-semibold text-success">+{record.format(gain)}</span> : null}
                 {current ? <span className="badge badge-primary badge-sm">Current record</span> : null}
               </p>
-              <p className="text-sm">
-                {record.to ? (
-                  <Link to={record.to} className="font-semibold hover:underline">
-                    {record.name}
-                  </Link>
-                ) : (
-                  <span className="font-semibold">{record.name}</span>
-                )}
-                <span className="muted"> {"·"} {whenText(record)}</span>
-              </p>
+              <div className="mt-1 flex flex-wrap items-center gap-x-2 text-sm">
+                <Holder record={record} size="h-7 w-7" />
+                <span className="muted">{whenText(record)}</span>
+              </div>
             </motion.li>
           );
         })}
@@ -121,7 +119,7 @@ export function BestOfEachSeason({ records, overall }) {
               <Holder record={record} />
             </div>
             <div className="flex flex-none flex-col items-end gap-1">
-              <span className="text-lg font-bold tabular-nums">{formatCount(record.value)}</span>
+              <span className="text-lg font-bold tabular-nums">{record.valueText}</span>
               {record === overall ? <span className="badge badge-primary badge-sm">Record</span> : null}
             </div>
           </motion.li>
@@ -134,7 +132,8 @@ export function BestOfEachSeason({ records, overall }) {
 // The Top 50: rank, holder, season (and the game), and the value with a bar sized against the best.
 export function Board({ family, metricKey, label, records }) {
   const best = Math.max(...records.map((record) => record.value));
-  const hasGames = family === "game";
+  const isClub = family === "team" || family === "teamgame";
+  const hasGames = family === "game" || family === "teamgame";
   return (
     <Panel as="section" className="p-5">
       <PanelHeader kicker="RANKING" title="Top 50" />
@@ -143,7 +142,7 @@ export function Board({ family, metricKey, label, records }) {
           <thead>
             <tr>
               <th className="w-14">Rank</th>
-              <th>{family === "team" ? "Club" : "Player"}</th>
+              <th>{isClub ? "Club" : "Player"}</th>
               <th>Season</th>
               {hasGames ? <th>Game</th> : null}
               <th className="text-right">{metricKey === "pir" && PIR_TIP ? <HeaderTip tip={PIR_TIP}>{label}</HeaderTip> : label}</th>
@@ -173,7 +172,7 @@ export function Board({ family, metricKey, label, records }) {
                     <span aria-hidden="true" className="h-1.5 w-24 flex-none overflow-hidden rounded-full bg-base-300">
                       <span className="block h-full rounded-full bg-primary/70" style={{ width: `${best > 0 ? (record.value / best) * 100 : 0}%` }} />
                     </span>
-                    <span className="w-16 text-right font-semibold tabular-nums">{formatCount(record.value)}</span>
+                    <span className="w-16 text-right font-semibold tabular-nums">{record.valueText}</span>
                   </div>
                 </td>
               </motion.tr>

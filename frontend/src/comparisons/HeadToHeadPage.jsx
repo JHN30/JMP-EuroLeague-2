@@ -2,8 +2,10 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Chart } from "chart.js/auto";
 import { Link, useParams, useSearchParams } from "react-router";
+import { shortTeamName, teamCode } from "../games/gameUtils";
 import { getSeasonTeams, getSeasons, getTeamGames } from "../lib/api";
 import AsyncState from "../lib/AsyncState";
+import BackLink from "../lib/BackLink";
 import CompactFilterSelect from "../lib/CompactFilterSelect";
 import CompactMetric from "../lib/CompactMetric";
 import EmptyText from "../lib/EmptyText";
@@ -12,8 +14,9 @@ import HeaderStats from "../lib/HeaderStats";
 import Panel from "../lib/Panel";
 import PanelHeader from "../lib/PanelHeader";
 import PageHeader from "../lib/PageHeader";
+import ShortLabel from "../lib/ShortLabel";
+import { useElementWidth } from "../lib/useElementWidth";
 import { useDocumentTitle } from "../lib/useDocumentTitle";
-import { useSeasonRangeParams } from "../lib/useSeasonRangeParams";
 import { thinAxisLabels } from "../lib/chartHelpers";
 
 const GAMES_LIMIT = 100;
@@ -43,10 +46,21 @@ function useActiveTheme() {
   return theme;
 }
 
-function MarginTimeline({ matchups, teamAId }) {
+function gameTitle(game) {
+  return `${game.seasonCode} \u00b7 ${game.roundName ?? (game.roundNumber ? `Round ${game.roundNumber}` : game.phaseName)}`;
+}
+
+// One bar per meeting: the margin from the first club's side, above the line when it won. The axis shows fewer labels the narrower
+// the chart is, and a tap or hover anywhere in a meeting's column opens its tooltip.
+function MarginTimeline({ matchups, teamA, teamB, teamAId }) {
   const canvasRef = useRef(null);
   const chartRef = useRef(null);
+  const wellRef = useRef(null);
   const theme = useActiveTheme();
+  const wellWidth = useElementWidth(wellRef);
+  const maxLabels = Math.max(2, Math.floor(wellWidth / 80));
+  const nameA = shortTeamName(teamA);
+  const nameB = shortTeamName(teamB);
   const played = useMemo(() => matchups.filter((game) => game.played && game.localScore != null && game.roadScore != null), [matchups]);
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -54,13 +68,54 @@ function MarginTimeline({ matchups, teamAId }) {
     const text = getComputedStyle(canvas).getPropertyValue("--color-base-content").trim();
     const primary = getComputedStyle(canvas).getPropertyValue("--color-primary").trim();
     const error = getComputedStyle(canvas).getPropertyValue("--color-error").trim();
-    chartRef.current = new Chart(canvas, { type: "bar", data: { labels: thinAxisLabels(played.map((game) => `${game.seasonCode} R${game.roundNumber ?? "?"}`), 8), datasets: [{ label: "Team A margin", data: played.map((game) => { const { scoreA, scoreB } = sideForA(game, teamAId); return scoreA - scoreB; }), backgroundColor: played.map((game) => { const { scoreA, scoreB } = sideForA(game, teamAId); return scoreA >= scoreB ? primary : error; }) }] }, options: { responsive: true, maintainAspectRatio: false, scales: { x: { ticks: { color: text }, grid: { color: "transparent" } }, y: { ticks: { color: text }, grid: { color: `color-mix(in srgb, ${text} 20%, transparent)` } } }, plugins: { legend: { display: false }, tooltip: { mode: "nearest", intersect: true } } } });
+    const sides = played.map((game) => sideForA(game, teamAId));
+    chartRef.current = new Chart(canvas, {
+      type: "bar",
+      data: {
+        labels: thinAxisLabels(played.map((game) => `${game.seasonCode} R${game.roundNumber ?? "?"}`), maxLabels),
+        datasets: [{ label: `${nameA} margin`, data: sides.map(({ scoreA, scoreB }) => scoreA - scoreB), backgroundColor: sides.map(({ scoreA, scoreB }) => (scoreA >= scoreB ? primary : error)) }],
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: {
+          // The thinned labels are blanks between the shown ones, so the axis must not skip any itself.
+          x: { ticks: { color: text, autoSkip: false, maxRotation: 0 }, grid: { color: "transparent" } },
+          y: { ticks: { color: text }, grid: { color: `color-mix(in srgb, ${text} 20%, transparent)` } },
+        },
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            mode: "index",
+            intersect: false,
+            callbacks: {
+              title: (items) => gameTitle(played[items[0].dataIndex]),
+              label: (item) => {
+                const { scoreA, scoreB } = sides[item.dataIndex];
+                const margin = scoreA - scoreB;
+                return [`${nameA} ${scoreA}-${scoreB} ${nameB}`, `${nameA} margin: ${margin > 0 ? "+" : ""}${margin}`];
+              },
+            },
+          },
+        },
+      },
+    });
     return () => chartRef.current?.destroy();
-  }, [played, teamAId, theme]);
-  return <Panel as="section" className="p-4"><PanelHeader kicker="MARGINS" title="Meeting margin" /><div className="chart-well relative h-64"><canvas ref={canvasRef} role="img" aria-label="Meeting margin timeline from Team A perspective" /></div></Panel>;
+  }, [played, teamAId, theme, maxLabels, nameA, nameB]);
+  return (
+    <Panel as="section" className="p-4">
+      <PanelHeader kicker="MARGINS" title="Meeting margin" />
+      <p className="muted mb-2 text-sm">
+        Above the line: {nameA} won. Below it: {nameB} won. Hover or tap a bar for the game.
+      </p>
+      <div ref={wellRef} className="chart-well relative h-64">
+        <canvas ref={canvasRef} role="img" aria-label={`Meeting margin timeline from ${nameA}'s perspective`} />
+      </div>
+    </Panel>
+  );
 }
 
-function MomentumPanel({ matchups, teamAId }) {
+function MomentumPanel({ matchups, teamA, teamB, teamAId }) {
   const played = matchups.filter((game) => game.played && game.localScore != null && game.roadScore != null);
   const streak = currentStreak(played, teamAId);
   const splits = ["Home", "Away", "Neutral"].map((label) => {
@@ -68,7 +123,23 @@ function MomentumPanel({ matchups, teamAId }) {
     const record = seriesRecord(games, teamAId);
     return { label, games: games.length, record };
   });
-  return <Panel as="section" className="p-4"><PanelHeader kicker="MOMENTUM" title="Series momentum" /><p className="mb-3 font-semibold">{streak ? `${streak.won ? "Team A" : "Team B"} has won ${streak.count} straight` : "No completed meetings"}</p><dl className="grid grid-cols-3 gap-2 text-sm">{splits.map((split) => <div key={split.label}><dt className="muted">{split.label}</dt><dd className="font-semibold">{split.record.winsA}-{split.record.winsB} ({split.games})</dd></div>)}</dl><p className="muted mt-3 text-xs">Neutral uses Final Four phase as a proxy.</p></Panel>;
+  return (
+    <Panel as="section" className="p-4">
+      <PanelHeader kicker="MOMENTUM" title="Series momentum" />
+      <p className="mb-3 font-semibold">{streak ? `${shortTeamName(streak.won ? teamA : teamB)} has won ${streak.count} straight` : "No completed meetings"}</p>
+      <dl className="grid grid-cols-3 gap-2 text-sm">
+        {splits.map((split) => (
+          <div key={split.label}>
+            <dt className="muted">{split.label}</dt>
+            <dd className="font-semibold">{split.record.winsA}-{split.record.winsB} ({split.games})</dd>
+          </div>
+        ))}
+      </dl>
+      <p className="muted mt-3 text-xs">
+        Wins for {shortTeamName(teamA)} to wins for {shortTeamName(teamB)}; Home and Away are {shortTeamName(teamA)}'s venue. Neutral uses Final Four phase as a proxy.
+      </p>
+    </Panel>
+  );
 }
 
 async function fetchMergedMatchups(seasonCodes, teamAId, teamBId) {
@@ -139,20 +210,24 @@ function TeamPicker({ label, teams, selected, excludeId, onSelect }) {
   );
 }
 
-function IdentityCard({ team, align }) {
+// A club in the series header: its crest over its abbreviated name below sm, its crest beside its full name from sm. `mirrored` puts the
+// crest on the right of the name from sm.
+function IdentityCard({ team, mirrored = false, className = "" }) {
   return (
-    <div className={`flex items-center gap-3 ${align === "right" ? "flex-row-reverse text-right" : ""}`}>
+    <div className={`flex min-w-0 flex-col items-center gap-1.5 text-center sm:flex-row sm:gap-3 ${mirrored ? "sm:flex-row-reverse sm:text-right" : "sm:text-left"} ${className}`}>
       {team?.crestUrl ? (
         <img
           src={team.crestUrl}
           alt=""
-          className="h-14 w-14 flex-none object-contain"
+          className="h-12 w-12 flex-none object-contain sm:h-14 sm:w-14"
           onError={(event) => {
             event.currentTarget.style.display = "none";
           }}
         />
       ) : null}
-      <span className="text-lg font-semibold">{team?.name ?? "-"}</span>
+      <span className="min-w-0 text-sm font-semibold break-words sm:text-lg">
+        <ShortLabel short={shortTeamName(team)} full={team?.name ?? "-"} />
+      </span>
     </div>
   );
 }
@@ -162,22 +237,29 @@ function Hero({ teamA, teamB, matchups, teamAId }) {
   const { winsA, winsB } = seriesRecord(played, teamAId);
 
   return (
-    <Panel as="section" className="mb-6 p-6">
-      <div className="flex flex-wrap items-center justify-between gap-4">
-        <IdentityCard team={teamA} align="left" />
-        <div className="text-center">
-          <span className="text-primary block text-4xl font-black tabular-nums">
-            {winsA}-{winsB}
-          </span>
-          <span className="muted text-sm">{played.length} completed meetings</span>
-        </div>
-        <IdentityCard team={teamB} align="right" />
+    <Panel as="section" className="mb-6 p-4 sm:p-6">
+      <div className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-x-3 gap-y-3 sm:gap-x-4 sm:gap-y-0">
+        <IdentityCard team={teamA} className="col-start-1 row-start-1 sm:row-span-2" />
+        <span className="text-primary col-start-2 row-start-1 text-center text-3xl font-black whitespace-nowrap tabular-nums sm:text-4xl">
+          {winsA}-{winsB}
+        </span>
+        <IdentityCard team={teamB} mirrored className="col-start-3 row-start-1 sm:row-span-2" />
+        <span className="muted col-span-3 col-start-1 row-start-2 text-center text-sm sm:col-span-1 sm:col-start-2">{played.length} completed meetings</span>
       </div>
     </Panel>
   );
 }
 
-function SummaryGridStrip({ matchups, teamAId, teamALabel, teamBLabel }) {
+// The club that holds the streak: its TV code below sm, its abbreviated name from sm.
+function StreakValue({ team, count }) {
+  return (
+    <>
+      <ShortLabel short={teamCode(team)} full={shortTeamName(team)} /> {count}
+    </>
+  );
+}
+
+function SummaryGridStrip({ matchups, teamA, teamB, teamAId }) {
   const played = matchups.filter((game) => game.played && game.localScore != null && game.roadScore != null);
   const { winsA, winsB } = seriesRecord(played, teamAId);
   const streak = currentStreak(played, teamAId);
@@ -190,11 +272,11 @@ function SummaryGridStrip({ matchups, teamAId, teamALabel, teamBLabel }) {
     : 0;
 
   return (
-    <HeaderStats className="mb-6">
+    <HeaderStats className="kpi-strip-quad mb-6">
       <CompactMetric value={`${winsA}-${winsB}`} label="Series record" />
       <CompactMetric value={avgMargin.toFixed(1)} label="Avg margin" />
       <CompactMetric
-        value={streak ? `${streak.won ? teamALabel : teamBLabel} ${streak.count}` : "-"}
+        value={streak ? <StreakValue team={streak.won ? teamA : teamB} count={streak.count} /> : "-"}
         label="Current streak"
       />
       <CompactMetric value={totalPoints.toLocaleString()} label="Total points scored" />
@@ -202,11 +284,10 @@ function SummaryGridStrip({ matchups, teamAId, teamALabel, teamBLabel }) {
   );
 }
 
-function HeadToHeadBody({ seasons, allTeams }) {
+function HeadToHeadBody({ seasonCode, seasons, allTeams }) {
   const [searchParams, setSearchParams] = useSearchParams();
   const teamAId = searchParams.get("teamA");
   const teamBId = searchParams.get("teamB");
-  const { from, through, setFrom, setThrough } = useSeasonRangeParams(seasons);
 
   function selectTeam(key, value) {
     setSearchParams((params) => {
@@ -228,26 +309,26 @@ function HeadToHeadBody({ seasons, allTeams }) {
   const teamA = allTeams.find((team) => team.clubCode === teamAId) ?? null;
   const teamB = allTeams.find((team) => team.clubCode === teamBId) ?? null;
 
-  const fromIndex = seasons.findIndex((season) => season.seasonCode === from);
-  const throughIndex = seasons.findIndex((season) => season.seasonCode === through);
-  const selectedSeasonCodes = seasons.slice(fromIndex, throughIndex + 1).map((season) => season.seasonCode);
+  // Every archived season: this is the clubs' all-time series.
+  const seasonCodes = seasons.map((season) => season.seasonCode);
 
   const matchupsQuery = useQuery({
-    queryKey: ["head-to-head", teamAId, teamBId, selectedSeasonCodes.join(",")],
-    queryFn: () => fetchMergedMatchups(selectedSeasonCodes, teamAId, teamBId),
-    enabled: Boolean(teamAId) && Boolean(teamBId) && selectedSeasonCodes.length > 0,
+    queryKey: ["head-to-head", teamAId, teamBId, seasonCodes.join(",")],
+    queryFn: () => fetchMergedMatchups(seasonCodes, teamAId, teamBId),
+    enabled: Boolean(teamAId) && Boolean(teamBId) && seasonCodes.length > 0,
   });
 
   return (
     <div>
+      <BackLink to={`/${seasonCode}/compare`} label="Compare" />
       <PageHeader kicker="HEAD-TO-HEAD" title="Head-to-head" />
 
       <Panel className="mb-6 p-4">
-        <div className="grid items-end gap-4 sm:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)]">
+        <div className="grid grid-cols-[minmax(0,1fr)] items-end gap-3 sm:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] sm:gap-4">
           <TeamPicker label="Team A" teams={allTeams} selected={teamAId} excludeId={teamBId} onSelect={(v) => selectTeam("teamA", v)} />
           <button
             type="button"
-            className="btn btn-outline btn-square btn-sm mx-auto"
+            className="btn btn-outline btn-square btn-sm mx-auto max-sm:h-11 max-sm:w-11"
             aria-label="Swap teams"
             disabled={!teamAId && !teamBId}
             onClick={handleSwap}
@@ -255,22 +336,6 @@ function HeadToHeadBody({ seasons, allTeams }) {
             &#8646;
           </button>
           <TeamPicker label="Team B" teams={allTeams} selected={teamBId} excludeId={teamAId} onSelect={(v) => selectTeam("teamB", v)} />
-        </div>
-        <div className="mt-4 flex flex-wrap items-center gap-4">
-          <CompactFilterSelect label="From season" value={from} onChange={(event) => setFrom(event.target.value)}>
-            {seasons.map((season) => (
-              <option key={season.seasonCode} value={season.seasonCode}>
-                {season.name ?? season.seasonCode}
-              </option>
-            ))}
-          </CompactFilterSelect>
-          <CompactFilterSelect label="Through season" value={through} onChange={(event) => setThrough(event.target.value)}>
-            {seasons.map((season) => (
-              <option key={season.seasonCode} value={season.seasonCode}>
-                {season.name ?? season.seasonCode}
-              </option>
-            ))}
-          </CompactFilterSelect>
         </div>
       </Panel>
 
@@ -281,33 +346,28 @@ function HeadToHeadBody({ seasons, allTeams }) {
       ) : matchupsQuery.isError ? (
         <AsyncState status="error" message="Could not load head-to-head history." onRetry={() => matchupsQuery.refetch()} />
       ) : matchupsQuery.data.length === 0 ? (
-        <EmptyText>These teams did not meet in this selection - try a wider season range.</EmptyText>
+        <EmptyText>These teams have not met in any archived season.</EmptyText>
       ) : (
         <>
           <Hero teamA={teamA} teamB={teamB} matchups={matchupsQuery.data} teamAId={teamAId} />
-          <SummaryGridStrip
-            matchups={matchupsQuery.data}
-            teamAId={teamAId}
-            teamALabel={teamLabel(teamA)}
-            teamBLabel={teamLabel(teamB)}
-          />
+          <SummaryGridStrip matchups={matchupsQuery.data} teamA={teamA} teamB={teamB} teamAId={teamAId} />
 
-          <div className="mb-6 grid gap-6 lg:grid-cols-2">
-            <MarginTimeline matchups={matchupsQuery.data} teamAId={teamAId} />
-            <MomentumPanel matchups={matchupsQuery.data} teamAId={teamAId} />
+          <div className="mb-6 grid grid-cols-[minmax(0,1fr)] gap-6 lg:grid-cols-2">
+            <MarginTimeline matchups={matchupsQuery.data} teamA={teamA} teamB={teamB} teamAId={teamAId} />
+            <MomentumPanel matchups={matchupsQuery.data} teamA={teamA} teamB={teamB} teamAId={teamAId} />
           </div>
 
-          <div className="mb-6 grid gap-6 lg:grid-cols-2">
+          <div className="mb-6 grid grid-cols-[minmax(0,1fr)] gap-6 lg:grid-cols-2">
             <Panel as="section" className="p-4">
               <PanelHeader kicker="NOTABLE" title="Notable meetings" />
-              <ul className="space-y-2 text-sm">
-                {[...matchupsQuery.data].filter((game) => game.played).sort((a, b) => Math.abs((b.localScore ?? 0) - (b.roadScore ?? 0)) - Math.abs((a.localScore ?? 0) - (a.roadScore ?? 0))).slice(0, 3).map((game) => <li key={`margin-${game.seasonCode}-${game.gameCode}`}><Link className="link link-hover" to={`/${game.seasonCode}/games/${game.gameCode}`}>Biggest margin: {game.localScore}-{game.roadScore} ({game.seasonCode})</Link></li>)}
-                {[...matchupsQuery.data].filter((game) => game.played).sort((a, b) => ((b.localScore ?? 0) + (b.roadScore ?? 0)) - ((a.localScore ?? 0) + (a.roadScore ?? 0))).slice(0, 3).map((game) => <li key={`points-${game.seasonCode}-${game.gameCode}`}><Link className="link link-hover" to={`/${game.seasonCode}/games/${game.gameCode}`}>Highest scoring: {game.localScore}-{game.roadScore} ({game.seasonCode})</Link></li>)}
+              <ul className="text-sm max-sm:divide-y max-sm:divide-base-300 sm:space-y-2">
+                {[...matchupsQuery.data].filter((game) => game.played).sort((a, b) => Math.abs((b.localScore ?? 0) - (b.roadScore ?? 0)) - Math.abs((a.localScore ?? 0) - (a.roadScore ?? 0))).slice(0, 3).map((game) => <li key={`margin-${game.seasonCode}-${game.gameCode}`}><Link className="link link-hover flex items-center max-sm:min-h-11" to={`/${game.seasonCode}/games/${game.gameCode}`}>Biggest margin: {game.localScore}-{game.roadScore} ({game.seasonCode})</Link></li>)}
+                {[...matchupsQuery.data].filter((game) => game.played).sort((a, b) => ((b.localScore ?? 0) + (b.roadScore ?? 0)) - ((a.localScore ?? 0) + (a.roadScore ?? 0))).slice(0, 3).map((game) => <li key={`points-${game.seasonCode}-${game.gameCode}`}><Link className="link link-hover flex items-center max-sm:min-h-11" to={`/${game.seasonCode}/games/${game.gameCode}`}>Highest scoring: {game.localScore}-{game.roadScore} ({game.seasonCode})</Link></li>)}
               </ul>
             </Panel>
             <Panel as="section" className="p-4">
               <PanelHeader kicker="BY SEASON" title="Season breakdown" />
-              <ul className="space-y-2 text-sm">{seasons.filter((season) => selectedSeasonCodes.includes(season.seasonCode)).map((season) => { const games = matchupsQuery.data.filter((game) => game.seasonCode === season.seasonCode); const record = seriesRecord(games, teamAId); return <li key={season.seasonCode} className="flex justify-between"><span>{season.name ?? season.seasonCode}</span><span>{games.length} meetings, {record.winsA}-{record.winsB}</span></li>; })}</ul>
+              <ul className="space-y-2 text-sm">{seasons.filter((season) => matchupsQuery.data.some((game) => game.seasonCode === season.seasonCode)).map((season) => { const games = matchupsQuery.data.filter((game) => game.seasonCode === season.seasonCode); const record = seriesRecord(games, teamAId); return <li key={season.seasonCode} className="flex justify-between gap-3"><span className="min-w-0">{season.name ?? season.seasonCode}</span><span className="flex-none text-right">{games.length} meetings, {record.winsA}-{record.winsB}</span></li>; })}</ul>
             </Panel>
           </div>
 
@@ -322,19 +382,20 @@ function HeadToHeadBody({ seasons, allTeams }) {
                   <li key={`${game.seasonCode}-${game.gameCode}`}>
                     <Link
                       to={`/${game.seasonCode}/games/${game.gameCode}`}
-                      className="flex items-center justify-between gap-4 rounded-field border border-base-300 p-3 hover:bg-base-200"
+                      className="flex flex-col gap-1 rounded-field border border-base-300 p-3 hover:bg-base-200 sm:flex-row sm:items-center sm:justify-between sm:gap-4"
                     >
-                      <span className="muted text-sm">
-                        {game.seasonCode} &middot;{" "}
-                        {game.roundName ?? (game.roundNumber ? `Round ${game.roundNumber}` : game.phaseName)}
-                      </span>
+                      <span className="muted text-sm">{gameTitle(game)}</span>
                       {game.played ? (
-                        <span className="flex items-center gap-2 text-sm font-semibold">
-                          <span className={aWon ? "text-primary font-bold" : ""}>{teamLabel(teamA)}</span>
+                        <span className="flex min-w-0 items-center gap-2 text-sm font-semibold">
+                          <span className={aWon ? "text-primary font-bold" : ""}>
+                            <ShortLabel short={teamCode(teamA)} full={teamLabel(teamA)} />
+                          </span>
                           <span className="tabular-nums">
                             {scoreA ?? "-"}-{scoreB ?? "-"}
                           </span>
-                          <span className={bWon ? "text-primary font-bold" : ""}>{teamLabel(teamB)}</span>
+                          <span className={bWon ? "text-primary font-bold" : ""}>
+                            <ShortLabel short={teamCode(teamB)} full={teamLabel(teamB)} />
+                          </span>
                         </span>
                       ) : (
                         <span className="muted text-sm">{formatDateTime(game.scheduledAt)}</span>

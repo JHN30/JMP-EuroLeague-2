@@ -11,5 +11,5 @@ test("renders a cross-season head-to-head history", async ({ page }) => {
   await page.goto("/2026/compare/head-to-head?teamA=A&teamB=B");
   await expect(page.getByRole("heading", { name: "Head-to-head" })).toBeVisible();
   await expect(page.getByText("2 completed meetings")).toBeVisible();
-  await expect(page.getByRole("img", { name: "Meeting margin timeline from Team A perspective" })).toBeVisible();
+  await expect(page.getByRole("img", { name: "Meeting margin timeline from Team A's perspective" })).toBeVisible();
 });

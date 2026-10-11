@@ -43,7 +43,18 @@ const PAGES = [
       return `/${season}/compare?view=players&playerA=${players[0].personKey}&playerB=${players[1].personKey}`;
     },
   },
-  staticPage("Head-to-head", "compare/head-to-head"),
+  // Two clubs that have met, so the series header, the strip, the chart and the lists are measured: the first club of the season and its
+  // first opponent (or the second club when the season has no games yet).
+  {
+    name: "Head-to-head",
+    route: async (page, season) => {
+      const { teams } = await (await page.request.get(`http://localhost:3000/api/seasons/${season}/teams`)).json();
+      const { games } = await (await page.request.get(`http://localhost:3000/api/seasons/${season}/teams/${teams[0].clubCode}/games?limit=100&order=asc`)).json();
+      const game = games[0];
+      const other = game ? (game.localTeam.clubCode === teams[0].clubCode ? game.roadTeam : game.localTeam) : teams[1];
+      return `/${season}/compare/head-to-head?teamA=${teams[0].clubCode}&teamB=${other.clubCode}`;
+    },
+  },
   staticPage("Records", "records"),
   staticPage("Postseason", "postseason"),
   detailPage("Game detail", "games", 'a[href*="/games/"]'),

@@ -54,6 +54,9 @@ Navigate to Compare to start from the games of the coming round, or to Postseaso
 - **Leaders**  
   Rank players, teams, and advanced metrics, with filters and a view of who is hot right now.
 
+- **Records**  
+  Archive-to-date records: the best player seasons, player games, team seasons, and team games, in traditional and advanced metrics, with a podium, the record's progression, and the best of each season.
+
 - **Compare**  
   Compare any two teams or players, or start from a coming game.
 
@@ -127,7 +130,7 @@ You can still:
 
 You can run the project locally with your own configuration:
 - Provide your own PostgreSQL instance
-- Replace the connection string in `.env`
+- Set `DB_TARGET=local` and point `LOCAL_DB_URL` at it in `backend/.env` (see Environment Variables below)
 - Mock or seed your own data for testing (the tables the API reads are described in `DATA_DICTIONARY.md`)
 
 ### Contributing workflow
@@ -184,11 +187,22 @@ Create a `.env` file in the `backend` directory (`.env.example` shows the format
 ```bash
 PORT=3000
 NODE_ENV=development
-
-DB_URL=your_postgres_connection_string
-
 FRONTEND_URL=http://localhost:5173
+
+# Which database the API reads: "neon" (the default, and what production uses) or "local" (your own PostgreSQL copy for development)
+DB_TARGET="local | neon"
+
+# Neon, used when DB_TARGET is "neon" or not set
+DB_URL=your_neon_connection_string
+
+# Local PostgreSQL, used when DB_TARGET is "local"
+LOCAL_DB_URL=postgresql://postgres:password@localhost:5432/database
+
+# Optional: the local schema that holds the app_* tables (default: gold)
+# LOCAL_DB_SCHEMA=gold
 ```
+
+With `DB_TARGET=local` the API reads `LOCAL_DB_URL` and accepts every season the local copy holds (2000-01 to 2026-27); with `neon` it serves the four published seasons. A running development backend reports its target at `/api/health`. The browser tests (`npm run test:browser`) must only run against a local database: check that `/api/health` says `"target":"local"` first.
 
 The frontend reads one optional variable, `VITE_API_URL` (default `http://localhost:3000/api` in development and `/api` in a production build, which the API serves on the same origin). It is public, so it must never hold a secret.
 

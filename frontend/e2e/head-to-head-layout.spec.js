@@ -78,7 +78,7 @@ function meetingsOf(seasonCode) {
 
 // `games` is "ok", "error" (a 500), "empty" (no meetings), "sparse" (meetings in two of the five seasons only) or a promise that holds the
 // games back until it settles.
-async function mockApi(page, { seasons = "ok", games = "ok" } = {}) {
+async function mockApi(page, { seasons = "ok", games = "ok", absent = [] } = {}) {
   await page.route("**/api/**", async (route) => {
     const { pathname } = new URL(route.request().url());
     if (pathname === "/api/seasons") {
@@ -87,6 +87,8 @@ async function mockApi(page, { seasons = "ok", games = "ok" } = {}) {
     if (/\/teams$/.test(pathname)) return route.fulfill({ json: { teams: CLUBS } });
     const match = /\/seasons\/(\d{4})\/teams\/[AB]\/games$/.exec(pathname);
     if (match) {
+      // Club A was not in this season: the API answers 404 TEAM_NOT_FOUND.
+      if (absent.includes(match[1])) return route.fulfill({ status: 404, json: { error: { code: "TEAM_NOT_FOUND", message: "Team not found" } } });
       if (games === "error") return route.fulfill({ status: 500, json: {} });
       if (games instanceof Promise) await games;
       const met = games === "sparse" ? ["2022", "2024"].includes(match[1]) : games !== "empty";
@@ -236,11 +238,25 @@ test("the Season breakdown lists only the seasons in which the clubs met, with t
   await expect(page.getByText("16 completed meetings")).toBeVisible({ timeout: 30_000 });
   const rows = page.locator("section.panel", { hasText: "Season breakdown" }).locator("li");
   await expect(rows).toHaveCount(2);
-  await expect(rows.nth(0)).toContainText("EuroLeague 2022-23");
-  await expect(rows.nth(1)).toContainText("EuroLeague 2024-25");
+  await expect(rows.nth(0)).toContainText("2022-23");
+  await expect(rows.nth(1)).toContainText("2024-25");
   await expect(page.getByText("From season")).toHaveCount(0);
   await expect.poll(() => outsidePanels(page), { timeout: 20_000 }).toEqual([]);
   await expectNoSidewaysScroll(page);
+});
+
+test("a club that was not in some of the seasons still has its meetings from the others", async ({ page }) => {
+  test.setTimeout(60_000);
+  // Club A missing from the first two of five seasons: the API answers 404 TEAM_NOT_FOUND for them, which means no games, not a failure.
+  await mockApi(page, { absent: ["2021", "2022"] });
+  await page.setViewportSize({ width: 1280, height: HEIGHT });
+  await page.goto(OPEN);
+  await expect(page.getByText("23 completed meetings")).toBeVisible({ timeout: 30_000 });
+  await expect(page.getByText("Could not load head-to-head history.")).toHaveCount(0);
+  const rows = page.locator("section.panel", { hasText: "Season breakdown" }).locator("li");
+  await expect(rows).toHaveCount(3);
+  await expect(rows.nth(0)).toContainText("2023-24");
+  await expect(rows.nth(2)).toContainText("2025-26");
 });
 
 test("long names do not wrap into the page: a very long club name fits its select and its header at 320px", async ({ page }) => {

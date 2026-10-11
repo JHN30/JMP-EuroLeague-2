@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useLocation, useNavigate, useParams } from "react-router";
 import CompactFilterSelect from "../lib/CompactFilterSelect";
 import { getSeasons } from "../lib/api";
+import { formatSeasonLabel } from "../lib/format";
 
 export default function SeasonSelector() {
   const { seasonCode } = useParams();
@@ -29,7 +30,7 @@ export default function SeasonSelector() {
     >
       {seasonsQuery.data.seasons.map((season) => (
         <option key={season.seasonCode} value={season.seasonCode}>
-          {season.name ?? season.seasonCode}
+          {formatSeasonLabel(season.seasonCode)}
         </option>
       ))}
     </CompactFilterSelect>

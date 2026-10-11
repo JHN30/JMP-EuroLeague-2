@@ -9,7 +9,7 @@ import BackLink from "../lib/BackLink";
 import CompactFilterSelect from "../lib/CompactFilterSelect";
 import CompactMetric from "../lib/CompactMetric";
 import EmptyText from "../lib/EmptyText";
-import { formatDateTime } from "../lib/format";
+import { formatDateTime, formatSeasonLabel } from "../lib/format";
 import HeaderStats from "../lib/HeaderStats";
 import Panel from "../lib/Panel";
 import PanelHeader from "../lib/PanelHeader";
@@ -142,10 +142,18 @@ function MomentumPanel({ matchups, teamA, teamB, teamAId }) {
   );
 }
 
+// A club that was not in a season answers 404 TEAM_NOT_FOUND for it: it simply had no games, and so no meetings, that season.
+function absentFromSeason(error) {
+  return error?.response?.status === 404 && error.response.data?.error?.code === "TEAM_NOT_FOUND";
+}
+
 async function fetchMergedMatchups(seasonCodes, teamAId, teamBId) {
   const perSeason = await Promise.all(
     seasonCodes.map(async (seasonCode) => {
-      const data = await getTeamGames(seasonCode, teamAId, { limit: GAMES_LIMIT, order: "asc" });
+      const data = await getTeamGames(seasonCode, teamAId, { limit: GAMES_LIMIT, order: "asc" }).catch((error) => {
+        if (absentFromSeason(error)) return { games: [] };
+        throw error;
+      });
       return (data.games ?? [])
         .filter((game) => game.localTeam?.clubCode === teamBId || game.roadTeam?.clubCode === teamBId)
         .map((game) => ({ ...game, seasonCode }));
@@ -367,7 +375,7 @@ function HeadToHeadBody({ seasonCode, seasons, allTeams }) {
             </Panel>
             <Panel as="section" className="p-4">
               <PanelHeader kicker="BY SEASON" title="Season breakdown" />
-              <ul className="space-y-2 text-sm">{seasons.filter((season) => matchupsQuery.data.some((game) => game.seasonCode === season.seasonCode)).map((season) => { const games = matchupsQuery.data.filter((game) => game.seasonCode === season.seasonCode); const record = seriesRecord(games, teamAId); return <li key={season.seasonCode} className="flex justify-between gap-3"><span className="min-w-0">{season.name ?? season.seasonCode}</span><span className="flex-none text-right">{games.length} meetings, {record.winsA}-{record.winsB}</span></li>; })}</ul>
+              <ul className="space-y-2 text-sm">{seasons.filter((season) => matchupsQuery.data.some((game) => game.seasonCode === season.seasonCode)).map((season) => { const games = matchupsQuery.data.filter((game) => game.seasonCode === season.seasonCode); const record = seriesRecord(games, teamAId); return <li key={season.seasonCode} className="flex justify-between gap-3"><span className="min-w-0">{formatSeasonLabel(season.seasonCode)}</span><span className="flex-none text-right">{games.length} meetings, {record.winsA}-{record.winsB}</span></li>; })}</ul>
             </Panel>
           </div>
 

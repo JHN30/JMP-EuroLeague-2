@@ -324,7 +324,19 @@ export async function getSeasonStats(
   return { items: rows.slice(0, limit), hasMore: rows.length > limit, total: countRows[0]?.count ?? 0 };
 }
 
-export type RecordMetric = "pointsScored" | "totalRebounds" | "assists" | "pir";
+// The season totals a record can rank: every one is a key of SORTABLE_FIELDS.
+export type RecordMetric =
+  | "pointsScored"
+  | "totalRebounds"
+  | "offensiveRebounds"
+  | "defensiveRebounds"
+  | "assists"
+  | "steals"
+  | "blocks"
+  | "twoPointersMade"
+  | "threePointersMade"
+  | "freeThrowsMade"
+  | "pir";
 
 // A season's top players on one whole-season total, for the records page: only the fields it shows.
 export async function getSeasonRecordRows(seasonCode: string, metric: RecordMetric, limit: number) {
@@ -335,6 +347,8 @@ export async function getSeasonRecordRows(seasonCode: string, metric: RecordMetr
       playerName: seasonStatsTraditional.playerName,
       clubName: seasonStatsTraditional.clubName,
       clubTvCodes: seasonStatsTraditional.clubTvCodes,
+      playerImageUrl: seasonStatsTraditional.playerImageUrl,
+      clubImageUrl: seasonStatsTraditional.clubImageUrl,
       value: column,
     })
       .from(seasonStatsTraditional)

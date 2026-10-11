@@ -51,6 +51,9 @@ export default function HeaderTip({ tip, children }) {
   const id = useId();
   const ref = useRef(null);
   const [anchor, setAnchor] = useState(null);
+  // A tap opens the tip (the browser sends mouseenter and focus with it), so a second tap on the label could never close it. Whether a touch
+  // began on an already open tip is noted at the pointer-down, and the click that follows closes it.
+  const openBeforeTap = useRef(false);
 
   function open() {
     const rect = ref.current.getBoundingClientRect();
@@ -76,6 +79,16 @@ export default function HeaderTip({ tip, children }) {
         tabIndex={0}
         className="header-tip-label"
         aria-describedby={isOpen ? id : undefined}
+        onPointerDown={(event) => {
+          openBeforeTap.current = event.pointerType === "touch" && anchor !== null;
+        }}
+        onClick={() => {
+          if (!openBeforeTap.current) return;
+          openBeforeTap.current = false;
+          setAnchor(null);
+          // Focus keeps no tip open, but without a blur the next tap would not focus the label again and so would not open it.
+          ref.current.blur();
+        }}
         onMouseEnter={open}
         onMouseLeave={() => setAnchor(null)}
         onFocus={open}

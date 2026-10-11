@@ -7,7 +7,6 @@ import LabelledSelect from "../lib/LabelledSelect";
 import Panel from "../lib/Panel";
 import ComparisonRow from "../lib/ComparisonRow";
 import { EASE_OUT, denseListContainer, listItem } from "../lib/motion";
-import RevealImage from "../lib/RevealImage";
 import ShortLabel from "../lib/ShortLabel";
 import PageHeader from "../lib/PageHeader";
 import { useDocumentTitle } from "../lib/useDocumentTitle";
@@ -17,6 +16,8 @@ import { TabPanel, TabStrip } from "../lib/TabStrip";
 import BackLink from "../lib/BackLink";
 import CompareFixtures, { ComparisonContext } from "./CompareFixtures";
 import PickerPanel, { PickerImage, PickerOption } from "./PickerPanel";
+import PlayerPairHeader from "./PlayerPairHeader";
+import { STAT_GROUPS as PLAYER_STAT_GROUPS } from "../players/playerStatDefs";
 import CompareRosters from "./CompareRosters";
 import ComparePlayerAdvanced from "./ComparePlayerAdvanced";
 import ComparePlayerOverview from "./ComparePlayerOverview";
@@ -44,6 +45,9 @@ const PLAYER_COMPARISON_ROWS = PLAYER_METRIC_GROUPS.flatMap((group) => [
     label,
   })),
 ]);
+
+// The player page's readable name and tip for each statistic ("Double-doubles", not "DD").
+const PLAYER_STAT_DEFS = new Map(PLAYER_STAT_GROUPS.flatMap((group) => group.stats).map((stat) => [stat.field, stat]));
 
 const PLAYER_METRIC_DIRECTIONS = {
   pointsScored: "higher",
@@ -350,15 +354,6 @@ function PlayerPicker({ seasonCode, label, selected, excludeId, onSelect }) {
   );
 }
 
-function PlayerHeaderCell({ label, imageUrl }) {
-  return (
-    <div className="text-center">
-      {imageUrl ? <RevealImage src={imageUrl} effect="wipe" className="mx-auto mb-1 aspect-3/4 h-12 w-auto object-contain object-bottom" /> : null}
-      <div className="font-semibold">{label}</div>
-    </div>
-  );
-}
-
 function PlayerComparisonTable({ seasonCode, phaseCode, mode, entityA, entityB }) {
   const statsAQuery = useQuery({
     queryKey: ["player-compare-stats", seasonCode, phaseCode, mode, entityA?.id],
@@ -391,9 +386,8 @@ function PlayerComparisonTable({ seasonCode, phaseCode, mode, entityA, entityB }
   return (
     <Panel className="p-3">
       <motion.div variants={denseListContainer} initial="hidden" animate="show">
-        <motion.div variants={listItem} className="mb-4 grid grid-cols-2 gap-4">
-          <PlayerHeaderCell label={entityA.label} imageUrl={a?.playerImageUrl} />
-          <PlayerHeaderCell label={entityB.label} imageUrl={b?.playerImageUrl} />
+        <motion.div variants={listItem} className="mb-4">
+          <PlayerPairHeader seasonCode={seasonCode} entityA={entityA} entityB={entityB} rowA={a} rowB={b} />
         </motion.div>
         {PLAYER_COMPARISON_ROWS.map((row) => {
         if (row.type === "header") {
@@ -407,7 +401,9 @@ function PlayerComparisonTable({ seasonCode, phaseCode, mode, entityA, entityB }
           <ComparisonRow
             key={row.key}
             animated
-            label={row.label}
+            compact
+            label={PLAYER_STAT_DEFS.get(row.metricKey)?.label ?? row.label}
+            tip={PLAYER_STAT_DEFS.get(row.metricKey)?.tip}
             rawA={a?.[row.group]?.[row.metricKey]}
             rawB={b?.[row.group]?.[row.metricKey]}
             displayA={formatStatValue(row.metricKey, a?.[row.group]?.[row.metricKey])}

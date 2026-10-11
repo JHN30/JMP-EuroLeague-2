@@ -7,9 +7,10 @@ import EmptyText from "../lib/EmptyText";
 import { denseListContainer, listItem } from "../lib/motion";
 import Panel from "../lib/Panel";
 import { ADVANCED_FAMILIES, ADVANCED_STATS } from "../leaders/leaderDefs";
-import { nameParts, titleCase } from "../lib/playerName";
 import { formatAdvancedValue } from "../leaders/leaderData";
 import { advancedScopeForPhase } from "../teams/teamLeague";
+import PlayerPairHeader from "./PlayerPairHeader";
+import usePlayerRows from "./usePlayerRows";
 
 // The on/off figure of a player is shown only from this many minutes on the floor, as on the player's Advanced tab.
 const ON_OFF_MIN_SECONDS = 300 * 60;
@@ -39,11 +40,6 @@ function directionOf(stat) {
   return stat.lowerIsBetter ? "lower" : "higher";
 }
 
-function niceName(label) {
-  const { last, first } = nameParts(label);
-  return `${titleCase(first)} ${titleCase(last)}`.trim();
-}
-
 function place(rank) {
   return rank?.rank ? `#${rank.rank} of ${rank.of}` : null;
 }
@@ -62,6 +58,7 @@ function Group({ family, data }) {
           <ComparisonRow
             key={stat.key}
             animated
+            compact
             label={family === "Per 100 possessions" ? `${stat.label} per 100` : stat.label}
             tip={stat.tip}
             rawA={a === null ? null : Number(a)}
@@ -87,6 +84,7 @@ export default function ComparePlayerAdvanced({ seasonCode, phaseCode, entityA, 
     queryFn: () => getPlayerAdvanced(seasonCode, entity.id, { scope, extended: true }),
     enabled: Boolean(phaseCode),
   });
+  const [rowA, rowB] = usePlayerRows(seasonCode, phaseCode, entityA, entityB);
   const queryA = useQuery(queryFor(entityA));
   const queryB = useQuery(queryFor(entityB));
   if (queryA.isPending || queryB.isPending) return <AsyncState status="loading" label="Loading the advanced numbers" />;
@@ -111,12 +109,11 @@ export default function ComparePlayerAdvanced({ seasonCode, phaseCode, entityA, 
   return (
     <Panel className="p-3">
       <motion.div variants={denseListContainer} initial="hidden" animate="show">
-        <motion.div variants={listItem} className="mb-4 grid grid-cols-2 gap-4 text-center">
-          <div className="font-semibold">{niceName(entityA.label)}</div>
-          <div className="font-semibold">{niceName(entityB.label)}</div>
+        <motion.div variants={listItem} className="mb-4">
+          <PlayerPairHeader seasonCode={seasonCode} entityA={entityA} entityB={entityB} rowA={rowA} rowB={rowB} />
         </motion.div>
         <motion.p variants={listItem} className="muted mb-2 text-center text-xs">
-          Running values after the latest round. Under each bar: the place among players with enough minutes. Hover a name for what it means.
+          Running values after the latest round. Under each bar: the place among players with enough minutes. Hover or tap a name for what it means.
         </motion.p>
         {ADVANCED_FAMILIES.map((family) => (
           <Group key={family} family={family} data={shown} />

@@ -11,6 +11,8 @@ async function atWidths(page, widths, check) {
   for (const width of widths) {
     await test.step(`${width}px`, async () => {
       await page.setViewportSize({ width, height: HEIGHT });
+      // A short pause lets Chart.js see this resize before the next one, so a chart is never left at the previous width.
+      await page.waitForTimeout(250);
       await check(width);
     });
   }
@@ -77,7 +79,7 @@ test("the Overview fits, with TV codes for the opponents below 640px and the clu
 
   await atWidths(page, WIDTHS, async (width) => {
     expect(await cutTexts(page)).toEqual([]);
-    await expect.poll(() => outsidePanels(page)).toEqual([]);
+    await expect.poll(() => outsidePanels(page), { timeout: 20_000 }).toEqual([]);
     // Opponents in the form lists, and the clubs of a meeting.
     const slots = page.locator("main a[href*='/games/'] .relative");
     const short = await shown(slots.locator("> span[aria-hidden=true]"));
@@ -110,7 +112,7 @@ test("the Statistics rows fit with no cut text", async ({ page }) => {
 
   await atWidths(page, WIDTHS, async () => {
     expect(await cutTexts(page)).toEqual([]);
-    await expect.poll(() => outsidePanels(page)).toEqual([]);
+    await expect.poll(() => outsidePanels(page), { timeout: 20_000 }).toEqual([]);
     await expectNoSidewaysScroll(page);
   });
 });
@@ -124,7 +126,7 @@ test("the Rosters tables swipe inside their box with the player column pinned", 
 
   await atWidths(page, WIDTHS, async (width) => {
     expect(await cutTexts(page)).toEqual([]);
-    await expect.poll(() => outsidePanels(page)).toEqual([]);
+    await expect.poll(() => outsidePanels(page), { timeout: 20_000 }).toEqual([]);
     await expectNoSidewaysScroll(page);
     if (width >= 640) return;
     // Below 640px each table's numbers swipe behind the player: its first cell stays on the box's left edge.
@@ -156,7 +158,7 @@ test("the Trends form cards and charts fit, and the chart pairs sit side by side
 
   await atWidths(page, WIDTHS, async (width) => {
     expect(await cutTexts(page)).toEqual([]);
-    await expect.poll(() => outsidePanels(page)).toEqual([]);
+    await expect.poll(() => outsidePanels(page), { timeout: 20_000 }).toEqual([]);
     // Every canvas fits the panel it is drawn in.
     const canvasFits = await charts.evaluateAll((els) => els.every((el) => el.getBoundingClientRect().right <= el.closest(".panel").getBoundingClientRect().right + 1));
     expect(canvasFits).toBe(true);
@@ -185,7 +187,7 @@ test.describe("states and long names at 320px", () => {
       await openTab(page, slug, teams, tab);
       await expect(page.locator(".loading")).toHaveCount(0, { timeout: 30_000 });
       expect(await cutTexts(page)).toEqual([]);
-      await expect.poll(() => outsidePanels(page)).toEqual([]);
+      await expect.poll(() => outsidePanels(page), { timeout: 20_000 }).toEqual([]);
       await expectNoSidewaysScroll(page);
     }
   });

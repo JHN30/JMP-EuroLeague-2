@@ -298,7 +298,7 @@ export default function CompareRosters({ seasonCode, phaseCode, entityA: pickedA
         <div className="mb-3">
           <p className="eyebrow mb-0.5">ADVANCED</p>
           <h3 className="text-lg font-bold">Most impactful players</h3>
-          <p className="muted mt-1 text-sm">Running values after the latest round. Hover a column for what it means.</p>
+          <p className="muted mt-1 text-sm">Running values after the latest round. Hover or tap a column for what it means.</p>
         </div>
         {impactA.isPending || impactB.isPending ? (
           <AsyncState status="loading" label="Loading the advanced numbers" inline />

@@ -44,8 +44,8 @@ export const STAT_GROUPS = [
       { group: "advanced", field: "defensiveReboundsPercentage", label: "Defensive rebound %", kind: "percent" },
       { group: "advanced", field: "assistsRatio", label: "Assist ratio", kind: "decimal", tip: "Assists per 100 possessions the player used" },
       { group: "advanced", field: "turnoversRatio", label: "Turnover ratio", kind: "decimal", lowerIsBetter: true, tip: "Turnovers per 100 possessions the player used" },
-      { group: "advanced", field: "assistsToTurnoversRatio", label: "Assist to turnover", kind: "decimal" },
-      { group: "advanced", field: "possessions", label: "Possessions", kind: "count" },
+      { group: "advanced", field: "assistsToTurnoversRatio", label: "Assist to turnover", kind: "decimal", tip: "Assists per turnover" },
+      { group: "advanced", field: "possessions", label: "Possessions", kind: "count", tip: "Possessions the player used: shots, free throws and turnovers" },
     ],
   },
   {
@@ -63,8 +63,8 @@ export const STAT_GROUPS = [
     stats: [
       { group: "misc", field: "wins", label: "Team wins when playing", kind: "games", rank: false },
       { group: "misc", field: "losses", label: "Team losses when playing", kind: "games", rank: false },
-      { group: "misc", field: "doubleDoubles", label: "Double-doubles", kind: "games" },
-      { group: "misc", field: "tripleDoubles", label: "Triple-doubles", kind: "games" },
+      { group: "misc", field: "doubleDoubles", label: "Double-doubles", kind: "games", tip: "Games with ten or more in two of points, rebounds, assists, steals and blocks" },
+      { group: "misc", field: "tripleDoubles", label: "Triple-doubles", kind: "games", tip: "Games with ten or more in three of points, rebounds, assists, steals and blocks" },
     ],
   },
 ];

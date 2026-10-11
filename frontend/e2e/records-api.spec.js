@@ -113,6 +113,22 @@ test("an unknown metric answers 400, and the old names still answer as before", 
   expect((await request.get(`${API}/seasons/1999/records/team-games?metric=pointsScored`)).status()).toBe(400);
 });
 
+test("a records route is cached once for every season's address, and an unsupported season still answers 400", async ({ request }) => {
+  const first = await request.get(`${API}/seasons/2025/records/team-seasons?metric=steals`);
+  expect(first.status()).toBe(200);
+  // The same records through another season's address (and in the E-code form) come from the cache with the same body.
+  for (const season of ["2024", "E2023", "2026"]) {
+    const again = await request.get(`${API}/seasons/${season}/records/team-seasons?metric=steals`);
+    expect(again.status(), season).toBe(200);
+    expect(again.headers()["x-cache"], season).toBe("HIT");
+    expect(await again.text(), season).toBe(await first.text());
+  }
+  // A season the API does not support is never served from another season's entry.
+  const unsupported = await request.get(`${API}/seasons/1999/records/team-seasons?metric=steals`);
+  expect(unsupported.status()).toBe(400);
+  expect(unsupported.headers()["x-cache"]).not.toBe("HIT");
+});
+
 test("PER and Win Shares records are qualified players only", async ({ request }) => {
   // The qualified players of each season, as the season statistics list them.
   async function qualifiedKeys(seasonCode) {

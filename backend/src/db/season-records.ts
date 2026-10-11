@@ -3,7 +3,7 @@ import type { PgColumn } from "drizzle-orm/pg-core";
 import { db } from "./client";
 import { gamePlayerAdvanced, gameTeamAdvanced, playerRoundRatings, playerRoundWinShares, standingsStats } from "./season-advanced-schema";
 import { catalogRead, SUPPORTED_SEASONS } from "./season-catalog";
-import { getClubTvCodes, getTeams } from "./season-identities";
+import { getTeams } from "./season-identities";
 import { gamePlayerStats, gameTeamStats, games, seasonStatsTraditional } from "./season-schema";
 import { getSeasonRecordRows, type RecordMetric } from "./season-stats";
 
@@ -102,11 +102,14 @@ function boxColumn(table: typeof gamePlayerStats | typeof gameTeamStats, key: st
   return columns[key];
 }
 
-// Each season's club crests and TV codes, by club code.
+// Each season's club crests and TV codes, by club code, from the season's team list (which already carries the TV codes). A club the list
+// does not have keeps its club code as its TV code and has no crest.
 async function clubLooks(seasonCode: string) {
-  const [teams, codes] = await Promise.all([getTeams(seasonCode), getClubTvCodes(seasonCode)]);
-  const crests = new Map(teams.map((team) => [team.clubCode, team.crestUrl ?? null]));
-  return { crestOf: (clubCode: string | null) => (clubCode ? picture(crests.get(clubCode)) : null), tvCodeOf: (clubCode: string | null) => (clubCode ? (codes.get(clubCode) ?? clubCode) : null) };
+  const teams = new Map((await getTeams(seasonCode)).map((team) => [team.clubCode, team]));
+  return {
+    crestOf: (clubCode: string | null) => (clubCode ? picture(teams.get(clubCode)?.crestUrl) : null),
+    tvCodeOf: (clubCode: string | null) => (clubCode ? (teams.get(clubCode)?.tvCode ?? clubCode) : null),
+  };
 }
 
 // ---- Player seasons ----

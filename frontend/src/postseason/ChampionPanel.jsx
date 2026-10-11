@@ -19,11 +19,11 @@ export default function ChampionPanel({ bracket, seasonLabel }) {
   return (
     <Panel className="relative overflow-hidden p-5">
       <div aria-hidden="true" className="absolute inset-x-0 top-0 h-0.5 bg-primary" />
-      <div className="flex flex-wrap items-center gap-5">
-        {champion.crestUrl ? <RevealImage src={champion.crestUrl} className="h-24 w-24 flex-none object-contain" /> : null}
+      <div className="flex flex-wrap items-center gap-3 sm:gap-5">
+        {champion.crestUrl ? <RevealImage src={champion.crestUrl} className="h-16 w-16 flex-none object-contain sm:h-24 sm:w-24" /> : null}
         <div className="min-w-0">
           <p className="eyebrow mb-1">{seasonLabel ? "CHAMPION · " + seasonLabel.toUpperCase() : "CHAMPION"}</p>
-          <h2 className="text-3xl font-black">{champion.name}</h2>
+          <h2 className="text-2xl font-black wrap-break-word sm:text-3xl">{champion.name}</h2>
           {runnerUp ? (
             <p className="muted mt-1">
               Won the final against {runnerUp.name} {clubScore(finalSlot, champion.clubCode)}-{clubScore(finalSlot, runnerUp.clubCode)}
@@ -40,7 +40,7 @@ export default function ChampionPanel({ bracket, seasonLabel }) {
               {group.clubs.map((club) => (
                 <li key={group.label + club.clubCode} className="flex items-center gap-2 text-sm">
                   {club.crestUrl ? <RevealImage src={club.crestUrl} className="h-5 w-5 flex-none object-contain" /> : <span className="h-5 w-5 flex-none" />}
-                  <span className="truncate font-semibold">{club.short}</span>
+                  <span className="min-w-0 font-semibold wrap-break-word">{club.short}</span>
                   {club.seed ? <span className="muted text-xs">({club.seed})</span> : null}
                 </li>
               ))}

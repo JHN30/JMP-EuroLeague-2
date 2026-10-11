@@ -16,7 +16,7 @@ function Side({ side, slot }) {
     <div className="flex min-w-0 items-center gap-3">
       {side.crestUrl ? <RevealImage src={side.crestUrl} className="h-12 w-12 flex-none object-contain" /> : <span className="h-12 w-12 flex-none" />}
       <div className="min-w-0">
-        <p className={"truncate text-lg " + (won ? "font-black" : "font-bold")}>{side.name}</p>
+        <p className={"wrap-break-word text-lg " + (won ? "font-black" : "font-bold")}>{side.name}</p>
         <p className="muted text-xs tabular-nums">
           {side.seed ? "Regular season: " + side.seed + (side.seed === 1 ? "st" : side.seed === 2 ? "nd" : side.seed === 3 ? "rd" : "th") : ""}
           {side.record ? " (" + side.record + ")" : ""}
@@ -50,7 +50,7 @@ export default function MatchupDetail({ slot, seasonCode }) {
   return (
     <Panel className="p-4">
       <p className="eyebrow mb-0.5">{STAGE_NAMES[slot.stage].toUpperCase() + " · " + slot.label.toUpperCase()}</p>
-      <div className="mb-3 grid gap-3 md:grid-cols-2">
+      <div className="mb-3 grid grid-cols-[minmax(0,1fr)] gap-3 lg:grid-cols-2">
         <Side side={slot.participants[0]} slot={slot} />
         <Side side={slot.participants[1]} slot={slot} />
       </div>
@@ -72,7 +72,7 @@ export default function MatchupDetail({ slot, seasonCode }) {
                     <br />
                     {formatShortDate(game.scheduledAt)}
                   </span>
-                  <span className="min-w-0 truncate text-sm">
+                  <span className="min-w-0 text-sm wrap-break-word">
                     <span className={played && game.localScore > game.roadScore ? "font-bold" : ""}>{local?.short ?? game.localClubCode}</span>{" "}
                     <span className="muted">v</span>{" "}
                     <span className={played && game.roadScore > game.localScore ? "font-bold" : ""}>{road?.short ?? game.roadClubCode}</span>
@@ -92,7 +92,7 @@ export default function MatchupDetail({ slot, seasonCode }) {
         <div className="mt-4">
           <Link
             to={"/" + seasonCode + "/compare?teamA=" + encodeURIComponent(clubs[0].clubCode) + "&teamB=" + encodeURIComponent(clubs[1].clubCode)}
-            className="btn btn-outline btn-sm"
+            className="btn btn-outline btn-sm h-auto min-h-11 py-2 text-left sm:min-h-8 sm:py-1"
           >
             Compare {clubs[0].short} and {clubs[1].short}
           </Link>

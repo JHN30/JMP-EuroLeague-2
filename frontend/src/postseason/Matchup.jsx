@@ -21,7 +21,7 @@ function TeamRow({ slot, side, onSelect, onFocusClub }) {
       onBlur={() => onFocusClub(null)}
       aria-label={side.name + ", " + slot.label}
       className={
-        "flex w-full items-center gap-2 px-3 py-2 text-left transition-colors hover:bg-base-200 " +
+        "flex min-h-11 w-full items-center gap-2 px-3 py-2 text-left transition-colors hover:bg-base-200 sm:min-h-0 " +
         (won ? "bg-success/10 font-bold" : decided ? "opacity-60" : "")
       }
     >
@@ -29,7 +29,7 @@ function TeamRow({ slot, side, onSelect, onFocusClub }) {
         {side.seed ?? ""}
       </span>
       <Crest url={side.crestUrl} />
-      <span className="min-w-0 flex-1 truncate text-sm">{side.short}</span>
+      <span className="min-w-0 flex-1 text-sm max-sm:line-clamp-2 max-sm:wrap-break-word sm:truncate">{side.short}</span>
       {score !== null ? <span className="flex-none text-base font-black tabular-nums">{score}</span> : null}
     </button>
   );
@@ -52,7 +52,7 @@ export default function Matchup({ slot, selected, focusClub, onSelect, onFocusCl
         (involved ? "" : "opacity-35")
       }
     >
-      <div className="flex items-center justify-between gap-2 border-b border-base-300 px-3 py-1">
+      <div className="flex flex-wrap items-center justify-between gap-x-2 border-b border-base-300 px-3 py-1">
         <span className="muted text-[0.7rem] font-bold uppercase tracking-wide">{slot.label}</span>
         <span className="flex items-center gap-1.5 text-[0.7rem]">
           {live ? <span className="badge badge-warning badge-xs">Live</span> : null}
@@ -64,10 +64,10 @@ export default function Matchup({ slot, selected, focusClub, onSelect, onFocusCl
         side.clubCode ? (
           <TeamRow key={side.clubCode} slot={slot} side={side} onSelect={onSelect} onFocusClub={onFocusClub} />
         ) : (
-          <div key={"placeholder-" + index} className="muted flex items-center gap-2 px-3 py-2 text-sm italic">
+          <div key={"placeholder-" + index} className="muted flex min-h-11 items-center gap-2 px-3 py-2 text-sm italic sm:min-h-0">
             <span className="w-6 flex-none" />
             <span className="h-6 w-6 flex-none rounded-full border border-dashed border-base-300" />
-            <span className="truncate">{side.placeholder}</span>
+            <span className="min-w-0 max-sm:wrap-break-word sm:truncate">{side.placeholder}</span>
           </div>
         ),
       )}

@@ -767,6 +767,20 @@ button {
   border-bottom: 1px solid var(--color-base-300);
 }
 
+/* The phone menu on a screen under 37rem (592px) tall: ten rows and the season footer give a few pixels, so the menu fits without
+   scrolling. On a taller screen the rows keep their 44px; the footer's controls keep 44px everywhere. */
+@media (max-height: 37rem) {
+  .site-menu-row {
+    min-height: 2.625rem;
+  }
+  .site-menu-footer {
+    padding-block: 0.5rem;
+  }
+  .site-menu-footer .eyebrow {
+    margin-bottom: 0.25rem;
+  }
+}
+
 /* A tab panel scrolled into view lands below the sticky nav, not under it. */
 .tab-panel {
   scroll-margin-top: calc(var(--app-nav-height) + 1rem);

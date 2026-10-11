@@ -2,7 +2,7 @@ import { test, expect } from "@playwright/test";
 import { HEIGHT, seasonSlug } from "./support/layout";
 
 // The phone menu (below 640px): its list, its animation, its footer, and the logo link to Home.
-const SECTIONS = ["Home", "Overview", "Standings", "Games", "Teams", "Players", "Leaders", "Compare", "Postseason"];
+const SECTIONS = ["Home", "Overview", "Standings", "Games", "Teams", "Players", "Leaders", "Records", "Compare", "Postseason"];
 
 const menuButton = (page) => page.getByRole("button", { name: "Menu" });
 const panel = (page) => page.locator("#site-menu");
@@ -134,12 +134,13 @@ test("from 640px the logo and the wordmark are one link to Home", async ({ page 
   await expect(page).toHaveURL(new RegExp(`/${season}/home$`));
 });
 
-// The open menu on a short phone and on a tall one: all of it is on screen without scrolling.
-for (const size of [{ width: 320, height: 568 }, { width: 390, height: 844 }]) {
+// The open menu on a short phone, a middle one and a tall one: all of it is on screen without scrolling. Its rows are 44px, and 42px on a
+// screen 592px tall or less, where ten of them would not otherwise fit.
+for (const size of [{ width: 320, height: 568 }, { width: 360, height: 640 }, { width: 390, height: 844 }]) {
   test.describe(`${size.width}x${size.height}`, () => {
     test.use({ viewport: size });
 
-    test("the open menu fits the screen: nine tabs, the season picker and the theme switch, without scrolling", async ({ page }) => {
+    test("the open menu fits the screen: ten tabs, the season picker and the theme switch, without scrolling", async ({ page }) => {
       await seasonSlug(page);
       await menuButton(page).click();
       await expect(panel(page)).toBeVisible();
@@ -160,7 +161,7 @@ for (const size of [{ width: 320, height: 568 }, { width: 390, height: 844 }]) {
       const links = page.getByRole("navigation", { name: "Sections" }).getByRole("link");
       await expect(links).toHaveText(SECTIONS);
       const heights = await links.evaluateAll((els) => els.map((el) => Math.round(el.getBoundingClientRect().height)));
-      expect(Math.min(...heights)).toBeGreaterThanOrEqual(44);
+      expect(Math.min(...heights)).toBeGreaterThanOrEqual(size.height <= 592 ? 40 : 44);
       await expectNoSidewaysScroll(page);
     });
 

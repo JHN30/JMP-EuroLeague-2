@@ -4,6 +4,7 @@ import { NavLink, useLocation, useParams } from "react-router";
 import { EASE_OUT } from "../lib/motion";
 import { usePrefersReducedMotion } from "../lib/usePrefersReducedMotion";
 import IconArrowsExchange from "@tabler/icons-react/dist/esm/icons/IconArrowsExchange.mjs";
+import IconAward from "@tabler/icons-react/dist/esm/icons/IconAward.mjs";
 import IconBallBasketball from "@tabler/icons-react/dist/esm/icons/IconBallBasketball.mjs";
 import IconChartBar from "@tabler/icons-react/dist/esm/icons/IconChartBar.mjs";
 import IconHome from "@tabler/icons-react/dist/esm/icons/IconHome.mjs";
@@ -16,7 +17,7 @@ import { TABS } from "./sections";
 
 const MENU_ID = "site-menu";
 
-// The icon before each tab's label, by the tab's path. Each icon is imported from its own file so the bundle holds only these nine; a
+// The icon before each tab's label, by the tab's path. Each icon is imported from its own file so the bundle holds only these ten; a
 // tab without one shows its label alone.
 const TAB_ICONS = {
   home: IconHome,
@@ -26,6 +27,7 @@ const TAB_ICONS = {
   teams: IconUsersGroup,
   players: IconUserCircle,
   leaders: IconChartBar,
+  records: IconAward,
   compare: IconArrowsExchange,
   postseason: IconTrophy,
 };
@@ -137,7 +139,7 @@ export default function SiteMenu({ children }) {
                       to={`/${seasonCode}/${tab.path}`}
                       onClick={() => setOpen(false)}
                       className={({ isActive }) =>
-                        `relative flex min-h-11 items-center gap-3 px-4 text-base font-semibold before:absolute before:inset-y-2 before:left-0 before:w-1 before:rounded-full ${
+                        `site-menu-row relative flex min-h-11 items-center gap-3 px-4 text-base font-semibold before:absolute before:inset-y-2 before:left-0 before:w-1 before:rounded-full ${
                           isActive ? "bg-primary/10 text-primary before:bg-primary" : "hover:bg-base-300"
                         }`
                       }
@@ -153,7 +155,7 @@ export default function SiteMenu({ children }) {
                   );
                 })}
               </motion.nav>
-              <div className="border-t border-base-300 p-3">
+              <div className="site-menu-footer border-t border-base-300 p-3">
                 <p aria-hidden="true" className="eyebrow mb-2">
                   Season
                 </p>

@@ -8,6 +8,7 @@ const TABS = [
   { name: "Teams", path: "teams" },
   { name: "Players", path: "players" },
   { name: "Leaders", path: "leaders" },
+  { name: "Records", path: "records" },
   { name: "Compare", path: "compare" },
   { name: "Postseason", path: "postseason" },
 ];
@@ -19,6 +20,8 @@ test("every section has its own address and a tab title of the form 'Page | JMP 
     await sections.getByRole("link", { name: tab.name, exact: true }).click();
     await expect(page).toHaveURL(new RegExp("/2025/" + tab.path + "$"));
     await expect(page).toHaveTitle(tab.name + " | JMP EuroLeague");
+    // The tab of the page being shown is the current one, Records included.
+    await expect(sections.getByRole("link", { name: tab.name, exact: true })).toHaveAttribute("aria-current", "page");
   }
 });
 

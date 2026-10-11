@@ -34,7 +34,7 @@ Users should not need an account or specialist analytics knowledge. The main exp
 - League leaders for players, teams and advanced statistics, opening on category cards with full leaderboards and filters
 - Team and player comparison: the coming round's games to start from, an overview, the full statistics, rosters, advanced numbers and trend charts
 - A Postseason page with the Play-In, Playoffs and Final Four bracket and results, a labelled projection of the bracket from the standings before it is played, the race for the places, and the champion once decided
-- Navigation that exposes the Postseason view alongside the existing season-scoped pages
+- Navigation that exposes the Postseason and Records views alongside the existing season-scoped pages
 - Responsive loading, empty, unavailable, and error states for every data-driven page
 - Visible notes for known official corrections, anomalies, and incomplete current-season data
 

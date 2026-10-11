@@ -147,7 +147,7 @@ for (const width of MOBILE_WIDTHS) {
 
       await menu.click();
       await expect(menu).toHaveAttribute("aria-expanded", "true");
-      await expect(sections.getByRole("link")).toHaveCount(9);
+      await expect(sections.getByRole("link")).toHaveCount(10);
       await expect(page.getByRole("combobox", { name: "Selected season" })).toBeVisible();
       await expect(page.getByRole("button", { name: /^Switch to/ })).toBeVisible();
       expect((await header.boundingBox()).height).toBe(48);
@@ -192,7 +192,7 @@ for (const width of MOBILE_WIDTHS) {
       await menu.click();
       await page.setViewportSize({ width: 640, height: HEIGHT });
       await expect(menu).toBeHidden();
-      await expect(page.getByRole("navigation", { name: "Sections" }).getByRole("link")).toHaveCount(9);
+      await expect(page.getByRole("navigation", { name: "Sections" }).getByRole("link")).toHaveCount(10);
     });
   });
 }
@@ -228,16 +228,18 @@ for (const width of TABLET_AND_UP_WIDTHS) {
   test.describe(`${width}px header`, () => {
     test.use({ viewport: { width, height: HEIGHT } });
 
-    test("keeps the nine tabs on one row under the season picker and theme switch", async ({ page }) => {
+    test("keeps the ten tabs on one row, without scrolling, under the season picker and theme switch", async ({ page }) => {
       await seasonSlug(page);
       const sections = page.getByRole("navigation", { name: "Sections" });
       const links = sections.getByRole("link");
 
       await expect(page.getByRole("button", { name: "Menu" })).toBeHidden();
       await expect(sections).toHaveCount(1);
-      await expect(links).toHaveCount(9);
+      await expect(links).toHaveCount(10);
       const tops = await links.evaluateAll((els) => els.map((el) => Math.round(el.getBoundingClientRect().top)));
       expect(new Set(tops).size).toBe(1);
+      // The row fits: a few pixels too many for the width would leave it scrolling sideways.
+      expect(await sections.locator(".tabs").evaluate((el) => el.scrollWidth <= el.clientWidth)).toBe(true);
       expect((await page.getByRole("banner").boundingBox()).height).toBe(88);
 
       const picker = await page.getByRole("combobox", { name: "Selected season" }).boundingBox();

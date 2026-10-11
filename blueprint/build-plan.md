@@ -195,6 +195,9 @@ Scaffolding, shared layout, design tokens, database connection setup, and deploy
 - [x] 32. **Club TV codes** - Show each club's TV code (the code in use that season, such as FBT for Fenerbahce; the club code is the permanent ID and can look outdated) as the short club label wherever a full name does not fit. Each page after 31f uses it in its own item (31g to 31n); the finished pages are done in 32b.
   - [x] 32a. **TV code in the API** - Every team the API returns (games, teams, standings, leaders, compare and the rest) carries a `tvCode`: the club's TV code from the season's latest standings row, falling back to its abbreviated name and then its club code when the standings have none. No new table or endpoint.
   - [x] 32b. **TV code on the finished pages** - Home, Season overview, Standings, Games and Game detail show the TV code instead of the abbreviated name or club code where a label is too narrow for the full name, checked page by page. Full names stay where they fit.
+- [ ] 33. **Records page rework** - Rework `/:season/records` per direct user request, desktop first, then mobile (31m): the page has had no polish or animation since 17h and no link to it anywhere.
+  - [x] 33a. **Records in the navigation** - A "Records" tab between Leaders and Compare in the desktop nav and the phone menu (with an icon), the nav still fitting at 1024px and the phone menu still fitting a 320x568 phone without scrolling (a few pixels saved from the paddings and gaps first, then from the rows; scrolling only when it truly must).
+  - [ ] 33b. **Desktop polish** - Rebuild the page on the shared page pieces (record-type tabs, tips, animations as on Leaders and Compare), with the podium, top-50, progression and best-by-season views polished for desktop; no data change. Its mobile and tablet layouts are 31m.
 
 ## Deferred beyond Phase 1
 

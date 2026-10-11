@@ -249,7 +249,8 @@ export async function getStandings(
   return rows.map((row) => ({
     clubCode: row.clubCode,
     clubName: row.clubName,
-    clubTvCode: row.clubTvCode,
+    // A club the source codes no TV label for (Union Olimpija in 2000-01) goes by its club code, as in the advanced standings.
+    clubTvCode: row.clubTvCode?.trim() || row.clubCode,
     crestUrl: row.crestUrl,
     groupName: row.groupName,
     basic: presentOrNull(row.basic),

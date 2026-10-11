@@ -138,3 +138,11 @@ test("a player's registrations name their club with its TV code", async ({ page 
     expect(registration.team.tvCode).toBe(codes.get(registration.team.clubCode));
   }
 });
+
+// In 2000-01 the source codes no TV label for Union Olimpija: its standings row falls back to the club code instead of null.
+test("every standings row of 2000-01 has a TV code, a club the source does not code going by its club code", async ({ page }) => {
+  const { standings } = await get(page, "/2000/phases/RS/standings");
+  expect(standings.length).toBeGreaterThan(10);
+  for (const entry of standings) expect(filled(entry.clubTvCode), entry.clubCode).toBe(true);
+  expect(standings.find((entry) => entry.clubCode === "LJU")?.clubTvCode).toBe("LJU");
+});

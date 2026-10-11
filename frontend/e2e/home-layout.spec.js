@@ -164,3 +164,14 @@ test.describe("form trend", () => {
       .toBe(true);
   });
 });
+
+// An older season has no player photos: a leaders card shows a silhouette in the photo's place, so it keeps its shape.
+test("2004: a leaders card without a photo shows a silhouette in its place", async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: HEIGHT });
+  await page.goto("/2004/home");
+  const row = page.getByRole("group", { name: /leaders$/ }).first();
+  await expect(row.getByRole("link")).toHaveCount(4, { timeout: 30_000 });
+  // Every card has a photo or the silhouette, never neither.
+  await expect(row.locator("img.kpi-chip-image, [data-testid=leader-photo-placeholder]")).toHaveCount(4);
+  await expect(row.locator("[data-testid=leader-photo-placeholder]").first()).toBeVisible();
+});

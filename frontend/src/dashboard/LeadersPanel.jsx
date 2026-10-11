@@ -10,7 +10,7 @@ import { useCurrentPhaseCode } from "../lib/useCurrentPhaseCode";
 import Panel from "../lib/Panel";
 import PanelHeader from "../lib/PanelHeader";
 import { withoutComma } from "../lib/playerName";
-import RevealImage from "../lib/RevealImage";
+import LeaderPhoto from "../lib/LeaderPhoto";
 
 const MotionLink = motion.create(Link);
 
@@ -55,9 +55,7 @@ function StatLeaderCard({ seasonCode, category, phaseCode }) {
         <span className="club">{leader.clubName ?? leader.clubCode}</span>
         <span className="value">{leader.traditional[category.key] ?? "-"}</span>
       </div>
-      {leader.playerImageUrl ? (
-        <RevealImage src={leader.playerImageUrl} effect="wipe" className="kpi-chip-image" />
-      ) : null}
+      <LeaderPhoto imageUrl={leader.playerImageUrl} />
     </MotionLink>
   );
 }

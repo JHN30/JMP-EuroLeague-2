@@ -207,3 +207,11 @@ for (const season of [undefined, FINISHED]) {
     });
   });
 }
+
+// An older season has no player photos: a leader card shows a silhouette in the photo's place, so it keeps its shape.
+test("2004: a leaders card without a photo shows a silhouette in its place", async ({ page }) => {
+  await openOverview(page, "2004", { summary: false });
+  const row = page.getByRole("group", { name: /leaders$/ }).first();
+  await expect(row.locator("img.kpi-chip-image, [data-testid=leader-photo-placeholder]")).toHaveCount(6);
+  await expect(row.locator("[data-testid=leader-photo-placeholder]").first()).toBeVisible();
+});

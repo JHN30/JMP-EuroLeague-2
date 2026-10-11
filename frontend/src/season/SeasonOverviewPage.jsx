@@ -10,7 +10,7 @@ import { withoutComma } from "../lib/playerName";
 import Panel from "../lib/Panel";
 import PanelHeader from "../lib/PanelHeader";
 import PageHeader from "../lib/PageHeader";
-import RevealImage from "../lib/RevealImage";
+import LeaderPhoto from "../lib/LeaderPhoto";
 import { useDocumentTitle } from "../lib/useDocumentTitle";
 import { useCurrentPhaseCode } from "../lib/useCurrentPhaseCode";
 import { useMediaQuery } from "../lib/useMediaQuery";
@@ -544,9 +544,7 @@ function LeaderCard({ seasonCode, category, phaseCode }) {
         <span className="club">{leader.clubName ?? leader.clubCode}</span>
         <span className="value">{leader.traditional[category.key] ?? "-"}</span>
       </div>
-      {leader.playerImageUrl ? (
-        <RevealImage src={leader.playerImageUrl} effect="wipe" className="kpi-chip-image" />
-      ) : null}
+      <LeaderPhoto imageUrl={leader.playerImageUrl} />
     </MotionLink>
   );
 }

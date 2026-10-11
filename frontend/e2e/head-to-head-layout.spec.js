@@ -325,6 +325,33 @@ test("the loading, error, empty and nothing-chosen states fit at 320px", async (
   await expectNoSidewaysScroll(page);
 });
 
+// The error state is one block across the page's content width with the message and Retry centred in it, and Retry is a full touch target.
+test("the error fills the content width, centred, with a full-size Retry that loads the page again", async ({ page }) => {
+  test.setTimeout(120_000);
+  let failing = true;
+  await mockApi(page, { games: "error" });
+  // Once Retry is pressed the games load.
+  await page.route("**/api/seasons/*/teams/*/games*", (route) => (failing ? route.fallback() : route.fulfill({ json: { games: meetingsOf("E2025"), pagination: { limit: 100, offset: 0, total: 40, hasMore: false } } })));
+  await page.goto(OPEN);
+  const alert = page.getByRole("alert").filter({ hasText: "Could not load head-to-head history." });
+  await expect(alert).toBeVisible({ timeout: 45_000 });
+  await atWidths(page, [1280, 390, 320], async (width) => {
+    const box = await alert.boundingBox();
+    const main = await page.locator("main").boundingBox();
+    // As wide as the content, not a narrow strip in a corner.
+    expect(box.width).toBeGreaterThan(main.width * 0.9);
+    // Centred in its own box: the button's middle is the block's middle.
+    const retry = await alert.getByRole("button", { name: "Retry" }).boundingBox();
+    expect(Math.abs(retry.x + retry.width / 2 - (box.x + box.width / 2))).toBeLessThan(2);
+    expect(retry.height).toBeGreaterThanOrEqual(44);
+    if (width < 640) expect(retry.width).toBeGreaterThan(box.width * 0.7);
+    await expectNoSidewaysScroll(page);
+  });
+  failing = false;
+  await alert.getByRole("button", { name: "Retry" }).click();
+  await expect(page.getByText(/completed meetings/)).toBeVisible({ timeout: 45_000 });
+});
+
 test.describe("on a touch screen", () => {
   test.use({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true });
 

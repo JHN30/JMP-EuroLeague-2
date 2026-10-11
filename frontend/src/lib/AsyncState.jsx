@@ -1,3 +1,4 @@
+import IconAlertTriangle from "@tabler/icons-react/dist/esm/icons/IconAlertTriangle.mjs";
 import EmptyText from "./EmptyText";
 
 export default function AsyncState({
@@ -8,7 +9,7 @@ export default function AsyncState({
   inline = false,
   fullScreen = false,
   compact = false,
-  errorClassName = "max-w-md",
+  errorClassName = "",
   children,
 }) {
   if (status === "ready") return children;
@@ -37,14 +38,25 @@ export default function AsyncState({
   }
 
   if (status === "error") {
-    const alert = (
+    const retry = onRetry ? (
+      <button type="button" className={compact ? "btn btn-sm" : "btn btn-primary min-h-11 w-full sm:w-auto"} onClick={onRetry}>
+        Retry
+      </button>
+    ) : null;
+    // A section card keeps the small alert so the card does not grow; a page or a big block gets the full panel, centred in its width.
+    const alert = compact ? (
       <div role="alert" className={`alert alert-error ${errorClassName}`}>
         <span>{message}</span>
-        {onRetry ? (
-          <button type="button" className="btn btn-sm" onClick={onRetry}>
-            Retry
-          </button>
-        ) : null}
+        {retry}
+      </div>
+    ) : (
+      <div
+        role="alert"
+        className={`mx-auto flex w-full flex-col items-center gap-4 rounded-box border border-error/40 border-t-error border-t-2 bg-base-100 px-4 py-8 text-center sm:px-8 ${fullScreen ? "max-w-md" : ""} ${errorClassName}`}
+      >
+        <IconAlertTriangle aria-hidden="true" className="size-9 text-error" stroke={1.75} />
+        <p className="wrap-break-word text-base font-semibold">{message}</p>
+        {retry}
       </div>
     );
     if (!fullScreen) return alert;

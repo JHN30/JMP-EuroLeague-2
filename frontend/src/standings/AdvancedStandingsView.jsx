@@ -16,7 +16,7 @@ import { AnimatedBody, AnimatedRow } from "./motionTable";
 import ScrollingTable from "./ScrollingTable";
 import { ClubCell } from "./standingsCells";
 
-const SCOPE_LABELS = { RS: "Regular season", all: "All games", PS: "Postseason" };
+const SCOPE_LABELS = { RS: "Regular season", TS: "Top 16", all: "All games", PS: "Postseason" };
 
 // Each view is a few groups of columns. A column is a label, a short tip, and how to show its value for one club.
 const count = (key) => (entry) => entry[key] ?? "—";

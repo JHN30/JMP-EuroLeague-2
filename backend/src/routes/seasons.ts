@@ -25,6 +25,8 @@ import {
 } from "../db/season-identities";
 import { getBoxScore, getGame, getGames, getLeagueTeamStats, getPhaseResults, getPlayByPlay, getPlayerGameLog, getPlayerShots, getPostseasonSeries, getShots, getTeamGames, getTeamStatsSummary } from "../db/season-games";
 import { getCoverage } from "../db/season-coverage";
+import { getSeasonFormat } from "../db/season-format";
+import { seasonScopes, seasonStageCodes } from "../db/season-format-registry";
 import { getLatestStandingsRound, getStandings } from "../db/season-standings";
 import {
   getGameAdvanced,
@@ -147,18 +149,32 @@ function requestedRound(req: Request, res: Response): { round: number | undefine
   return { round };
 }
 
-const ADVANCED_SCOPES = ["RS", "all", "PS"];
-const SEASON_STATS_PHASES = ["RS", "PI", "PO", "FF", "all"];
+// The codes the competition knows. Which of them a season accepts comes from its format (db/season-format-registry.ts): a
+// known code the season never held answers 404 PHASE_NOT_IN_SEASON, an unknown one keeps its 400 or 404.
+const ADVANCED_SCOPES = ["RS", "TS", "all", "PS"];
+const STAGE_CODES = ["RS", "TS", "PI", "PO", "FF"];
+const SEASON_STATS_PHASES = ["RS", "TS", "PI", "PO", "FF", "all"];
+
+// False (with the 404 sent) when `code` is a phase or scope the competition knows but this season's format does not hold.
+function inSeasonFormat(seasonCode: string, code: string, res: Response): boolean {
+  const held: string[] = [...seasonStageCodes(seasonCode), ...seasonScopes(seasonCode)];
+  const known = STAGE_CODES.includes(code) || ADVANCED_SCOPES.includes(code);
+  if (known && !held.includes(code)) {
+    sendError(res, 404, "PHASE_NOT_IN_SEASON", "Phase not in this season's format");
+    return false;
+  }
+  return true;
+}
 const SEASON_STATS_MODES = ["accumulated", "perGame"];
 
-function requestedStatsPhase(req: Request, res: Response): string | null {
+function requestedStatsPhase(req: Request, res: Response, seasonCode: string): string | null {
   const value = req.query.phase;
   if (value === undefined) return "all";
   if (typeof value !== "string" || !SEASON_STATS_PHASES.includes(value)) {
     sendError(res, 400, "INVALID_PHASE", "Invalid phase");
     return null;
   }
-  return value;
+  return inSeasonFormat(seasonCode, value, res) ? value : null;
 }
 
 function requestedStatsMode(req: Request, res: Response): string | null {
@@ -255,8 +271,9 @@ seasonRouter.get("/:seasonCode/phases", async (req, res) => {
 seasonRouter.get("/:seasonCode/phases/:phaseCode/rounds", async (req, res) => {
   const season = await requestedSeason(req, res);
   if (!season) return;
-  const phases = await getPhases(season.seasonCode);
   const phaseCode = req.params.phaseCode;
+  if (typeof phaseCode === "string" && !inSeasonFormat(season.seasonCode, phaseCode, res)) return;
+  const phases = await getPhases(season.seasonCode);
   if (typeof phaseCode !== "string" || !phases.some((phase) => phase.code === phaseCode)) {
     sendError(res, 404, "PHASE_NOT_FOUND", "Phase not found");
     return;
@@ -267,8 +284,9 @@ seasonRouter.get("/:seasonCode/phases/:phaseCode/rounds", async (req, res) => {
 seasonRouter.get("/:seasonCode/phases/:phaseCode/standings", async (req, res) => {
   const season = await requestedSeason(req, res);
   if (!season) return;
-  const phases = await getPhases(season.seasonCode);
   const phaseCode = req.params.phaseCode;
+  if (typeof phaseCode === "string" && !inSeasonFormat(season.seasonCode, phaseCode, res)) return;
+  const phases = await getPhases(season.seasonCode);
   if (typeof phaseCode !== "string" || !phases.some((phase) => phase.code === phaseCode)) {
     sendError(res, 404, "PHASE_NOT_FOUND", "Phase not found");
     return;
@@ -298,8 +316,9 @@ seasonRouter.get("/:seasonCode/phases/:phaseCode/standings", async (req, res) =>
 seasonRouter.get("/:seasonCode/phases/:phaseCode/results", async (req, res) => {
   const season = await requestedSeason(req, res);
   if (!season) return;
-  const phases = await getPhases(season.seasonCode);
   const phaseCode = req.params.phaseCode;
+  if (typeof phaseCode === "string" && !inSeasonFormat(season.seasonCode, phaseCode, res)) return;
+  const phases = await getPhases(season.seasonCode);
   if (typeof phaseCode !== "string" || !phases.some((phase) => phase.code === phaseCode)) {
     sendError(res, 404, "PHASE_NOT_FOUND", "Phase not found");
     return;
@@ -310,7 +329,7 @@ seasonRouter.get("/:seasonCode/phases/:phaseCode/results", async (req, res) => {
 seasonRouter.get("/:seasonCode/advanced/game-flow", async (req, res) => {
   const season = await requestedSeason(req, res);
   if (!season) return;
-  const scope = requestedAdvancedScope(req, res);
+  const scope = requestedAdvancedScope(req, res, season.seasonCode);
   if (scope === null) return;
   const requestedScope = scope ?? "RS";
   res.json({ scope: requestedScope, clubs: await getGameFlow(season.seasonCode, requestedScope) });
@@ -319,17 +338,14 @@ seasonRouter.get("/:seasonCode/advanced/game-flow", async (req, res) => {
 seasonRouter.get("/:seasonCode/advanced/standings", async (req, res) => {
   const season = await requestedSeason(req, res);
   if (!season) return;
-  const scopeValue = req.query.scope;
-  if (scopeValue !== undefined && (typeof scopeValue !== "string" || !ADVANCED_SCOPES.includes(scopeValue))) {
-    sendError(res, 400, "INVALID_SCOPE", "Invalid scope");
-    return;
-  }
+  const scopeValue = requestedAdvancedScope(req, res, season.seasonCode);
+  if (scopeValue === null) return;
   const requested = requestedRound(req, res);
   if (!requested) return;
 
   // Only scopes with rows are offered, so a season never shows an empty scope.
   const available = new Set(await getStatsScopes(season.seasonCode));
-  const scopes = ADVANCED_SCOPES.filter((code) => available.has(code));
+  const scopes = seasonScopes(season.seasonCode).filter((code) => available.has(code));
   const scope = scopeValue ?? scopes[0];
   if (scope === undefined || !available.has(scope)) {
     res.json({ scope: scope ?? null, scopes, round: null, rounds: [], standings: [] });
@@ -379,7 +395,7 @@ seasonRouter.get("/:seasonCode/advanced/leaders", async (req, res) => {
     sendError(res, 400, "INVALID_QUERY", "Invalid metric");
     return;
   }
-  const scopeValue = requestedAdvancedScope(req, res);
+  const scopeValue = requestedAdvancedScope(req, res, season.seasonCode);
   if (scopeValue === null) return;
   const order = req.query.order === undefined ? "desc" : req.query.order;
   if (order !== "asc" && order !== "desc") {
@@ -392,7 +408,7 @@ seasonRouter.get("/:seasonCode/advanced/leaders", async (req, res) => {
     getStatsRounds(season.seasonCode, "all"),
     getTeams(season.seasonCode),
   ]);
-  const scopes = ADVANCED_SCOPES.filter((code) => available.includes(code));
+  const scopes = seasonScopes(season.seasonCode).filter((code) => available.includes(code));
   const earlySeason = allRounds.length < EARLY_SEASON_ROUNDS;
   const defaultMinMinutes = earlySeason ? EARLY_SEASON_MIN_MINUTES : (LEADER_DEFAULT_MIN_MINUTES[metric] ?? LEADER_DEFAULT_MIN_MINUTES.per);
   const minMinutes = pageParameter(req.query.minMinutes, defaultMinMinutes, 0, 3000);
@@ -492,7 +508,7 @@ function requestedPersonKeyFilter(req: Request, res: Response): string | undefin
   return value;
 }
 
-const FORM_PHASES = ["RS", "PI", "PO", "FF"];
+const FORM_PHASES = STAGE_CODES;
 
 // Who is hot and who has moved: every qualified player's per-game numbers over their last N games and over the phase, and
 // their rank on each stat now and before the latest round. `games` is the length of "hot right now" (default 5).
@@ -504,6 +520,7 @@ seasonRouter.get("/:seasonCode/leaders/form", async (req, res) => {
     sendError(res, 400, "INVALID_PHASE", "Invalid phase");
     return;
   }
+  if (!inSeasonFormat(season.seasonCode, phase, res)) return;
   const games = pageParameter(req.query.games, 5, 1, 20);
   if (games === null) {
     sendError(res, 400, "INVALID_QUERY", "Invalid number of games");
@@ -516,7 +533,7 @@ seasonRouter.get("/:seasonCode/leaders/form", async (req, res) => {
 seasonRouter.get("/:seasonCode/season-stats", async (req, res) => {
   const season = await requestedSeason(req, res);
   if (!season) return;
-  const phase = requestedStatsPhase(req, res);
+  const phase = requestedStatsPhase(req, res, season.seasonCode);
   if (phase === null) return;
   const mode = requestedStatsMode(req, res);
   if (mode === null) return;
@@ -648,8 +665,9 @@ seasonRouter.get("/:seasonCode/teams/:clubCode/team-stats", async (req, res) => 
     sendError(res, 404, "TEAM_NOT_FOUND", "Team not found");
     return;
   }
-  const phases = await getPhases(season.seasonCode);
   const phaseCode = req.query.phase;
+  if (typeof phaseCode === "string" && !inSeasonFormat(season.seasonCode, phaseCode, res)) return;
+  const phases = await getPhases(season.seasonCode);
   if (typeof phaseCode !== "string" || !phases.some((phase) => phase.code === phaseCode)) {
     sendError(res, 404, "PHASE_NOT_FOUND", "Phase not found");
     return;
@@ -661,8 +679,9 @@ seasonRouter.get("/:seasonCode/teams/:clubCode/team-stats", async (req, res) => 
 seasonRouter.get("/:seasonCode/team-stats", async (req, res) => {
   const season = await requestedSeason(req, res);
   if (!season) return;
-  const phases = await getPhases(season.seasonCode);
   const phaseCode = req.query.phase;
+  if (typeof phaseCode === "string" && !inSeasonFormat(season.seasonCode, phaseCode, res)) return;
+  const phases = await getPhases(season.seasonCode);
   if (typeof phaseCode !== "string" || !phases.some((phase) => phase.code === phaseCode)) {
     sendError(res, 404, "PHASE_NOT_FOUND", "Phase not found");
     return;
@@ -670,14 +689,14 @@ seasonRouter.get("/:seasonCode/team-stats", async (req, res) => {
   res.json(await getLeagueTeamStats(season.seasonCode, phaseCode));
 });
 
-function requestedAdvancedScope(req: Request, res: Response): string | undefined | null {
+function requestedAdvancedScope(req: Request, res: Response, seasonCode: string): string | undefined | null {
   const value = req.query.scope;
   if (value === undefined) return undefined;
   if (typeof value !== "string" || !ADVANCED_SCOPES.includes(value)) {
     sendError(res, 400, "INVALID_SCOPE", "Invalid scope");
     return null;
   }
-  return value;
+  return inSeasonFormat(seasonCode, value, res) ? value : null;
 }
 
 // The advanced figures of a club's players (PER, Win Shares, Win Shares per 40, usage, true shooting, PIE, game score) as they
@@ -690,7 +709,7 @@ seasonRouter.get("/:seasonCode/teams/:clubCode/players-advanced", async (req, re
     sendError(res, 400, "INVALID_TEAM_CODE", "Invalid team code");
     return;
   }
-  const scopeValue = requestedAdvancedScope(req, res);
+  const scopeValue = requestedAdvancedScope(req, res, season.seasonCode);
   if (scopeValue === null) return;
   if (!await getTeam(season.seasonCode, clubCode)) {
     sendError(res, 404, "TEAM_NOT_FOUND", "Team not found");
@@ -714,7 +733,7 @@ seasonRouter.get("/:seasonCode/teams/:clubCode/advanced", async (req, res) => {
     sendError(res, 400, "INVALID_TEAM_CODE", "Invalid team code");
     return;
   }
-  const scopeValue = requestedAdvancedScope(req, res);
+  const scopeValue = requestedAdvancedScope(req, res, season.seasonCode);
   if (scopeValue === null) return;
   if (!await getTeam(season.seasonCode, clubCode)) {
     sendError(res, 404, "TEAM_NOT_FOUND", "Team not found");
@@ -722,7 +741,7 @@ seasonRouter.get("/:seasonCode/teams/:clubCode/advanced", async (req, res) => {
   }
 
   const available = new Set(await getTeamStatsScopes(season.seasonCode, clubCode));
-  const scopes = ADVANCED_SCOPES.filter((code) => available.has(code));
+  const scopes = seasonScopes(season.seasonCode).filter((code) => available.has(code));
   const scope = scopeValue ?? scopes[0];
   if (scope === undefined || !available.has(scope)) {
     res.json({ scope: scope ?? null, scopes, trend: [], splits: null, pbp: null, zones: [] });
@@ -771,7 +790,7 @@ seasonRouter.get("/:seasonCode/teams/:clubCode/lineups", async (req, res) => {
     sendError(res, 400, "INVALID_TEAM_CODE", "Invalid team code");
     return;
   }
-  const scope = requestedAdvancedScope(req, res);
+  const scope = requestedAdvancedScope(req, res, season.seasonCode);
   if (scope === null) return;
   const size = pageParameter(req.query.size, 5, 2, 5);
   if (size === null || !LINEUP_SIZES.includes(size)) {
@@ -934,7 +953,7 @@ seasonRouter.get("/:seasonCode/players/:personKey/advanced", async (req, res) =>
     sendError(res, 400, "INVALID_PLAYER_KEY", "Invalid player key");
     return;
   }
-  const scopeValue = requestedAdvancedScope(req, res);
+  const scopeValue = requestedAdvancedScope(req, res, season.seasonCode);
   if (scopeValue === null) return;
   if (!await getPlayer(season.seasonCode, personKey)) {
     sendError(res, 404, "PLAYER_NOT_FOUND", "Player not found");
@@ -942,7 +961,7 @@ seasonRouter.get("/:seasonCode/players/:personKey/advanced", async (req, res) =>
   }
 
   const available = new Set(await getPlayerStatsScopes(season.seasonCode, personKey));
-  const scopes = ADVANCED_SCOPES.filter((code) => available.has(code));
+  const scopes = seasonScopes(season.seasonCode).filter((code) => available.has(code));
   const scope = scopeValue ?? scopes[0];
   const [seasonRounds, rapmRows] = await Promise.all([
     getStatsRounds(season.seasonCode, "all"),
@@ -1043,6 +1062,7 @@ seasonRouter.get("/:seasonCode/players/:personKey/shots", async (req, res) => {
     sendError(res, 400, "INVALID_PHASE", "Invalid phase");
     return;
   }
+  if (!inSeasonFormat(season.seasonCode, phase, res)) return;
   if (!await getPlayer(season.seasonCode, personKey)) {
     sendError(res, 404, "PLAYER_NOT_FOUND", "Player not found");
     return;
@@ -1096,6 +1116,7 @@ seasonRouter.get("/:seasonCode/games", async (req, res) => {
 
   let phaseCode: string | undefined;
   if (phaseValue !== undefined) {
+    if (!inSeasonFormat(season.seasonCode, phaseValue, res)) return;
     const phases = await getPhases(season.seasonCode);
     if (!phases.some((phase) => phase.code === phaseValue)) {
       sendError(res, 404, "PHASE_NOT_FOUND", "Phase not found");
@@ -1269,6 +1290,19 @@ seasonRouter.get("/:seasonCode/games/:gameCode/shots", async (req, res) => {
     return;
   }
   res.json(await getShots(season.seasonCode, gameCode));
+});
+
+// The season's competition format (stages, groups, qualification, win targets, exceptions) with each stage's loaded data and
+// any place where the data contradicts the format.
+seasonRouter.get("/:seasonCode/format", async (req, res) => {
+  const season = await requestedSeason(req, res);
+  if (!season) return;
+  const format = await getSeasonFormat(season.seasonCode);
+  if (!format) {
+    sendError(res, 404, "SEASON_NOT_FOUND", "Season not found");
+    return;
+  }
+  res.json({ format });
 });
 
 seasonRouter.get("/:seasonCode/postseason-series", async (req, res) => {

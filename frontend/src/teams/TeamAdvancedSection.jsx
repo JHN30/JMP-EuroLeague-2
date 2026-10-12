@@ -12,7 +12,7 @@ import { TabPanel, TabStrip } from "../lib/TabStrip";
 import RatingsChart from "./RatingsChart";
 import { fetchTeamRosterStats } from "./teamRosterStats";
 
-const SCOPE_LABELS = { RS: "Regular season", all: "All games", PS: "Postseason" };
+const SCOPE_LABELS = { RS: "Regular season", TS: "Top 16", all: "All games", PS: "Postseason" };
 const EM_DASH = "—";
 
 const LINEUP_TABS = [

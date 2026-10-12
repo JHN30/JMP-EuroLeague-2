@@ -17,7 +17,7 @@ import { ordinal, rankTier } from "../teams/teamLeague";
 import AdvancedGauge, { VerdictPill } from "./AdvancedGauge";
 import { verdictFor } from "./advancedVerdict";
 
-const SCOPE_LABELS = { RS: "Regular season", all: "All games", PS: "Postseason" };
+const SCOPE_LABELS = { RS: "Regular season", TS: "Top 16", all: "All games", PS: "Postseason" };
 const EM_DASH = "—";
 
 // Samples below these are hidden. On/off is raw (a player's on-court stints against his club's other stints),

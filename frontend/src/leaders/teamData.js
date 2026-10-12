@@ -84,7 +84,7 @@ export function formatTeamValue(stat, value, mode) {
 export function useTeamRows(seasonCode, phaseCode) {
   const scope = advancedScopeForPhase(phaseCode);
   const statsQuery = useQuery({ queryKey: ["league-team-stats", seasonCode, phaseCode], queryFn: () => getLeagueTeamStats(seasonCode, phaseCode), enabled: Boolean(phaseCode) });
-  const advancedQuery = useQuery({ queryKey: ["advanced-standings-team-overview", seasonCode, scope], queryFn: () => getAdvancedStandings(seasonCode, { scope }), enabled: Boolean(phaseCode) });
+  const advancedQuery = useQuery({ queryKey: ["advanced-standings-team-overview", seasonCode, scope], queryFn: () => getAdvancedStandings(seasonCode, { scope }), enabled: Boolean(phaseCode) && scope !== null });
   const standingsQuery = useQuery({ queryKey: ["standings", seasonCode, phaseCode], queryFn: () => getSeasonStandings(seasonCode, phaseCode), enabled: Boolean(phaseCode) });
   const teamsQuery = useQuery({ queryKey: ["teams", seasonCode], queryFn: () => getSeasonTeams(seasonCode) });
 

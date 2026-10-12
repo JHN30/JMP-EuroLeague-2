@@ -1,9 +1,10 @@
 import { formatDate } from "./format";
 
-export const PHASE_ORDER = ["RS", "PI", "PO", "FF"];
+export const PHASE_ORDER = ["RS", "TS", "PI", "PO", "FF"];
 
 export const PHASE_NAMES = {
   RS: "Regular Season",
+  TS: "Top 16",
   PI: "Play-In",
   PO: "Playoffs",
   FF: "Final Four",

@@ -3,6 +3,7 @@ import type { PgColumn } from "drizzle-orm/pg-core";
 import { db } from "./client";
 import { gamePlayerAdvanced, gameTeamAdvanced, playerRoundRatings, playerRoundWinShares, standingsStats } from "./season-advanced-schema";
 import { catalogRead, SUPPORTED_SEASONS } from "./season-catalog";
+import { seasonFormat } from "./season-format-registry";
 import { getTeams } from "./season-identities";
 import { gamePlayerStats, gameTeamStats, games, seasonStatsTraditional } from "./season-schema";
 import { getSeasonRecordRows, type RecordMetric } from "./season-stats";
@@ -13,12 +14,21 @@ export const RECORD_KINDS = ["player-seasons", "single-games", "team-seasons", "
 export type RecordKind = (typeof RECORD_KINDS)[number];
 export type RecordGroup = "traditional" | "advanced";
 // `minGames`: a record of a season's rating counts only players or clubs with at least that many games, so a season still being played does not
-// put a club at the top after a few games.
+// put a club at the top after a few games. It is the minimum of a 34-game regular season; each season scales it to its own length
+// (seasonMinGames), and every row says the minimum of its season.
 export type RecordMetricDef = { key: string; label: string; group: RecordGroup; minGames?: number };
 
 const LIMIT = 50;
-// A regular season is 34 games: 20 leaves a finished season whole and keeps a season in progress out until it is past the middle.
+// 20 of a 34-game regular season leaves a finished season whole and keeps a season in progress out until it is past the middle.
 const MIN_SEASON_GAMES = 20;
+const REFERENCE_SEASON_GAMES = 34;
+
+// The same share of the season's own regular season (a club's games in its group): 22 of 38, 24 of 40, 6 of 10. A season without a
+// format keeps the 34-game minimum.
+export function seasonMinGames(seasonCode: string, minGames: number): number {
+  const gamesPerClub = seasonFormat(seasonCode)?.stages.find((stage) => stage.code === "RS")?.gamesPerClub ?? null;
+  return gamesPerClub === null ? minGames : Math.round((minGames * gamesPerClub) / REFERENCE_SEASON_GAMES);
+}
 const COMPETITION_CODE = "E";
 
 const TRADITIONAL: RecordMetricDef[] = [
@@ -159,10 +169,11 @@ async function advancedPlayerSeasonRows(seasonCode: string, key: string, minGame
 async function playerSeasonRecords(metric: RecordMetricDef) {
   const perSeason = await Promise.all(
     SUPPORTED_SEASONS.map(async (seasonCode) => {
-      const rows = metric.group === "traditional" ? await getSeasonRecordRows(seasonCode, metric.key as RecordMetric, LIMIT) : await advancedPlayerSeasonRows(seasonCode, metric.key, metric.minGames);
+      const minGames = metric.minGames === undefined ? undefined : seasonMinGames(seasonCode, metric.minGames);
+      const rows = metric.group === "traditional" ? await getSeasonRecordRows(seasonCode, metric.key as RecordMetric, LIMIT) : await advancedPlayerSeasonRows(seasonCode, metric.key, minGames);
       return rows.map((player) => ({
-        // The games behind a rating that has a minimum.
-        ...(metric.minGames !== undefined && "gamesPlayed" in player ? { gamesPlayed: Number(player.gamesPlayed) } : {}),
+        // The games behind a rating that has a minimum, and the season's minimum.
+        ...(minGames !== undefined && "gamesPlayed" in player ? { gamesPlayed: Number(player.gamesPlayed), minGames } : {}),
         seasonCode,
         personKey: player.personKey,
         playerName: player.playerName,
@@ -244,17 +255,18 @@ async function teamSeasonRecords(metric: RecordMetricDef) {
         const [latest] = await catalogRead(() => db.select({ round: sql<number | null>`max(${standingsStats.roundNumber})` }).from(standingsStats).where(inSeason));
         if (latest?.round === null || latest?.round === undefined) return [];
         const round = latest.round;
+        const minGames = metric.minGames === undefined ? undefined : seasonMinGames(seasonCode, metric.minGames);
         const [rows, looks] = await Promise.all([
           catalogRead(() =>
             db.select({ clubCode: standingsStats.clubCode, clubName: standingsStats.clubName, gamesPlayed: standingsStats.gamesPlayed, value: column })
               .from(standingsStats)
-              .where(and(inSeason, eq(standingsStats.roundNumber, round), isNotNull(column), metric.minGames === undefined ? undefined : gte(standingsStats.gamesPlayed, metric.minGames)))
+              .where(and(inSeason, eq(standingsStats.roundNumber, round), isNotNull(column), minGames === undefined ? undefined : gte(standingsStats.gamesPlayed, minGames)))
               .orderBy(desc(column), asc(standingsStats.clubCode))
               .limit(LIMIT),
           ),
           clubLooks(seasonCode),
         ]);
-        return rows.map((row) => ({ seasonCode, ...row, clubTvCode: looks.tvCodeOf(row.clubCode), clubImageUrl: looks.crestOf(row.clubCode) }));
+        return rows.map((row) => ({ seasonCode, ...row, ...(minGames !== undefined ? { minGames } : {}), clubTvCode: looks.tvCodeOf(row.clubCode), clubImageUrl: looks.crestOf(row.clubCode) }));
       }),
     );
     return best(perSeason.flat(), (a, b) => a.clubCode.localeCompare(b.clubCode));

@@ -49,7 +49,7 @@ export default function ComparePlayerTrends({ seasonCode, phaseCode, entityA, en
   const advancedFor = (entity) => ({
     queryKey: ["player-advanced", seasonCode, entity.id, scope, "extended"],
     queryFn: () => getPlayerAdvanced(seasonCode, entity.id, { scope, extended: true }),
-    enabled: Boolean(phaseCode),
+    enabled: Boolean(phaseCode) && scope !== null,
   });
   const advancedA = useQuery(advancedFor(entityA));
   const advancedB = useQuery(advancedFor(entityB));

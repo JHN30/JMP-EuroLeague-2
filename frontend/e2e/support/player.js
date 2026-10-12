@@ -8,12 +8,14 @@ export async function veteranPlayer(page) {
   await page.setViewportSize({ width: 1280, height: HEIGHT });
   const slug = await seasonSlug(page);
   const { seasons } = await (await page.request.get(API)).json();
-  const code = seasons.map((season) => season.seasonCode).find((seasonCode) => seasonCode.endsWith(slug));
-  const earlier = [...seasons].sort((a, b) => a.startYear - b.startYear)[0].seasonCode;
+  const current = seasons.find((season) => season.seasonCode.endsWith(slug));
+  const code = current.seasonCode;
+  // The season just before, not the earliest: the local database reaches back to 2000-01, long before any current player.
+  const earlier = [...seasons].filter((season) => season.startYear < current.startYear).sort((a, b) => b.startYear - a.startYear)[0].seasonCode;
   const { players } = await (await page.request.get(`${API}/${code}/players?limit=36`)).json();
   for (const player of players) {
     const response = await page.request.get(`${API}/${earlier}/players/${player.personKey}`);
     if (response.ok()) return { href: `/${slug}/players/${player.personKey}`, seasonCode: code, personKey: player.personKey, slug };
   }
-  throw new Error("No player of the current season also played in the earliest season");
+  throw new Error("No player of the current season also played in the season before");
 }

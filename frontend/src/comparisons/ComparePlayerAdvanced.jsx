@@ -82,7 +82,7 @@ export default function ComparePlayerAdvanced({ seasonCode, phaseCode, entityA, 
   const queryFor = (entity) => ({
     queryKey: ["player-advanced", seasonCode, entity.id, scope, "extended"],
     queryFn: () => getPlayerAdvanced(seasonCode, entity.id, { scope, extended: true }),
-    enabled: Boolean(phaseCode),
+    enabled: Boolean(phaseCode) && scope !== null,
   });
   const [rowA, rowB] = usePlayerRows(seasonCode, phaseCode, entityA, entityB);
   const queryA = useQuery(queryFor(entityA));

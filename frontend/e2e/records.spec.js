@@ -209,9 +209,9 @@ test("the record type and the metric are in the address, the defaults are not, a
 test("the records with a minimum number of games say so", async ({ page }) => {
   await mockApi(page);
   await page.goto("/2026/records?metric=per");
-  await expect(page.getByText("Counts players with at least 20 games.")).toBeVisible();
+  await expect(page.getByText("Counts players with at least 20 games of a 34-game regular season, or the same share of a shorter or longer one.")).toBeVisible();
   await page.goto("/2026/records?type=team&metric=netRating");
-  await expect(page.getByText("Counts clubs with at least 20 games.")).toBeVisible();
+  await expect(page.getByText("Counts clubs with at least 20 games of a 34-game regular season, or the same share of a shorter or longer one.")).toBeVisible();
   // Win Shares and the game records have no minimum, so there is nothing to say.
   await page.goto("/2026/records?metric=winShares");
   await expect(page.getByRole("heading", { name: "Podium" })).toBeVisible();

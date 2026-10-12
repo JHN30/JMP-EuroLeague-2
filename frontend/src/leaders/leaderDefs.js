@@ -104,6 +104,7 @@ export const ADVANCED_CARDS = ["per", "winSharesPer40", "winShares", "rapm", "on
 
 export const ADVANCED_SCOPES = [
   { key: "RS", label: "Regular season" },
+  { key: "TS", label: "Top 16" },
   { key: "all", label: "All games" },
   { key: "PS", label: "Postseason" },
 ];

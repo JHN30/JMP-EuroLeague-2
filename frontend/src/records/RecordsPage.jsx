@@ -36,7 +36,12 @@ function RecordsContent({ data }) {
   const holders = FAMILIES.find((entry) => entry.key === data.family)?.club ? "clubs" : "players";
   return (
     <motion.div key={`${data.family}-${data.metricKey}`} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3, ease: EASE_OUT }}>
-      {data.minGames ? <p className="muted mb-4 text-sm">Counts {holders} with at least {data.minGames} games.</p> : null}
+      {/* The minimum is for a 34-game regular season; each season keeps the same share of its own (22 of 38, 6 of 10). */}
+      {data.minGames ? (
+        <p className="muted mb-4 text-sm">
+          Counts {holders} with at least {data.minGames} games of a 34-game regular season, or the same share of a shorter or longer one.
+        </p>
+      ) : null}
       <Podium records={records} label={data.label} />
       <div className="mt-6 grid grid-cols-[minmax(0,1fr)] gap-6 lg:grid-cols-2">
         <Progression steps={recordProgression(records)} />

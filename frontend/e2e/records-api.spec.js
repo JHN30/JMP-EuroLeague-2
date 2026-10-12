@@ -50,7 +50,8 @@ for (const [kind, info] of Object.entries(KINDS)) {
       expect(body.metric).toBe(metric.key);
       expect(body.label).toBe(metric.label);
       expect(body.group).toBe(metric.group);
-      // The minimum number of games: said by the answer, and kept by every row of a metric that has one.
+      // The minimum number of games of a 34-game regular season: said by the answer. Each row of a metric that has one says its
+      // season's share of it and keeps it.
       expect(body.minGames).toBe(metric.minGames ?? null);
       expect(body.records.length).toBeGreaterThan(0);
       expect(body.records.length).toBeLessThanOrEqual(50);
@@ -60,8 +61,11 @@ for (const [kind, info] of Object.entries(KINDS)) {
         expect(typeof row.seasonCode).toBe("string");
         expect(typeof row.value).toBe("string");
         expect(Number.isFinite(row.numericValue)).toBe(true);
-        if (metric.minGames === undefined) expect("gamesPlayed" in row).toBe(false);
-        else expect(row.gamesPlayed, `${metric.key} ${row.seasonCode}`).toBeGreaterThanOrEqual(metric.minGames);
+        if (metric.minGames === undefined) expect("gamesPlayed" in row || "minGames" in row).toBe(false);
+        else {
+          expect(Number.isInteger(row.minGames) && row.minGames > 0, `${metric.key} ${row.seasonCode} minGames`).toBe(true);
+          expect(row.gamesPlayed, `${metric.key} ${row.seasonCode}`).toBeGreaterThanOrEqual(row.minGames);
+        }
         expect(row.numericValue).toBeLessThanOrEqual(previous);
         previous = row.numericValue;
         // A picture is a URL or null, never an empty string, and every row says which.

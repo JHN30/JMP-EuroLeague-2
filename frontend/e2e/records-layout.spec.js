@@ -155,7 +155,7 @@ test("very long names wrap inside their panels at 320px, and the loading, error 
   await mockRecords(page, { rows: longRows(50) });
   await page.goto("/2025/records");
   await expect(page.getByRole("heading", { name: "Top 50" })).toBeVisible({ timeout: 45_000 });
-  await expect(page.getByText("Counts players with at least 20 games.")).toBeVisible();
+  await expect(page.getByText("Counts players with at least 20 games of a 34-game regular season, or the same share of a shorter or longer one.")).toBeVisible();
   await expectNoSidewaysScroll(page);
   await expect.poll(() => outsidePanels(page), { timeout: 20_000 }).toEqual([]);
   await page.unrouteAll({ behavior: "ignoreErrors" });

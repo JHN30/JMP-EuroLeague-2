@@ -270,8 +270,8 @@ export default function CompareRosters({ seasonCode, phaseCode, entityA: pickedA
   });
 
   const scope = advancedScopeForPhase(phaseCode);
-  const impactA = useQuery({ queryKey: ["team-players-advanced", seasonCode, entityA.id, scope], queryFn: () => getTeamPlayersAdvanced(seasonCode, entityA.id, { scope }), enabled: Boolean(phaseCode) });
-  const impactB = useQuery({ queryKey: ["team-players-advanced", seasonCode, entityB.id, scope], queryFn: () => getTeamPlayersAdvanced(seasonCode, entityB.id, { scope }), enabled: Boolean(phaseCode) });
+  const impactA = useQuery({ queryKey: ["team-players-advanced", seasonCode, entityA.id, scope], queryFn: () => getTeamPlayersAdvanced(seasonCode, entityA.id, { scope }), enabled: Boolean(phaseCode) && scope !== null });
+  const impactB = useQuery({ queryKey: ["team-players-advanced", seasonCode, entityB.id, scope], queryFn: () => getTeamPlayersAdvanced(seasonCode, entityB.id, { scope }), enabled: Boolean(phaseCode) && scope !== null });
 
   const queries = [rosterA, rosterB, statsA, statsB];
   if (queries.some((query) => query.isPending)) return <AsyncState status="loading" label="Loading the rosters" />;

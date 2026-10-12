@@ -2,9 +2,13 @@
 // league-wide advanced standings.
 import { formatDecimal, formatFractionPercent, formatSignedDecimal } from "../lib/format";
 
-// Advanced standings only know the regular season ("RS"), the postseason ("PS") and both together ("all").
+// The advanced statistics scope of a stage: a table stage has its own (the regular season "RS", the Top 16 "TS"), every
+// knockout stage (Play-In, Playoffs, Final Four) shares the postseason ("PS"), and "all" is the whole season. Any other code
+// has no scope (null), and the caller does not ask for one.
+const KNOCKOUT_STAGES = ["PI", "PO", "FF"];
 export function advancedScopeForPhase(phaseCode) {
-  return phaseCode === "RS" ? "RS" : "PS";
+  if (phaseCode === "RS" || phaseCode === "TS" || phaseCode === "all") return phaseCode;
+  return KNOCKOUT_STAGES.includes(phaseCode) ? "PS" : null;
 }
 
 export function ordinal(number) {

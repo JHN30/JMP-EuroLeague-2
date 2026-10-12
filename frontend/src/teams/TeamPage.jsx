@@ -399,6 +399,7 @@ function OverviewSection({ seasonCode, clubCode, team, phaseCode, standingsQuery
   const advancedQuery = useQuery({
     queryKey: ["advanced-standings-team-overview", seasonCode, scope],
     queryFn: () => getAdvancedStandings(seasonCode, { scope }),
+    enabled: scope !== null,
   });
 
   return (

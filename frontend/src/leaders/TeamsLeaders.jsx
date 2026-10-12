@@ -9,6 +9,7 @@ import Panel from "../lib/Panel";
 import SearchField from "../lib/SearchField";
 import { TabStrip } from "../lib/TabStrip";
 import { Avatar, BoardHeader, BoardRow, BoardTopLine, CardGrid, CategoryCard, StatChips, StatSelect } from "./LeaderParts";
+import { advancedScopeForPhase } from "../teams/teamLeague";
 import { barShare, rankRows } from "./leaderData";
 import { TEAM_CARDS, TEAM_FAMILIES, TEAM_STATS, formatTeamValue, statByKey, useTeamRows, usable } from "./teamData";
 
@@ -171,7 +172,7 @@ export default function TeamsLeaders({ seasonCode, phaseCode, params, setParams 
   if (source.isError) return <AsyncState status="error" message="Could not load the team leaderboard." onRetry={source.refetch} />;
   return (
     <div className="flex flex-col gap-4">
-      {phaseCode !== "RS" ? (
+      {advancedScopeForPhase(phaseCode) === "PS" ? (
         <p className="muted text-sm">Ratings for the play-in, playoffs and Final Four cover the whole postseason together.</p>
       ) : null}
       <CardGrid>

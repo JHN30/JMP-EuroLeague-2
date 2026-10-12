@@ -1,8 +1,9 @@
 import { useState } from "react";
 import RevealImage from "./RevealImage";
 
-// Stands in for a portrait the feed does not have (a player who has not played, and every coach).
-function Silhouette() {
+// Stands in for a portrait the feed does not have (a player who has not played, most players of the older seasons, and every
+// coach). It fills its parent, which must be positioned; the small round avatars use it too.
+export function Silhouette() {
   return (
     <svg viewBox="0 0 100 130" aria-hidden="true" className="absolute inset-x-0 bottom-0 h-full w-full text-base-content opacity-20">
       <circle cx="50" cy="44" r="21" fill="currentColor" />

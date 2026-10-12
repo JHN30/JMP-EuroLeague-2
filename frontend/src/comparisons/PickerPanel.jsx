@@ -1,5 +1,6 @@
 import { useEffect, useRef } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
+import { Avatar } from "../leaders/LeaderParts";
 import { EASE_OUT } from "../lib/motion";
 import RevealImage from "../lib/RevealImage";
 
@@ -77,14 +78,10 @@ export function PickerOption({ id, active, selected, onChoose, onHover, children
 }
 
 // A crest or a photo in a picker row or box. A traded player's season row joins several crest addresses with ";", which no
-// single image can show, so it shows none.
+// single image can show, so it shows none. A photo (round) is the player's avatar, with the silhouette when there is none.
 export function PickerImage({ src, round = false, className = "h-6 w-6" }) {
-  if (!src || src.includes(";")) return <span aria-hidden="true" className={`${className} flex-none`} />;
-  return round ? (
-    <span className={`${className} relative flex-none overflow-hidden rounded-full bg-neutral`}>
-      <RevealImage src={src} effect="wipe" className="h-full w-full origin-top scale-[1.7] object-cover object-top" />
-    </span>
-  ) : (
-    <RevealImage src={src} className={`${className} flex-none object-contain`} />
-  );
+  const usable = Boolean(src) && !src.includes(";");
+  if (round) return <Avatar imageUrl={usable ? src : null} size={className} />;
+  if (!usable) return <span aria-hidden="true" className={`${className} flex-none`} />;
+  return <RevealImage src={src} className={`${className} flex-none object-contain`} />;
 }

@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { motion } from "motion/react";
 import { Link } from "react-router";
 import AsyncState from "../lib/AsyncState";
@@ -5,13 +6,16 @@ import EmptyText from "../lib/EmptyText";
 import LabelledSelect from "../lib/LabelledSelect";
 import { EASE_OUT, listContainer, listItem } from "../lib/motion";
 import Panel from "../lib/Panel";
+import { Silhouette } from "../lib/PlayerPortrait";
 import RevealImage from "../lib/RevealImage";
 import ShortLabel from "../lib/ShortLabel";
 
 // ---- Small pieces shared by the three leaderboards ----
 
 // A player's face (the feed's portraits are full length, so the photo is zoomed onto the head) or a club's crest.
+// A player without a photo, or whose photo does not load, shows the silhouette instead; never both.
 export function Avatar({ imageUrl, crest = false, size = "h-8 w-8 sm:h-10 sm:w-10" }) {
+  const [failedUrl, setFailedUrl] = useState(null);
   if (crest) {
     return (
       <span className={`${size} flex flex-none items-center justify-center`}>
@@ -21,7 +25,16 @@ export function Avatar({ imageUrl, crest = false, size = "h-8 w-8 sm:h-10 sm:w-1
   }
   return (
     <span className={`${size} relative flex-none overflow-hidden rounded-full bg-neutral`}>
-      {imageUrl ? <RevealImage src={imageUrl} effect="wipe" className="h-full w-full origin-top scale-[1.7] object-cover object-top" /> : null}
+      {imageUrl && failedUrl !== imageUrl ? (
+        <RevealImage
+          src={imageUrl}
+          effect="wipe"
+          className="h-full w-full origin-top scale-[1.7] object-cover object-top"
+          onError={() => setFailedUrl(imageUrl)}
+        />
+      ) : (
+        <Silhouette />
+      )}
     </span>
   );
 }

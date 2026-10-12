@@ -76,6 +76,7 @@ export function describeRecord(family, group, row) {
     key: `${row.seasonCode}-${row.personKey ?? row.clubCode}-${row.gameCode ?? "season"}`,
     name: isClub ? (clubName ?? row.clubCode ?? "-") : displayName(row.playerName),
     to: isClub ? (row.clubCode ? `/${slug}/teams/${row.clubCode}` : null) : row.personKey ? `/${slug}/players/${row.personKey}` : null,
+    isClub,
     portraitUrl: isClub ? null : (row.playerImageUrl ?? null),
     crestUrl: isClub ? (row.clubImageUrl ?? null) : null,
     line: isClub ? (opponent ? `vs ${opponent}` : null) : (clubName ?? clubCode),

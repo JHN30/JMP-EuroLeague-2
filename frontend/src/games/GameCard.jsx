@@ -36,7 +36,7 @@ function FixtureTeam({ team, entry, won }) {
 
 // One game on the Games page. Upcoming games put the date and tip-off time in the middle; finished games put the score
 // there, with the winning side filled in.
-export default function GameCard({ game, seasonCode, standingByClubCode }) {
+export default function GameCard({ game, seasonCode, standingByClubCode, cancelled = false }) {
   const hasScore = game.played && game.localScore != null && game.roadScore != null;
   const localWon = hasScore && game.localScore > game.roadScore;
   const roadWon = hasScore && game.roadScore > game.localScore;
@@ -56,6 +56,8 @@ export default function GameCard({ game, seasonCode, standingByClubCode }) {
               </span>
               <span className="fixture-date">Final · {formatShortDate(game.scheduledAt)}</span>
             </>
+          ) : cancelled ? (
+            <><span className="fixture-date">Not played</span><span className="text-xs">Season cancelled</span></>
           ) : (
             <>
               <span className="fixture-date">{formatShortDate(game.scheduledAt)}</span>
@@ -65,7 +67,7 @@ export default function GameCard({ game, seasonCode, standingByClubCode }) {
         </motion.div>
         <FixtureTeam team={game.roadTeam} entry={roadEntry} won={roadWon} />
       </div>
-      <span className="fixture-cta">{game.played ? "Overview" : "Preview"}</span>
+      <span className="fixture-cta">{game.played || cancelled ? "Overview" : "Preview"}</span>
     </MotionLink>
   );
 }

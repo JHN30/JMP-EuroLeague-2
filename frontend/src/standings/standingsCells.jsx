@@ -71,11 +71,10 @@ export function FormCell({ form }) {
   );
 }
 
-export function StandingsFooterBadges() {
+export function StandingsFooterBadges({ showQualification = true }) {
   return (
     <div className="flex flex-wrap items-center gap-2 px-1 py-2 text-xs text-base-content/70">
-      <span className="badge badge-outline badge-secondary badge-xs">Q</span>
-      <span>= qualified for the next stage.</span>
+      {showQualification ? <><span className="badge badge-outline badge-secondary badge-xs">Q</span><span>= qualified for the next stage.</span></> : null}
       <span>Row order follows the official source standings.</span>
       <span>PF, PA and DIFF count regulation time only, as in the official standings; overtime points are not included.</span>
     </div>

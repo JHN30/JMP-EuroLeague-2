@@ -93,12 +93,12 @@ export default function RaceInsightCards({ seasonCode, rounds, standingsByRound,
         detail={insights.consistent ? `${insights.consistent.range}-position range` : null}
         seasonCode={seasonCode}
       />
-      <InsightCard
+      {tiers ? <InsightCard
         label="Most time in contention"
         team={insights.mostQualified}
         detail={insights.mostQualified ? `${insights.mostQualified.qualifiedRounds} of ${rounds.length} round${rounds.length === 1 ? "" : "s"}` : null}
         seasonCode={seasonCode}
-      />
+      /> : null}
     </div>
   );
 }

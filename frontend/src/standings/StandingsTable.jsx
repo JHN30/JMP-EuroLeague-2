@@ -83,7 +83,7 @@ const VIEW_NET_FIELD = {
   last10: "last10NetRating",
 };
 
-function OverviewTable({ standings, seasonCode, view, showTiers, tierLines, netByClub, shortNames }) {
+function OverviewTable({ standings, seasonCode, view, showTiers, tierLines, netByClub, shortNames, showQualification }) {
   const sorted = sortForView(standings, view);
   // The tier rows follow the season's qualification lines (from its format); without them no tier row is drawn.
   const tiersActive = showTiers && view === "overall" && Boolean(tierLines);
@@ -122,7 +122,7 @@ function OverviewTable({ standings, seasonCode, view, showTiers, tierLines, netB
               {showTierHeader ? <TierRow tier={tier} columnCount={columnCount} /> : null}
               <AnimatedRow layout="position">
                 <td>
-                  <PositionCell position={displayRank} qualified={entry.basic?.qualified} />
+                  <PositionCell position={displayRank} qualified={showQualification && entry.basic?.qualified} />
                   <TieBreakFlag entry={entry} />
                 </td>
                 <td>
@@ -158,6 +158,7 @@ export default function StandingsTable({
   seasonCode,
   view = "overall",
   showTiers = false,
+  showQualification = true,
   tiers = null,
   netByClub,
   shortNames,
@@ -166,16 +167,18 @@ export default function StandingsTable({
   resultsByClub,
   gameFlowQuery,
 }) {
+  // The source's live qualification flags remain stored, but cancellation cannot turn them into advancement badges.
+  const displayStandings = showQualification ? standings : standings.map((entry) => ({ ...entry, basic: { ...entry.basic, qualified: false } }));
   if (breakdown === "streaks") {
-    return <StreaksFormView standings={standings} seasonCode={seasonCode} shortNames={shortNames} resultsQuery={resultsQuery} resultsByClub={resultsByClub} />;
+    return <StreaksFormView standings={displayStandings} seasonCode={seasonCode} shortNames={shortNames} resultsQuery={resultsQuery} resultsByClub={resultsByClub} />;
   }
   if (breakdown === "margins") {
-    return <MarginsView standings={standings} seasonCode={seasonCode} shortNames={shortNames} resultsQuery={resultsQuery} resultsByClub={resultsByClub} netByClub={netByClub} />;
+    return <MarginsView standings={displayStandings} seasonCode={seasonCode} shortNames={shortNames} resultsQuery={resultsQuery} resultsByClub={resultsByClub} netByClub={netByClub} />;
   }
   if (breakdown === "aheadBehind") {
     return (
       <AheadBehindView
-        standings={standings}
+        standings={displayStandings}
         seasonCode={seasonCode}
         shortNames={shortNames}
         resultsQuery={resultsQuery}
@@ -193,12 +196,13 @@ export default function StandingsTable({
           seasonCode={seasonCode}
           view={view}
           showTiers={showTiers}
+          showQualification={showQualification}
           tierLines={tiers}
           netByClub={netByClub}
           shortNames={shortNames}
         />
       </ScrollingTable>
-      <StandingsFooterBadges />
+      <StandingsFooterBadges showQualification={showQualification} />
     </Panel>
   );
 }

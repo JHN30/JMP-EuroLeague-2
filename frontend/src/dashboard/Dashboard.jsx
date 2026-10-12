@@ -128,8 +128,7 @@ export default function Dashboard() {
     if (format) {
       statusLine = seasonStatusText(format, { hasScheduledGame: false });
     } else if (formatQuery.isError && hasPlayed) {
-      // Without the format, the old reading of an empty schedule.
-      statusLine = "The season has finished.";
+      statusLine = "Season status is unavailable.";
     }
   }
   if (hasLoadingIssues(format)) statusLine = statusLine ? `${statusLine} ${LOADING_ISSUES_NOTE}` : LOADING_ISSUES_NOTE;

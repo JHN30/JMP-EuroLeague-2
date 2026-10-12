@@ -66,8 +66,9 @@ async function fetchAllPlayedGames(seasonCode) {
   return all;
 }
 
-function SeasonHero({ champion, leader, pointsPerGame, format }) {
+function SeasonHero({ leader, pointsPerGame, format }) {
   const status = format?.status ?? null;
+  if (!status) return <Panel className="p-4"><p className="muted">Season status is unavailable.</p></Panel>;
   if (status === "cancelled") {
     const note = format.exceptions.find((exception) => exception.kind === "cancelled")?.note;
     return (
@@ -81,7 +82,7 @@ function SeasonHero({ champion, leader, pointsPerGame, format }) {
     );
   }
 
-  if (status === "completed" || (!status && champion)) {
+  if (status === "completed") {
     return (
       <Panel className="flex items-center gap-3 p-4">
         <span className="text-2xl" aria-hidden="true">◇</span>
@@ -792,14 +793,17 @@ export default function SeasonOverviewPage() {
   phases.forEach((phase, index) => {
     const first = phaseFirstGameQueries[index]?.data;
     const last = phaseLastGameQueries[index]?.data;
+    const played = (playedGamesQuery.data ?? []).filter((game) => game.phaseCode === phase.code);
     phaseSummaries[phase.code] = {
-      dateRange: dateRangeLabel(first?.games[0]?.scheduledAt, last?.games[0]?.scheduledAt),
+      dateRange: format?.status === "cancelled"
+        ? dateRangeLabel(played[0]?.scheduledAt, played.at(-1)?.scheduledAt)
+        : dateRangeLabel(first?.games[0]?.scheduledAt, last?.games[0]?.scheduledAt),
     };
   });
 
   const playedGames = playedGamesQuery.data ?? [];
   const activePhase = phases.length > 0 ? currentPhaseFromPlayedGames(phases, playedGames) : null;
-  const champion = findChampion(finalFourGamesQuery.data?.games ?? []);
+  const champion = format?.status === "completed" ? findChampion(finalFourGamesQuery.data?.games ?? []) : null;
   const roadSteps = championRoadSteps(champion, knockoutPhases, knockoutPhaseGamesQueries);
 
   if (phasesQuery.isLoading) return <AsyncState status="loading" label="Loading phases" fullScreen />;
@@ -847,7 +851,7 @@ export default function SeasonOverviewPage() {
       ) : (
         <>
           <motion.div variants={sectionItem}>
-            <SeasonHero champion={champion} leader={leader} pointsPerGame={leaderPointsPerGame} format={format} />
+            <SeasonHero leader={leader} pointsPerGame={leaderPointsPerGame} format={format} />
             {hasLoadingIssues(format) ? <p className="muted mt-2 text-sm">{LOADING_ISSUES_NOTE}</p> : null}
           </motion.div>
           <motion.div variants={sectionItem}>

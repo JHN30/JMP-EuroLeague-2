@@ -5,6 +5,7 @@ import { useParams, useSearchParams } from "react-router";
 import { getPhases, getRounds, getSeasonGames, getSeasonStandings } from "../lib/api";
 import AsyncState from "../lib/AsyncState";
 import EmptyText from "../lib/EmptyText";
+import CompetitionContext from "../lib/CompetitionContext";
 import PageHeader from "../lib/PageHeader";
 import { useCentredSelection } from "../lib/useCentredSelection";
 import { useDocumentTitle } from "../lib/useDocumentTitle";
@@ -64,11 +65,11 @@ export default function FixturesPage() {
   const standingByClubCode = new Map(
     phaseCode === "RS" ? (standingsQuery.data?.standings ?? []).map((entry) => [entry.clubCode, entry]) : [],
   );
-  // Over when the season's format says it finished or was cancelled; without the format, the old reading of an empty schedule.
+  // An empty upcoming schedule alone does not establish completion.
   const format = useSeasonFormat(seasonCode).data ?? null;
   const seasonOver = format
     ? format.status === "completed" || format.status === "cancelled"
-    : (standingsQuery.data?.standings ?? []).length > 0 && !(nextGameQuery.data?.games.length > 0);
+    : false;
 
   const games = gamesQuery.data?.games ?? [];
   const isResolvingRound = roundsQuery.isLoading || nextGameQuery.isLoading;
@@ -101,6 +102,7 @@ export default function FixturesPage() {
   return (
     <div>
       <PageHeader kicker="SCHEDULE" title="Games" />
+      <CompetitionContext seasonCode={seasonCode} phaseCode={phaseCode} roundNumber={selectedRound} />
 
       <TabStrip
         ariaLabel="Phase"
@@ -180,7 +182,7 @@ export default function FixturesPage() {
           <div className="fixture-box">
             {phaseCode === "RS" && standingByClubCode.size > 0 ? (
               <p className="muted mb-3 text-xs">
-                {seasonOver ? "The record under each club is its final regular-season record." : "The record under each club is its regular-season record so far."}
+                {format?.status === "cancelled" ? "The record under each club is its regular-season record at suspension." : seasonOver ? "The record under each club is its final regular-season record." : "The record under each club is its regular-season record so far."}
               </p>
             ) : null}
             <motion.div
@@ -195,6 +197,7 @@ export default function FixturesPage() {
                   key={game.gameCode}
                   game={game}
                   seasonCode={seasonCode}
+                  cancelled={format?.status === "cancelled"}
                   standingByClubCode={standingByClubCode}
                 />
               ))}

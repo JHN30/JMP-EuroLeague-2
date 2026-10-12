@@ -8,10 +8,14 @@ const NUMBER_WORDS = { 1: "one", 3: "three", 5: "five", 7: "seven" };
 export function competitionNotes(format, seasonCode, { gameCode, phaseCode, roundNumber, clubCode } = {}) {
   if (!format || seasonSlug(format.seasonCode) !== seasonSlug(seasonCode)) return [];
   return (format.exceptions ?? []).filter((entry) => {
+    if (entry.kind === "cancelled") return format.status === "cancelled" && (gameCode != null || phaseCode === "RS");
     if (entry.kind === "endedEarly") return gameCode != null && entry.gameCode === Number(gameCode);
     if (entry.kind === "winsDeducted") return entry.stage === phaseCode && entry.roundNumber === roundNumber && (!clubCode || entry.clubCode === clubCode);
     return false;
-  });
+  }).map((entry) => entry.kind === "cancelled" ? {
+    ...entry,
+    note: `Season cancelled. ${entry.note} Suspended on ${entry.suspendedOn}; cancelled on ${entry.cancelledOn}. Latest standings show positions at suspension, not a final classification. Historical playback shows the selected played round. Played performances remain in the statistics and records.`,
+  } : entry);
 }
 
 function ordinal(number) {
@@ -59,7 +63,9 @@ export function stageDescription(stage, format) {
   const sentences = [];
   if (stage.type === "table") {
     if (stage.plannedGroups === 1 && stage.plannedClubsPerGroup) {
-      sentences.push(`Each of the ${stage.plannedClubsPerGroup} clubs plays every other club home and away (${stage.gamesPerClub} games).`);
+      sentences.push(format?.status === "cancelled"
+        ? `The planned format was ${stage.plannedClubsPerGroup} clubs playing every other club home and away (${stage.gamesPerClub} games per club).`
+        : `Each of the ${stage.plannedClubsPerGroup} clubs plays every other club home and away (${stage.gamesPerClub} games).`);
     } else if (stage.plannedGroups && stage.plannedClubsPerGroup) {
       sentences.push(`${stage.plannedGroups} groups of ${stage.plannedClubsPerGroup}; each club plays its group home and away (${stage.gamesPerClub} games).`);
     }
@@ -128,6 +134,7 @@ export const LOADING_ISSUES_NOTE = "Some of this season's games are not loaded."
 // format is not known, the stage is not a table, or its rules are per group or across groups (those seasons' leaves draw them), so a
 // page draws no line rather than a guessed one.
 export function tableTiers(format, stageCode) {
+  if (format?.status === "cancelled") return null;
   const stage = format?.stages.find((entry) => entry.code === stageCode);
   if (!stage || stage.type !== "table" || stage.qualification.length === 0) return null;
   if (!stage.qualification.every((rule) => "positions" in rule && rule.within === "table")) return null;

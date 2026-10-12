@@ -25,16 +25,11 @@ export default function UpcomingGames() {
   const standings = standingsQuery.data?.standings ?? [];
   const standingByClubCode = new Map(standings.map((entry) => [entry.clubCode, entry]));
   const standingsReady = standingsQuery.isSuccess || standingsQuery.isError;
-  // Every scheduled game already has a slot in the season's published
-  // calendar, so an empty result here almost never means "not scheduled
-  // yet" - it means there are no games left, which is only reachable once
-  // some have actually been played.
-  const hasPlayedGames = standings.some((entry) => (entry.basic?.gamesPlayed ?? 0) > 0);
   // The format knows better than the standings: a season can be between stages, or cancelled, with nothing scheduled.
   const formatQuery = useSeasonFormat(seasonCode);
   const format = formatQuery.data ?? null;
   const emptyMessage = !format
-    ? (hasPlayedGames ? "Season finished." : "No games scheduled yet.")
+    ? "Season status is unavailable."
     : format.status === "completed"
       ? "Season finished."
       : format.status === "cancelled"
@@ -46,8 +41,8 @@ export default function UpcomingGames() {
       kicker="SCHEDULE"
       title="Upcoming games"
       isLoading={gamesQuery.isLoading || !standingsReady || formatQuery.isLoading}
-      isError={gamesQuery.isError}
-      onRetry={() => gamesQuery.refetch()}
+      isError={gamesQuery.isError || formatQuery.isError}
+      onRetry={() => { gamesQuery.refetch(); formatQuery.refetch(); }}
       isEmpty={gamesQuery.isSuccess && games.length === 0}
       emptyMessage={emptyMessage}
     >

@@ -5,6 +5,7 @@ import { useParams } from "react-router";
 import { getBoxScore, getGame, getGameAdvanced, getGameLineups, getGameTeamFlow, getPlayByPlay, getShots } from "../lib/api";
 import AsyncState from "../lib/AsyncState";
 import CompetitionContext from "../lib/CompetitionContext";
+import { useSeasonFormat } from "../lib/useSeasonFormat";
 import BackLink from "../lib/BackLink";
 import ComparisonRow from "../lib/ComparisonRow";
 import EmptyText from "../lib/EmptyText";
@@ -1079,6 +1080,7 @@ function TeamComparisonTab({ game, boxScoreQuery, advancedQuery, teamFlowQuery }
 
 export default function GameDetailPage() {
   const { seasonCode, gameCode } = useParams();
+  const cancelled = useSeasonFormat(seasonCode).data?.status === "cancelled";
   const [tab, setTab] = useState("overview");
 
   const gameQuery = useQuery({
@@ -1168,6 +1170,7 @@ export default function GameDetailPage() {
 
       <TabPanel id="game-detail-panel" focusKey={tab} scroll={false}>
         <motion.div key={tab} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.25 }}>
+        {cancelled && !game.played ? <EmptyText>This fixture was not played because the season was cancelled. No result or performance statistics were recorded.</EmptyText> : <>
         {tab === "overview" ? <OverviewTab game={game} seasonCode={seasonCode} boxScoreQuery={boxScoreQuery} playByPlayQuery={playByPlayQuery} advancedQuery={advancedQuery} teamFlowQuery={teamFlowQuery} /> : null}
 
         {tab === "box-score" ? (
@@ -1253,6 +1256,7 @@ export default function GameDetailPage() {
             />
           )
         ) : null}
+        </>}
         </motion.div>
       </TabPanel>
     </div>

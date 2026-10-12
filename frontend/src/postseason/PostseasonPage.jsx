@@ -12,7 +12,7 @@ import Panel from "../lib/Panel";
 import { useDocumentTitle } from "../lib/useDocumentTitle";
 import Bracket from "./Bracket";
 import { bracketSeeds, buildBracket, raceStatus } from "./bracketModel";
-import { hasLoadingIssues, LOADING_ISSUES_NOTE, stageDescription, tableTiers } from "../lib/seasonFormat";
+import { hasLoadingIssues, LOADING_ISSUES_NOTE, seasonStatusText, stageDescription, tableTiers } from "../lib/seasonFormat";
 import { useSeasonFormat } from "../lib/useSeasonFormat";
 import ChampionPanel from "./ChampionPanel";
 import MatchupDetail from "./MatchupDetail";
@@ -111,12 +111,16 @@ export default function PostseasonPage() {
   const [selectedId, setSelectedId] = useState(null);
   const [focusClub, setFocusClub] = useState(null);
   const detailRef = useRef(null);
+  const formatQuery = useSeasonFormat(seasonCode);
+  const format = formatQuery.data ?? null;
+  const cancelled = format?.status === "cancelled";
+  const enabled = Boolean(format) && !cancelled;
 
-  const standingsQuery = useQuery({ queryKey: ["standings", seasonCode, "RS"], queryFn: () => getSeasonStandings(seasonCode, "RS") });
-  const teamsQuery = useQuery({ queryKey: ["teams", seasonCode], queryFn: () => getSeasonTeams(seasonCode) });
-  const seriesQuery = useQuery({ queryKey: ["postseason-series", seasonCode], queryFn: () => getPostseasonSeries(seasonCode) });
-  const remainingQuery = useQuery({ queryKey: ["rs-remaining", seasonCode], queryFn: () => fetchRemaining(seasonCode) });
-  const roundsQuery = useQuery({ queryKey: ["rounds", seasonCode, "RS"], queryFn: () => getRounds(seasonCode, "RS") });
+  const standingsQuery = useQuery({ queryKey: ["standings", seasonCode, "RS"], queryFn: () => getSeasonStandings(seasonCode, "RS"), enabled });
+  const teamsQuery = useQuery({ queryKey: ["teams", seasonCode], queryFn: () => getSeasonTeams(seasonCode), enabled });
+  const seriesQuery = useQuery({ queryKey: ["postseason-series", seasonCode], queryFn: () => getPostseasonSeries(seasonCode), enabled });
+  const remainingQuery = useQuery({ queryKey: ["rs-remaining", seasonCode], queryFn: () => fetchRemaining(seasonCode), enabled });
+  const roundsQuery = useQuery({ queryKey: ["rounds", seasonCode, "RS"], queryFn: () => getRounds(seasonCode, "RS"), enabled });
 
   const standings = useMemo(
     () => [...(standingsQuery.data?.standings ?? [])].sort((a, b) => a.basic.position - b.basic.position),
@@ -125,21 +129,35 @@ export default function PostseasonPage() {
   const teams = teamsQuery.data?.teams;
   const series = seriesQuery.data?.series;
   const remaining = remainingQuery.data;
-  const formatQuery = useSeasonFormat(seasonCode);
-  const format = formatQuery.data ?? null;
   const tiers = useMemo(() => tableTiers(format, "RS"), [format]);
   const regularSeasonStage = format?.stages.find((stage) => stage.code === "RS") ?? null;
   const laterStagePlayed = format?.stages.some((stage) => stage.code !== "RS" && stage.observed.gamesPlayed > 0) ?? false;
   const raceUnavailable = format?.issues?.some((issue) => issue.stage === "RS" || issue.stage === null) ?? false;
   const regularSeasonDone = regularSeasonStage?.dataState === "loaded" || laterStagePlayed;
   const bracket = useMemo(
-    () => (format && standings.length && teams && series ? buildBracket({ standings, teams, series, regularSeasonDone, format, tiers }) : null),
-    [standings, teams, series, regularSeasonDone, format, tiers],
+    () => (enabled && standings.length && teams && series ? buildBracket({ standings, teams, series, regularSeasonDone, format, tiers }) : null),
+    [enabled, standings, teams, series, regularSeasonDone, format, tiers],
   );
   const race = useMemo(
-    () => (remaining && standings.length ? raceStatus(standings, remaining.remaining, bracketSeeds(tiers)) : null),
-    [standings, remaining, tiers],
+    () => (enabled && remaining && standings.length ? raceStatus(standings, remaining.remaining, bracketSeeds(tiers)) : null),
+    [enabled, standings, remaining, tiers],
   );
+
+  if (formatQuery.isLoading) return <AsyncState status="loading" label="Loading the postseason" />;
+  if (formatQuery.isError) return <AsyncState status="error" message="Could not load the postseason." onRetry={() => formatQuery.refetch()} />;
+  if (cancelled) {
+    return (
+      <div>
+        <PageHeader stacked kicker="SEASON" title="Postseason" />
+        <Panel className="p-4">
+          <h2 className="mb-2 text-xl font-bold">Season cancelled</h2>
+          <p>{seasonStatusText(format, { hasScheduledGame: false })}</p>
+          <p className="muted mt-2">No postseason was played and no champion was named. Standings show positions at suspension, not a final classification.</p>
+        </Panel>
+      </div>
+    );
+  }
+  if (!format) return <EmptyText>The season format is unavailable, so there is no bracket to show.</EmptyText>;
 
   const queries = [formatQuery, standingsQuery, teamsQuery, seriesQuery, remainingQuery, roundsQuery];
   if (queries.some((query) => query.isLoading)) return <AsyncState status="loading" label="Loading the postseason" />;

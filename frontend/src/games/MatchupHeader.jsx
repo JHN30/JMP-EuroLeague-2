@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { getSeasonStandings } from "../lib/api";
 import Panel from "../lib/Panel";
+import { useSeasonFormat } from "../lib/useSeasonFormat";
 import { teamCode, teamName } from "./gameUtils";
 
 const DATE_FORMAT = { weekday: "short", day: "numeric", month: "short", year: "numeric" };
@@ -44,6 +45,7 @@ function Side({ team, position, won }) {
 // club's place in the latest regular-season standings, shown for a regular-season game once those have loaded; without it
 // the brackets are left out, with no error and no placeholder.
 export default function MatchupHeader({ game, seasonCode, localWon, roadWon }) {
+  const cancelled = useSeasonFormat(seasonCode).data?.status === "cancelled";
   const standingsQuery = useQuery({
     queryKey: ["standings", seasonCode, "RS"],
     queryFn: () => getSeasonStandings(seasonCode, "RS"),
@@ -71,6 +73,8 @@ export default function MatchupHeader({ game, seasonCode, localWon, roadWon }) {
               </p>
               <p className="muted text-xs font-semibold tracking-wide uppercase">Final</p>
             </>
+          ) : cancelled ? (
+            <span className="stat-badge stat-badge-neutral inline-flex">Not played</span>
           ) : (
             <>
               <p className="text-3xl leading-none font-extrabold tabular-nums sm:text-5xl">{formatTipOff(game.scheduledAt)}</p>
@@ -81,7 +85,7 @@ export default function MatchupHeader({ game, seasonCode, localWon, roadWon }) {
         <Side team={game.roadTeam} position={positionOf(game.roadTeam)} won={roadWon} />
       </div>
       <p className="muted mt-3 text-center text-sm">
-        {round} · {formatGameDate(game.scheduledAt)}
+        {round} · {cancelled && !game.played ? "Originally scheduled: " : ""}{formatGameDate(game.scheduledAt)}
       </p>
     </Panel>
   );

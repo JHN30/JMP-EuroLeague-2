@@ -197,8 +197,7 @@ cross-group criterion [O]. Later leaves must mark the qualifier from recorded To
   `played = false`, scheduled from 2020-03-12. Latest standings round 28 (IST 24-4, MAD 22-6, BAR 22-6, CSK 19-9);
   `qualified = true` for ranks 1-5 only, a live-race artefact rather than a qualification. No PO/FF phases, series or
   `PS` scope (`advanced/standings` scopes `RS`, `all`).
-- App risk [L]: `/games?status=scheduled` returns the 54 games, so Home, fixtures, race and compare panels would show
-  2020 games as upcoming (7.4).
+- Refreshed 34f acceptance: season/team scheduled reads return no abandoned fixtures; all-games reads preserve the 54 unplayed source rows. The UI explains suspension standings and not-played fixtures, retains historical round playback/real performances, and suppresses qualification claims, projected postseason and champion/finish presentation. Exact local counts, sources and focused checks are in [34f acceptance evidence](34f-acceptance.md). Section 7.4 records the original inventory defect, not the current scheduled-filter behavior.
 
 ### 5.8 E2020 and E2022 (18-club table, no Play-In) - leaf 34e
 

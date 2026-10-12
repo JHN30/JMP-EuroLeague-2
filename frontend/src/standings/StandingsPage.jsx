@@ -58,7 +58,8 @@ export default function StandingsPage() {
   const phases = phasesQuery.data?.phases ?? [];
   const [phaseCode, setPhaseCode] = usePhaseParam(phases);
   // The qualification lines of this phase's table, from the season's format (none while it loads or when it cannot be read).
-  const tiers = tableTiers(useSeasonFormat(seasonCode).data, phaseCode);
+  const format = useSeasonFormat(seasonCode).data;
+  const tiers = tableTiers(format, phaseCode);
 
   const standingsQuery = useQuery({
     queryKey: ["standings", seasonCode, phaseCode],
@@ -139,7 +140,7 @@ export default function StandingsPage() {
           )
         ) : (
           <div className="flex flex-col gap-4">
-            {mode === "table" ? <CompetitionContext seasonCode={seasonCode} phaseCode={phaseCode} roundNumber={round} /> : null}
+            {mode === "table" || (mode === "advanced" && format?.status === "cancelled") ? <CompetitionContext seasonCode={seasonCode} phaseCode={phaseCode} roundNumber={round} /> : null}
             {mode === "advanced" ? null : (
               <StandingsKpiStrip
                 seasonCode={seasonCode}
@@ -238,6 +239,7 @@ export default function StandingsPage() {
                   seasonCode={seasonCode}
                   view={view}
                   showTiers={phaseCode === "RS"}
+                  showQualification={Boolean(format) && format.status !== "cancelled"}
                   tiers={tiers}
                   netByClub={netByClub}
                   shortNames={shortNames}

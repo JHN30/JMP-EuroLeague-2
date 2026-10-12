@@ -4,6 +4,7 @@ import { Link, useParams } from "react-router";
 import { getSeasonStandings } from "../lib/api";
 import { listContainer, listItem } from "../lib/motion";
 import ShortLabel from "../lib/ShortLabel";
+import CompetitionContext from "../lib/CompetitionContext";
 import { WidgetPanel } from "./Dashboard";
 
 const MotionLink = motion.create(Link);
@@ -63,6 +64,7 @@ export default function StandingsSnapshot({ height }) {
           </motion.li>
         ))}
       </motion.ol>
+      <CompetitionContext seasonCode={seasonCode} phaseCode="RS" roundNumber={query.data?.round} />
       <MotionLink
         to={`/${seasonCode}/standings`}
         className="panel-link mt-4 inline-block"

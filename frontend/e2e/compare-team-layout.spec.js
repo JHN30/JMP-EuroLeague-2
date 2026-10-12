@@ -135,7 +135,7 @@ test("the Rosters tables swipe inside their box with the player column pinned", 
         const box = table.parentElement;
         box.scrollLeft = box.scrollWidth;
         const cell = table.querySelector("tbody td:first-child");
-        return { scrolls: box.scrollWidth > box.clientWidth, left: Math.round(cell.getBoundingClientRect().left - box.getBoundingClientRect().left), name: cell.querySelector("[aria-hidden=true]")?.textContent.trim() };
+        return { scrolls: box.scrollWidth > box.clientWidth, left: Math.round(cell.getBoundingClientRect().left - box.getBoundingClientRect().left), name: [...cell.querySelectorAll("span[aria-hidden=true]")].find((label) => label.textContent.trim())?.textContent.trim() };
       }),
     );
     for (const table of pinned) {

@@ -71,7 +71,7 @@ export default function PlayerHero({ player, registrations, stats, seasonCode })
             <p className="eyebrow mb-1">PLAYER{player.positionName ? ` · ${player.positionName.toUpperCase()}` : ""}</p>
             <h1 className="min-w-0 break-words">
               <span className="muted block text-xs font-bold uppercase tracking-[0.2em] max-sm:mb-1 sm:text-sm">{first}</span>
-              <span className="block text-3xl font-black uppercase leading-none max-sm:wrap-break-word sm:text-5xl">{last}</span>
+              <span className="block text-3xl font-black uppercase leading-none max-sm:wrap-break-word sm:text-3xl lg:text-5xl">{last}</span>
             </h1>
           </div>
           {player.dorsal ? (

@@ -1,9 +1,9 @@
 import { test, expect } from "@playwright/test";
 import { bracketSeeds, buildBracket, placements, raceStatus } from "../src/postseason/bracketModel.js";
 import { tableTiers } from "../src/lib/seasonFormat.js";
+import { DIRECT_EIGHT_SEASONS } from "./support/direct-eight-seasons";
 
 const API = "http://localhost:3000/api";
-const SEASONS = ["2016", "2017", "2018"];
 const format = { stages: [
   { code: "RS", type: "table", qualification: [{ positions: [1, 8], within: "table", kind: "direct", to: "PO" }] },
   { code: "PO", winTarget: 3 }, { code: "FF", winTarget: 1, thirdPlaceGame: true },
@@ -55,7 +55,7 @@ test("the direct-eight race has one cutoff and preserves uncertainty at tied win
   expect([...tieRace.values()].some((row) => row.status.includes("playin"))).toBe(false);
 });
 
-for (const [index, season] of SEASONS.entries()) {
+for (const { season, clubs, rsGames, counts, podium } of DIRECT_EIGHT_SEASONS) {
   test(`${season}: actual data, champion, placement and direct bracket match the verified era`, async ({ page, request }) => {
     const base = `${API}/seasons/E${season}`;
     const get = async (path) => {
@@ -67,25 +67,23 @@ for (const [index, season] of SEASONS.entries()) {
     expect(actual.status).toBe("completed");
     expect(actual.issues).toEqual([]);
     expect(actual.stages.map((stage) => stage.code)).toEqual(["RS", "PO", "FF"]);
-    expect(actual.stages.map((stage) => stage.observed.gamesPlayed)).toEqual([240, index === 0 ? 15 : 16, 4]);
+    expect(actual.stages.map((stage) => stage.observed.gamesPlayed)).toEqual(counts);
     const { standings: rows } = await get("/phases/RS/standings");
-    expect(rows).toHaveLength(16);
-    expect(rows.every((row) => row.basic.gamesPlayed === 30 && row.basic.qualified === (row.basic.position <= 8))).toBe(true);
+    expect(rows).toHaveLength(clubs);
+    expect(rows.every((row) => row.basic.gamesPlayed === rsGames && row.basic.qualified === (row.basic.position <= 8))).toBe(true);
     const { teams: actualTeams } = await get("/teams");
     const { series } = await get("/postseason-series");
     const bracket = buildBracket({ standings: rows, teams: actualTeams, series, regularSeasonDone: true, format: actual, tiers: tableTiers(actual, "RS") });
     expect(bracket.playoffs.every((slot) => slot.series && slot.winnerClubCode)).toBe(true);
     expect(bracket.semis.every((slot) => slot.series && slot.winnerClubCode)).toBe(true);
-    expect(bracket.champion.clubCode).toBe(["ULK", "MAD", "CSK"][index]);
-    expect(placements(bracket).slice(0, 4).map((row) => row.club.clubCode)).toEqual([
-      ["ULK", "OLY", "CSK", "MAD"], ["MAD", "ULK", "ZAL", "CSK"], ["CSK", "IST", "MAD", "ULK"],
-    ][index]);
+    expect(bracket.champion.clubCode).toBe(podium[0]);
+    expect(placements(bracket).slice(0, 4).map((row) => row.club.clubCode)).toEqual(podium);
     await page.goto(`/${season}/postseason`);
     await expect(page.getByText(`${bracket.champion.name} are the champions`)).toBeVisible();
     await expect(page.getByRole("group", { name: "Third place", exact: true })).toBeVisible();
     await expect(page.locator(".bk-grid [role=group]")).toHaveCount(8);
     await page.getByText("How the postseason works", { exact: true }).click();
-    await expect(page.getByText(/Each of the 16 clubs/)).toContainText("30 games");
+    await expect(page.getByText(new RegExp(`Each of the ${clubs} clubs`))).toContainText(`${rsGames} games`);
     await expect(page.locator("main")).not.toContainText(/Play-In|Play-in|top six|seventh to tenth/i);
     await page.getByRole("group", { name: "1 v 8", exact: true }).getByRole("button").first().click();
     await expect(page.locator(".scroll-mt-28").getByText(/Game 1/)).toBeVisible();

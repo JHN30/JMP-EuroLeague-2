@@ -1,6 +1,8 @@
 import { test, expect } from "@playwright/test";
 import { FAMILIES, allMetrics } from "../src/records/recordData.js";
-import { HEIGHT, seasonSlug } from "./support/layout";
+import { HEIGHT, seasonSlug, mockLayoutImages } from "./support/layout";
+
+test.beforeEach(async ({ page }) => { await mockLayoutImages(page); });
 
 // The Records page at every width, for each record type, on the live data: nothing outside its panel, the podium three across from 1024px
 // and stacked below it, the Top 50 a table from 640px (inside its panel) and a list of rows below it, the metric a select below 640px and a

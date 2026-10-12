@@ -1,4 +1,5 @@
 import { test, expect } from "@playwright/test";
+import { DIRECT_EIGHT_SEASONS } from "./support/direct-eight-seasons";
 
 const API = "http://localhost:3000/api";
 const get = async (request, season, path) => {
@@ -11,7 +12,7 @@ test.beforeAll(async ({ request }) => {
   expect((await (await request.get(`${API}/health`)).json()).target).toBe("local");
 });
 
-for (const season of ["2016", "2017", "2018"]) {
+for (const { season, clubs, rsGames } of DIRECT_EIGHT_SEASONS) {
   test(`${season}: existing pages retain season data and available stages`, async ({ page, request }) => {
     test.setTimeout(180_000);
     await page.setViewportSize({ width: 1280, height: 900 });
@@ -42,14 +43,14 @@ for (const season of ["2016", "2017", "2018"]) {
       await expect(page.getByText("Season finished.", { exact: true })).toBeVisible();
       await visit("overview");
       const story = page.locator(".panel", { hasText: /Phase \d/, has: page.getByRole("heading", { name: "Regular Season", exact: true }) });
-      await expect(story).toContainText("16 clubs");
-      await expect(story).toContainText("30 games");
+      await expect(story).toContainText(`${clubs} clubs`);
+      await expect(story).toContainText(`${rsGames} games`);
       await expect(story).toContainText("top 8 reach the Playoffs");
       await expect(page.getByRole("heading", { name: "Play-In", exact: true })).toHaveCount(0);
     });
     await test.step("standings table, race and advanced data", async () => {
       await visit("standings");
-      await expect(page.locator("main table").first().locator("tbody tr")).toHaveCount(18);
+      await expect(page.locator("main table").first().locator("tbody tr")).toHaveCount(clubs + 2);
       await expect(page.locator("main")).not.toContainText(/Play-in tournament/);
       for (const breakdown of ["streaks", "margins", "aheadBehind"]) {
         await page.getByRole("combobox", { name: "Breakdown", exact: true }).selectOption(breakdown);
@@ -59,12 +60,12 @@ for (const season of ["2016", "2017", "2018"]) {
       await page.getByRole("tab", { name: "Race", exact: true }).click();
       await expect(page.locator("main .loading")).toHaveCount(0, { timeout: 30_000 });
       const round = page.getByRole("slider", { name: "Round shown in the race" });
-      await expect(round).toHaveAttribute("max", "30");
+      await expect(round).toHaveAttribute("max", String(rsGames));
       await round.press("Home");
       await round.press("ArrowRight");
       await expect(round).toHaveValue("1");
       await round.press("End");
-      await expect(round).toHaveValue("30");
+      await expect(round).toHaveValue(String(rsGames));
       await expect(page.locator("main")).not.toContainText(/Play-In|Play-in/);
       await page.getByRole("tab", { name: "Advanced", exact: true }).click();
       await expect(page.locator("main table").first()).toBeVisible();
@@ -74,14 +75,15 @@ for (const season of ["2016", "2017", "2018"]) {
     await test.step("fixtures and game detail", async () => {
       await visit("games?phase=PO");
       await expect(page.locator("main a[href*='/games/']").first()).toBeVisible();
-      await visit("games/241");
+      const { series } = await get(request, season, "/postseason-series");
+      await visit(`games/${series.find((entry) => entry.phaseCode === "PO").games[0].gameCode}`);
       await expect(page.getByRole("tab", { name: "Box score", exact: true })).toBeVisible();
       await page.getByRole("tab", { name: "Box score", exact: true }).click();
       await expect(page.locator("main table").first()).toBeVisible();
     });
     await test.step("team and player directories, statistics and career", async () => {
       await visit("teams");
-      await expect(page.locator("main a[href*='/teams/']")).toHaveCount(16);
+      await expect(page.locator("main a[href*='/teams/']")).toHaveCount(clubs);
       await visit(`teams/${a.clubCode}?phase=PO`);
       await expect(page.getByRole("heading", { name: a.name, exact: true })).toBeVisible();
       await page.getByRole("tab", { name: "Statistics", exact: true }).click();

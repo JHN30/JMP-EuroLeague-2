@@ -5,6 +5,7 @@ import { Link, useParams } from "react-router";
 import { getAdvancedStandings, getGameFlow, getPhaseResults, getPhases, getSeasonStandings, getSeasonTeams } from "../lib/api";
 import AsyncState from "../lib/AsyncState";
 import EmptyText from "../lib/EmptyText";
+import CompetitionContext from "../lib/CompetitionContext";
 import PageHeader from "../lib/PageHeader";
 import { EASE_OUT } from "../lib/motion";
 import { useDocumentTitle } from "../lib/useDocumentTitle";
@@ -138,6 +139,7 @@ export default function StandingsPage() {
           )
         ) : (
           <div className="flex flex-col gap-4">
+            {mode === "table" ? <CompetitionContext seasonCode={seasonCode} phaseCode={phaseCode} roundNumber={round} /> : null}
             {mode === "advanced" ? null : (
               <StandingsKpiStrip
                 seasonCode={seasonCode}

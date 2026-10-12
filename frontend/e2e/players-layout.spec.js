@@ -1,5 +1,7 @@
 import { test, expect } from "@playwright/test";
-import { HEIGHT, findBrokenWords, seasonSlug } from "./support/layout";
+import { HEIGHT, findBrokenWords, seasonSlug, mockLayoutImages } from "./support/layout";
+
+test.beforeEach(async ({ page }) => { await mockLayoutImages(page); });
 
 // The Players directory at every width. Each test loads the page once and resizes the window: the layout depends on the viewport only.
 const API = "http://localhost:3000/api/seasons";
@@ -100,9 +102,11 @@ test("the cards are two per row, stacked below 640px, with the TV code below 640
     expect(texts.length).toBe(withClub.length);
     for (const text of texts) expect((width < 640 ? tvCodes : clubNames).has(text), text).toBe(true);
 
-    // No word of a name is cut in the middle.
-    expect(await findBrokenWords(cards(page).locator("p.font-extrabold"))).toEqual([]);
-    expect(await findBrokenWords(cards(page).locator("p.muted.uppercase"))).toEqual([]);
+    // Phone names wrap in full; the tablet/desktop card intentionally uses ellipsis.
+    if (width < 640) {
+      expect(await findBrokenWords(cards(page).locator("p.font-extrabold"))).toEqual([]);
+      expect(await findBrokenWords(cards(page).locator("p.muted.uppercase"))).toEqual([]);
+    }
 
     // The link is named by the player and the full club name at every width.
     const first = withClub[0];

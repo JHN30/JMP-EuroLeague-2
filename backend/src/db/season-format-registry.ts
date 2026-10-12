@@ -30,6 +30,8 @@ export type FormatException =
   | { kind: "cancelled"; suspendedOn: string; cancelledOn: string; note: string }
   | { kind: "excludedClubs"; clubs: string[]; decidedOn: string; countedGames: number; note: string }
   | { kind: "walkover"; gameCode: number; note: string }
+  | { kind: "endedEarly"; gameCode: number; note: string }
+  | { kind: "winsDeducted"; clubCode: string; stage: "RS"; roundNumber: number; wins: number; note: string }
   | { kind: "replay"; stage: "PO"; clubs: string[]; note: string };
 
 export type FormatFamily =
@@ -236,7 +238,12 @@ const SEASON_VALUES: Record<string, SeasonValues> = {
       note: "Russian clubs were withdrawn; their regular-season results were removed from the standings.",
     }],
   }),
-  E2022: singleTable(18),
+  E2022: singleTable(18, {
+    exceptions: [
+      { kind: "endedEarly", gameCode: 313, note: "The referees ended this game with 1:40 remaining after an on-court altercation. The official result is Real Madrid 80-95 Partizan; the recorded statistics count." },
+      { kind: "winsDeducted", clubCode: "PAN", stage: "RS", roundNumber: 34, wins: 2, note: "Panathinaikos had two wins deducted from the final regular-season standings. Its official standings record is 9-23; its played-game record is 11-23. Opponents' results and individual and team statistics and records are unchanged." },
+    ],
+  }),
   E2023: singleTablePlayIn(18, true),
   E2024: singleTablePlayIn(18, true),
   E2025: singleTablePlayIn(20, false),
@@ -277,6 +284,12 @@ export function checkSeasonFormats(formats: ReadonlyMap<string, SeasonFormat>): 
     }
     if (format.cancelled !== format.exceptions.some((exception) => exception.kind === "cancelled")) {
       fail(seasonCode, "cancelled flag and cancellation exception disagree");
+    }
+    for (const exception of format.exceptions) {
+      if (exception.kind !== "endedEarly" && exception.kind !== "winsDeducted") continue;
+      if (!exception.note.trim()) fail(seasonCode, "ruling has an empty note");
+      if (exception.kind === "endedEarly" && (!Number.isInteger(exception.gameCode) || exception.gameCode < 1)) fail(seasonCode, "ended-early ruling has an invalid game code");
+      if (exception.kind === "winsDeducted" && (!exception.clubCode.trim() || exception.stage !== "RS" || !Number.isInteger(exception.roundNumber) || exception.roundNumber < 1 || !Number.isInteger(exception.wins) || exception.wins < 1)) fail(seasonCode, "wins deduction has invalid scope or amount");
     }
     const first = format.stages[0];
     if (first.type !== "table" || (first.plannedGroups ?? 0) * (first.plannedClubsPerGroup ?? 0) !== format.plannedClubs) {

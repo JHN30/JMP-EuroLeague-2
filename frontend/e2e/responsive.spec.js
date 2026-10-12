@@ -1,5 +1,10 @@
 import { test, expect } from "@playwright/test";
-import { HEIGHT, WIDTHS, findPageOverflow, seasonSlug } from "./support/layout";
+import { HEIGHT, WIDTHS, findPageOverflow, findBrokenWords, seasonSlug } from "./support/layout";
+
+test("word overflow checks keep visible overflow and ignore clipped screen-reader text", async ({ page }) => {
+  await page.setContent('<span style="position:absolute;clip:rect(0px,0px,0px,0px);width:1px;height:1px">Hidden label</span><span style="display:inline-block;width:10px">Overflow</span><span>Inline</span><span style="display:inline-block;font-size:12px;font-variant-numeric:tabular-nums">Small</span>');
+  expect(await findBrokenWords(page.locator("span"))).toEqual(["Overflow"]);
+});
 
 const staticPage = (name, path) => ({ name, route: async (_page, season) => `/${season}/${path}` });
 

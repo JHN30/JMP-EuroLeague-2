@@ -1,5 +1,7 @@
 import { test, expect } from "@playwright/test";
-import { HEIGHT, expectSwipeRowAtRest, expectSwipeRowSettles, findBrokenWords, seasonSlug } from "./support/layout";
+import { HEIGHT, expectSwipeRowAtRest, expectSwipeRowSettles, findBrokenWords, seasonSlug, mockLayoutImages } from "./support/layout";
+
+test.beforeEach(async ({ page }) => { await mockLayoutImages(page); });
 
 // The live season shows the hero cards; a finished season (2025) shows the Road to the title and a second leaders group.
 const FINISHED = "2025";

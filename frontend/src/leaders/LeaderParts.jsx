@@ -207,7 +207,7 @@ export function BoardRow({ rank, change, avatar, name, sub, columns = [], valueT
       <span className="flex min-w-0 items-center gap-2 sm:gap-3">
         {avatar}
         <span className="min-w-0">
-          <span className="block font-semibold leading-tight max-sm:line-clamp-2 max-sm:wrap-break-word sm:truncate">{name}</span>
+          <span className="block font-semibold leading-tight max-sm:text-xs max-sm:line-clamp-2 max-sm:wrap-break-word sm:truncate">{name}</span>
           <span className="block min-w-0">{sub}</span>
         </span>
       </span>

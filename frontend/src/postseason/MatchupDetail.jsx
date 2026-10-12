@@ -1,6 +1,7 @@
 import { Link } from "react-router";
 import { formatShortDate, formatTimeOfDay } from "../lib/format";
 import Panel from "../lib/Panel";
+import CompetitionContext from "../lib/CompetitionContext";
 import RevealImage from "../lib/RevealImage";
 import { clubScore } from "./bracketModel";
 
@@ -80,6 +81,7 @@ export default function MatchupDetail({ slot, seasonCode }) {
                   </span>
                   <span className="font-bold tabular-nums">{played ? game.localScore + "-" + game.roadScore : formatTimeOfDay(game.scheduledAt)}</span>
                 </Link>
+                <CompetitionContext seasonCode={seasonCode} gameCode={game.gameCode} />
               </li>
             );
           })}

@@ -1,6 +1,8 @@
 import { test, expect } from "@playwright/test";
 import { SEASON, mockGameApi, shot } from "./support/game-fixtures";
-import { HEIGHT, seasonSlug } from "./support/layout";
+import { HEIGHT, seasonSlug, mockLayoutImages } from "./support/layout";
+
+test.beforeEach(async ({ page }) => { await mockLayoutImages(page); });
 
 // Feature 32b: on a phone the finished pages name a club by its TV code where the full name does not fit, and from 640px they
 // show the label they always had. The pages are read with the live data; the expected codes come from the API (feature 32a).

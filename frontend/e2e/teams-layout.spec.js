@@ -1,5 +1,7 @@
 import { test, expect } from "@playwright/test";
-import { HEIGHT, seasonSlug } from "./support/layout";
+import { HEIGHT, seasonSlug, mockLayoutImages } from "./support/layout";
+
+test.beforeEach(async ({ page }) => { await mockLayoutImages(page); });
 
 // The Teams directory at every width. Each test loads the page once and resizes the window: the layout depends on the viewport only.
 const API = "http://localhost:3000/api/seasons";

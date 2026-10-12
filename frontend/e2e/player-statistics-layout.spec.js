@@ -137,7 +137,8 @@ test("the not-ranked notice, the loading ranks, the empty state and the error fi
 
   // No statistics in the phase.
   await page.route(STATS, (route) => route.fulfill({ json: { players: [], pagination: { hasMore: false } } }));
-  await openStatistics(page, href).catch(() => {});
+  await page.goto(href);
+  await page.getByRole("tab", { name: "Statistics", exact: true }).click();
   await expect(page.getByText(/No season statistics in this phase/)).toBeVisible({ timeout: 60_000 });
   await expectNoSidewaysScroll(page);
   await page.unroute(STATS);

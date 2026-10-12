@@ -3,6 +3,14 @@ import { expect } from "@playwright/test";
 export const WIDTHS = [320, 390, 768, 1024];
 export const HEIGHT = 800;
 
+// Size and label checks should not depend on the external image CDN being reachable.
+export async function mockLayoutImages(page) {
+  await page.route(/https:\/\/media-cdn\./, (route) => route.fulfill({
+    contentType: "image/svg+xml",
+    body: '<svg xmlns="http://www.w3.org/2000/svg" width="96" height="96"><circle cx="48" cy="48" r="40" fill="blue"/></svg>',
+  }));
+}
+
 // The page itself scrolling sideways. A strip that scrolls inside its own box is fine, so elements
 // clipped by a scrolling ancestor are left out of the list of offenders.
 export async function findPageOverflow(page) {
@@ -31,8 +39,14 @@ export async function findBrokenWords(locator) {
     elements
       .filter((element) => {
         const style = getComputedStyle(element);
+        if (style.position === "absolute" && style.clip === "rect(0px, 0px, 0px, 0px)") return false;
         const probe = document.createElement("span");
-        probe.style.cssText = `position:absolute;visibility:hidden;white-space:nowrap;font:${style.font};letter-spacing:${style.letterSpacing};text-transform:${style.textTransform}`;
+        probe.style.cssText = "position:absolute;visibility:hidden;white-space:nowrap";
+        // Chromium can return an empty font shorthand when numeric variants are active.
+        probe.style.font = style.font || `${style.fontStyle} ${style.fontWeight} ${style.fontSize} ${style.fontFamily}`;
+        probe.style.fontVariantNumeric = style.fontVariantNumeric;
+        probe.style.letterSpacing = style.letterSpacing;
+        probe.style.textTransform = style.textTransform;
         document.body.appendChild(probe);
         const widest = Math.max(
           // A browser may also break after a hyphen, so "MILLER-MCINTYRE," counts as two words.
@@ -42,7 +56,9 @@ export async function findBrokenWords(locator) {
           }),
         );
         probe.remove();
-        return widest > element.clientWidth + 0.5;
+        // Native inline spans have clientWidth 0 even when their text fits.
+        const width = element.clientWidth || element.getBoundingClientRect().width;
+        return widest > width + 0.5;
       })
       .map((element) => element.textContent),
   );

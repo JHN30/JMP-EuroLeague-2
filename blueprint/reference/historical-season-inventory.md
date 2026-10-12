@@ -204,7 +204,7 @@ cross-group criterion [O]. Later leaves must mark the qualifier from recorded To
 
 - Observed [L]: 34 games per club, top eight qualify (`qualified = true`), PO 1v8..4v5 best-of-five, FF with
   third-place game. Champions Efes (E2020) and Real Madrid (E2022). PO group labels in E2020 are `A`-`D`.
-- Disciplinary outcomes: none observed locally (all games `Confirmed` and played) [L]; none researched [O].
+- 34e read-only verification found two E2022 rulings despite every game being `Confirmed` and played: Madrid-Partizan PO Game 2 (`E2022_313`) ended early with its official 80-95 score; PAN had two wins deducted from final RS standings without changing opposing teams or performance statistics/records. E2020's four initially affected COVID fixtures were rescheduled and played. See [34e verification evidence](34e-acceptance.md) for exact local rows, sources, retrieval limitations and completed relevant-only application acceptance.
 
 ### 5.9 E2021 (2021-22, Russian clubs excluded) - leaf 34g
 
@@ -358,7 +358,7 @@ route reports this per item, and pages must show "unavailable" rather than zero.
 | 34c-ii | Leader-versus-winner semantics (7.3); third-place policy per season. | — |
 | 34c-iii | `TS` scope allowlist and frontend mapping (7.8); `MIN_SEASON_GAMES` assumption. | Whether `TS` needs `/season-stats` support (source season-stats table phases not inspected). |
 | 34d | E2016-E2018 data complete; 1v8 pairings. | — |
-| 34e | E2020, E2022 complete. | Disciplinary rulings not researched. |
+| 34e | E2020, E2022 complete; disciplinary context and relevant-only application checks verified (section 5.8). | Primary-source retrieval limitations documented in acceptance evidence. |
 | 34f | E2019 facts (28 games, 54 unplayed, suspension and cancellation dates). | — |
 | 34g | Official 15-club final table; 68 annulled and 28 cancelled games identifiable by club. | Official wording re-check; statistics/records eligibility of annulled games [O]; snapshot alignment pipeline fix (7.6). |
 | 34h | Groups, ranks, pairings for E2012-E2015. | Per-season QF mapping confirmation; E2015 qualifying. |

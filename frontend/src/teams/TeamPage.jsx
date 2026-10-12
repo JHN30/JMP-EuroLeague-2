@@ -16,6 +16,7 @@ import { teamCode } from "../games/gameUtils";
 import AsyncState from "../lib/AsyncState";
 import BackLink from "../lib/BackLink";
 import EmptyText from "../lib/EmptyText";
+import CompetitionContext from "../lib/CompetitionContext";
 import { formatDateTime, formatPerGame } from "../lib/format";
 import HomeAwayIcon from "../lib/HomeAwayIcon";
 import { barFill, cardHover, listContainer, listItem } from "../lib/motion";
@@ -532,6 +533,7 @@ export default function TeamPage() {
       >
         {gamesQuery.isSuccess ? <NextGameChip nextGame={nextGame} clubCode={clubCode} /> : null}
       </PageHeader>
+      <CompetitionContext seasonCode={seasonCode} phaseCode={phaseCode} roundNumber={standingsQuery.data?.round} clubCode={clubCode} />
 
       <TabStrip
         ariaLabel="Section"

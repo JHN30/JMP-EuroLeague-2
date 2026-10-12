@@ -4,6 +4,7 @@ import { motion } from "motion/react";
 import { getRounds, getSeasonStandings } from "../lib/api";
 import AsyncState from "../lib/AsyncState";
 import EmptyText from "../lib/EmptyText";
+import CompetitionContext from "../lib/CompetitionContext";
 import { sectionContainer, sectionItem } from "../lib/motion";
 import RaceChart from "./RaceChart";
 import RacePlayback from "./RacePlayback";
@@ -141,6 +142,7 @@ export default function RaceView({ seasonCode, phaseCode, latestRound, latestSta
         onChange={setStep}
       />
       </motion.div>
+      <CompetitionContext seasonCode={seasonCode} phaseCode={phaseCode} roundNumber={shownRound} />
 
       <motion.div variants={sectionItem} className="grid grid-cols-1 gap-3 lg:grid-cols-[minmax(0,1fr)_22rem] xl:grid-cols-[2fr_1fr]">
         <RaceChart

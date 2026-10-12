@@ -1,7 +1,18 @@
 // Words for a season's format (GET /seasons/:season/format): stage round labels, stage descriptions and the season's status. Every
 // sentence is built from the stage's own values, so the same code describes any season; a value the format leaves null says nothing.
 
+import { seasonSlug } from "./seasonSlug";
+
 const NUMBER_WORDS = { 1: "one", 3: "three", 5: "five", 7: "seven" };
+
+export function competitionNotes(format, seasonCode, { gameCode, phaseCode, roundNumber, clubCode } = {}) {
+  if (!format || seasonSlug(format.seasonCode) !== seasonSlug(seasonCode)) return [];
+  return (format.exceptions ?? []).filter((entry) => {
+    if (entry.kind === "endedEarly") return gameCode != null && entry.gameCode === Number(gameCode);
+    if (entry.kind === "winsDeducted") return entry.stage === phaseCode && entry.roundNumber === roundNumber && (!clubCode || entry.clubCode === clubCode);
+    return false;
+  });
+}
 
 function ordinal(number) {
   const lastTwo = number % 100;

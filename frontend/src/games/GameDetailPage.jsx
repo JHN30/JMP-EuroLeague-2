@@ -4,6 +4,7 @@ import { motion } from "motion/react";
 import { useParams } from "react-router";
 import { getBoxScore, getGame, getGameAdvanced, getGameLineups, getGameTeamFlow, getPlayByPlay, getShots } from "../lib/api";
 import AsyncState from "../lib/AsyncState";
+import CompetitionContext from "../lib/CompetitionContext";
 import BackLink from "../lib/BackLink";
 import ComparisonRow from "../lib/ComparisonRow";
 import EmptyText from "../lib/EmptyText";
@@ -1161,6 +1162,7 @@ export default function GameDetailPage() {
     <div>
       <BackLink to={`/${seasonCode}/games${listQuery}`} label="Games" />
       <MatchupHeader game={game} seasonCode={seasonCode} localWon={localWon} roadWon={roadWon} />
+      <CompetitionContext seasonCode={seasonCode} gameCode={game.gameCode} />
 
       <TabStrip ariaLabel="Game detail" level={1} panelId="game-detail-panel" activeKey={tab} onChange={setTab} scrolling className="mb-4 lg:w-fit" tabs={GAME_TABS} />
 

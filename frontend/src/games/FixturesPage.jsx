@@ -10,6 +10,7 @@ import { useCentredSelection } from "../lib/useCentredSelection";
 import { useDocumentTitle } from "../lib/useDocumentTitle";
 import { listContainer } from "../lib/motion";
 import { usePhaseParam } from "../lib/usePhaseParam";
+import { useSeasonFormat } from "../lib/useSeasonFormat";
 import { TabPanel, TabStrip } from "../lib/TabStrip";
 import GameCard from "./GameCard";
 
@@ -63,7 +64,11 @@ export default function FixturesPage() {
   const standingByClubCode = new Map(
     phaseCode === "RS" ? (standingsQuery.data?.standings ?? []).map((entry) => [entry.clubCode, entry]) : [],
   );
-  const seasonOver = (standingsQuery.data?.standings ?? []).length > 0 && !(nextGameQuery.data?.games.length > 0);
+  // Over when the season's format says it finished or was cancelled; without the format, the old reading of an empty schedule.
+  const format = useSeasonFormat(seasonCode).data ?? null;
+  const seasonOver = format
+    ? format.status === "completed" || format.status === "cancelled"
+    : (standingsQuery.data?.standings ?? []).length > 0 && !(nextGameQuery.data?.games.length > 0);
 
   const games = gamesQuery.data?.games ?? [];
   const isResolvingRound = roundsQuery.isLoading || nextGameQuery.isLoading;

@@ -3,6 +3,8 @@ import { motion } from "motion/react";
 import { useParams } from "react-router";
 import { getSeasonGames, getSeasonStandings } from "../lib/api";
 import { listContainer } from "../lib/motion";
+import { seasonStatusText } from "../lib/seasonFormat";
+import { useSeasonFormat } from "../lib/useSeasonFormat";
 import { useMediaQuery } from "../lib/useMediaQuery";
 import { MatchCard } from "./RecentResults";
 import { WidgetPanel } from "./Dashboard";
@@ -28,16 +30,26 @@ export default function UpcomingGames() {
   // yet" - it means there are no games left, which is only reachable once
   // some have actually been played.
   const hasPlayedGames = standings.some((entry) => (entry.basic?.gamesPlayed ?? 0) > 0);
+  // The format knows better than the standings: a season can be between stages, or cancelled, with nothing scheduled.
+  const formatQuery = useSeasonFormat(seasonCode);
+  const format = formatQuery.data ?? null;
+  const emptyMessage = !format
+    ? (hasPlayedGames ? "Season finished." : "No games scheduled yet.")
+    : format.status === "completed"
+      ? "Season finished."
+      : format.status === "cancelled"
+        ? "Season cancelled."
+        : seasonStatusText(format, { hasScheduledGame: false });
 
   return (
     <WidgetPanel
       kicker="SCHEDULE"
       title="Upcoming games"
-      isLoading={gamesQuery.isLoading || !standingsReady}
+      isLoading={gamesQuery.isLoading || !standingsReady || formatQuery.isLoading}
       isError={gamesQuery.isError}
       onRetry={() => gamesQuery.refetch()}
       isEmpty={gamesQuery.isSuccess && games.length === 0}
-      emptyMessage={hasPlayedGames ? "Season finished." : "No games scheduled yet."}
+      emptyMessage={emptyMessage}
     >
       <motion.div
         className="games-row"

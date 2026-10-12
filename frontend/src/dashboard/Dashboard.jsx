@@ -2,10 +2,12 @@ import { useQuery } from "@tanstack/react-query";
 import { AnimatePresence, motion } from "motion/react";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useParams } from "react-router";
-import { getSeasonGames, getSeasonStandings } from "../lib/api";
+import { getRounds, getSeasonGames, getSeasonStandings } from "../lib/api";
 import AsyncState from "../lib/AsyncState";
 import { formatSeasonLabel } from "../lib/format";
 import { sectionContainer, sectionItem } from "../lib/motion";
+import { hasLoadingIssues, LOADING_ISSUES_NOTE, seasonStatusText, stageRoundLabel } from "../lib/seasonFormat";
+import { useSeasonFormat } from "../lib/useSeasonFormat";
 import Panel from "../lib/Panel";
 import PageHeader from "../lib/PageHeader";
 import PanelHeader from "../lib/PanelHeader";
@@ -99,18 +101,38 @@ export default function Dashboard() {
   });
   const hasPlayed = (standingsQuery.data?.standings ?? []).some((entry) => (entry.basic?.gamesPlayed ?? 0) > 0);
 
+  // The season's format says which stage the next round belongs to and, when no game is scheduled, whether the season finished, was
+  // cancelled or is waiting for its next stage's fixtures: an empty schedule alone cannot prove the season is over.
+  const formatQuery = useSeasonFormat(seasonCode);
+  const format = formatQuery.data ?? null;
+  const nextStage = format?.stages.find((stage) => stage.code === nextGame?.phaseCode) ?? null;
+  // Outside the regular season a round's own name ("Game 2", "Semifinal") comes from the phase's rounds, the same request as Games.
+  const stageRoundsQuery = useQuery({
+    queryKey: ["rounds", seasonCode, nextGame?.phaseCode],
+    queryFn: () => getRounds(seasonCode, nextGame.phaseCode),
+    enabled: Boolean(nextGame?.phaseCode) && nextGame?.phaseCode !== "RS",
+  });
+  const stageRoundName = stageRoundsQuery.data?.rounds?.find((entry) => entry.number === nextGame?.roundNumber)?.name ?? null;
+
   let title = round != null ? `Round ${round}` : "Season overview";
   let statusLine = null;
   if (nextQuery.isPending || (nextGame && roundQuery.isPending)) {
     // Until the games arrive the latest played round would be the wrong one to name.
     title = "Season overview";
   } else if (nextGame && roundQuery.isSuccess) {
-    title = nextGame.roundName ?? `Round ${nextGame.roundNumber}`;
+    const roundName = nextGame.phaseCode === "RS" ? (nextGame.roundName ?? `Round ${nextGame.roundNumber}`) : (stageRoundName ?? nextGame.roundName);
+    title = nextStage ? stageRoundLabel(nextStage, roundName) : (nextGame.roundName ?? `Round ${nextGame.roundNumber}`);
     statusLine = roundStatus(roundQuery.data.games ?? [], now)?.line ?? null;
-  } else if (nextQuery.isSuccess && !nextGame && hasPlayed) {
+  } else if (nextQuery.isSuccess && !nextGame) {
     title = "Season overview";
-    statusLine = "The season has finished.";
+    if (format) {
+      statusLine = seasonStatusText(format, { hasScheduledGame: false });
+    } else if (formatQuery.isError && hasPlayed) {
+      // Without the format, the old reading of an empty schedule.
+      statusLine = "The season has finished.";
+    }
   }
+  if (hasLoadingIssues(format)) statusLine = statusLine ? `${statusLine} ${LOADING_ISSUES_NOTE}` : LOADING_ISSUES_NOTE;
 
   return (
     <motion.div className="flex flex-col gap-6" variants={sectionContainer} initial="hidden" animate="show">

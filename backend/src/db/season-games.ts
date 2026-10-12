@@ -2,6 +2,7 @@ import { and, asc, eq, inArray, isNotNull, isNull, or, sql } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 import { db } from "./client";
 import { CatalogDatabaseError, catalogRead } from "./season-catalog";
+import { seasonFormat } from "./season-format-registry";
 import { type ClubTvCodes, getClubTvCodes, tvCodeOf } from "./season-identities";
 import { clubs, gamePeriodScores, gamePlayerStats, gameTeamStats, games, playByPlay, postseasonSeries, shots, teamSeasonStats } from "./season-schema";
 
@@ -127,6 +128,16 @@ function toGame(row: {
   };
 }
 
+// Games still owed: not played, not cancelled by the league, and in a season that was not cancelled as a whole (E2019's
+// unplayed rounds were never going to be played).
+function scheduledCondition(seasonCode: string) {
+  if (seasonFormat(seasonCode)?.cancelled) return sql`false`;
+  return and(
+    or(eq(games.played, false), isNull(games.played)),
+    or(isNull(games.gameStatus), sql`${games.gameStatus} <> 'Cancelled'`),
+  )!;
+}
+
 export async function getGames(
   seasonCode: string,
   limit: number,
@@ -139,7 +150,7 @@ export async function getGames(
   const codes = await getClubTvCodes(seasonCode);
   const conditions = [eq(games.competitionCode, COMPETITION_CODE), eq(games.seasonCode, seasonCode)];
   if (status === "played") conditions.push(eq(games.played, true));
-  if (status === "scheduled") conditions.push(or(eq(games.played, false), isNull(games.played))!);
+  if (status === "scheduled") conditions.push(scheduledCondition(seasonCode));
   if (phaseCode !== undefined) conditions.push(eq(games.phaseCode, phaseCode));
   if (round !== undefined) conditions.push(eq(games.roundNumber, round));
 
@@ -187,7 +198,7 @@ export async function getTeamGames(
     or(eq(games.localClubCode, clubCode), eq(games.roadClubCode, clubCode))!,
   ];
   if (status === "played") conditions.push(eq(games.played, true));
-  if (status === "scheduled") conditions.push(or(eq(games.played, false), isNull(games.played))!);
+  if (status === "scheduled") conditions.push(scheduledCondition(seasonCode));
 
   const rows = await catalogRead(() =>
     db.select(gameFields)

@@ -59,6 +59,12 @@ export async function getShots(seasonCode, gameCode) {
   return data;
 }
 
+// The season's competition format with its status, each stage's loaded data and any place where the data contradicts the format.
+export async function getSeasonFormat(seasonCode) {
+  const { data } = await api.get(`/seasons/${seasonCode}/format`);
+  return data.format;
+}
+
 export async function getPhases(seasonCode) {
   const { data } = await api.get(`/seasons/${seasonCode}/phases`);
   return data;

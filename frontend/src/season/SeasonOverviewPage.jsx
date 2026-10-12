@@ -14,7 +14,9 @@ import LeaderPhoto from "../lib/LeaderPhoto";
 import { useDocumentTitle } from "../lib/useDocumentTitle";
 import { useCurrentPhaseCode } from "../lib/useCurrentPhaseCode";
 import { useMediaQuery } from "../lib/useMediaQuery";
-import { PHASE_NAMES, PHASE_ORDER, dateRangeLabel, isChampionshipLabel, phaseSortIndex } from "../lib/phaseSummary";
+import { PHASE_NAMES, dateRangeLabel, isChampionshipLabel, phaseSortIndex } from "../lib/phaseSummary";
+import { currentStage, hasLoadingIssues, LOADING_ISSUES_NOTE, stageDescription, stagePlaceholder } from "../lib/seasonFormat";
+import { useSeasonFormat } from "../lib/useSeasonFormat";
 import { useActiveTheme, themeColor } from "../lib/useActiveTheme";
 import { formatDateTime, formatPerGame, formatSeasonLabel } from "../lib/format";
 import { teamCode } from "../games/gameUtils";
@@ -64,8 +66,22 @@ async function fetchAllPlayedGames(seasonCode) {
   return all;
 }
 
-function SeasonHero({ champion, leader, pointsPerGame }) {
-  if (champion) {
+function SeasonHero({ champion, leader, pointsPerGame, format }) {
+  const status = format?.status ?? null;
+  if (status === "cancelled") {
+    const note = format.exceptions.find((exception) => exception.kind === "cancelled")?.note;
+    return (
+      <Panel className="flex items-center gap-3 p-4">
+        <span className="text-2xl" aria-hidden="true">◇</span>
+        <div>
+          <p className="text-lg font-semibold">Season cancelled</p>
+          {note ? <p className="muted text-sm">{note}</p> : null}
+        </div>
+      </Panel>
+    );
+  }
+
+  if (status === "completed" || (!status && champion)) {
     return (
       <Panel className="flex items-center gap-3 p-4">
         <span className="text-2xl" aria-hidden="true">◇</span>
@@ -74,7 +90,7 @@ function SeasonHero({ champion, leader, pointsPerGame }) {
     );
   }
 
-  if (!leader) {
+  if (status === "notStarted" || !leader) {
     return (
       <Panel className="flex items-center gap-3 p-4">
         <span className="text-2xl" aria-hidden="true">◇</span>
@@ -127,21 +143,11 @@ function SeasonHero({ champion, leader, pointsPerGame }) {
   );
 }
 
-const PHASE_BLURBS = {
-  RS: "Every team plays every other team home and away.",
-  PI: "Teams ranked 7th-10th play for the two remaining playoff spots.",
-  PO: "Best-of-five series between the top eight teams.",
-  FF: "Championship weekend: the semifinals and the final.",
-};
-
-function PhaseStory({ phases, phaseSummaries, activePhaseCode }) {
-  // Show the full canonical phase set even when the season's data only has
-  // some of them so far (e.g. only Regular Season exists early in the
-  // season, before Play-In/Playoffs/Final Four rows are created), so users
-  // always see the whole competition path, not just what has data yet.
-  const displayPhases = PHASE_ORDER.map(
-    (code) => phases.find((phase) => phase.code === code) ?? { code, name: PHASE_NAMES[code] },
-  );
+function PhaseStory({ phases, format, phaseSummaries, activePhaseCode }) {
+  // The season's own stages from its format, including the ones with no games yet (early in a season only the Regular Season has
+  // rows), so the whole competition path shows; each description is built from the stage's values. Without the format, the
+  // phases that have data.
+  const displayPhases = format ? format.stages : phases;
 
   return (
     <div>
@@ -165,12 +171,12 @@ function PhaseStory({ phases, phaseSummaries, activePhaseCode }) {
                 </p>
                 <h3 className="mb-2 font-semibold">{phase.name ?? PHASE_NAMES[phase.code] ?? phase.code}</h3>
                 {!summary || !summary.dateRange ? (
-                  <p className="muted text-sm">Not yet applicable</p>
+                  <p className="muted text-sm">{(format && stagePlaceholder(phase)) ?? "Not yet applicable"}</p>
                 ) : (
                   <p className="muted text-sm">{summary.dateRange}</p>
                 )}
-                {PHASE_BLURBS[phase.code] ? (
-                  <p className="muted mt-1 text-xs">{PHASE_BLURBS[phase.code]}</p>
+                {format ? (
+                  <p className="muted mt-1 text-xs">{stageDescription(phase, format)}</p>
                 ) : null}
               </Panel>
               {index < displayPhases.length - 1 ? (
@@ -770,6 +776,9 @@ export default function SeasonOverviewPage() {
     queryKey: ["standings", seasonCode, "RS"],
     queryFn: () => getSeasonStandings(seasonCode, "RS"),
   });
+  // The season's format and status; a failed request leaves the page on its own reading of the games.
+  const formatQuery = useSeasonFormat(seasonCode);
+  const format = formatQuery.data ?? null;
   const leader = standingsQuery.data?.standings.find((entry) => entry.basic?.position === 1) ?? null;
   // The leader's points per game from the team totals (overtime counted), not the standings' regulation-only points.
   const leagueTeamStatsQuery = useQuery({
@@ -806,7 +815,8 @@ export default function SeasonOverviewPage() {
     knockoutPhaseGamesQueries.some((query) => query.isLoading) ||
     playedGamesQuery.isLoading ||
     finalFourGamesQuery.isLoading ||
-    standingsQuery.isLoading;
+    standingsQuery.isLoading ||
+    formatQuery.isLoading;
   const summaryError =
     phaseFirstGameQueries.some((query) => query.isError) ||
     phaseLastGameQueries.some((query) => query.isError) ||
@@ -837,13 +847,15 @@ export default function SeasonOverviewPage() {
       ) : (
         <>
           <motion.div variants={sectionItem}>
-            <SeasonHero champion={champion} leader={leader} pointsPerGame={leaderPointsPerGame} />
+            <SeasonHero champion={champion} leader={leader} pointsPerGame={leaderPointsPerGame} format={format} />
+            {hasLoadingIssues(format) ? <p className="muted mt-2 text-sm">{LOADING_ISSUES_NOTE}</p> : null}
           </motion.div>
           <motion.div variants={sectionItem}>
             <PhaseStory
               phases={phases}
+              format={format}
               phaseSummaries={phaseSummaries}
-              activePhaseCode={champion ? null : activePhase?.code}
+              activePhaseCode={format ? (currentStage(format)?.code ?? null) : champion ? null : activePhase?.code}
             />
           </motion.div>
           <motion.div variants={sectionItem}>

@@ -89,12 +89,31 @@ test.describe("the round line", () => {
     await expect(statusLine(page)).toHaveText(/^Starts in 6 days \(Tue, Oct 20, 0?5:45\s?PM\)$/);
   });
 
-  test("says the season has finished when no game is left to play", async ({ page }) => {
+  // With nothing scheduled, the season's format says why: finished, or waiting for its next stage's fixtures.
+  async function serveFormatStatus(page, status) {
+    await page.route(/\/api\/seasons\/[^/]+\/format$/, async (route) => {
+      const response = await route.fetch();
+      const { format } = await response.json();
+      await route.fulfill({ response, json: { format: { ...format, status: status ?? format.status } } });
+    });
+  }
+
+  test("says the season has finished when the format says it is complete", async ({ page }) => {
     const { slug } = await openHome(page, "2026-10-14T09:00:00Z");
     await serveRound(page, { scheduled: [], round: [] });
+    await serveFormatStatus(page, "completed");
     await page.goto(`/${slug}/home`);
     await expect(header(page)).toHaveText("Season overview", { timeout: 30_000 });
     await expect(statusLine(page)).toHaveText("The season has finished.");
+  });
+
+  test("names the next stage, not the end of the season, when an ongoing season has nothing scheduled", async ({ page }) => {
+    const { slug } = await openHome(page, "2026-10-14T09:00:00Z");
+    await serveRound(page, { scheduled: [], round: [] });
+    await serveFormatStatus(page, null);
+    await page.goto(`/${slug}/home`);
+    await expect(header(page)).toHaveText("Season overview", { timeout: 30_000 });
+    await expect(statusLine(page)).toHaveText("Play-In fixtures not published yet.");
   });
 
   test("keeps today's header, with no line, when the games cannot be loaded", async ({ page }) => {

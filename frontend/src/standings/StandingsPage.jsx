@@ -9,6 +9,8 @@ import PageHeader from "../lib/PageHeader";
 import { EASE_OUT } from "../lib/motion";
 import { useDocumentTitle } from "../lib/useDocumentTitle";
 import { usePhaseParam } from "../lib/usePhaseParam";
+import { tableTiers } from "../lib/seasonFormat";
+import { useSeasonFormat } from "../lib/useSeasonFormat";
 import { TabPanel, TabStrip } from "../lib/TabStrip";
 import { resultsByClub } from "./breakdownUtils";
 import StandingsKpiStrip from "./StandingsKpiStrip";
@@ -54,6 +56,8 @@ export default function StandingsPage() {
 
   const phases = phasesQuery.data?.phases ?? [];
   const [phaseCode, setPhaseCode] = usePhaseParam(phases);
+  // The qualification lines of this phase's table, from the season's format (none while it loads or when it cannot be read).
+  const tiers = tableTiers(useSeasonFormat(seasonCode).data, phaseCode);
 
   const standingsQuery = useQuery({
     queryKey: ["standings", seasonCode, phaseCode],
@@ -141,6 +145,7 @@ export default function StandingsPage() {
                 round={round}
                 standings={standings}
                 netQuery={netQuery}
+                tiers={tiers}
               />
             )}
 
@@ -172,6 +177,7 @@ export default function StandingsPage() {
                 latestRound={round}
                 latestStandings={standings}
                 shortNames={shortNames}
+                tiers={tiers}
               />
             ) : (
               <motion.div
@@ -230,6 +236,7 @@ export default function StandingsPage() {
                   seasonCode={seasonCode}
                   view={view}
                   showTiers={phaseCode === "RS"}
+                  tiers={tiers}
                   netByClub={netByClub}
                   shortNames={shortNames}
                   resultsQuery={resultsQuery}

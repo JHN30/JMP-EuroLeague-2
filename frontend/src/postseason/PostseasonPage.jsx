@@ -11,7 +11,9 @@ import PageHeader from "../lib/PageHeader";
 import Panel from "../lib/Panel";
 import { useDocumentTitle } from "../lib/useDocumentTitle";
 import Bracket from "./Bracket";
-import { buildBracket, raceStatus } from "./bracketModel";
+import { bracketSeeds, buildBracket, raceStatus } from "./bracketModel";
+import { stageDescription, tableTiers } from "../lib/seasonFormat";
+import { useSeasonFormat } from "../lib/useSeasonFormat";
 import ChampionPanel from "./ChampionPanel";
 import MatchupDetail from "./MatchupDetail";
 import RacePanel from "./RacePanel";
@@ -58,6 +60,12 @@ function dateRange(series, phaseCodes) {
   const first = formatShortDate(times[0]);
   const last = formatShortDate(times[times.length - 1]);
   return first === last ? first : first + " to " + last;
+}
+
+// A stage's subtitle before its games are dated: its description from the format ("Best-of-five series."), or the old wording.
+function stageSub(format, code, fallback) {
+  const stage = format?.stages.find((entry) => entry.code === code);
+  return stage ? stageDescription(stage, format).replace(/\.$/, "") : fallback;
 }
 
 function Steps({ steps }) {
@@ -116,15 +124,27 @@ export default function PostseasonPage() {
   const teams = teamsQuery.data?.teams;
   const series = seriesQuery.data?.series;
   const remaining = remainingQuery.data;
-  const regularSeasonDone = standings.length > 0 && remaining !== undefined && remaining.total === 0;
-
+  // The season's format: the qualification lines (seeds), win targets and third-place game. While it cannot be read, the page
+  // keeps its old reading: an empty list of remaining games ends the regular season.
+  const formatQuery = useSeasonFormat(seasonCode);
+  const format = formatQuery.data ?? null;
+  const tiers = useMemo(() => tableTiers(format, "RS"), [format]);
+  const regularSeasonStage = format?.stages.find((stage) => stage.code === "RS") ?? null;
+  const laterStagePlayed = format?.stages.some((stage) => stage.code !== "RS" && stage.observed.gamesPlayed > 0) ?? false;
+  const regularSeasonDone = format
+    ? regularSeasonStage?.dataState === "loaded" || laterStagePlayed
+    : standings.length > 0 && remaining !== undefined && remaining.total === 0;
   const bracket = useMemo(
-    () => (standings.length && teams && series ? buildBracket({ standings, teams, series, regularSeasonDone }) : null),
-    [standings, teams, series, regularSeasonDone],
+    () => (standings.length && teams && series ? buildBracket({ standings, teams, series, regularSeasonDone, format, tiers }) : null),
+    [standings, teams, series, regularSeasonDone, format, tiers],
   );
-  const race = useMemo(() => (remaining && standings.length ? raceStatus(standings, remaining.remaining) : null), [standings, remaining]);
+  const race = useMemo(
+    () => (remaining && standings.length ? raceStatus(standings, remaining.remaining, bracketSeeds(tiers)) : null),
+    [standings, remaining, tiers],
+  );
 
   const queries = [standingsQuery, teamsQuery, seriesQuery, remainingQuery];
+  if (formatQuery.isLoading) return <AsyncState status="loading" label="Loading the postseason" />;
   if (queries.some((query) => query.isLoading)) return <AsyncState status="loading" label="Loading the postseason" />;
   if (queries.some((query) => query.isError)) {
     return <AsyncState status="error" message="Could not load the postseason." onRetry={() => queries.forEach((query) => query.isError && query.refetch())} />;
@@ -146,9 +166,13 @@ export default function PostseasonPage() {
       sub: regularSeasonDone ? "Finished" : remaining.nextRound && totalRounds ? "Round " + remaining.nextRound + " of " + totalRounds : "Under way",
       state: regularSeasonDone ? "done" : "live",
     },
-    { title: "Play-In", sub: dateRange(series, ["PI"]) ?? "Seeds 7 to 10", state: regularSeasonDone || series.length ? stageState(bracket.playIn) : "waiting" },
-    { title: "Playoffs", sub: dateRange(series, ["PO"]) ?? "Best of five", state: stageState(bracket.playoffs) },
-    { title: "Final Four", sub: dateRange(series, ["FF"]) ?? "Semifinals and final", state: stageState([...bracket.semis, bracket.final]) },
+    {
+      title: "Play-In",
+      sub: dateRange(series, ["PI"]) ?? "Seeds " + (bracket.directSeeds + 1) + " to " + bracket.playInLast,
+      state: regularSeasonDone || series.length ? stageState(bracket.playIn) : "waiting",
+    },
+    { title: "Playoffs", sub: dateRange(series, ["PO"]) ?? stageSub(format, "PO", "Best of five"), state: stageState(bracket.playoffs) },
+    { title: "Final Four", sub: dateRange(series, ["FF"]) ?? stageSub(format, "FF", "Semifinals and final"), state: stageState([...bracket.semis, bracket.final]) },
   ];
 
   const selected = bracket.all.find((slot) => slot.id === selectedId) ?? null;

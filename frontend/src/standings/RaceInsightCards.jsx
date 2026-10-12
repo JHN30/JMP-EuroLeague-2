@@ -1,9 +1,9 @@
 import { useMemo } from "react";
 import { Link } from "react-router";
 
-const PLAYIN_CUTOFF = 10;
+import { tierForPosition } from "../lib/seasonFormat";
 
-function computeInsights(rounds, standingsByRound, teamOrder) {
+function computeInsights(rounds, standingsByRound, teamOrder, tiers) {
   if (teamOrder.length === 0) return null;
   if (rounds.length === 0) return { leader: null, climber: null, consistent: null, mostQualified: null };
 
@@ -35,7 +35,8 @@ function computeInsights(rounds, standingsByRound, teamOrder) {
       if (!consistent || range < consistent.range) consistent = { ...team, range };
     }
 
-    const qualifiedRounds = positions.filter((p) => p <= PLAYIN_CUTOFF).length;
+    // Rounds spent inside the season's qualification lines (none counted when the lines are not known).
+    const qualifiedRounds = positions.filter((p) => { const tier = tierForPosition(p, tiers); return tier !== null && tier !== "out"; }).length;
     if (qualifiedRounds > 0 && (!mostQualified || qualifiedRounds > mostQualified.qualifiedRounds)) {
       mostQualified = { ...team, qualifiedRounds };
     }
@@ -69,10 +70,10 @@ function InsightCard({ label, team, detail, seasonCode }) {
   );
 }
 
-export default function RaceInsightCards({ seasonCode, rounds, standingsByRound, teamOrder }) {
+export default function RaceInsightCards({ seasonCode, rounds, standingsByRound, teamOrder, tiers = null }) {
   const insights = useMemo(
-    () => computeInsights(rounds, standingsByRound, teamOrder),
-    [rounds, standingsByRound, teamOrder],
+    () => computeInsights(rounds, standingsByRound, teamOrder, tiers),
+    [rounds, standingsByRound, teamOrder, tiers],
   );
 
   if (!insights) return null;

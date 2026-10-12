@@ -1,14 +1,16 @@
 import RevealImage from "../lib/RevealImage";
 import { clubScore } from "./bracketModel";
 
-const FORMATS = { PI: "One game", PO: "Best of 5", FF: "One game" };
+// "Best of 5" for a stage that needs 3 wins, "One game" for a single game, from the stage's win target.
+const formatLabel = (slot) => ((slot.winTarget ?? 1) > 1 ? "Best of " + (2 * slot.winTarget - 1) : "One game");
 
 function Crest({ url }) {
   return url ? <RevealImage src={url} className="h-6 w-6 flex-none object-contain" /> : <span className="h-6 w-6 flex-none" />;
 }
 
 function TeamRow({ slot, side, onSelect, onFocusClub }) {
-  const winnerCode = slot.series?.winnerClubCode ?? null;
+  // Only a club that has reached the win target has won; a series leader has not.
+  const winnerCode = slot.winnerClubCode ?? null;
   const decided = Boolean(winnerCode);
   const won = decided && winnerCode === side.clubCode;
   const score = clubScore(slot, side.clubCode);
@@ -57,7 +59,7 @@ export default function Matchup({ slot, selected, focusClub, onSelect, onFocusCl
         <span className="flex items-center gap-1.5 text-[0.7rem]">
           {live ? <span className="badge badge-warning badge-xs">Live</span> : null}
           {slot.state === "projected" ? <span className="badge badge-ghost badge-xs">Projected</span> : null}
-          <span className="muted">{FORMATS[slot.stage]}</span>
+          <span className="muted">{formatLabel(slot)}</span>
         </span>
       </div>
       {slot.participants.map((side, index) =>

@@ -112,3 +112,25 @@ export function hasLoadingIssues(format) {
 }
 
 export const LOADING_ISSUES_NOTE = "Some of this season's games are not loaded.";
+
+// The qualification lines of one table stage: [{ tier: "postseason" | "playin", from, to }] in official positions. Null when the
+// format is not known, the stage is not a table, or its rules are per group or across groups (those seasons' leaves draw them), so a
+// page draws no line rather than a guessed one.
+export function tableTiers(format, stageCode) {
+  const stage = format?.stages.find((entry) => entry.code === stageCode);
+  if (!stage || stage.type !== "table" || stage.qualification.length === 0) return null;
+  if (!stage.qualification.every((rule) => "positions" in rule && rule.within === "table")) return null;
+  return stage.qualification.map((rule) => ({ tier: rule.kind === "playIn" ? "playin" : "postseason", from: rule.positions[0], to: rule.positions[1] }));
+}
+
+// A position's tier, "out" below every line, null when there are no lines.
+export function tierForPosition(position, tiers) {
+  if (position == null || !tiers) return null;
+  return tiers.find((entry) => position >= entry.from && position <= entry.to)?.tier ?? "out";
+}
+
+// The last position of a tier (6 for the modern direct places), or null when the season has no such tier.
+export function tierEnd(tiers, tier) {
+  const ends = (tiers ?? []).filter((entry) => entry.tier === tier).map((entry) => entry.to);
+  return ends.length > 0 ? Math.max(...ends) : null;
+}

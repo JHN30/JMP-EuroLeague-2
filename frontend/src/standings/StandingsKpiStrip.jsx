@@ -3,6 +3,7 @@ import { getSeasonStandings } from "../lib/api";
 import CompactMetric from "../lib/CompactMetric";
 import { formatSignedDecimal } from "../lib/format";
 import HeaderStats from "../lib/HeaderStats";
+import { tierEnd } from "../lib/seasonFormat";
 
 function clubLabel(entry) {
   return entry.clubName ?? entry.clubCode;
@@ -10,7 +11,7 @@ function clubLabel(entry) {
 
 // `netQuery` is the phase's advanced-standings query (shared with the table's Net rtg column). Best net rating is
 // the efficiency view of who is strongest, distinct from Home's raw best offense and defense.
-export default function StandingsKpiStrip({ seasonCode, phaseCode, round, standings, netQuery }) {
+export default function StandingsKpiStrip({ seasonCode, phaseCode, round, standings, netQuery, tiers = null }) {
   const previousRoundQuery = useQuery({
     queryKey: ["standings", seasonCode, phaseCode, "round", round ? round - 1 : null],
     queryFn: () => getSeasonStandings(seasonCode, phaseCode, { round: round - 1 }),
@@ -18,7 +19,9 @@ export default function StandingsKpiStrip({ seasonCode, phaseCode, round, standi
   });
 
   const leader = standings.find((entry) => entry.basic?.position === 1) ?? null;
-  const cutoff = standings.find((entry) => entry.basic?.position === 6) ?? null;
+  // The last place that goes straight to the postseason, from the season's qualification lines.
+  const cutoffPosition = tierEnd(tiers, "postseason");
+  const cutoff = cutoffPosition === null ? null : (standings.find((entry) => entry.basic?.position === cutoffPosition) ?? null);
 
   let biggestRiser = null;
   let biggestFaller = null;

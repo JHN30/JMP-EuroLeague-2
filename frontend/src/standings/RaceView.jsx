@@ -20,7 +20,7 @@ function combineSnapshots(results) {
 
 // `latestRound` is the last round with standings. The phase lists every scheduled round, but only the played ones
 // have a snapshot, so the race stops there instead of running to the end of the schedule.
-export default function RaceView({ seasonCode, phaseCode, latestRound, latestStandings, shortNames }) {
+export default function RaceView({ seasonCode, phaseCode, latestRound, latestStandings, shortNames, tiers = null }) {
   const roundsQuery = useQuery({
     queryKey: ["rounds", seasonCode, phaseCode],
     queryFn: () => getRounds(seasonCode, phaseCode),
@@ -114,25 +114,23 @@ export default function RaceView({ seasonCode, phaseCode, latestRound, latestSta
         rounds={rounds.slice(0, shown)}
         standingsByRound={positionsByRound}
         teamOrder={teamOrder}
+        tiers={tiers}
       />
       </motion.div>
 
-      <motion.div variants={sectionItem} className="legend flex flex-wrap gap-4 text-xs text-base-content/70">
-        <span className="inline-flex items-center gap-2">
-          <span
-            className="inline-block h-3 w-3 rounded-sm"
-            style={{ background: "color-mix(in srgb, var(--color-success) 25%, transparent)" }}
-          />
-          Direct to playoffs (1-6)
-        </span>
-        <span className="inline-flex items-center gap-2">
-          <span
-            className="inline-block h-3 w-3 rounded-sm"
-            style={{ background: "color-mix(in srgb, var(--color-warning) 25%, transparent)" }}
-          />
-          Play-in tournament (7-10)
-        </span>
-      </motion.div>
+      {tiers ? (
+        <motion.div variants={sectionItem} className="legend flex flex-wrap gap-4 text-xs text-base-content/70">
+          {tiers.map((line) => (
+            <span key={line.tier} className="inline-flex items-center gap-2">
+              <span
+                className="inline-block h-3 w-3 rounded-sm"
+                style={{ background: `color-mix(in srgb, var(--color-${line.tier === "playin" ? "warning" : "success"}) 25%, transparent)` }}
+              />
+              {line.tier === "playin" ? "Play-in tournament" : "Direct to playoffs"} ({line.from}-{line.to})
+            </span>
+          ))}
+        </motion.div>
+      ) : null}
 
       <motion.div variants={sectionItem}>
       <RacePlayback
@@ -152,6 +150,7 @@ export default function RaceView({ seasonCode, phaseCode, latestRound, latestSta
           teamOrder={teamOrder}
           focusedClub={focusedClub}
           onFocusClub={setFocusedClub}
+          tiers={tiers}
         />
         <RaceSnapshotTable
           seasonCode={seasonCode}
@@ -163,6 +162,7 @@ export default function RaceView({ seasonCode, phaseCode, latestRound, latestSta
           shortNames={shortNames}
           focusedClub={focusedClub}
           onFocusClub={setFocusedClub}
+          tiers={tiers}
         />
       </motion.div>
     </motion.div>

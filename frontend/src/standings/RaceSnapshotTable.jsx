@@ -1,12 +1,14 @@
 import { motion } from "motion/react";
 import { Link } from "react-router";
 import HeaderTip from "../lib/HeaderTip";
+import { tierForPosition } from "../lib/seasonFormat";
 import { usePrefersReducedMotion } from "../lib/usePrefersReducedMotion";
 
-function tierClass(position) {
-  if (position == null) return "";
-  if (position <= 6) return "bg-success/10";
-  if (position <= 10) return "bg-warning/10";
+// The row tint follows the season's qualification lines; with none, rows are not tinted.
+function tierClass(position, tiers) {
+  const tier = tierForPosition(position, tiers);
+  if (tier === "postseason") return "bg-success/10";
+  if (tier === "playin") return "bg-warning/10";
   return "";
 }
 
@@ -36,6 +38,7 @@ export default function RaceSnapshotTable({
   shortNames,
   focusedClub,
   onFocusClub,
+  tiers = null,
 }) {
   const reducedMotion = usePrefersReducedMotion();
   const positions = round != null ? positionsByRound.get(round) : null;
@@ -84,7 +87,7 @@ export default function RaceSnapshotTable({
                 key={team.clubCode}
                 layout={reducedMotion ? false : "position"}
                 transition={{ duration: 0.4 }}
-                className={`${tierClass(position)} ${isFocused ? "outline outline-2 outline-primary" : ""} cursor-pointer`}
+                className={`${tierClass(position, tiers)} ${isFocused ? "outline outline-2 outline-primary" : ""} cursor-pointer`}
                 onClick={() => onFocusClub(isFocused ? null : team.clubCode)}
               >
                 <td>{position ?? "-"}</td>

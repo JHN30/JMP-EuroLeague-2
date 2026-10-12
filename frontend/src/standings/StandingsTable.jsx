@@ -1,6 +1,7 @@
 import { Fragment } from "react";
 import { formatCount, formatSignedDecimal, formatSignedDiff } from "../lib/format";
 import HeaderTip from "../lib/HeaderTip";
+import { tierForPosition } from "../lib/seasonFormat";
 import Panel from "../lib/Panel";
 import { AnimatedBody, AnimatedRow } from "./motionTable";
 import ScrollingTable from "./ScrollingTable";
@@ -47,13 +48,6 @@ function sortForView(standings, view) {
   return [...ranked.map((r) => r.entry), ...unranked];
 }
 
-function tierForPosition(position) {
-  if (position == null) return null;
-  if (position <= 6) return "postseason";
-  if (position <= 10) return "playin";
-  return "out";
-}
-
 const TIER_LABELS = {
   postseason: "Direct to playoffs",
   playin: "Play-in tournament",
@@ -89,10 +83,11 @@ const VIEW_NET_FIELD = {
   last10: "last10NetRating",
 };
 
-function OverviewTable({ standings, seasonCode, view, showTiers, netByClub, shortNames }) {
+function OverviewTable({ standings, seasonCode, view, showTiers, tierLines, netByClub, shortNames }) {
   const sorted = sortForView(standings, view);
-  const tiersActive = showTiers && view === "overall";
-  const tiers = tiersActive ? sorted.map((entry) => tierForPosition(entry.basic?.position)) : [];
+  // The tier rows follow the season's qualification lines (from its format); without them no tier row is drawn.
+  const tiersActive = showTiers && view === "overall" && Boolean(tierLines);
+  const tiers = tiersActive ? sorted.map((entry) => tierForPosition(entry.basic?.position, tierLines)) : [];
   const columnCount = 14;
 
   return (
@@ -163,6 +158,7 @@ export default function StandingsTable({
   seasonCode,
   view = "overall",
   showTiers = false,
+  tiers = null,
   netByClub,
   shortNames,
   breakdown = "overview",
@@ -197,6 +193,7 @@ export default function StandingsTable({
           seasonCode={seasonCode}
           view={view}
           showTiers={showTiers}
+          tierLines={tiers}
           netByClub={netByClub}
           shortNames={shortNames}
         />

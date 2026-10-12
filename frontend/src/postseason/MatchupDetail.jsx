@@ -11,7 +11,7 @@ function Side({ side, slot }) {
     return <p className="muted italic">{side.placeholder}</p>;
   }
   const score = clubScore(slot, side.clubCode);
-  const won = slot.series?.winnerClubCode === side.clubCode;
+  const won = slot.winnerClubCode === side.clubCode;
   return (
     <div className="flex min-w-0 items-center gap-3">
       {side.crestUrl ? <RevealImage src={side.crestUrl} className="h-12 w-12 flex-none object-contain" /> : <span className="h-12 w-12 flex-none" />}
@@ -30,10 +30,11 @@ function Side({ side, slot }) {
 function resultText(slot) {
   const entry = slot.series;
   if (!entry) return null;
-  const winner = slot.participants.find((side) => side.clubCode === entry.winnerClubCode);
+  // A series is won only at the stage's win target; until then it is in progress, whoever leads.
+  const winner = slot.participants.find((side) => side.clubCode === slot.winnerClubCode);
   if (!winner) return entry.games.length ? "In progress" : null;
-  const loser = slot.participants.find((side) => side.clubCode !== entry.winnerClubCode);
-  if (slot.stage === "PO") {
+  const loser = slot.participants.find((side) => side.clubCode !== slot.winnerClubCode);
+  if ((slot.winTarget ?? 1) > 1) {
     const wins = clubScore(slot, winner.clubCode);
     const losses = clubScore(slot, loser.clubCode);
     return winner.name + " won the series " + wins + "-" + losses;

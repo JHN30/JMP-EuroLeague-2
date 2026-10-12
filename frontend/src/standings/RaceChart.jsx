@@ -1,6 +1,7 @@
 import { useEffect, useId, useRef, useState } from "react";
 import { motion } from "motion/react";
 import { thinAxisLabels } from "../lib/chartHelpers";
+import { tierEnd } from "../lib/seasonFormat";
 import { teamHue } from "../lib/teamHue";
 import { useElementWidth } from "../lib/useElementWidth";
 import { useMediaQuery } from "../lib/useMediaQuery";
@@ -8,8 +9,6 @@ import { usePrefersReducedMotion } from "../lib/usePrefersReducedMotion";
 
 const MIN_HEIGHT = 390;
 const HEIGHT_PER_ROW = 50;
-const POSTSEASON_CUTOFF = 6;
-const PLAYIN_CUTOFF = 10;
 const CREST_RADIUS = 19;
 const MARGIN = { top: 4, bottom: 28, left: 34, right: CREST_RADIUS + 6 };
 
@@ -26,7 +25,7 @@ const PLAYIN_FILL = "color-mix(in srgb, var(--color-warning) 6.5%, transparent)"
 // latest round being shown. Stepping the race slides each crest along its line while the line is drawn behind it.
 // The x axis always covers every played round, so it doesn't rescale while the season replays; `visibleCount` is how
 // many of those rounds are shown (0 is the empty season start).
-export default function RaceChart({ rounds, visibleCount, standingsByRound, teamOrder, focusedClub, onFocusClub }) {
+export default function RaceChart({ rounds, visibleCount, standingsByRound, teamOrder, focusedClub, onFocusClub, tiers = null }) {
   const containerRef = useRef(null);
   const width = useElementWidth(containerRef);
   const narrow = useMediaQuery(NARROW_QUERY);
@@ -78,8 +77,11 @@ export default function RaceChart({ rounds, visibleCount, standingsByRound, team
 
   const positions = Array.from({ length: teamCount }, (_, index) => index + 1);
   const roundLabels = thinAxisLabels(rounds.map((round) => `R${round}`), 8);
-  const postseasonEnd = Math.min(POSTSEASON_CUTOFF + 0.5, teamCount + 0.5);
-  const playinEnd = Math.min(PLAYIN_CUTOFF + 0.5, teamCount + 0.5);
+  // The bands follow the season's qualification lines; with none, both bands are empty (zero height).
+  const postseasonCutoff = tierEnd(tiers, "postseason") ?? 0;
+  const playinCutoff = tierEnd(tiers, "playin") ?? postseasonCutoff;
+  const postseasonEnd = postseasonCutoff > 0 ? Math.min(postseasonCutoff + 0.5, teamCount + 0.5) : 0;
+  const playinEnd = playinCutoff > postseasonCutoff ? Math.min(playinCutoff + 0.5, teamCount + 0.5) : postseasonEnd;
   const revealWidth = visibleCount > 0 ? x(visibleCount - 1) + 6 : 0;
   const crestInner = crestRadius - 3;
 

@@ -3,7 +3,7 @@ import { HEIGHT } from "./support/layout";
 
 // The Postseason page at every width, on the live data of five seasons: 2025 (finished, with its champion), 2026 (in progress: a projected
 // bracket and the race), 2024 (a third-place game), 2023 (a smaller league) and 2004 (older data, three-digit scores). Each test loads the
-// page once and resizes the window, widest first: the layout depends on the viewport only.
+// page once and resizes the window, widest first: the layout depends on the viewport only. A season without Play-In uses three columns.
 const WIDTHS = [1280, 1024, 1023, 768, 640, 639, 390, 320];
 const SEASONS = ["2025", "2026", "2024", "2023", "2004"];
 
@@ -29,7 +29,7 @@ const outsidePanels = (page) =>
   );
 
 for (const season of SEASONS) {
-  test(`${season}: the bracket is one column below 1024px and four from it, the rows are touch-sized on a phone, and the panels fit`, async ({ page }) => {
+  test(`${season}: the bracket uses its stage columns from 1024px, the rows are touch-sized on a phone, and the panels fit`, async ({ page }) => {
     test.setTimeout(120_000);
     await page.setViewportSize({ width: 1280, height: HEIGHT });
     await page.goto(`/${season}/postseason`);
@@ -47,9 +47,9 @@ for (const season of SEASONS) {
         await expectNoSidewaysScroll(page);
         await expect.poll(() => outsidePanels(page), { timeout: 20_000 }).toEqual([]);
 
-        // The bracket: stacked below lg, four columns from it.
+        // Stacked below lg; only the columns for stages this season held from lg.
         const columns = await page.locator(".bk-grid").evaluate((el) => getComputedStyle(el).gridTemplateColumns.split(" ").length);
-        expect(columns).toBe(width >= 1024 ? 4 : 1);
+        expect(columns).toBe(width >= 1024 ? (season === "2004" ? 3 : 4) : 1);
 
         // A club row of a matchup is a 44px target on a phone.
         if (phone) {
@@ -86,6 +86,7 @@ async function mockPostseason(page, { delay, fail = false } = {}) {
     const { pathname } = new URL(route.request().url());
     if (pathname === "/api/seasons") return route.fulfill({ json: { seasons: [{ seasonCode: "2025", name: "2025-26" }] } });
     if (fail) return route.fulfill({ status: 500, json: {} });
+    if (/\/format$/.test(pathname)) return route.fulfill({ json: { format: { status: "notStarted", stages: [{ code: "RS", type: "table", dataState: "upcoming", observed: { gamesPlayed: 0 }, qualification: [] }], issues: [] } } });
     if (/\/standings$/.test(pathname)) {
       if (delay) await delay;
       return route.fulfill({ json: { standings: [] } });

@@ -3,17 +3,15 @@ import RevealImage from "../lib/RevealImage";
 
 // `short` is the label below sm, where the table has little room.
 const CHIPS = {
-  top6: { label: "In the Playoffs", short: "Playoffs", tone: "badge-success" },
+  playoffs: { label: "In the Playoffs", short: "Playoffs", tone: "badge-success" },
   playin: { label: "Play-In or better", short: "Play-In", tone: "badge-info" },
   "playin-race": { label: "Play-In race", short: "Race", tone: "badge-warning" },
   alive: { label: "In the race", short: "In", tone: "badge-ghost" },
   out: { label: "Out", short: "Out", tone: "badge-error" },
 };
 
-// The table around the lines while the regular season is on: the top six go straight to the Playoffs, seven to ten play the
-// Play-In. Every club that can still get a place is listed, so early in the season that is all of them; a club drops off once it
-// is out, and the clubs that are out are named underneath. A club is only called in or out when no tiebreaker could change it.
-export default function RacePanel({ standings, teams, race }) {
+// Clinch/out claims stay conservative: tied wins can still change the qualifying clubs.
+export default function RacePanel({ standings, teams, race, directSeeds, playInLast }) {
   const info = new Map(teams.map((team) => [team.clubCode, team]));
   const stillIn = standings.filter((entry) => race.get(entry.clubCode)?.status !== "out");
   const out = standings.filter((entry) => race.get(entry.clubCode)?.status === "out");
@@ -23,7 +21,7 @@ export default function RacePanel({ standings, teams, race }) {
       <p className="eyebrow mb-0.5">THE RACE</p>
       <h3 className="text-lg font-bold">Race for the bracket</h3>
       <p className="muted mb-3 mt-1 text-sm">
-        Top six: straight to the Playoffs. Seventh to tenth: the Play-In. Every club that can still get a place is listed ({stillIn.length} of {standings.length}). A club is called in or
+        Top {directSeeds}: straight to the Playoffs. {playInLast > directSeeds ? `Ranks ${directSeeds + 1} to ${playInLast}: the Play-In. ` : ""}Every club that can still get a place is listed ({stillIn.length} of {standings.length}). A club is called in or
         out only when no tiebreaker could change it.
       </p>
       <div className="max-w-3xl overflow-x-auto overscroll-x-contain">
@@ -44,8 +42,7 @@ export default function RacePanel({ standings, teams, race }) {
               const team = info.get(entry.clubCode);
               const position = entry.basic.position;
               const next = stillIn[index + 1]?.basic.position ?? Infinity;
-              // The line under the last club in the top six, and under the last in the top ten.
-              const lineAfter = (position <= 6 && next > 6) || (position <= 10 && next > 10);
+              const lineAfter = (position <= directSeeds && next > directSeeds) || (position <= playInLast && next > playInLast);
               return (
                 <tr key={entry.clubCode} className={lineAfter ? "[&>td]:border-b-2 [&>td]:border-b-primary/50" : ""}>
                   <td className="muted text-right tabular-nums">{position}</td>

@@ -60,6 +60,8 @@ const measureTable = (page) =>
 const scroller = (page) => table(page).locator("xpath=..");
 
 test("the KPI strip is two compact columns below 1280px and five across from it", async ({ page }) => {
+  // Layout evidence should not depend on the image CDN being reachable.
+  await page.route(/https:\/\/media-cdn\./, (route) => route.fulfill({ contentType: "image/svg+xml", body: '<svg xmlns="http://www.w3.org/2000/svg" width="96" height="96"><circle cx="48" cy="48" r="40" fill="blue"/></svg>' }));
   await openStandings(page);
   const strip = page.getByTestId("standings-kpi-strip");
   const cards = strip.locator(".kpi-chip");

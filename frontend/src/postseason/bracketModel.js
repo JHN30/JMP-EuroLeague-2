@@ -41,12 +41,13 @@ export function clinchedWinner(entry, winTarget) {
 // The seeds of the bracket from the qualification lines (6 direct places and the Play-In to 10 in the modern seasons).
 export function bracketSeeds(tiers) {
   const directSeeds = tiers?.find((line) => line.tier === "postseason")?.to ?? DEFAULT_DIRECT_SEEDS;
-  const playInLast = tiers?.find((line) => line.tier === "playin")?.to ?? DEFAULT_PLAY_IN_LAST_SEED;
+  const playInLast = tiers?.find((line) => line.tier === "playin")?.to ?? (tiers ? directSeeds : DEFAULT_PLAY_IN_LAST_SEED);
   return { directSeeds, playInLast };
 }
 
 export function buildBracket({ standings, teams, series, regularSeasonDone, format = null, tiers = null }) {
   const { directSeeds, playInLast } = bracketSeeds(tiers);
+  const hasPlayIn = format ? format.stages.some((stage) => stage.code === "PI") : playInLast > directSeeds;
   const thirdPlaceGame = format ? (format.stages.find((stage) => stage.code === "FF")?.thirdPlaceGame ?? null) : null;
   const bySeed = new Map();
   const seedOfClub = new Map();
@@ -113,36 +114,36 @@ export function buildBracket({ standings, teams, series, regularSeasonDone, form
   const playInFirst = directSeeds + 1;
   const firstPair = playInFirst + " v " + (playInFirst + 1);
   const secondPair = playInFirst + 2 + " v " + (playInFirst + 3);
-  const s7 = seeded(playInFirst);
-  const s8 = seeded(playInFirst + 1);
-  const s9 = seeded(playInFirst + 2);
-  const s10 = seeded(playInFirst + 3);
-  const pi1 = slot("pi1", "PI", firstPair, [s7, s8], matchSeries(s7, s8, "PI"));
-  const pi2 = slot("pi2", "PI", secondPair, [s9, s10], matchSeries(s9, s10, "PI"));
-  const loser1 = loserOf(pi1);
-  const winner2 = winnerOf(pi2);
-  const leftoverPlayIn = series.find((entry) => entry.phaseCode === "PI" && !used.has(entry));
-  const pi3Entry = loser1 && winner2 ? matchSeries(loser1, winner2, "PI") ?? take(leftoverPlayIn) : take(leftoverPlayIn);
-  const pi3 = slot(
-    "pi3",
-    "PI",
-    "Decider for " + ordinalOf(playInFirst + 1),
-    [loser1 ?? { placeholder: "Loser of " + firstPair }, winner2 ?? { placeholder: "Winner of " + secondPair }],
-    pi3Entry ?? null,
-  );
+  function buildPlayIn() {
+    const s7 = seeded(playInFirst);
+    const s8 = seeded(playInFirst + 1);
+    const s9 = seeded(playInFirst + 2);
+    const s10 = seeded(playInFirst + 3);
+    const pi1 = slot("pi1", "PI", firstPair, [s7, s8], matchSeries(s7, s8, "PI"));
+    const pi2 = slot("pi2", "PI", secondPair, [s9, s10], matchSeries(s9, s10, "PI"));
+    const loser1 = loserOf(pi1);
+    const winner2 = winnerOf(pi2);
+    const leftoverPlayIn = series.find((entry) => entry.phaseCode === "PI" && !used.has(entry));
+    const pi3Entry = loser1 && winner2 ? matchSeries(loser1, winner2, "PI") ?? take(leftoverPlayIn) : take(leftoverPlayIn);
+    const pi3 = slot(
+      "pi3",
+      "PI",
+      "Decider for " + ordinalOf(playInFirst + 1),
+      [loser1 ?? { placeholder: "Loser of " + firstPair }, winner2 ?? { placeholder: "Winner of " + secondPair }],
+      pi3Entry ?? null,
+    );
+    return [pi1, pi2, pi3];
+  }
+  const playIn = hasPlayIn ? buildPlayIn() : [];
+  const [pi1, , pi3] = playIn;
 
   // Playoffs: the top seed of each matchup is a seed from 1 to 4; its opponent is a seed (5, 6) or a Play-In winner.
-  const poSeries = series.filter((entry) => entry.phaseCode === "PO");
-  const topSeedSeries = (seed) => {
-    const top = seeded(seed);
-    return top ? take(poSeries.find((entry) => entry.clubA.clubCode === top.clubCode || entry.clubB.clubCode === top.clubCode)) : null;
-  };
-  const seventh = winnerOf(pi1);
-  const eighth = winnerOf(pi3);
-  const po1 = slot("po1", "PO", "1 v 8", [seeded(1), eighth ?? { placeholder: "Winner of the Play-In" }], topSeedSeries(1));
-  const po2 = slot("po2", "PO", "2 v 7", [seeded(2), seventh ?? { placeholder: "Winner of " + firstPair }], topSeedSeries(2));
-  const po3 = slot("po3", "PO", "3 v 6", [seeded(3), seeded(6)], topSeedSeries(3));
-  const po4 = slot("po4", "PO", "4 v 5", [seeded(4), seeded(5)], topSeedSeries(4));
+  const seventh = hasPlayIn ? winnerOf(pi1) : seeded(7);
+  const eighth = hasPlayIn ? winnerOf(pi3) : seeded(8);
+  const po1 = slot("po1", "PO", "1 v 8", [seeded(1), eighth ?? (hasPlayIn ? { placeholder: "Winner of the Play-In" } : null)], matchSeries(seeded(1), eighth, "PO"));
+  const po2 = slot("po2", "PO", "2 v 7", [seeded(2), seventh ?? (hasPlayIn ? { placeholder: "Winner of " + firstPair } : null)], matchSeries(seeded(2), seventh, "PO"));
+  const po3 = slot("po3", "PO", "3 v 6", [seeded(3), seeded(6)], matchSeries(seeded(3), seeded(6), "PO"));
+  const po4 = slot("po4", "PO", "4 v 5", [seeded(4), seeded(5)], matchSeries(seeded(4), seeded(5), "PO"));
 
   // Final Four
   const ffSeries = series.filter((entry) => entry.phaseCode === "FF");
@@ -171,7 +172,7 @@ export function buildBracket({ standings, teams, series, regularSeasonDone, form
   const third = thirdEntry ? slot("third", "FF", "Third place", [losers[0], losers[1]], thirdEntry) : null;
 
   const champion = winnerOf(final);
-  return { projected, directSeeds, playInLast, playIn: [pi1, pi2, pi3], playoffs: [po1, po2, po3, po4], semis: [sf1, sf2], final, third, champion, all: [pi1, pi2, pi3, po1, po2, po3, po4, sf1, sf2, final, ...(third ? [third] : [])] };
+  return { projected, directSeeds, playInLast, playIn, playoffs: [po1, po2, po3, po4], semis: [sf1, sf2], final, third, champion, all: [...playIn, po1, po2, po3, po4, sf1, sf2, final, ...(third ? [third] : [])] };
 }
 
 // The score of one club in a matchup: wins in the best-of-five Playoffs, points in a single game.
@@ -230,7 +231,7 @@ export function raceStatus(standings, remainingByClub, { directSeeds = DEFAULT_D
       const mightFinishAhead = others.filter((other) => other.wins + other.remaining >= row.wins).length;
       const surelyAhead = others.filter((other) => other.wins > row.wins + row.remaining).length;
       let status = "alive";
-      if (mightFinishAhead < directSeeds) status = "top6";
+      if (mightFinishAhead < directSeeds) status = "playoffs";
       else if (mightFinishAhead < playInLast) status = "playin";
       else if (surelyAhead >= playInLast) status = "out";
       else if (surelyAhead >= directSeeds) status = "playin-race";

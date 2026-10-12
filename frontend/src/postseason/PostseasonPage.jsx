@@ -12,7 +12,7 @@ import Panel from "../lib/Panel";
 import { useDocumentTitle } from "../lib/useDocumentTitle";
 import Bracket from "./Bracket";
 import { bracketSeeds, buildBracket, raceStatus } from "./bracketModel";
-import { stageDescription, tableTiers } from "../lib/seasonFormat";
+import { hasLoadingIssues, LOADING_ISSUES_NOTE, stageDescription, tableTiers } from "../lib/seasonFormat";
 import { useSeasonFormat } from "../lib/useSeasonFormat";
 import ChampionPanel from "./ChampionPanel";
 import MatchupDetail from "./MatchupDetail";
@@ -70,7 +70,7 @@ function stageSub(format, code, fallback) {
 
 function Steps({ steps }) {
   return (
-    <ol className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4" aria-label="Stages of the season">
+    <ol className={"grid gap-3 sm:grid-cols-2 " + (steps.length === 3 ? "lg:grid-cols-3" : "lg:grid-cols-4")} aria-label="Stages of the season">
       {steps.map((step) => (
         <li key={step.title} className="flex items-start gap-3">
           <span
@@ -92,12 +92,13 @@ function Steps({ steps }) {
   );
 }
 
-function summaryLine({ bracket, regularSeasonDone, nextRound, totalRounds, series }) {
+function summaryLine({ bracket, regularSeasonDone, nextRound, totalRounds, series, format }) {
   if (bracket.champion) return { kicker: "THE SEASON IS OVER", title: bracket.champion.name + " are the champions" };
+  if (format.status === "completed") return { kicker: "THE SEASON IS OVER", title: "The season has finished; some postseason results are unavailable" };
   if (series.some((entry) => entry.phaseCode === "FF")) return { kicker: "UNDER WAY", title: "The Final Four is on" };
   if (series.some((entry) => entry.phaseCode === "PO")) return { kicker: "UNDER WAY", title: "The Playoffs are on" };
   if (series.some((entry) => entry.phaseCode === "PI")) return { kicker: "UNDER WAY", title: "The Play-In is on" };
-  if (regularSeasonDone) return { kicker: "NEXT UP", title: "The regular season is over: the Play-In is next" };
+  if (regularSeasonDone) return { kicker: "NEXT UP", title: "The regular season is over: the " + (bracket.playIn.length ? "Play-In is next" : "Playoffs are next") };
   return {
     kicker: "REGULAR SEASON",
     title: nextRound && totalRounds ? "Round " + nextRound + " of " + totalRounds + ": the bracket is a projection" : "The bracket is a projection",
@@ -124,18 +125,15 @@ export default function PostseasonPage() {
   const teams = teamsQuery.data?.teams;
   const series = seriesQuery.data?.series;
   const remaining = remainingQuery.data;
-  // The season's format: the qualification lines (seeds), win targets and third-place game. While it cannot be read, the page
-  // keeps its old reading: an empty list of remaining games ends the regular season.
   const formatQuery = useSeasonFormat(seasonCode);
   const format = formatQuery.data ?? null;
   const tiers = useMemo(() => tableTiers(format, "RS"), [format]);
   const regularSeasonStage = format?.stages.find((stage) => stage.code === "RS") ?? null;
   const laterStagePlayed = format?.stages.some((stage) => stage.code !== "RS" && stage.observed.gamesPlayed > 0) ?? false;
-  const regularSeasonDone = format
-    ? regularSeasonStage?.dataState === "loaded" || laterStagePlayed
-    : standings.length > 0 && remaining !== undefined && remaining.total === 0;
+  const raceUnavailable = format?.issues?.some((issue) => issue.stage === "RS" || issue.stage === null) ?? false;
+  const regularSeasonDone = regularSeasonStage?.dataState === "loaded" || laterStagePlayed;
   const bracket = useMemo(
-    () => (standings.length && teams && series ? buildBracket({ standings, teams, series, regularSeasonDone, format, tiers }) : null),
+    () => (format && standings.length && teams && series ? buildBracket({ standings, teams, series, regularSeasonDone, format, tiers }) : null),
     [standings, teams, series, regularSeasonDone, format, tiers],
   );
   const race = useMemo(
@@ -143,8 +141,7 @@ export default function PostseasonPage() {
     [standings, remaining, tiers],
   );
 
-  const queries = [standingsQuery, teamsQuery, seriesQuery, remainingQuery];
-  if (formatQuery.isLoading) return <AsyncState status="loading" label="Loading the postseason" />;
+  const queries = [formatQuery, standingsQuery, teamsQuery, seriesQuery, remainingQuery, roundsQuery];
   if (queries.some((query) => query.isLoading)) return <AsyncState status="loading" label="Loading the postseason" />;
   if (queries.some((query) => query.isError)) {
     return <AsyncState status="error" message="Could not load the postseason." onRetry={() => queries.forEach((query) => query.isError && query.refetch())} />;
@@ -159,18 +156,18 @@ export default function PostseasonPage() {
   }
 
   const totalRounds = roundsQuery.data?.rounds?.length ?? null;
-  const summary = summaryLine({ bracket, regularSeasonDone, nextRound: remaining.nextRound, totalRounds, series });
+  const summary = summaryLine({ bracket, regularSeasonDone, nextRound: remaining.nextRound, totalRounds, series, format });
   const steps = [
     {
       title: "Regular season",
       sub: regularSeasonDone ? "Finished" : remaining.nextRound && totalRounds ? "Round " + remaining.nextRound + " of " + totalRounds : "Under way",
       state: regularSeasonDone ? "done" : "live",
     },
-    {
+    ...(bracket.playIn.length ? [{
       title: "Play-In",
       sub: dateRange(series, ["PI"]) ?? "Seeds " + (bracket.directSeeds + 1) + " to " + bracket.playInLast,
       state: regularSeasonDone || series.length ? stageState(bracket.playIn) : "waiting",
-    },
+    }] : []),
     { title: "Playoffs", sub: dateRange(series, ["PO"]) ?? stageSub(format, "PO", "Best of five"), state: stageState(bracket.playoffs) },
     { title: "Final Four", sub: dateRange(series, ["FF"]) ?? stageSub(format, "FF", "Semifinals and final"), state: stageState([...bracket.semis, bracket.final]) },
   ];
@@ -193,6 +190,8 @@ export default function PostseasonPage() {
         <Steps steps={steps} />
       </Panel>
 
+      {hasLoadingIssues(format) ? <p className="muted text-sm">{LOADING_ISSUES_NOTE}</p> : null}
+
       {bracket.champion ? <ChampionPanel bracket={bracket} seasonLabel={seasonLabel} /> : null}
 
       {bracket.projected ? (
@@ -204,20 +203,21 @@ export default function PostseasonPage() {
         {selected ? <MatchupDetail slot={selected} seasonCode={seasonCode} /> : <p className="muted text-sm">Select a matchup to see its games.</p>}
       </div>
 
-      {!regularSeasonDone && race ? <RacePanel standings={standings} teams={teams} race={race} /> : null}
+      {!regularSeasonDone && raceUnavailable ? <EmptyText>The qualification race is unavailable while regular-season data is incomplete.</EmptyText> : null}
+      {!regularSeasonDone && !raceUnavailable && race ? <RacePanel standings={standings} teams={teams} race={race} directSeeds={bracket.directSeeds} playInLast={bracket.playInLast} /> : null}
 
       <details className="rounded-box border border-base-300 bg-base-100 p-4">
         <summary className="cursor-pointer font-semibold">How the postseason works</summary>
         <div className="muted mt-3 flex flex-col gap-2 text-sm">
-          <p>The top six clubs of the regular season go straight to the Playoffs. The clubs placed seventh to tenth play the Play-In.</p>
-          <p>
+          <p>{stageDescription(regularSeasonStage, format)}</p>
+          {bracket.playIn.length ? <p>
             In the Play-In, 7th hosts 8th and 9th hosts 10th in single games. The loser of 7 v 8 then plays the winner of 9 v 10 for the last Playoffs place; the winner of 7 v 8
             takes the 7th place.
-          </p>
+          </p> : null}
           <p>The Playoffs are best-of-five series: 1st plays the 8th place, 2nd the 7th, 3rd the 6th and 4th the 5th. The higher seed has home court.</p>
           <p>
             The winners of 1 v 8 and 4 v 5 meet in one Final Four semifinal, the winners of 2 v 7 and 3 v 6 in the other. Each is a single game, and the two winners play the
-            final. Some seasons also have a third-place game.
+            final. {stageSub(format, "FF", "")}
           </p>
         </div>
       </details>

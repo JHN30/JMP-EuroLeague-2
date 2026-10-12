@@ -25,6 +25,17 @@ const NOTES = {
   pi3: "Winner plays the 1st seed",
 };
 
+const DIRECT_PLACE = {
+  po1: "lg:col-start-1 lg:row-start-2 bk-out",
+  po4: "lg:col-start-1 lg:row-start-3 bk-out",
+  po2: "lg:col-start-1 lg:row-start-4 bk-out",
+  po3: "lg:col-start-1 lg:row-start-5 bk-out",
+  sf1: "lg:col-start-2 lg:row-start-2 lg:row-span-2 bk-in bk-out",
+  sf2: "lg:col-start-2 lg:row-start-4 lg:row-span-2 bk-in bk-out",
+  final: "lg:col-start-3 lg:row-start-2 lg:row-span-4 bk-in",
+  third: "lg:col-start-3 lg:row-start-6",
+};
+
 const HEADINGS = [
   { id: "PI", title: "Play-In", sub: "Seeds 7 to 10", col: "lg:col-start-1" },
   { id: "PO", title: "Playoffs", sub: "Best of 5", col: "lg:col-start-2" },
@@ -32,9 +43,9 @@ const HEADINGS = [
   { id: "F", title: "Final", sub: "The champion", col: "lg:col-start-4" },
 ];
 
-function Cell({ slot, selectedId, focusClub, onSelect, onFocusClub, note }) {
+function Cell({ slot, selectedId, focusClub, onSelect, onFocusClub, note, place }) {
   return (
-    <motion.div variants={listItem} className={"bk-cell " + PLACE[slot.id]}>
+    <motion.div variants={listItem} className={"bk-cell " + place[slot.id]}>
       <div className="w-full">
         <Matchup slot={slot} selected={selectedId === slot.id} focusClub={focusClub} onSelect={onSelect} onFocusClub={onFocusClub} />
         {note ? <p className="muted mt-1 hidden px-1 text-xs lg:block">{note}</p> : null}
@@ -54,30 +65,30 @@ function Heading({ heading }) {
 
 // The bracket: Play-In, Playoffs, Final Four and Final as columns joined by lines (stacked stage by stage on a phone).
 export default function Bracket({ bracket, selectedId, focusClub, onSelect, onFocusClub }) {
-  const cell = (slot) => <Cell key={slot.id} slot={slot} selectedId={selectedId} focusClub={focusClub} onSelect={onSelect} onFocusClub={onFocusClub} note={NOTES[slot.id]} />;
+  const hasPlayIn = bracket.playIn.length > 0;
+  const place = hasPlayIn ? PLACE : DIRECT_PLACE;
+  const headings = hasPlayIn ? HEADINGS : HEADINGS.slice(1).map((heading, index) => ({ ...heading, col: ["lg:col-start-1", "lg:col-start-2", "lg:col-start-3"][index] }));
+  const cell = (slot) => <Cell key={slot.id} slot={slot} selectedId={selectedId} focusClub={focusClub} onSelect={onSelect} onFocusClub={onFocusClub} note={NOTES[slot.id]} place={place} />;
   const [pi1, pi2, pi3] = bracket.playIn;
   const [po1, po2, po3, po4] = bracket.playoffs;
   const [sf1, sf2] = bracket.semis;
   return (
     <motion.div
-      className="bk-grid grid grid-cols-1 gap-x-9 gap-y-3 lg:grid-cols-4 lg:grid-rows-[auto_repeat(4,7.6rem)_auto]"
+      className={"bk-grid grid grid-cols-1 gap-x-9 gap-y-3 lg:grid-rows-[auto_repeat(4,7.6rem)_auto] " + (hasPlayIn ? "lg:grid-cols-4" : "lg:grid-cols-3")}
       variants={listContainer}
       initial="hidden"
       animate="show"
     >
-      <Heading heading={HEADINGS[0]} />
-      {cell(pi1)}
-      {cell(pi2)}
-      {cell(pi3)}
-      <Heading heading={HEADINGS[1]} />
+      {hasPlayIn ? <><Heading heading={headings[0]} />{cell(pi1)}{cell(pi2)}{cell(pi3)}</> : null}
+      <Heading heading={headings[hasPlayIn ? 1 : 0]} />
       {cell(po1)}
       {cell(po4)}
       {cell(po2)}
       {cell(po3)}
-      <Heading heading={HEADINGS[2]} />
+      <Heading heading={headings[hasPlayIn ? 2 : 1]} />
       {cell(sf1)}
       {cell(sf2)}
-      <Heading heading={HEADINGS[3]} />
+      <Heading heading={headings[hasPlayIn ? 3 : 2]} />
       {cell(bracket.final)}
       {bracket.third ? cell(bracket.third) : null}
     </motion.div>

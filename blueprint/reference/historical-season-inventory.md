@@ -181,6 +181,8 @@ cross-group criterion [O]. Later leaves must mark the qualifier from recorded To
 
 ### 5.6 E2016-E2018 (16-club table, no Play-In) - leaf 34d
 
+34d's refreshed local data matrix, recorded pairings, page checks and regression results are in [34d acceptance evidence](34d-acceptance.md).
+
 - Expected [S/guide]: 16 clubs, 30 games, top eight to best-of-five QF, Final Four.
 - Observed [L]: RS single table (`group_name = "Regular Season"`), 240 games; `qualified = true` for ranks 1-8; PO four
   pairings 1v8, 2v7, 3v6, 4v5 by final rank; 3-5 games; FF with third-place game. Champions Fenerbahçe, Real Madrid,

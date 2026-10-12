@@ -155,6 +155,8 @@ test("the race table still shows full names, and no error, when the teams list c
 });
 
 test("each insight card shows its club's crest, on a phone and on a desktop", async ({ page }) => {
+  // Layout evidence should not depend on the image CDN being reachable.
+  await page.route(/https:\/\/media-cdn\./, (route) => route.fulfill({ contentType: "image/svg+xml", body: '<svg xmlns="http://www.w3.org/2000/svg" width="96" height="96"><circle cx="48" cy="48" r="40" fill="blue"/></svg>' }));
   await openRace(page, FINISHED);
   await atWidths(page, [390, 1280], async () => {
     const cards = page.locator("main .grid.grid-cols-2").first().locator("> a");

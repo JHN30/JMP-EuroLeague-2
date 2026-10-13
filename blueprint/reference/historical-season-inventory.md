@@ -179,6 +179,16 @@ cross-group criterion [O]. Later leaves must mark the qualifier from recorded To
 - Advanced ratings: `connected = false` in group stages (E2012 RS sample) [L], so opponent-adjusted ratings are
   unavailable for disconnected groups.
 
+- 34h-i local acceptance (2026-10-13) verified all 96 available RS/TS snapshots
+  across E2012-E2015 and adapted Standings Table, breakdowns, group-local KPIs
+  and Race. Exact phase/group URLs, invalid-selection recovery, qualification
+  bands, final-stage markers, round names, independent playback and responsive
+  layouts are covered in [34h-i acceptance](34h-i-acceptance.md). Source keys
+  remain RS 1-10 and TS 11-24; displayed TS names are Round 1 through Round 14.
+  The false pre-E2015 qualification flags are preserved in the API; the UI
+  derives completed-stage markers from verified group positions. QF mapping,
+  qualifiers and remaining-page adaptations stay pending under their own leaves.
+
 ### 5.6 E2016-E2018 (16-club table, no Play-In) - leaf 34d
 
 34d's refreshed local data matrix, recorded pairings, page checks and regression results are in [34d acceptance evidence](34d-acceptance.md).

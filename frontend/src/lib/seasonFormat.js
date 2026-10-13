@@ -154,13 +154,13 @@ export function hasLoadingIssues(format) {
 export const LOADING_ISSUES_NOTE = "Some of this season's games are not loaded.";
 
 // The qualification lines of one table stage: [{ tier: "postseason" | "playin", from, to }] in official positions. Null when the
-// format is not known, the stage is not a table, or its rules are per group or across groups (those seasons' leaves draw them), so a
-// page draws no line rather than a guessed one.
-export function tableTiers(format, stageCode) {
+// format is not known, the stage is not a table, or its rules use a different cohort. A grouped table must explicitly request
+// "group"; default callers cannot turn group-local ranks into global seeds. Cross-group comparison rules stay unmarked.
+export function tableTiers(format, stageCode, within = "table") {
   if (format?.status === "cancelled") return null;
   const stage = format?.stages.find((entry) => entry.code === stageCode);
   if (!stage || stage.type !== "table" || stage.qualification.length === 0) return null;
-  if (!stage.qualification.every((rule) => "positions" in rule && rule.within === "table")) return null;
+  if (!stage.qualification.every((rule) => "positions" in rule && rule.within === within)) return null;
   return stage.qualification.map((rule) => ({ tier: rule.kind === "playIn" ? "playin" : "postseason", from: rule.positions[0], to: rule.positions[1] }));
 }
 

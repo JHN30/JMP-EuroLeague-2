@@ -21,7 +21,7 @@ function combineSnapshots(results) {
 
 // `latestRound` is the last round with standings. The phase lists every scheduled round, but only the played ones
 // have a snapshot, so the race stops there instead of running to the end of the schedule.
-export default function RaceView({ seasonCode, phaseCode, latestRound, latestStandings, shortNames, tiers = null }) {
+export default function RaceView({ seasonCode, phaseCode, latestRound, latestStandings, shortNames, tiers = null, groupName, tierLabels, stageName }) {
   const roundsQuery = useQuery({
     queryKey: ["rounds", seasonCode, phaseCode],
     queryFn: () => getRounds(seasonCode, phaseCode),
@@ -59,16 +59,18 @@ export default function RaceView({ seasonCode, phaseCode, latestRound, latestSta
       const roundPositions = new Map();
       const roundRecords = new Map();
       for (const entry of data.standings) {
+        if (groupName !== undefined && entry.groupName !== groupName) continue;
         if (entry.basic?.position == null) continue;
         roundPositions.set(entry.clubCode, entry.basic.position);
         roundRecords.set(entry.clubCode, { won: entry.basic.gamesWon, lost: entry.basic.gamesLost });
       }
+      if (roundPositions.size === 0) return;
       played.push(roundNumber);
       positions.set(roundNumber, roundPositions);
       records.set(roundNumber, roundRecords);
     });
     return { rounds: played, positionsByRound: positions, recordsByRound: records };
-  }, [playedRounds, snapshots.data]);
+  }, [playedRounds, snapshots.data, groupName]);
 
   const teamOrder = useMemo(
     () =>
@@ -106,6 +108,9 @@ export default function RaceView({ seasonCode, phaseCode, latestRound, latestSta
   const shown = Math.min(step ?? rounds.length, rounds.length);
   const shownRound = shown > 0 ? rounds[shown - 1] : null;
   const previousRound = shown > 1 ? rounds[shown - 2] : null;
+  const roundNames = new Map((roundsQuery.data?.rounds ?? []).map((entry) => [entry.number, entry.name]));
+  const roundLabel = (number) => stageName ? `${stageName}: ${roundNames.get(number) ?? "Round name unavailable"}` : `Round ${number}`;
+  const startLabel = stageName ? `${stageName} start` : "Season start";
 
   return (
     <motion.div className="flex flex-col gap-3" variants={sectionContainer} initial="hidden" animate="show">
@@ -127,7 +132,7 @@ export default function RaceView({ seasonCode, phaseCode, latestRound, latestSta
                 className="inline-block h-3 w-3 rounded-sm"
                 style={{ background: `color-mix(in srgb, var(--color-${line.tier === "playin" ? "warning" : "success"}) 25%, transparent)` }}
               />
-              {line.tier === "playin" ? "Play-in tournament" : "Direct to playoffs"} ({line.from}-{line.to})
+              {tierLabels?.[line.tier] ?? (line.tier === "playin" ? "Play-in tournament" : "Direct to playoffs")} ({line.from}-{line.to})
             </span>
           ))}
         </motion.div>
@@ -137,8 +142,10 @@ export default function RaceView({ seasonCode, phaseCode, latestRound, latestSta
       <RacePlayback
         total={rounds.length}
         value={shown}
-        label={shownRound == null ? "Season start" : `Round ${shownRound}`}
-        endLabel={`Round ${rounds[rounds.length - 1]}`}
+        label={shownRound == null ? startLabel : roundLabel(shownRound)}
+        endLabel={roundLabel(rounds[rounds.length - 1])}
+        startLabel={stageName ? startLabel : undefined}
+        stageName={stageName}
         onChange={setStep}
       />
       </motion.div>
@@ -153,6 +160,7 @@ export default function RaceView({ seasonCode, phaseCode, latestRound, latestSta
           focusedClub={focusedClub}
           onFocusClub={setFocusedClub}
           tiers={tiers}
+          roundLabel={stageName ? roundLabel : undefined}
         />
         <RaceSnapshotTable
           seasonCode={seasonCode}
@@ -165,6 +173,8 @@ export default function RaceView({ seasonCode, phaseCode, latestRound, latestSta
           focusedClub={focusedClub}
           onFocusClub={setFocusedClub}
           tiers={tiers}
+          roundLabel={stageName ? roundLabel(shownRound) : undefined}
+          startLabel={startLabel}
         />
       </motion.div>
     </motion.div>

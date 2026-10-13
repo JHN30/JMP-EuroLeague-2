@@ -39,6 +39,8 @@ export default function RaceSnapshotTable({
   focusedClub,
   onFocusClub,
   tiers = null,
+  roundLabel,
+  startLabel = "Season start",
 }) {
   const reducedMotion = usePrefersReducedMotion();
   const positions = round != null ? positionsByRound.get(round) : null;
@@ -67,7 +69,7 @@ export default function RaceSnapshotTable({
   return (
     <div className="panel overflow-x-auto p-2">
       <p className="px-2 pb-1 text-xs font-semibold text-base-content/70">
-        {round == null ? "Season start" : `Standings after round ${round}`}
+        {round == null ? startLabel : roundLabel ? `Standings after ${roundLabel}` : `Standings after round ${round}`}
       </p>
       <table className="table race-table">
         <thead>

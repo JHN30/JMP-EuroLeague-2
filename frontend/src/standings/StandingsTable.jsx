@@ -54,11 +54,11 @@ const TIER_LABELS = {
   out: "Out of playoff contention",
 };
 
-function TierRow({ tier, columnCount }) {
+function TierRow({ tier, columnCount, labels = TIER_LABELS }) {
   return (
     <AnimatedRow layout="position" className={`tier-row tier-row-${tier}`}>
       <td colSpan={columnCount}>
-        <span>{TIER_LABELS[tier]}</span>
+        <span>{labels[tier]}</span>
       </td>
     </AnimatedRow>
   );
@@ -83,7 +83,7 @@ const VIEW_NET_FIELD = {
   last10: "last10NetRating",
 };
 
-function OverviewTable({ standings, seasonCode, view, showTiers, tierLines, netByClub, shortNames, showQualification }) {
+function OverviewTable({ standings, seasonCode, view, showTiers, tierLines, tierLabels, netByClub, shortNames, showQualification }) {
   const sorted = sortForView(standings, view);
   // The tier rows follow the season's qualification lines (from its format); without them no tier row is drawn.
   const tiersActive = showTiers && view === "overall" && Boolean(tierLines);
@@ -119,7 +119,7 @@ function OverviewTable({ standings, seasonCode, view, showTiers, tierLines, netB
 
           return (
             <Fragment key={entry.clubCode}>
-              {showTierHeader ? <TierRow tier={tier} columnCount={columnCount} /> : null}
+              {showTierHeader ? <TierRow tier={tier} columnCount={columnCount} labels={tierLabels} /> : null}
               <AnimatedRow layout="position">
                 <td>
                   <PositionCell position={displayRank} qualified={showQualification && entry.basic?.qualified} />
@@ -160,6 +160,7 @@ export default function StandingsTable({
   showTiers = false,
   showQualification = true,
   tiers = null,
+  tierLabels,
   netByClub,
   shortNames,
   breakdown = "overview",
@@ -198,6 +199,7 @@ export default function StandingsTable({
           showTiers={showTiers}
           showQualification={showQualification}
           tierLines={tiers}
+          tierLabels={tierLabels}
           netByClub={netByClub}
           shortNames={shortNames}
         />

@@ -25,7 +25,7 @@ const PLAYIN_FILL = "color-mix(in srgb, var(--color-warning) 6.5%, transparent)"
 // latest round being shown. Stepping the race slides each crest along its line while the line is drawn behind it.
 // The x axis always covers every played round, so it doesn't rescale while the season replays; `visibleCount` is how
 // many of those rounds are shown (0 is the empty season start).
-export default function RaceChart({ rounds, visibleCount, standingsByRound, teamOrder, focusedClub, onFocusClub, tiers = null }) {
+export default function RaceChart({ rounds, visibleCount, standingsByRound, teamOrder, focusedClub, onFocusClub, tiers = null, roundLabel }) {
   const containerRef = useRef(null);
   const width = useElementWidth(containerRef);
   const narrow = useMediaQuery(NARROW_QUERY);
@@ -76,7 +76,10 @@ export default function RaceChart({ rounds, visibleCount, standingsByRound, team
   }
 
   const positions = Array.from({ length: teamCount }, (_, index) => index + 1);
-  const roundLabels = thinAxisLabels(rounds.map((round) => `R${round}`), 8);
+  const compactRounds = rounds.map((round) => roundLabel
+    ? roundLabel(round).split(": ").at(-1).replace(/^Round\s+(\d+)$/i, "R$1").replace(/^Round name unavailable$/, "?")
+    : `R${round}`);
+  const roundLabels = thinAxisLabels(compactRounds, Math.max(2, Math.min(8, Math.floor(plotWidth / 40))));
   // The bands follow the season's qualification lines; with none, both bands are empty (zero height).
   const postseasonCutoff = tierEnd(tiers, "postseason") ?? 0;
   const playinCutoff = tierEnd(tiers, "playin") ?? postseasonCutoff;
@@ -196,7 +199,7 @@ export default function RaceChart({ rounds, visibleCount, standingsByRound, team
                           <g key={rounds[index]} onClick={() => toggleFocus(team.clubCode)} style={{ cursor: "pointer" }}>
                             <circle cx={x(index)} cy={y(position)} r={isFocused ? 4 : 2.4} fill={stroke} />
                             <circle cx={x(index)} cy={y(position)} r={8} fill="transparent">
-                              <title>{`${team.clubName ?? team.clubCode}, round ${rounds[index]}: position ${position}`}</title>
+                              <title>{`${team.clubName ?? team.clubCode}, ${roundLabel ? roundLabel(rounds[index]) : `round ${rounds[index]}`}: position ${position}`}</title>
                             </circle>
                           </g>
                         ),

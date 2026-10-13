@@ -11,15 +11,15 @@ function clubLabel(entry) {
 
 // `netQuery` is the phase's advanced-standings query (shared with the table's Net rtg column). Best net rating is
 // the efficiency view of who is strongest, distinct from Home's raw best offense and defense.
-export default function StandingsKpiStrip({ seasonCode, phaseCode, round, standings, netQuery, tiers = null }) {
+export default function StandingsKpiStrip({ seasonCode, phaseCode, round, previousRound = round > 1 ? round - 1 : null, standings, netQuery, tiers = null, cutoffLabel = "Playoff cutoff" }) {
   const previousRoundQuery = useQuery({
-    queryKey: ["standings", seasonCode, phaseCode, "round", round ? round - 1 : null],
-    queryFn: () => getSeasonStandings(seasonCode, phaseCode, { round: round - 1 }),
-    enabled: Boolean(round && round > 1),
+    queryKey: ["standings", seasonCode, phaseCode, "round", previousRound],
+    queryFn: () => getSeasonStandings(seasonCode, phaseCode, { round: previousRound }),
+    enabled: previousRound !== null,
   });
 
   const leader = standings.find((entry) => entry.basic?.position === 1) ?? null;
-  // The last place that goes straight to the postseason, from the season's qualification lines.
+  // The last direct qualifying place, from this stage's qualification lines.
   const cutoffPosition = tierEnd(tiers, "postseason");
   const cutoff = cutoffPosition === null ? null : (standings.find((entry) => entry.basic?.position === cutoffPosition) ?? null);
 
@@ -60,12 +60,12 @@ export default function StandingsKpiStrip({ seasonCode, phaseCode, round, standi
       {cutoff ? (
         <CompactMetric
           value={`${cutoff.basic.gamesWon}-${cutoff.basic.gamesLost}`}
-          label="Playoff cutoff"
+          label={cutoffLabel}
           name={clubLabel(cutoff)}
           imageUrl={cutoff.crestUrl}
         />
       ) : null}
-      {round && round > 1 ? (
+      {previousRound !== null ? (
         <CompactMetric
           isLoading={previousRoundQuery.isLoading}
           isError={previousRoundQuery.isError}
@@ -76,7 +76,7 @@ export default function StandingsKpiStrip({ seasonCode, phaseCode, round, standi
           tone={biggestRiser ? "positive" : undefined}
         />
       ) : null}
-      {round && round > 1 ? (
+      {previousRound !== null ? (
         <CompactMetric
           isLoading={previousRoundQuery.isLoading}
           isError={previousRoundQuery.isError}

@@ -1,8 +1,8 @@
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { motion } from "motion/react";
-import { Link, useParams } from "react-router";
-import { getAdvancedStandings, getGameFlow, getPhaseResults, getPhases, getSeasonStandings, getSeasonTeams } from "../lib/api";
+import { Link, useParams, useSearchParams } from "react-router";
+import { getAdvancedStandings, getGameFlow, getPhaseResults, getPhases, getRounds, getSeasonStandings, getSeasonTeams } from "../lib/api";
 import AsyncState from "../lib/AsyncState";
 import EmptyText from "../lib/EmptyText";
 import CompetitionContext from "../lib/CompetitionContext";
@@ -19,6 +19,7 @@ import StandingsTable from "./StandingsTable";
 import RaceView from "./RaceView";
 import ViewSelect from "../lib/ViewSelect";
 import AdvancedStandingsView from "./AdvancedStandingsView";
+import { groupLabel, groupStandings, selectedGroup } from "./standingsGroups";
 
 const VIEW_TABS = [
   { key: "overall", label: "Overall" },
@@ -46,6 +47,7 @@ const PHONE_VIEW_OPTIONS = [...VIEW_TABS, ...BREAKDOWN_TABS.filter((tab) => tab.
 export default function StandingsPage() {
   useDocumentTitle("Standings");
   const { seasonCode } = useParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [view, setView] = useState("overall");
   const [mode, setMode] = useState("table");
   const [breakdown, setBreakdown] = useState("overview");
@@ -56,9 +58,10 @@ export default function StandingsPage() {
   });
 
   const phases = phasesQuery.data?.phases ?? [];
-  const [phaseCode, setPhaseCode] = usePhaseParam(phases);
+  const [phaseCode] = usePhaseParam(phases);
   // The qualification lines of this phase's table, from the season's format (none while it loads or when it cannot be read).
-  const format = useSeasonFormat(seasonCode).data;
+  const formatQuery = useSeasonFormat(seasonCode);
+  const format = formatQuery.data;
   const tiers = tableTiers(format, phaseCode);
 
   const standingsQuery = useQuery({
@@ -76,9 +79,57 @@ export default function StandingsPage() {
 
   const round = standingsQuery.data?.round ?? null;
   const standings = standingsQuery.data?.standings ?? [];
+  const groups = useMemo(() => groupStandings(standingsQuery.data?.standings ?? []), [standingsQuery.data]);
+  const stage = format?.stages.find((entry) => entry.code === phaseCode);
+  const grouped = (stage?.plannedGroups ?? 0) > 1 || groups.length > 1 || (!stage && groups.some((group) => group.name === null)) || (formatQuery.isError && groups.some((group) => group.name !== null));
+  const groupName = grouped ? selectedGroup(searchParams, groups) : null;
+  const displayedGroups = grouped ? groups.filter((group) => groupName === null || group.name === groupName) : [{ name: null, standings }];
+  const groupTiers = grouped ? tableTiers(format, phaseCode, "group") : null;
+  const destination = stage?.qualification[0]?.to === "TS" ? "Top 16" : "Playoff";
+  const groupTierLabels = { postseason: `${destination} places`, out: "Outside qualification places" };
+  const roundsQuery = useQuery({
+    queryKey: ["rounds", seasonCode, phaseCode],
+    queryFn: () => getRounds(seasonCode, phaseCode),
+    enabled: Boolean(phaseCode) && grouped && standings.length > 0,
+  });
+  const phaseRounds = roundsQuery.data?.rounds ?? [];
+  const previousRound = phaseRounds.filter((entry) => entry.number < round).at(-1)?.number ?? null;
+  const finalGroupSnapshot = stage?.dataState === "loaded" && phaseRounds.at(-1)?.number === round;
+
+  useEffect(() => {
+    if (!standingsQuery.isSuccess || !phaseCode || !searchParams.has("group")) return;
+    if (grouped && selectedGroup(searchParams, groups) !== null) return;
+    setSearchParams((params) => {
+      const next = new URLSearchParams(params);
+      next.delete("group");
+      return next;
+    }, { replace: true });
+  }, [standingsQuery.isSuccess, phaseCode, grouped, groups, searchParams, setSearchParams]);
+
+  function setPhaseCode(code) {
+    setSearchParams((params) => {
+      const next = new URLSearchParams(params);
+      next.set("phase", code);
+      next.delete("group");
+      return next;
+    });
+  }
+
+  function setGroupName(name) {
+    // Native type-ahead can emit repeated changes before the router state catches up.
+    const current = new URLSearchParams(window.location.search);
+    if (current.get("phase") === phaseCode && current.getAll("group").length < 2 && (current.get("group") || null) === (name || null)) return;
+    setSearchParams((params) => {
+      const next = new URLSearchParams(params);
+      next.set("phase", phaseCode);
+      if (name) next.set("group", name);
+      else next.delete("group");
+      return next;
+    });
+  }
 
   // The phase's advanced numbers (the phase code doubles as the scope, latest round) feed the Best net rating KPI
-  // and the table's Net rtg column. Only regular-season standings exist so far; other phases show no table.
+  // and the table's Net rtg column. Group KPIs receive only their own clubs' rows.
   const netQuery = useQuery({
     queryKey: ["advanced-standings-phase", seasonCode, phaseCode],
     queryFn: () => getAdvancedStandings(seasonCode, { scope: phaseCode }),
@@ -126,7 +177,7 @@ export default function StandingsPage() {
         ) : standingsQuery.isError ? (
           <AsyncState status="error" message="Could not load standings." onRetry={() => standingsQuery.refetch()} />
         ) : standings.length === 0 ? (
-          phaseCode === "RS" ? (
+          phaseCode === "RS" || phaseCode === "TS" || stage?.type === "table" ? (
             <EmptyText>Standings not available yet for this phase.</EmptyText>
           ) : (
             // The play-in, playoffs and Final Four are knockouts: there is never a league table, whatever the state of the season.
@@ -141,7 +192,7 @@ export default function StandingsPage() {
         ) : (
           <div className="flex flex-col gap-4">
             {mode === "table" || (mode === "advanced" && format?.status === "cancelled") ? <CompetitionContext seasonCode={seasonCode} phaseCode={phaseCode} roundNumber={round} /> : null}
-            {mode === "advanced" ? null : (
+            {mode === "advanced" || grouped ? null : (
               <StandingsKpiStrip
                 seasonCode={seasonCode}
                 phaseCode={phaseCode}
@@ -163,6 +214,17 @@ export default function StandingsPage() {
               tabs={MODE_TABS}
             />
 
+            {grouped && mode !== "advanced" ? (
+              <label className="flex w-fit max-w-full items-center gap-2 text-sm">
+                Group
+                <select aria-label="Group" className="select select-sm min-w-0" value={groupName ?? ""} onChange={(event) => setGroupName(event.target.value)}>
+                  <option value="">All groups</option>
+                  {groups.filter((group) => group.name !== null).map((group) => <option key={group.name} value={group.name}>{groupLabel(group.name)}</option>)}
+                </select>
+              </label>
+            ) : null}
+            {grouped && mode === "table" && roundsQuery.isError ? <AsyncState compact status="error" message="Round context is unavailable." onRetry={() => roundsQuery.refetch()} /> : null}
+
             {mode === "advanced" ? (
               <motion.div
                 key="advanced-mode"
@@ -173,15 +235,24 @@ export default function StandingsPage() {
                 <AdvancedStandingsView key={seasonCode} seasonCode={seasonCode} shortNames={shortNames} />
               </motion.div>
             ) : mode === "race" ? (
-              <RaceView
-                key={`${seasonCode}-${phaseCode}`}
-                seasonCode={seasonCode}
-                phaseCode={phaseCode}
-                latestRound={round}
-                latestStandings={standings}
-                shortNames={shortNames}
-                tiers={tiers}
-              />
+              displayedGroups.map((group) => (
+                <section key={`${seasonCode}-${phaseCode}-${groupName ?? "all"}-${group.name}`} aria-label={grouped ? groupLabel(group.name) : undefined} className="flex min-w-0 flex-col gap-4">
+                  {grouped ? <h2 className="text-lg font-semibold">{groupLabel(group.name)}</h2> : null}
+                  {grouped && group.name === null ? <EmptyText>Group assignments are unavailable for these clubs.</EmptyText> : (
+                    <RaceView
+                      seasonCode={seasonCode}
+                      phaseCode={phaseCode}
+                      latestRound={round}
+                      latestStandings={group.standings}
+                      shortNames={shortNames}
+                      tiers={grouped ? groupTiers : tiers}
+                      groupName={grouped ? group.name : undefined}
+                      tierLabels={grouped ? groupTierLabels : undefined}
+                      stageName={grouped ? stage?.name ?? phaseCode : undefined}
+                    />
+                  )}
+                </section>
+              ))
             ) : (
               <motion.div
                 key="table-mode"
@@ -233,21 +304,36 @@ export default function StandingsPage() {
                   </label>
                 </div>
 
-                <motion.div key={breakdown} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.25 }}>
-                <StandingsTable
-                  standings={standings}
-                  seasonCode={seasonCode}
-                  view={view}
-                  showTiers={phaseCode === "RS"}
-                  showQualification={Boolean(format) && format.status !== "cancelled"}
-                  tiers={tiers}
-                  netByClub={netByClub}
-                  shortNames={shortNames}
-                  resultsQuery={resultsQuery}
-                  resultsByClub={resultsByClub(resultsQuery.data)}
-                  gameFlowQuery={gameFlowQuery}
-                  breakdown={breakdown}
-                />
+                <motion.div key={breakdown} className="flex flex-col gap-6" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.25 }}>
+                {displayedGroups.map((group) => {
+                  if (grouped && group.name === null) return <section key="unavailable" aria-label="Group unavailable"><h2 className="text-lg font-semibold">Group unavailable</h2><EmptyText>Group assignments are unavailable for {group.standings.length} clubs.</EmptyText></section>;
+                  const clubs = new Set(group.standings.map((row) => row.clubCode));
+                  const scopedNet = grouped ? { ...netQuery, data: { ...netQuery.data, standings: (netQuery.data?.standings ?? []).filter((row) => clubs.has(row.clubCode)) } } : netQuery;
+                  const rows = grouped ? group.standings.map((row) => ({ ...row, basic: row.basic ? { ...row.basic, qualified: Boolean(finalGroupSnapshot && groupTiers?.some((tier) => row.basic.position >= tier.from && row.basic.position <= tier.to)) } : null })) : standings;
+                  return (
+                    <section key={group.name ?? "ungrouped"} aria-label={grouped ? groupLabel(group.name) : undefined} className="flex min-w-0 flex-col gap-4">
+                      {grouped ? <>
+                        <h2 className="text-lg font-semibold">{groupLabel(group.name)}</h2>
+                        <StandingsKpiStrip seasonCode={seasonCode} phaseCode={phaseCode} round={round} previousRound={previousRound} standings={group.standings} netQuery={scopedNet} tiers={groupTiers} cutoffLabel={`${destination} cutoff`} />
+                      </> : null}
+                      <StandingsTable
+                        standings={rows}
+                        seasonCode={seasonCode}
+                        view={view}
+                        showTiers={grouped || phaseCode === "RS"}
+                        showQualification={Boolean(format) && format.status !== "cancelled" && (!grouped || Boolean(finalGroupSnapshot && groupTiers))}
+                        tiers={grouped ? groupTiers : tiers}
+                        tierLabels={grouped ? groupTierLabels : undefined}
+                        netByClub={netByClub}
+                        shortNames={shortNames}
+                        resultsQuery={resultsQuery}
+                        resultsByClub={resultsByClub(resultsQuery.data)}
+                        gameFlowQuery={gameFlowQuery}
+                        breakdown={breakdown}
+                      />
+                    </section>
+                  );
+                })}
                 </motion.div>
               </motion.div>
             )}

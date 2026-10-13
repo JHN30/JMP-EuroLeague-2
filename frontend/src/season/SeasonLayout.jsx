@@ -152,6 +152,16 @@ export default function SeasonLayout({ themePreference }) {
           <NavBar />
         </header>
         <main id="main-content" tabIndex={-1} className="p-3 outline-none sm:p-5 lg:p-8">
+          {seasonSlug(seasonCode) === "2021" && (
+            <aside aria-labelledby="season-data-caveat" className="mb-4 rounded-box border border-base-300 bg-base-200/40 p-3 text-sm">
+              <h2 id="season-data-caveat" className="mb-1 font-semibold">2021-22 season: data caveat</h2>
+              <p>
+                CSKA Moscow, UNICS Kazan and Zenit St Petersburg were excluded from this season, and their results were removed from the official standings.
+                {" "}Some historical standings snapshots are inconsistent, and available statistics and records may count games differently.
+                {" "}Keep this in mind when comparing teams, players or rounds.
+              </p>
+            </aside>
+          )}
           <RouteErrorBoundary>
             <Suspense fallback={<AsyncState status="loading" label="Loading page" />}>
               {/* Keyed by season so each page's local view-level filters reset

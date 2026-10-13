@@ -1,5 +1,5 @@
 import { test, expect } from "@playwright/test";
-import { HEIGHT } from "./support/layout";
+import { HEIGHT, WIDTHS, findPageOverflow, findBrokenWords } from "./support/layout";
 
 // Home and the Overview read the season's format (GET /seasons/:season/format): its stages, their descriptions and the season's status.
 // These use the real local data: 2025 is finished (20 clubs, no third-place game), 2026 is under way, 2019 was cancelled after round
@@ -63,6 +63,43 @@ test.describe("a cancelled season (2019)", () => {
 });
 
 test.describe("a season with cancelled games (2021)", () => {
+  const warning = (page) => page.getByRole("complementary", { name: "2021-22 season: data caveat" });
+
+  test("the data caveat follows page navigation and season selection", async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: HEIGHT });
+    await page.goto("/E2021/home");
+    await expect(page).toHaveURL(/\/2021\/home$/);
+    await expect(warning(page)).toHaveCount(1);
+    await expect(warning(page)).toContainText("CSKA Moscow, UNICS Kazan and Zenit St Petersburg");
+    await expect(warning(page)).toContainText("statistics and records may count games differently");
+    await page.locator(".app-nav").getByRole("link", { name: "Standings", exact: true }).click();
+    await expect(page).toHaveURL(/\/2021\/standings$/);
+    await expect(warning(page)).toHaveCount(1);
+    await page.getByLabel("Selected season").first().selectOption("2022");
+    await expect(page).toHaveURL(/\/2022\/standings$/);
+    await expect(warning(page)).toHaveCount(0);
+    await page.getByLabel("Selected season").first().selectOption("2021");
+    await expect(warning(page)).toBeVisible();
+  });
+
+  for (const theme of ["light-euroleague", "dark-euroleague"]) {
+    test(`the data caveat wraps at supported widths in ${theme}`, async ({ page }) => {
+      await page.goto("/2021/home");
+      await expect(warning(page)).toBeVisible();
+      await page.evaluate((value) => document.documentElement.setAttribute("data-theme", value), theme);
+      for (const width of WIDTHS) {
+        await page.setViewportSize({ width, height: HEIGHT });
+        await expect(warning(page)).toBeVisible();
+        const bounds = await warning(page).boundingBox();
+        expect(bounds.x).toBeGreaterThanOrEqual(0);
+        expect(bounds.x + bounds.width).toBeLessThanOrEqual(width);
+        expect(await findBrokenWords(warning(page).locator("h2, p"))).toEqual([]);
+        const overflow = await findPageOverflow(page);
+        expect(overflow.scrollWidth).toBeLessThanOrEqual(overflow.clientWidth);
+      }
+    });
+  }
+
   test("Home shows no cancelled game as upcoming", async ({ page }) => {
     await page.goto("/2021/home");
     const upcoming = page.locator("section", { has: page.getByRole("heading", { name: "Upcoming games" }) });

@@ -22,6 +22,7 @@ const detailPage = (name, listPath, linkSelector) => ({
 const PAGES = [
   { name: "Page not found", route: async () => "/not-a/page" },
   staticPage("Home", "home"),
+  { name: "Home (2021 data caveat)", route: async () => "/2021/home" },
   staticPage("Overview", "overview"),
   { name: "Overview (finished season)", route: async () => "/2025/overview" },
   staticPage("Standings", "standings"),

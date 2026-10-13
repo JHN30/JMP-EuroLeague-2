@@ -19,7 +19,7 @@ function Side({ side, slot }) {
       <div className="min-w-0">
         <p className={"wrap-break-word text-lg " + (won ? "font-black" : "font-bold")}>{side.name}</p>
         <p className="muted text-xs tabular-nums">
-          {side.seed ? "Regular season: " + side.seed + (side.seed === 1 ? "st" : side.seed === 2 ? "nd" : side.seed === 3 ? "rd" : "th") : ""}
+          {side.seedLabel ? "Top 16: " + side.seedLabel : side.seed ? "Regular season: " + side.seed + (side.seed === 1 ? "st" : side.seed === 2 ? "nd" : side.seed === 3 ? "rd" : "th") : ""}
           {side.record ? " (" + side.record + ")" : ""}
         </p>
       </div>
@@ -31,6 +31,7 @@ function Side({ side, slot }) {
 function resultText(slot) {
   const entry = slot.series;
   if (!entry) return null;
+  if (slot.resultUnavailable) return "Recorded result is unavailable.";
   // A series is won only at the stage's win target; until then it is in progress, whoever leads.
   const winner = slot.participants.find((side) => side.clubCode === slot.winnerClubCode);
   if (!winner) return entry.games.length ? "In progress" : null;
@@ -87,9 +88,9 @@ export default function MatchupDetail({ slot, seasonCode }) {
           })}
         </ul>
       ) : clubs.length < 2 ? (
-        <p className="muted text-sm">Waiting for the results that decide who plays here.</p>
+        <p className="muted text-sm">{slot.grouped ? "The recorded matchup is unavailable or unverified." : "Waiting for the results that decide who plays here."}</p>
       ) : (
-        <p className="muted text-sm">Not played yet. The higher seed has home court.</p>
+        <p className="muted text-sm">{slot.grouped ? "No games are recorded for this matchup yet." : "Not played yet. The higher seed has home court."}</p>
       )}
       {comparable ? (
         <div className="mt-4">

@@ -175,6 +175,13 @@ cross-group criterion [O]. Later leaves must mark the qualifier from recorded To
   UNICS are all in the local RS fields [S]+[L]. The E2015 qualifying round is not established [O].
 - Observed [L]: matches in every season. QF pairs cross-group (E1-F4, F1-E4, E2-F3, F2-E3 pattern), e.g. E2012 CSK-BAS,
   BAR-PAN, OLY-IST, MAD-TEL. Mapping [O] until checked per season against the recorded pairs.
+- 34h-ii local verification (2026-10-13) confirms that observed QF pattern in
+  every E2012-E2015 season. All 16 recorded TS participants match each season's
+  RS top-four-per-group cohort; the eight PO clubs match TS qualifiers. Recorded
+  FF games identify the semifinals, championship and third-place game by their
+  source group labels. The verified recorded path and all four podiums are in
+  [34h-ii acceptance](34h-ii-acceptance.md). This is per-season recorded evidence,
+  not a universal rule for absent draws or other eras.
 - `basic.qualified` first carries `true` values in E2015 [L]; before that every club's flag is `false` (7.5).
 - Advanced ratings: `connected = false` in group stages (E2012 RS sample) [L], so opponent-adjusted ratings are
   unavailable for disconnected groups.

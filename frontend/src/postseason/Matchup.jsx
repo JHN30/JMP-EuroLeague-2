@@ -27,8 +27,8 @@ function TeamRow({ slot, side, onSelect, onFocusClub }) {
         (won ? "bg-success/10 font-bold" : decided ? "opacity-60" : "")
       }
     >
-      <span className="muted w-6 flex-none text-right text-xs font-bold tabular-nums" title="Regular-season place">
-        {side.seed ?? ""}
+      <span className="muted w-6 flex-none text-right text-xs font-bold tabular-nums" title={side.seedLabel ? "Top 16 group place" : "Regular-season place"}>
+        {side.seedLabel ?? side.seed ?? ""}
       </span>
       <Crest url={side.crestUrl} />
       <span className="min-w-0 flex-1 text-sm max-sm:line-clamp-2 max-sm:wrap-break-word sm:truncate">{side.short}</span>

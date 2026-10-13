@@ -41,7 +41,7 @@ export default function ChampionPanel({ bracket, seasonLabel }) {
                 <li key={group.label + club.clubCode} className="flex items-center gap-2 text-sm">
                   {club.crestUrl ? <RevealImage src={club.crestUrl} className="h-5 w-5 flex-none object-contain" /> : <span className="h-5 w-5 flex-none" />}
                   <span className="min-w-0 font-semibold wrap-break-word">{club.short}</span>
-                  {club.seed ? <span className="muted text-xs">({club.seed})</span> : null}
+                  {club.seedLabel || club.seed ? <span className="muted text-xs">({club.seedLabel ?? club.seed})</span> : null}
                 </li>
               ))}
             </ul>

@@ -201,7 +201,7 @@ export function placements(bracket) {
   const winner = (slotEntry) => slotEntry?.participants.find((side) => side.clubCode === slotEntry.winnerClubCode) ?? null;
   add(winner(bracket.final), "Champion", 1);
   add(loser(bracket.final), "Runner-up", 2);
-  if (bracket.third) {
+  if (bracket.third?.winnerClubCode) {
     add(winner(bracket.third), "Third place", 3);
     add(loser(bracket.third), "Fourth place", 4);
   } else {

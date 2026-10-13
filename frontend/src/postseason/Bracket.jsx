@@ -67,8 +67,17 @@ function Heading({ heading }) {
 export default function Bracket({ bracket, selectedId, focusClub, onSelect, onFocusClub }) {
   const hasPlayIn = bracket.playIn.length > 0;
   const place = hasPlayIn ? PLACE : DIRECT_PLACE;
+  const groupedOrder = bracket.grouped && bracket.connected ? bracket.semis.flatMap((slot) => slot.sourceSlotIds).map((id) => bracket.playoffs.find((slot) => slot.id === id)) : bracket.playoffs;
+  const groupedPlace = { ...DIRECT_PLACE };
+  if (bracket.grouped) {
+    const rows = ["lg:row-start-2", "lg:row-start-3", "lg:row-start-4", "lg:row-start-5"];
+    groupedOrder.forEach((slot, index) => { groupedPlace[slot.id] = `lg:col-start-1 ${rows[index]}${bracket.connected ? " bk-out" : ""}`; });
+    groupedPlace.sf1 = `lg:col-start-2 lg:row-start-2 lg:row-span-2${bracket.connected ? " bk-in" : ""}${bracket.final.sourceSlotIds.length === 2 ? " bk-out" : ""}`;
+    groupedPlace.sf2 = `lg:col-start-2 lg:row-start-4 lg:row-span-2${bracket.connected ? " bk-in" : ""}${bracket.final.sourceSlotIds.length === 2 ? " bk-out" : ""}`;
+    groupedPlace.final = `lg:col-start-3 lg:row-start-2 lg:row-span-4${bracket.final.sourceSlotIds.length === 2 ? " bk-in" : ""}`;
+  }
   const headings = hasPlayIn ? HEADINGS : HEADINGS.slice(1).map((heading, index) => ({ ...heading, col: ["lg:col-start-1", "lg:col-start-2", "lg:col-start-3"][index] }));
-  const cell = (slot) => <Cell key={slot.id} slot={slot} selectedId={selectedId} focusClub={focusClub} onSelect={onSelect} onFocusClub={onFocusClub} note={NOTES[slot.id]} place={place} />;
+  const cell = (slot) => <Cell key={slot.id} slot={slot} selectedId={selectedId} focusClub={focusClub} onSelect={onSelect} onFocusClub={onFocusClub} note={NOTES[slot.id]} place={bracket.grouped ? groupedPlace : place} />;
   const [pi1, pi2, pi3] = bracket.playIn;
   const [po1, po2, po3, po4] = bracket.playoffs;
   const [sf1, sf2] = bracket.semis;
@@ -81,10 +90,7 @@ export default function Bracket({ bracket, selectedId, focusClub, onSelect, onFo
     >
       {hasPlayIn ? <><Heading heading={headings[0]} />{cell(pi1)}{cell(pi2)}{cell(pi3)}</> : null}
       <Heading heading={headings[hasPlayIn ? 1 : 0]} />
-      {cell(po1)}
-      {cell(po4)}
-      {cell(po2)}
-      {cell(po3)}
+      {bracket.grouped ? groupedOrder.map(cell) : <>{cell(po1)}{cell(po4)}{cell(po2)}{cell(po3)}</>}
       <Heading heading={headings[hasPlayIn ? 2 : 1]} />
       {cell(sf1)}
       {cell(sf2)}

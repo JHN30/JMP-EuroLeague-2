@@ -1,7 +1,7 @@
 import { useMemo, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { motion } from "motion/react";
-import { useParams } from "react-router";
+import { Link, useParams } from "react-router";
 import { getPostseasonSeries, getRounds, getSeasonGames, getSeasonStandings, getSeasonTeams } from "../lib/api";
 import AsyncState from "../lib/AsyncState";
 import EmptyText from "../lib/EmptyText";
@@ -17,6 +17,7 @@ import { useSeasonFormat } from "../lib/useSeasonFormat";
 import ChampionPanel from "./ChampionPanel";
 import MatchupDetail from "./MatchupDetail";
 import RacePanel from "./RacePanel";
+import { buildGroupedBracket } from "./groupedBracket";
 
 const PAGE_LIMIT = 100;
 const MAX_PAGES = 6;
@@ -98,6 +99,7 @@ function summaryLine({ bracket, regularSeasonDone, nextRound, totalRounds, serie
   if (series.some((entry) => entry.phaseCode === "FF")) return { kicker: "UNDER WAY", title: "The Final Four is on" };
   if (series.some((entry) => entry.phaseCode === "PO")) return { kicker: "UNDER WAY", title: "The Playoffs are on" };
   if (series.some((entry) => entry.phaseCode === "PI")) return { kicker: "UNDER WAY", title: "The Play-In is on" };
+  if (bracket.grouped) return { kicker: "GROUP QUALIFICATION", title: "Quarterfinal matchups are not yet verified" };
   if (regularSeasonDone) return { kicker: "NEXT UP", title: "The regular season is over: the " + (bracket.playIn.length ? "Play-In is next" : "Playoffs are next") };
   return {
     kicker: "REGULAR SEASON",
@@ -110,17 +112,21 @@ export default function PostseasonPage() {
   const { seasonCode } = useParams();
   const [selectedId, setSelectedId] = useState(null);
   const [focusClub, setFocusClub] = useState(null);
+  const [seenPath, setSeenPath] = useState(null);
   const detailRef = useRef(null);
   const formatQuery = useSeasonFormat(seasonCode);
   const format = formatQuery.data ?? null;
   const cancelled = format?.status === "cancelled";
   const enabled = Boolean(format) && !cancelled;
+  const grouped = format?.family === "top16TwoGroups";
 
   const standingsQuery = useQuery({ queryKey: ["standings", seasonCode, "RS"], queryFn: () => getSeasonStandings(seasonCode, "RS"), enabled });
   const teamsQuery = useQuery({ queryKey: ["teams", seasonCode], queryFn: () => getSeasonTeams(seasonCode), enabled });
   const seriesQuery = useQuery({ queryKey: ["postseason-series", seasonCode], queryFn: () => getPostseasonSeries(seasonCode), enabled });
-  const remainingQuery = useQuery({ queryKey: ["rs-remaining", seasonCode], queryFn: () => fetchRemaining(seasonCode), enabled });
+  const remainingQuery = useQuery({ queryKey: ["rs-remaining", seasonCode], queryFn: () => fetchRemaining(seasonCode), enabled: enabled && !grouped });
   const roundsQuery = useQuery({ queryKey: ["rounds", seasonCode, "RS"], queryFn: () => getRounds(seasonCode, "RS"), enabled });
+  const top16Query = useQuery({ queryKey: ["standings", seasonCode, "TS"], queryFn: () => getSeasonStandings(seasonCode, "TS"), enabled: enabled && grouped });
+  const ffGamesQuery = useQuery({ queryKey: ["postseason-ff-games", seasonCode], queryFn: () => getSeasonGames(seasonCode, { phase: "FF", limit: PAGE_LIMIT }), enabled: enabled && grouped });
 
   const standings = useMemo(
     () => [...(standingsQuery.data?.standings ?? [])].sort((a, b) => a.basic.position - b.basic.position),
@@ -128,19 +134,27 @@ export default function PostseasonPage() {
   );
   const teams = teamsQuery.data?.teams;
   const series = seriesQuery.data?.series;
-  const remaining = remainingQuery.data;
+  const remaining = remainingQuery.data ?? { remaining: new Map(), nextRound: null, total: 0 };
   const tiers = useMemo(() => tableTiers(format, "RS"), [format]);
   const regularSeasonStage = format?.stages.find((stage) => stage.code === "RS") ?? null;
   const laterStagePlayed = format?.stages.some((stage) => stage.code !== "RS" && stage.observed.gamesPlayed > 0) ?? false;
   const raceUnavailable = format?.issues?.some((issue) => issue.stage === "RS" || issue.stage === null) ?? false;
   const regularSeasonDone = regularSeasonStage?.dataState === "loaded" || laterStagePlayed;
   const bracket = useMemo(
-    () => (enabled && standings.length && teams && series ? buildBracket({ standings, teams, series, regularSeasonDone, format, tiers }) : null),
-    [enabled, standings, teams, series, regularSeasonDone, format, tiers],
+    () => !enabled || !teams || !series ? null : grouped
+      ? buildGroupedBracket({ standings: top16Query.data?.standings ?? [], teams, series, games: ffGamesQuery.data?.games ?? [], format })
+      : standings.length ? buildBracket({ standings, teams, series, regularSeasonDone, format, tiers }) : null,
+    [enabled, grouped, standings, teams, series, regularSeasonDone, format, tiers, top16Query.data, ffGamesQuery.data],
   );
+  const pathKey = JSON.stringify([seasonCode, bracket?.all.map((slot) => [slot.id, slot.label, slot.participants.map((side) => side.clubCode ?? null)])]);
+  if (seenPath !== pathKey) {
+    setSeenPath(pathKey);
+    setSelectedId(null);
+    setFocusClub(null);
+  }
   const race = useMemo(
-    () => (enabled && remaining && standings.length ? raceStatus(standings, remaining.remaining, bracketSeeds(tiers)) : null),
-    [enabled, standings, remaining, tiers],
+    () => (enabled && !grouped && remainingQuery.data && standings.length ? raceStatus(standings, remainingQuery.data.remaining, bracketSeeds(tiers)) : null),
+    [enabled, grouped, standings, remainingQuery.data, tiers],
   );
 
   if (formatQuery.isLoading) return <AsyncState status="loading" label="Loading the postseason" />;
@@ -159,7 +173,7 @@ export default function PostseasonPage() {
   }
   if (!format) return <EmptyText>The season format is unavailable, so there is no bracket to show.</EmptyText>;
 
-  const queries = [formatQuery, standingsQuery, teamsQuery, seriesQuery, remainingQuery, roundsQuery];
+  const queries = [formatQuery, standingsQuery, teamsQuery, seriesQuery, roundsQuery, ...(grouped ? [top16Query, ffGamesQuery] : [remainingQuery])];
   if (queries.some((query) => query.isLoading)) return <AsyncState status="loading" label="Loading the postseason" />;
   if (queries.some((query) => query.isError)) {
     return <AsyncState status="error" message="Could not load the postseason." onRetry={() => queries.forEach((query) => query.isError && query.refetch())} />;
@@ -181,6 +195,7 @@ export default function PostseasonPage() {
       sub: regularSeasonDone ? "Finished" : remaining.nextRound && totalRounds ? "Round " + remaining.nextRound + " of " + totalRounds : "Under way",
       state: regularSeasonDone ? "done" : "live",
     },
+    ...(grouped ? [{ title: "Top 16", sub: "Two groups; top four per group reach the Playoffs", state: format.stages.find((stage) => stage.code === "TS")?.dataState === "loaded" ? "done" : format.stages.find((stage) => stage.code === "TS")?.observed.gamesPlayed > 0 ? "live" : "waiting" }] : []),
     ...(bracket.playIn.length ? [{
       title: "Play-In",
       sub: dateRange(series, ["PI"]) ?? "Seeds " + (bracket.directSeeds + 1) + " to " + bracket.playInLast,
@@ -209,6 +224,10 @@ export default function PostseasonPage() {
       </Panel>
 
       {hasLoadingIssues(format) ? <p className="muted text-sm">{LOADING_ISSUES_NOTE}</p> : null}
+      {grouped ? <>
+        <p className="text-sm">Quarterfinal participants come from the Top 16 groups. <Link to={`/${seasonCode}/standings?phase=TS`} className="link link-primary">View Top 16 group standings</Link>.</p>
+        {bracket.issues.map((issue) => <p key={issue.stage} className="muted text-sm">{issue.message} <Link to={`/${seasonCode}/games?phase=${issue.stage}`} className="link link-primary">{issue.stage === "PO" ? "View recorded quarterfinal games" : "View recorded Final Four games"}</Link>.</p>)}
+      </> : null}
 
       {bracket.champion ? <ChampionPanel bracket={bracket} seasonLabel={seasonLabel} /> : null}
 
@@ -221,13 +240,18 @@ export default function PostseasonPage() {
         {selected ? <MatchupDetail slot={selected} seasonCode={seasonCode} /> : <p className="muted text-sm">Select a matchup to see its games.</p>}
       </div>
 
-      {!regularSeasonDone && raceUnavailable ? <EmptyText>The qualification race is unavailable while regular-season data is incomplete.</EmptyText> : null}
-      {!regularSeasonDone && !raceUnavailable && race ? <RacePanel standings={standings} teams={teams} race={race} directSeeds={bracket.directSeeds} playInLast={bracket.playInLast} /> : null}
+      {!grouped && !regularSeasonDone && raceUnavailable ? <EmptyText>The qualification race is unavailable while regular-season data is incomplete.</EmptyText> : null}
+      {!grouped && !regularSeasonDone && !raceUnavailable && race ? <RacePanel standings={standings} teams={teams} race={race} directSeeds={bracket.directSeeds} playInLast={bracket.playInLast} /> : null}
 
       <details className="rounded-box border border-base-300 bg-base-100 p-4">
         <summary className="cursor-pointer font-semibold">How the postseason works</summary>
         <div className="muted mt-3 flex flex-col gap-2 text-sm">
           <p>{stageDescription(regularSeasonStage, format)}</p>
+          {grouped ? <>
+            <p>{stageDescription(format.stages.find((stage) => stage.code === "TS"), format)}</p>
+            <p>Quarterfinals are best-of-five series between recorded cross-group qualifiers. Three wins are required to advance; labels such as E1 and F4 are Top 16 group places.</p>
+            <p>The Final Four follows the recorded semifinal matchups, championship game and any verified third-place game. Unverified draws and results remain unknown.</p>
+          </> : <>
           {bracket.playIn.length ? <p>
             In the Play-In, 7th hosts 8th and 9th hosts 10th in single games. The loser of 7 v 8 then plays the winner of 9 v 10 for the last Playoffs place; the winner of 7 v 8
             takes the 7th place.
@@ -237,6 +261,7 @@ export default function PostseasonPage() {
             The winners of 1 v 8 and 4 v 5 meet in one Final Four semifinal, the winners of 2 v 7 and 3 v 6 in the other. Each is a single game, and the two winners play the
             final. {stageSub(format, "FF", "")}
           </p>
+          </>}
         </div>
       </details>
     </motion.div>

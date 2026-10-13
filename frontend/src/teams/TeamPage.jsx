@@ -241,7 +241,7 @@ function TeamSnapshot({ standingsQuery, teamStatsQuery, clubCode, phaseGames }) 
     .sort((a, b) => new Date(a.scheduledAt) - new Date(b.scheduledAt))
     .slice(-FORM_PILL_COUNT)
     .map((game) => gameResult(game, clubCode));
-  const gamesRemaining = phaseGames.filter((game) => !game.played).length;
+  const gamesRemaining = phaseGames.filter((game) => !game.played && game.gameStatus !== "Cancelled").length;
 
   // Points per game from the team totals, which count overtime like the Statistics tab; the standings' points are
   // regulation time only.

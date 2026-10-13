@@ -1164,7 +1164,7 @@ export default function GameDetailPage() {
     <div>
       <BackLink to={`/${seasonCode}/games${listQuery}`} label="Games" />
       <MatchupHeader game={game} seasonCode={seasonCode} localWon={localWon} roadWon={roadWon} />
-      <CompetitionContext seasonCode={seasonCode} gameCode={game.gameCode} />
+      <CompetitionContext seasonCode={seasonCode} gameCode={game.gameCode} game={game} />
 
       <TabStrip ariaLabel="Game detail" level={1} panelId="game-detail-panel" activeKey={tab} onChange={setTab} scrolling className="mb-4 lg:w-fit" tabs={GAME_TABS} />
 

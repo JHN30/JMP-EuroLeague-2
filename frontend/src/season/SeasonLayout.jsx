@@ -152,11 +152,12 @@ export default function SeasonLayout({ themePreference }) {
           <NavBar />
         </header>
         <main id="main-content" tabIndex={-1} className="p-3 outline-none sm:p-5 lg:p-8">
-          {seasonSlug(seasonCode) === "2021" && (
-            <aside aria-labelledby="season-data-caveat" className="mb-4 rounded-box border border-base-300 bg-base-200/40 p-3 text-sm">
-              <h2 id="season-data-caveat" className="mb-1 font-semibold">2021-22 season: data caveat</h2>
+          {seasonSlug(seasonCode) === "2021" && location.pathname.split("/")[2] === "home" && (
+            <aside aria-labelledby="season-data-caveat" className="panel mb-6 border-t-2 border-t-primary p-4 text-sm sm:p-5">
+              <h2 id="season-data-caveat" className="mb-2 text-base font-semibold">2021-22 season: data caveat</h2>
               <p>
                 CSKA Moscow, UNICS Kazan and Zenit St Petersburg were excluded from this season, and their results were removed from the official standings.
+                {" "}The season began with 18 clubs and a planned 34-game regular season; the corrected final standings cover 15 eligible clubs with 28 counted games each.
                 {" "}Some historical standings snapshots are inconsistent, and available statistics and records may count games differently.
                 {" "}Keep this in mind when comparing teams, players or rounds.
               </p>

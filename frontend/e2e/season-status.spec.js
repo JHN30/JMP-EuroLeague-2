@@ -72,14 +72,33 @@ test.describe("a season with cancelled games (2021)", () => {
     await expect(warning(page)).toHaveCount(1);
     await expect(warning(page)).toContainText("CSKA Moscow, UNICS Kazan and Zenit St Petersburg");
     await expect(warning(page)).toContainText("statistics and records may count games differently");
+    await expect(warning(page)).toContainText("18 clubs and a planned 34-game regular season");
+    await expect(warning(page)).toContainText("15 eligible clubs with 28 counted games each");
+    const table = page.locator("section", { has: page.getByRole("heading", { name: "League table", exact: true }) });
+    await expect(table).toBeVisible();
+    await expect(table.getByRole("complementary")).toHaveCount(0);
+    expect(await warning(page).evaluate((notice) => Boolean(notice.compareDocumentPosition(document.querySelector("main h1")) & Node.DOCUMENT_POSITION_FOLLOWING))).toBe(true);
     await page.locator(".app-nav").getByRole("link", { name: "Standings", exact: true }).click();
     await expect(page).toHaveURL(/\/2021\/standings$/);
-    await expect(warning(page)).toHaveCount(1);
+    await expect(warning(page)).toHaveCount(0);
     await page.getByLabel("Selected season").first().selectOption("2022");
     await expect(page).toHaveURL(/\/2022\/standings$/);
     await expect(warning(page)).toHaveCount(0);
     await page.getByLabel("Selected season").first().selectOption("2021");
+    await expect(page).toHaveURL(/\/2021\/standings$/);
+    await expect(warning(page)).toHaveCount(0);
+    await page.getByRole("navigation", { name: "Sections" }).getByRole("link", { name: "Home", exact: true }).click();
     await expect(warning(page)).toBeVisible();
+  });
+
+  test("the general caveat appears only on Home", async ({ page }) => {
+    await page.goto("/2021/home");
+    await expect(warning(page)).toBeVisible();
+    for (const path of ["overview", "standings", "games", "teams", "players", "leaders", "compare", "records", "postseason"]) {
+      await page.goto(`/2021/${path}`);
+      await expect(page.locator("main h1")).toBeVisible();
+      await expect(warning(page)).toHaveCount(0);
+    }
   });
 
   for (const theme of ["light-euroleague", "dark-euroleague"]) {

@@ -225,6 +225,20 @@ cross-group criterion [O]. Later leaves must mark the qualifier from recorded To
   snapshots for race playback without a pipeline fix (7.6).
 - Cancelled games are served as `status=scheduled` (28) [L].
 
+- **34g approved scope amendment (2026-10-13):** the user chose a general warning
+  on Home only instead of pipeline snapshot repair or resolving official statistics
+  eligibility before shipping this leaf. Retain existing historical snapshots,
+  race playback, form, comparisons, statistics, game logs and Records with that
+  caveat. Use the stored corrected final standings and distinguish original
+  18/34 from corrected 15/28 competition context. Preserve archived played
+  evidence and explain its removal from standings; cancelled fixtures remain
+  accessible but are not upcoming or remaining games. Pipeline alignment and
+  official statistical eligibility remain open research, not 34g prerequisites.
+  See [34g acceptance evidence](34g-acceptance.md) for current local counts,
+  source retrieval, runtime checks and accepted limitations. The older
+  scheduled-filter observation above describes the original inventory baseline;
+  current scheduled APIs exclude those cancelled games.
+
 ### 5.10 E2023-E2025 (Play-In era) - leaf 34c
 
 - Observed [L]: E2023-E2024 18 clubs/34 games, E2025 20 clubs/38 games; `qualified` ranks 1-8 (1-6 direct, 7-8 via
@@ -300,7 +314,10 @@ games not loaded" note and keep qualifying clubs out of counts. This is pipeline
 
 - `DATA_DICTIONARY.md` already reports `app_standings` versus `app_standings_stats` gaps, largest in E2021 RS, cause not
   investigated [D]. Confirmed: non-monotonic games played per round (7 above) [L]. A pipeline investigation is a
-  prerequisite for 34g's historical race; the final table (round 34) is usable.
+  prerequisite for the original 34g historical-race repair scope; the final table
+  (round 34) is usable. Under the approved warning-first amendment (5.9), pipeline
+  investigation is deferred and the existing race remains available with the
+  snapshot/counting caveat on Home only, without a claim that it was repaired.
 
 ### 7.7 Forfeits and missing performance data
 
@@ -359,7 +376,7 @@ route reports this per item, and pages must show "unavailable" rather than zero.
 | 34d | E2016-E2018 data complete; 1v8 pairings. | — |
 | 34e | E2020, E2022 complete; disciplinary context and relevant-only application checks verified (section 5.8). | Primary-source retrieval limitations documented in acceptance evidence. |
 | 34f | E2019 facts (28 games, 54 unplayed, suspension and cancellation dates). | — |
-| 34g | Official 15-club final table; 68 annulled and 28 cancelled games identifiable by club. | Official wording re-check; statistics/records eligibility of annulled games [O]; snapshot alignment pipeline fix (7.6). |
+| 34g | Official 15-club final table; 68 played standings-annulled and 28 cancelled games identifiable by club; approved warning-first scope (5.9). | Statistics/records eligibility and snapshot pipeline alignment remain explicitly deferred research, not implementation prerequisites. See 34g acceptance for the exclusion-decision wording re-check and current scheduled filters. |
 | 34h | Groups, ranks, pairings for E2012-E2015. | Per-season QF mapping confirmation; E2015 qualifying. |
 | 34i | E2008-E2011 structure. | E2008 qualifying existence; QF mapping. |
 | 34j | E2004-E2007 best-of-three, best-sixth qualifiers. | Comparison criterion source. |

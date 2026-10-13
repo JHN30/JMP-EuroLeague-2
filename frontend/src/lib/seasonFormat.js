@@ -5,16 +5,37 @@ import { seasonSlug } from "./seasonSlug";
 
 const NUMBER_WORDS = { 1: "one", 3: "three", 5: "five", 7: "seven" };
 
-export function competitionNotes(format, seasonCode, { gameCode, phaseCode, roundNumber, clubCode } = {}) {
+function exclusionNote(entry, format, { game }) {
+  if (game) {
+    return game.played
+      ? "Archived played game. This result was removed from the official regular-season standings because it involved a withdrawn Russian club. The recorded score and available performances are preserved; statistics and records may count games differently."
+      : "Cancelled fixture involving a withdrawn Russian club. This game was not played and is not an upcoming or remaining fixture.";
+  }
+  const remainingClubs = format.plannedClubs - entry.clubs.length;
+  const cohort = `The corrected final regular-season standings contain ${remainingClubs} eligible clubs with ${entry.countedGames} counted games each. Results against the withdrawn Russian clubs were removed from those standings.`;
+  return `This club was withdrawn on ${entry.decidedOn} and is absent from the corrected final regular-season standings. Its available archived games and performances remain accessible. ${cohort}`;
+}
+
+export function competitionNotes(format, seasonCode, { gameCode, phaseCode, roundNumber, clubCode, game } = {}) {
   if (!format || seasonSlug(format.seasonCode) !== seasonSlug(seasonCode)) return [];
   return (format.exceptions ?? []).filter((entry) => {
     if (entry.kind === "cancelled") return format.status === "cancelled" && (gameCode != null || phaseCode === "RS");
     if (entry.kind === "endedEarly") return gameCode != null && entry.gameCode === Number(gameCode);
     if (entry.kind === "winsDeducted") return entry.stage === phaseCode && entry.roundNumber === roundNumber && (!clubCode || entry.clubCode === clubCode);
+    if (entry.kind === "excludedClubs") {
+      if (phaseCode !== "RS") return false;
+      if (gameCode != null && !game) return false;
+      if (!game) return entry.clubs.includes(clubCode);
+      return game.phaseCode === "RS" && [game.localTeam?.clubCode, game.roadTeam?.clubCode].some((code) => entry.clubs.includes(code))
+        && (game.played === true || game.gameStatus === "Cancelled");
+    }
     return false;
   }).map((entry) => entry.kind === "cancelled" ? {
     ...entry,
     note: `Season cancelled. ${entry.note} Suspended on ${entry.suspendedOn}; cancelled on ${entry.cancelledOn}. Latest standings show positions at suspension, not a final classification. Historical playback shows the selected played round. Played performances remain in the statistics and records.`,
+  } : entry.kind === "excludedClubs" ? {
+    ...entry,
+    note: exclusionNote(entry, format, { game }),
   } : entry);
 }
 
@@ -63,9 +84,11 @@ export function stageDescription(stage, format) {
   const sentences = [];
   if (stage.type === "table") {
     if (stage.plannedGroups === 1 && stage.plannedClubsPerGroup) {
-      sentences.push(format?.status === "cancelled"
+      const exclusion = stage.code === "RS" ? format?.exceptions?.find((entry) => entry.kind === "excludedClubs") : null;
+      sentences.push(format?.status === "cancelled" || exclusion
         ? `The planned format was ${stage.plannedClubsPerGroup} clubs playing every other club home and away (${stage.gamesPerClub} games per club).`
         : `Each of the ${stage.plannedClubsPerGroup} clubs plays every other club home and away (${stage.gamesPerClub} games).`);
+      if (exclusion) sentences.push(`After the Russian-club exclusions, ${stage.plannedClubsPerGroup - exclusion.clubs.length} eligible clubs remained, with ${exclusion.countedGames} counted regular-season games each.`);
     } else if (stage.plannedGroups && stage.plannedClubsPerGroup) {
       sentences.push(`${stage.plannedGroups} groups of ${stage.plannedClubsPerGroup}; each club plays its group home and away (${stage.gamesPerClub} games).`);
     }

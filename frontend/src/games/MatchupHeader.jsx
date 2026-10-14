@@ -77,7 +77,7 @@ export default function MatchupHeader({ game, seasonCode, localWon, roadWon }) {
                 <span className="muted px-1 font-normal sm:px-2"> - </span>
                 <span className={roadWon ? "text-primary" : ""}>{game.roadScore ?? "-"}</span>
               </p>
-              <p className="muted text-xs font-semibold tracking-wide uppercase">Final</p>
+              <p className="muted text-xs font-semibold tracking-wide uppercase">{game.gameStatus === "Walkover" ? "Forfeit" : "Final"}</p>
             </>
           ) : cancelled ? (
             <span className="stat-badge stat-badge-neutral inline-flex">Not played</span>

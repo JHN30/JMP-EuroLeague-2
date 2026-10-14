@@ -29,7 +29,7 @@ export type StageFormat = {
 export type FormatException =
   | { kind: "cancelled"; suspendedOn: string; cancelledOn: string; note: string }
   | { kind: "excludedClubs"; clubs: string[]; decidedOn: string; countedGames: number; note: string }
-  | { kind: "walkover"; gameCode: number; note: string }
+  | { kind: "walkover"; gameCode: number; stage: StageCode; note: string }
   | { kind: "endedEarly"; gameCode: number; note: string }
   | { kind: "winsDeducted"; clubCode: string; stage: "RS"; roundNumber: number; wins: number; note: string }
   | { kind: "replay"; stage: "PO"; clubs: string[]; note: string };
@@ -166,7 +166,7 @@ function singleTablePlayIn(clubs: number, thirdPlaceGame: boolean | null): Seaso
   };
 }
 
-const walkover = (gameCode: number, note: string): FormatException => ({ kind: "walkover", gameCode, note });
+const walkover = (gameCode: number, stage: StageCode, note: string): FormatException => ({ kind: "walkover", gameCode, stage, note });
 
 const SEASON_VALUES: Record<string, SeasonValues> = {
   E2000: {
@@ -196,12 +196,12 @@ const SEASON_VALUES: Record<string, SeasonValues> = {
     family: "top16ToFinalFour",
     plannedClubs: 32,
     stages: [table("RS", 4, 8, [groupRanks(1, 4, "TS")]), table("TS", 4, 4, [groupRanks(1, 1, "FF")]), finalFour(false)],
-    exceptions: [walkover(264, "Top 16 game awarded 2-0 to Maccabi after Ulker withdrew; no box score.")],
+    exceptions: [walkover(264, "TS", "Top 16 game awarded 2-0 to Maccabi after Ulker withdrew; no box score.")],
   },
   E2002: threeGroupsOfEight("FF", 1, true, "top16ToFinalFour"),
   E2003: {
     ...threeGroupsOfEight("FF", 1, true, "top16ToFinalFour"),
-    exceptions: [walkover(200, "Top 16 game awarded 20-0 to Maccabi after Pamesa Valencia did not travel; no box score.")],
+    exceptions: [walkover(200, "TS", "Top 16 game awarded 20-0 to Maccabi after Pamesa Valencia did not travel; no box score.")],
   },
   E2004: threeGroupsOfEight("PO", 2, true, "top16Bo3Playoffs"),
   E2005: threeGroupsOfEight("PO", 2, true, "top16Bo3Playoffs"),

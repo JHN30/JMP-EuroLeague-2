@@ -54,11 +54,11 @@ export default function GameCard({ game, seasonCode, standingByClubCode, cancell
         <motion.div className="fixture-center" variants={centerPop}>
           {game.played ? (
             <>
-              <span className="score-pill" aria-label={`Final score ${game.localScore ?? "-"} to ${game.roadScore ?? "-"}`}>
+              <span className="score-pill" aria-label={`${game.gameStatus === "Walkover" ? "Forfeit awarded" : "Final score"} ${game.localScore ?? "-"} to ${game.roadScore ?? "-"}`}>
                 <span className={localWon ? "win" : ""}>{game.localScore ?? "-"}</span>
                 <span className={roadWon ? "win" : ""}>{game.roadScore ?? "-"}</span>
               </span>
-              <span className="fixture-date">Final · {formatShortDate(game.scheduledAt)}</span>
+              <span className="fixture-date">{game.gameStatus === "Walkover" ? "Forfeit" : "Final"} · {formatShortDate(game.scheduledAt)}</span>
             </>
           ) : cancelled ? (
             <><span className="fixture-date">Not played</span><span className="text-xs">Season cancelled</span></>

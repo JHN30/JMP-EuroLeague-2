@@ -72,32 +72,38 @@ export default function Bracket({ bracket, selectedId, focusClub, onSelect, onFo
   if (bracket.grouped) {
     const rows = ["lg:row-start-2", "lg:row-start-3", "lg:row-start-4", "lg:row-start-5"];
     groupedOrder.forEach((slot, index) => { groupedPlace[slot.id] = `lg:col-start-1 ${rows[index]}${bracket.connected ? " bk-out" : ""}`; });
-    groupedPlace.sf1 = `lg:col-start-2 lg:row-start-2 lg:row-span-2${bracket.connected ? " bk-in" : ""}${bracket.final.sourceSlotIds.length === 2 ? " bk-out" : ""}`;
-    groupedPlace.sf2 = `lg:col-start-2 lg:row-start-4 lg:row-span-2${bracket.connected ? " bk-in" : ""}${bracket.final.sourceSlotIds.length === 2 ? " bk-out" : ""}`;
-    groupedPlace.final = `lg:col-start-3 lg:row-start-2 lg:row-span-4${bracket.final.sourceSlotIds.length === 2 ? " bk-in" : ""}`;
+    // Without quarterfinals (the Top 16 goes straight to the Final Four) the semifinals open the bracket in the first column.
+    const semiColumn = bracket.direct ? "lg:col-start-1" : "lg:col-start-2";
+    const semiIn = bracket.connected && !bracket.direct ? " bk-in" : "";
+    groupedPlace.sf1 = `${semiColumn} lg:row-start-2 lg:row-span-2${semiIn}${bracket.final.sourceSlotIds.length === 2 ? " bk-out" : ""}`;
+    groupedPlace.sf2 = `${semiColumn} lg:row-start-4 lg:row-span-2${semiIn}${bracket.final.sourceSlotIds.length === 2 ? " bk-out" : ""}`;
+    groupedPlace.final = `${bracket.direct ? "lg:col-start-2" : "lg:col-start-3"} lg:row-start-2 lg:row-span-4${bracket.final.sourceSlotIds.length === 2 ? " bk-in" : ""}`;
+    groupedPlace.third = `${bracket.direct ? "lg:col-start-2" : "lg:col-start-3"} lg:row-start-6`;
   }
   // The Playoffs column names its series length from the stage's win target (best of 3 in E2004-E2007, best of 5 elsewhere).
   const winTarget = bracket.playoffs[0]?.winTarget;
   const sized = winTarget > 1 ? HEADINGS.map((heading) => (heading.id === "PO" ? { ...heading, sub: "Best of " + (2 * winTarget - 1) } : heading)) : HEADINGS;
-  const headings = hasPlayIn ? sized : sized.slice(1).map((heading, index) => ({ ...heading, col: ["lg:col-start-1", "lg:col-start-2", "lg:col-start-3"][index] }));
+  const headings = bracket.direct
+    ? [{ id: "SF", title: "Final Four", sub: "Top 16 group winners", col: "lg:col-start-1" }, { id: "F", title: "Final", sub: "The champion", col: "lg:col-start-2" }]
+    : hasPlayIn ? sized : sized.slice(1).map((heading, index) => ({ ...heading, col: ["lg:col-start-1", "lg:col-start-2", "lg:col-start-3"][index] }));
   const cell = (slot) => <Cell key={slot.id} slot={slot} selectedId={selectedId} focusClub={focusClub} onSelect={onSelect} onFocusClub={onFocusClub} note={NOTES[slot.id]} place={bracket.grouped ? groupedPlace : place} />;
   const [pi1, pi2, pi3] = bracket.playIn;
   const [po1, po2, po3, po4] = bracket.playoffs;
   const [sf1, sf2] = bracket.semis;
   return (
     <motion.div
-      className={"bk-grid grid grid-cols-1 gap-x-9 gap-y-3 lg:grid-rows-[auto_repeat(4,7.6rem)_auto] " + (hasPlayIn ? "lg:grid-cols-4" : "lg:grid-cols-3")}
+      className={"bk-grid grid grid-cols-1 gap-x-9 gap-y-3 lg:grid-rows-[auto_repeat(4,7.6rem)_auto] " + (hasPlayIn ? "lg:grid-cols-4" : bracket.direct ? "lg:grid-cols-2" : "lg:grid-cols-3")}
       variants={listContainer}
       initial="hidden"
       animate="show"
     >
       {hasPlayIn ? <><Heading heading={headings[0]} />{cell(pi1)}{cell(pi2)}{cell(pi3)}</> : null}
-      <Heading heading={headings[hasPlayIn ? 1 : 0]} />
-      {bracket.grouped ? groupedOrder.map(cell) : <>{cell(po1)}{cell(po4)}{cell(po2)}{cell(po3)}</>}
-      <Heading heading={headings[hasPlayIn ? 2 : 1]} />
+      {bracket.direct ? null : <Heading heading={headings[hasPlayIn ? 1 : 0]} />}
+      {bracket.direct ? null : bracket.grouped ? groupedOrder.map(cell) : <>{cell(po1)}{cell(po4)}{cell(po2)}{cell(po3)}</>}
+      <Heading heading={headings[bracket.direct ? 0 : hasPlayIn ? 2 : 1]} />
       {cell(sf1)}
       {cell(sf2)}
-      <Heading heading={headings[hasPlayIn ? 3 : 2]} />
+      <Heading heading={headings[bracket.direct ? 1 : hasPlayIn ? 3 : 2]} />
       {cell(bracket.final)}
       {bracket.third ? cell(bracket.third) : null}
     </motion.div>

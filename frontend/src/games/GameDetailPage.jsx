@@ -962,7 +962,7 @@ function TurningPoints({ flow, localTeam, roadTeam }) {
   );
 }
 
-function GameFlowTab({ events, periodScores, localTeam, roadTeam }) {
+function GameFlowTab({ events, periodScores, localTeam, roadTeam, forfeit }) {
   const flow = useMemo(
     () => computeGameFlow(events, localTeam?.clubCode, roadTeam?.clubCode),
     [events, localTeam?.clubCode, roadTeam?.clubCode],
@@ -972,7 +972,7 @@ function GameFlowTab({ events, periodScores, localTeam, roadTeam }) {
     <div className="flex flex-col gap-6">
       <FlowMetrics flow={flow} localTeam={localTeam} roadTeam={roadTeam} />
       <ScoreFlowChart flow={flow} localTeam={localTeam} roadTeam={roadTeam} />
-      <PeriodTable periodScores={periodScores} localTeam={localTeam} roadTeam={roadTeam} />
+      <PeriodTable periodScores={periodScores} localTeam={localTeam} roadTeam={roadTeam} forfeit={forfeit} />
       <TurningPoints flow={flow} localTeam={localTeam} roadTeam={roadTeam} />
     </div>
   );
@@ -1212,6 +1212,7 @@ export default function GameDetailPage() {
               periodScores={boxScoreQuery.data.periodScores}
               localTeam={game.localTeam}
               roadTeam={game.roadTeam}
+              forfeit={game.gameStatus === "Walkover"}
             />
           )
         ) : null}

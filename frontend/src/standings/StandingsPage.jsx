@@ -86,7 +86,7 @@ export default function StandingsPage() {
   const displayedGroups = grouped ? groups.filter((group) => groupName === null || group.name === groupName) : [{ name: null, standings }];
   const groupTiers = grouped ? tableTiers(format, phaseCode, "group") : null;
   const crossQualifiers = grouped ? crossGroupQualifiers(format, phaseCode, standings) : new Set();
-  const destination = stage?.qualification[0]?.to === "TS" ? "Top 16" : "Playoff";
+  const destination = { TS: "Top 16", FF: "Final Four" }[stage?.qualification[0]?.to] ?? "Playoff";
   const crossQualifier = grouped ? crossGroupQualifier(format, phaseCode) : null;
   const groupTierLabels = { postseason: `${destination} places`, out: crossQualifier ? "Outside the group places (one sixth-placed club also qualified)" : "Outside qualification places" };
   const roundsQuery = useQuery({

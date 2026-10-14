@@ -12,8 +12,9 @@ export function finalFourKind(game) {
 }
 
 // The formats whose Top 16 is played in groups and feeds the quarterfinals: two groups of eight (E2012-E2015, best-of-five), four
-// groups of four (E2008-E2011, best-of-five) and four groups of four with best-of-three series (E2004-E2007).
-export const GROUPED_POSTSEASON_FAMILIES = ["top16TwoGroups", "top16Bo5Playoffs", "top16Bo3Playoffs"];
+// groups of four (E2008-E2011, best-of-five) and four groups of four with best-of-three series (E2004-E2007). In E2002-E2003 only the
+// winner of each Top 16 group advances, straight to the Final Four (no quarterfinals).
+export const GROUPED_POSTSEASON_FAMILIES = ["top16TwoGroups", "top16Bo5Playoffs", "top16Bo3Playoffs", "top16ToFinalFour"];
 
 // How many clubs per Top 16 group reach the Playoffs (four of eight, two of four), from the stage's own qualification rule.
 function qualifiersPerGroup(stage) {
@@ -45,6 +46,7 @@ export function buildGroupedBracket({ standings = [], teams = [], series = [], g
   const top16 = format.stages.find((stage) => stage.code === "TS");
   const qualifiers = qualifiersPerGroup(top16);
   const ranks = finalGroupRanks(standings, top16);
+  const direct = format.family === "top16ToFinalFour";
   const identities = new Map(teams.map((team) => [team.clubCode, team]));
   for (const entry of series) for (const side of [entry.clubA, entry.clubB]) if (!identities.has(side.clubCode)) identities.set(side.clubCode, side);
   const club = (code) => {
@@ -85,7 +87,7 @@ export function buildGroupedBracket({ standings = [], teams = [], series = [], g
     return `${first.groupName}${first.basic.position} v ${second.groupName}${second.basic.position}`;
   };
   accepted.sort((a, b) => (labelOf(a) ?? pairKey(a.clubA.clubCode, a.clubB.clubCode)).localeCompare(labelOf(b) ?? pairKey(b.clubA.clubCode, b.clubB.clubCode)));
-  const playoffs = Array.from({ length: 4 }, (_, index) => {
+  const playoffs = direct ? [] : Array.from({ length: 4 }, (_, index) => {
     const entry = accepted[index] ?? null;
     const result = slot(`po${index + 1}`, "PO", entry ? labelOf(entry) ?? `Recorded quarterfinal ${index + 1}` : `Quarterfinal ${index + 1}`, entry);
     if (entry && ranks.has(entry.clubA.clubCode) && ranks.has(entry.clubB.clubCode) && !labelOf(entry)) {
@@ -94,7 +96,7 @@ export function buildGroupedBracket({ standings = [], teams = [], series = [], g
     }
     return result;
   });
-  if (accepted.length !== 4 || accepted.some((entry) => !labelOf(entry))) issues.push({ stage: "PO", message: "Some quarterfinal pairings or final Top 16 group places are unavailable or inconsistent." });
+  if (!direct && (accepted.length !== 4 || accepted.some((entry) => !labelOf(entry)))) issues.push({ stage: "PO", message: "Some quarterfinal pairings or final Top 16 group places are unavailable or inconsistent." });
   const ff = uniqueSeries(series, "FF");
   const ffGames = games.filter((game) => game.phaseCode === "FF");
   const findSeries = (game) => ff.find((entry) => pairKey(entry.clubA.clubCode, entry.clubB.clubCode) === pairKey(game.localTeam?.clubCode, game.roadTeam?.clubCode)
@@ -114,9 +116,12 @@ export function buildGroupedBracket({ standings = [], teams = [], series = [], g
   const thirds = classified("third");
   const placementAllowed = format.stages.find((stage) => stage.code === "FF")?.thirdPlaceGame === true;
   const third = placementAllowed && thirds.length === 1 ? slot("third", "FF", "Third place", findSeries(thirds[0]), thirds[0]) : null;
-  const connected = semis.every((entry) => entry.sourceSlotIds.length === 2) && new Set(semis.flatMap((entry) => entry.sourceSlotIds)).size === 4;
+  // Directly from the Top 16 the semifinal pairs are confirmed by the clubs' own group places: all four must be group winners.
+  const connected = direct
+    ? semis.every((entry) => entry.participants.every((side) => ranks.get(side.clubCode)?.basic.position === 1)) && new Set(semis.flatMap((entry) => entry.participants.map((side) => side.clubCode))).size === 4
+    : semis.every((entry) => entry.sourceSlotIds.length === 2) && new Set(semis.flatMap((entry) => entry.sourceSlotIds)).size === 4;
   if (!connected || final.sourceSlotIds.length !== 2 || ffGames.some((game) => !finalFourKind(game))) issues.push({ stage: "FF", message: "Some Final Four results or bracket connections are unavailable or unverified. Recorded games remain available under Games." });
   const champion = final.participants.find((side) => side.clubCode === final.winnerClubCode) ?? null;
-  return { grouped: true, projected: false, directSeeds: null, playInLast: null, playIn: [], playoffs, semis, final, third, champion, connected, issues,
+  return { grouped: true, direct, projected: false, directSeeds: null, playInLast: null, playIn: [], playoffs, semis, final, third, champion, connected, issues,
     all: [...playoffs, ...semis, final, ...(third ? [third] : [])] };
 }

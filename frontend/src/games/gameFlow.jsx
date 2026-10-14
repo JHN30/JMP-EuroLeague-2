@@ -9,7 +9,9 @@ import { buildMarginSeries, eventMoment, momentLabel } from "./gameFlowData";
 import { teamName } from "./gameUtils";
 import { TeamName } from "./TeamLabel";
 
-export function PeriodTable({ periodScores, localTeam, roadTeam }) {
+export function PeriodTable({ periodScores, localTeam, roadTeam, forfeit = false }) {
+  // A forfeit has no play: the source's zero period scores are placeholders, not recorded values.
+  if (forfeit) return <EmptyText>Period scores were not recorded: this game was a forfeit.</EmptyText>;
   if (periodScores.length === 0) {
     return <EmptyText>Period scores aren't available until this game is played.</EmptyText>;
   }

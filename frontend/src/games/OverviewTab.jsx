@@ -138,7 +138,7 @@ export default function OverviewTab({ game, seasonCode, boxScoreQuery, playByPla
     <motion.div className="flex flex-col gap-6" variants={sectionContainer} initial="hidden" animate="show">
       <motion.section variants={sectionItem}>
         <PanelHeader kicker="LINE SCORE" title="Score by period" />
-        <PeriodTable periodScores={boxScore.periodScores} localTeam={game.localTeam} roadTeam={game.roadTeam} />
+        <PeriodTable periodScores={boxScore.periodScores} localTeam={game.localTeam} roadTeam={game.roadTeam} forfeit={game.gameStatus === "Walkover"} />
       </motion.section>
 
       <motion.section variants={sectionItem}>

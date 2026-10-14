@@ -99,6 +99,7 @@ function summaryLine({ bracket, regularSeasonDone, nextRound, totalRounds, serie
   if (series.some((entry) => entry.phaseCode === "FF")) return { kicker: "UNDER WAY", title: "The Final Four is on" };
   if (series.some((entry) => entry.phaseCode === "PO")) return { kicker: "UNDER WAY", title: "The Playoffs are on" };
   if (series.some((entry) => entry.phaseCode === "PI")) return { kicker: "UNDER WAY", title: "The Play-In is on" };
+  if (bracket.direct) return { kicker: "GROUP QUALIFICATION", title: "Final Four matchups are not yet verified" };
   if (bracket.grouped) return { kicker: "GROUP QUALIFICATION", title: "Quarterfinal matchups are not yet verified" };
   if (regularSeasonDone) return { kicker: "NEXT UP", title: "The regular season is over: the " + (bracket.playIn.length ? "Play-In is next" : "Playoffs are next") };
   return {
@@ -107,16 +108,19 @@ function summaryLine({ bracket, regularSeasonDone, nextRound, totalRounds, serie
   };
 }
 
+const GROUP_COUNT_WORDS = { 2: "Two", 3: "Three", 4: "Four" };
 const SERIES_WORDS = { 2: "three", 3: "five" };
 const WIN_WORDS = { 2: "Two", 3: "Three" };
 
-// "Four groups; top two per group reach the Playoffs", from the Top 16 stage's own group count and qualification rule.
-const GROUP_COUNT_WORDS = { 2: "Two", 3: "Three", 4: "Four" };
+// "Four groups; top two per group reach the Playoffs", from the Top 16 stage's own group count, qualification rule and destination.
 function top16Summary(stage) {
-  const places = stage?.qualification?.find((rule) => rule.within === "group" && "positions" in rule)?.positions[1];
+  const rule = stage?.qualification?.find((entry) => entry.within === "group" && "positions" in entry);
+  const places = rule?.positions[1];
   const groups = GROUP_COUNT_WORDS[stage?.plannedGroups] ?? stage?.plannedGroups;
-  const top = { 1: "one", 2: "two", 3: "three", 4: "four" }[places] ?? places;
-  return groups && top ? `${groups} groups; top ${top} per group reach the Playoffs` : "Group stage; the best clubs of each group reach the Playoffs";
+  const destination = rule?.to === "FF" ? "the Final Four" : "the Playoffs";
+  if (!groups || !places) return "Group stage; the best clubs of each group advance";
+  if (places === 1) return `${groups} groups; the winner of each group reaches ${destination}`;
+  return `${groups} groups; top ${{ 2: "two", 3: "three", 4: "four" }[places] ?? places} per group reach ${destination}`;
 }
 
 export default function PostseasonPage() {
@@ -213,7 +217,7 @@ export default function PostseasonPage() {
       sub: dateRange(series, ["PI"]) ?? "Seeds " + (bracket.directSeeds + 1) + " to " + bracket.playInLast,
       state: regularSeasonDone || series.length ? stageState(bracket.playIn) : "waiting",
     }] : []),
-    { title: "Playoffs", sub: dateRange(series, ["PO"]) ?? stageSub(format, "PO", "Best of five"), state: stageState(bracket.playoffs) },
+    ...(bracket.direct ? [] : [{ title: "Playoffs", sub: dateRange(series, ["PO"]) ?? stageSub(format, "PO", "Best of five"), state: stageState(bracket.playoffs) }]),
     { title: "Final Four", sub: dateRange(series, ["FF"]) ?? stageSub(format, "FF", "Semifinals and final"), state: stageState([...bracket.semis, bracket.final]) },
   ];
 
@@ -237,7 +241,7 @@ export default function PostseasonPage() {
 
       {hasLoadingIssues(format) ? <p className="muted text-sm">{LOADING_ISSUES_NOTE}</p> : null}
       {grouped ? <>
-        <p className="text-sm">Quarterfinal participants come from the Top 16 groups. <Link to={`/${seasonCode}/standings?phase=TS`} className="link link-primary">View Top 16 group standings</Link>.</p>
+        <p className="text-sm">{bracket.direct ? "Final Four participants are the winners of the Top 16 groups." : "Quarterfinal participants come from the Top 16 groups."} <Link to={`/${seasonCode}/standings?phase=TS`} className="link link-primary">View Top 16 group standings</Link>.</p>
         {bracket.issues.map((issue) => <p key={issue.stage} className="muted text-sm">{issue.message} <Link to={`/${seasonCode}/games?phase=${issue.stage}`} className="link link-primary">{issue.stage === "PO" ? "View recorded quarterfinal games" : "View recorded Final Four games"}</Link>.</p>)}
       </> : null}
 
@@ -261,7 +265,7 @@ export default function PostseasonPage() {
           <p>{stageDescription(regularSeasonStage, format)}</p>
           {grouped ? <>
             <p>{stageDescription(format.stages.find((stage) => stage.code === "TS"), format)}</p>
-            <p>Quarterfinals are best-of-{SERIES_WORDS[bracket.playoffs[0]?.winTarget] ?? "five"} series between recorded cross-group qualifiers. {WIN_WORDS[bracket.playoffs[0]?.winTarget] ?? "Three"} wins are required to advance; labels such as {bracket.playoffs.find((slot) => slot.label.includes(" v "))?.label ?? "E1 v F4"} are Top 16 group places.</p>
+            {bracket.direct ? <p>Only the winner of each Top 16 group advances, straight to the Final Four; there are no quarterfinals. Labels such as {bracket.semis[0]?.participants[0]?.seedLabel ?? "G1"} are Top 16 group places.</p> : <p>Quarterfinals are best-of-{SERIES_WORDS[bracket.playoffs[0]?.winTarget] ?? "five"} series between recorded cross-group qualifiers. {WIN_WORDS[bracket.playoffs[0]?.winTarget] ?? "Three"} wins are required to advance; labels such as {bracket.playoffs.find((slot) => slot.label.includes(" v "))?.label ?? "E1 v F4"} are Top 16 group places.</p>}
             <p>The Final Four follows the recorded semifinal matchups, championship game and any verified third-place game. Unverified draws and results remain unknown.</p>
           </> : <>
           {bracket.playIn.length ? <p>

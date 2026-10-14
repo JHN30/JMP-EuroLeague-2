@@ -23,6 +23,8 @@ export function competitionNotes(format, seasonCode, { gameCode, phaseCode, roun
     // A recorded forfeit: on its own game, and as a stage note where the stage's table counts it (not on a club's own page, which the
     // exception does not name).
     if (entry.kind === "walkover") return gameCode != null ? entry.gameCode === Number(gameCode) : !clubCode && phaseCode === entry.stage;
+    // Qualifying rounds before the season: a regular-season-table note, not on a game, a club or any later stage.
+    if (entry.kind === "qualifying") return phaseCode === "RS" && gameCode == null && !clubCode;
     if (entry.kind === "endedEarly") return gameCode != null && entry.gameCode === Number(gameCode);
     if (entry.kind === "winsDeducted") return entry.stage === phaseCode && entry.roundNumber === roundNumber && (!clubCode || entry.clubCode === clubCode);
     if (entry.kind === "excludedClubs") {
@@ -38,6 +40,9 @@ export function competitionNotes(format, seasonCode, { gameCode, phaseCode, roun
     note: gameCode != null
       ? `Recorded forfeit${game?.localScore != null ? `, awarded ${game.localScore}-${game.roadScore}` : ""}. The game was not played on court, so no box score or performance data exists; zeros and dashes below are not recorded values. The result still counts in the standings.`
       : "This stage includes a recorded forfeit: a game awarded without being played. It counts in the standings and has no box score or performance data.",
+  } : entry.kind === "qualifying" ? {
+    ...entry,
+    note: `${entry.note} The qualifying games are not loaded, so no qualifying results are shown and the regular-season counts, records and statistics cover only the main competition.`,
   } : entry.kind === "cancelled" ? {
     ...entry,
     note: `Season cancelled. ${entry.note} Suspended on ${entry.suspendedOn}; cancelled on ${entry.cancelledOn}. Latest standings show positions at suspension, not a final classification. Historical playback shows the selected played round. Played performances remain in the statistics and records.`,

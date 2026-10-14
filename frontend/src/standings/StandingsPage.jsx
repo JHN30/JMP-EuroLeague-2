@@ -237,7 +237,7 @@ export default function StandingsPage() {
                 <AdvancedStandingsView key={seasonCode} seasonCode={seasonCode} shortNames={shortNames} />
               </motion.div>
             ) : mode === "race" ? (
-              displayedGroups.map((group) => (
+              displayedGroups.map((group, index) => (
                 <section key={`${seasonCode}-${phaseCode}-${groupName ?? "all"}-${group.name}`} aria-label={grouped ? groupLabel(group.name) : undefined} className="flex min-w-0 flex-col gap-4">
                   {grouped ? <h2 className="text-lg font-semibold">{groupLabel(group.name)}</h2> : null}
                   {grouped && group.name === null ? <EmptyText>Group assignments are unavailable for these clubs.</EmptyText> : (
@@ -251,6 +251,7 @@ export default function StandingsPage() {
                       groupName={grouped ? group.name : undefined}
                       tierLabels={grouped ? groupTierLabels : undefined}
                       stageName={grouped ? stage?.name ?? phaseCode : undefined}
+                      showContext={index === 0}
                     />
                   )}
                 </section>

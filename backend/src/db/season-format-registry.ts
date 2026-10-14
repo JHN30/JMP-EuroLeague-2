@@ -32,7 +32,9 @@ export type FormatException =
   | { kind: "walkover"; gameCode: number; stage: StageCode; note: string }
   | { kind: "endedEarly"; gameCode: number; note: string }
   | { kind: "winsDeducted"; clubCode: string; stage: "RS"; roundNumber: number; wins: number; note: string }
-  | { kind: "replay"; stage: "PO"; clubs: string[]; note: string };
+  | { kind: "replay"; stage: "PO"; clubs: string[]; note: string }
+  // Qualifying rounds held before the regular season (34a section 6). Their games are not in the data, so this is a fact, never a stage.
+  | { kind: "qualifying"; stage: "RS"; note: string };
 
 export type FormatFamily =
   | "eliminationSeries"
@@ -168,6 +170,12 @@ function singleTablePlayIn(clubs: number, thirdPlaceGame: boolean | null): Seaso
 
 const walkover = (gameCode: number, stage: StageCode, note: string): FormatException => ({ kind: "walkover", gameCode, stage, note });
 
+// A season whose qualifying rounds are established but not loaded; E2008 and E2015 are not established and carry none.
+const withQualifying = (values: SeasonValues, note: string): SeasonValues => ({
+  ...values,
+  exceptions: [...(values.exceptions ?? []), { kind: "qualifying", stage: "RS", note }],
+});
+
 const SEASON_VALUES: Record<string, SeasonValues> = {
   E2000: {
     family: "eliminationSeries",
@@ -196,7 +204,10 @@ const SEASON_VALUES: Record<string, SeasonValues> = {
     family: "top16ToFinalFour",
     plannedClubs: 32,
     stages: [table("RS", 4, 8, [groupRanks(1, 4, "TS")]), table("TS", 4, 4, [groupRanks(1, 1, "FF")]), finalFour(false)],
-    exceptions: [walkover(264, "TS", "Top 16 game awarded 2-0 to Maccabi after Ulker withdrew; no box score.")],
+    exceptions: [
+      walkover(264, "TS", "Top 16 game awarded 2-0 to Maccabi after Ulker withdrew; no box score."),
+      { kind: "qualifying", stage: "RS", note: "Qualifying rounds took place before the regular season and produced 2 of its 32 clubs." },
+    ],
   },
   E2002: threeGroupsOfEight("FF", 1, true, "top16ToFinalFour"),
   E2003: {
@@ -208,12 +219,12 @@ const SEASON_VALUES: Record<string, SeasonValues> = {
   E2006: threeGroupsOfEight("PO", 2, true, "top16Bo3Playoffs"),
   E2007: threeGroupsOfEight("PO", 2, true, "top16Bo3Playoffs"),
   E2008: groupsAndTop16(4, 4, 2, "top16Bo5Playoffs"),
-  E2009: groupsAndTop16(4, 4, 2, "top16Bo5Playoffs"),
-  E2010: groupsAndTop16(4, 4, 2, "top16Bo5Playoffs"),
-  E2011: groupsAndTop16(4, 4, 2, "top16Bo5Playoffs"),
-  E2012: groupsAndTop16(2, 8, 4, "top16TwoGroups"),
-  E2013: groupsAndTop16(2, 8, 4, "top16TwoGroups"),
-  E2014: groupsAndTop16(2, 8, 4, "top16TwoGroups"),
+  E2009: withQualifying(groupsAndTop16(4, 4, 2, "top16Bo5Playoffs"), "Two-legged knockout qualifying rounds took place before the regular season."),
+  E2010: withQualifying(groupsAndTop16(4, 4, 2, "top16Bo5Playoffs"), "Two-legged knockout qualifying rounds took place before the regular season."),
+  E2011: withQualifying(groupsAndTop16(4, 4, 2, "top16Bo5Playoffs"), "Two final-eight qualifying tournaments (Vilnius and Charleroi) took place before the regular season; their two winners joined it."),
+  E2012: withQualifying(groupsAndTop16(2, 8, 4, "top16TwoGroups"), "A single-venue qualifying tournament took place before the regular season; its winner, Mapooro Cantù, joined it."),
+  E2013: withQualifying(groupsAndTop16(2, 8, 4, "top16TwoGroups"), "A single-venue qualifying tournament took place before the regular season; its winner, Lietuvos rytas, joined it."),
+  E2014: withQualifying(groupsAndTop16(2, 8, 4, "top16TwoGroups"), "A single-venue qualifying tournament took place before the regular season; its winner, UNICS, joined it."),
   E2015: groupsAndTop16(2, 8, 4, "top16TwoGroups"),
   E2016: singleTable(16),
   E2017: singleTable(16),
@@ -286,6 +297,11 @@ export function checkSeasonFormats(formats: ReadonlyMap<string, SeasonFormat>): 
       fail(seasonCode, "cancelled flag and cancellation exception disagree");
     }
     for (const exception of format.exceptions) {
+      if (exception.kind === "qualifying") {
+        if (!exception.note.trim()) fail(seasonCode, "qualifying fact has an empty note");
+        if (exception.stage !== "RS") fail(seasonCode, "qualifying fact has the wrong stage");
+        continue;
+      }
       if (exception.kind !== "endedEarly" && exception.kind !== "winsDeducted") continue;
       if (!exception.note.trim()) fail(seasonCode, "ruling has an empty note");
       if (exception.kind === "endedEarly" && (!Number.isInteger(exception.gameCode) || exception.gameCode < 1)) fail(seasonCode, "ended-early ruling has an invalid game code");

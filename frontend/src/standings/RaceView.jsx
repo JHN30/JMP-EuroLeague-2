@@ -21,7 +21,7 @@ function combineSnapshots(results) {
 
 // `latestRound` is the last round with standings. The phase lists every scheduled round, but only the played ones
 // have a snapshot, so the race stops there instead of running to the end of the schedule.
-export default function RaceView({ seasonCode, phaseCode, latestRound, latestStandings, shortNames, tiers = null, groupName, tierLabels, stageName }) {
+export default function RaceView({ seasonCode, phaseCode, latestRound, latestStandings, shortNames, tiers = null, groupName, tierLabels, stageName, showContext = true }) {
   const roundsQuery = useQuery({
     queryKey: ["rounds", seasonCode, phaseCode],
     queryFn: () => getRounds(seasonCode, phaseCode),
@@ -149,7 +149,7 @@ export default function RaceView({ seasonCode, phaseCode, latestRound, latestSta
         onChange={setStep}
       />
       </motion.div>
-      <CompetitionContext seasonCode={seasonCode} phaseCode={phaseCode} roundNumber={shownRound} />
+      {showContext ? <CompetitionContext seasonCode={seasonCode} phaseCode={phaseCode} roundNumber={shownRound} /> : null}
 
       <motion.div variants={sectionItem} className="grid grid-cols-1 gap-3 lg:grid-cols-[minmax(0,1fr)_22rem] xl:grid-cols-[2fr_1fr]">
         <RaceChart

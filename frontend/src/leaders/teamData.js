@@ -110,8 +110,12 @@ export function useTeamRows(seasonCode, phaseCode) {
     refetch: () => statsQuery.refetch(),
     hasStandings: standingRows.size > 0,
     hasAdvanced: advancedRows.size > 0,
+    // Clubs that played in separate groups have not faced one schedule, so the source leaves the opponent-adjusted ratings empty.
+    unadjusted: [...advancedRows.values()].some((row) => row.connected === false),
   };
 }
+
+export const UNADJUSTED_NOTE = "Clubs in this phase played in separate groups and did not face the same schedule, so opponent-adjusted ratings (such as SRS) are unavailable. The numbers shown are raw.";
 
 export function usable(stat, source) {
   return !(stat.needs === "standings" && !source.hasStandings) && !(stat.needs === "advanced" && !source.hasAdvanced);

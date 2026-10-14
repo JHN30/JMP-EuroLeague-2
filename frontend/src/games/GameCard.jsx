@@ -3,11 +3,13 @@ import { Link } from "react-router";
 import { formatShortDate, formatTimeOfDay } from "../lib/format";
 import { centerPop, listItem, wideCardHover } from "../lib/motion";
 import ShortLabel from "../lib/ShortLabel";
+import { groupPositionLabel } from "../standings/standingsGroups";
 import { shortTeamName, teamCode } from "./gameUtils";
 
 const MotionLink = motion.create(Link);
 
-function FixtureTeam({ team, entry, won }) {
+function FixtureTeam({ team, entry, won, showGroup }) {
+  const position = showGroup ? groupPositionLabel(entry) : null;
   return (
     <div className={`fixture-team${won ? " win" : ""}`}>
       {team?.crestUrl ? (
@@ -26,8 +28,9 @@ function FixtureTeam({ team, entry, won }) {
         <ShortLabel short={teamCode(team)} full={shortTeamName(team)} />
       </span>
       {entry?.basic ? (
-        <span className="fixture-team-record">
+        <span className="fixture-team-record" title={position ?? undefined}>
           {entry.basic.gamesWon}-{entry.basic.gamesLost}
+          {position ? <span className="sr-only"> ({position})</span> : null}
         </span>
       ) : null}
     </div>
@@ -36,7 +39,7 @@ function FixtureTeam({ team, entry, won }) {
 
 // One game on the Games page. Upcoming games put the date and tip-off time in the middle; finished games put the score
 // there, with the winning side filled in.
-export default function GameCard({ game, seasonCode, standingByClubCode, cancelled = false }) {
+export default function GameCard({ game, seasonCode, standingByClubCode, cancelled = false, showGroup = false }) {
   const hasScore = game.played && game.localScore != null && game.roadScore != null;
   const localWon = hasScore && game.localScore > game.roadScore;
   const roadWon = hasScore && game.roadScore > game.localScore;
@@ -45,8 +48,9 @@ export default function GameCard({ game, seasonCode, standingByClubCode, cancell
 
   return (
     <MotionLink to={`/${seasonCode}/games/${game.gameCode}`} className="fixture-card" variants={listItem} {...wideCardHover}>
+      {showGroup && game.groupName ? <span className="muted block text-center text-xs font-semibold tracking-wide uppercase">{game.groupName}</span> : null}
       <div className="fixture-card-body">
-        <FixtureTeam team={game.localTeam} entry={localEntry} won={localWon} />
+        <FixtureTeam team={game.localTeam} entry={localEntry} won={localWon} showGroup={showGroup} />
         <motion.div className="fixture-center" variants={centerPop}>
           {game.played ? (
             <>
@@ -65,7 +69,7 @@ export default function GameCard({ game, seasonCode, standingByClubCode, cancell
             </>
           )}
         </motion.div>
-        <FixtureTeam team={game.roadTeam} entry={roadEntry} won={roadWon} />
+        <FixtureTeam team={game.roadTeam} entry={roadEntry} won={roadWon} showGroup={showGroup} />
       </div>
       <span className="fixture-cta">{game.played || cancelled ? "Overview" : "Preview"}</span>
     </MotionLink>

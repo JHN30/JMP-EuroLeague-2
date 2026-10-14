@@ -4,6 +4,8 @@ import { useParams } from "react-router";
 import { getSeasonStandings, getTeamGames } from "../lib/api";
 import { teamCode } from "../games/gameUtils";
 import { formatPerGame } from "../lib/format";
+import { useSummaryTableStage } from "../lib/useSummaryTableStage";
+import { isGroupedTable, mostWinsEntry } from "../standings/standingsGroups";
 import { WidgetPanel } from "./Dashboard";
 
 const WIDTH = 320;
@@ -58,13 +60,17 @@ function pointLabel(row, index) {
 export default function LeaderTrend() {
   const { seasonCode } = useParams();
 
+  const phaseCode = useSummaryTableStage(seasonCode);
   const standingsQuery = useQuery({
-    queryKey: ["standings", seasonCode, "RS"],
-    queryFn: () => getSeasonStandings(seasonCode, "RS"),
+    queryKey: ["standings", seasonCode, phaseCode],
+    queryFn: () => getSeasonStandings(seasonCode, phaseCode),
   });
-  const leaderClubCode = standingsQuery.data?.standings.find((entry) => entry.basic?.position === 1)?.clubCode ?? null;
-  const leaderName =
-    standingsQuery.data?.standings.find((entry) => entry.basic?.position === 1)?.clubName ?? leaderClubCode;
+  // Grouped tables have no league leader; the trend follows the club with the most wins in any group.
+  const standings = standingsQuery.data?.standings ?? [];
+  const grouped = isGroupedTable(standings);
+  const leader = grouped ? mostWinsEntry(standings)?.entry : standings.find((entry) => entry.basic?.position === 1);
+  const leaderClubCode = leader?.clubCode ?? null;
+  const leaderName = leader?.clubName ?? leaderClubCode;
 
   const gamesQuery = useQuery({
     queryKey: ["team-games", seasonCode, leaderClubCode, "played", "desc", "trend"],
@@ -97,7 +103,7 @@ export default function LeaderTrend() {
   return (
     <WidgetPanel
       kicker="FORM"
-      title={leaderName ? `${leaderName} · point margin trend` : "League leader's point margin trend"}
+      title={leaderName ? `${leaderName} · point margin trend` : grouped ? "Point margin trend" : "League leader's point margin trend"}
       isLoading={standingsQuery.isLoading || (Boolean(leaderClubCode) && gamesQuery.isLoading)}
       isError={standingsQuery.isError || gamesQuery.isError}
       onRetry={() => gamesQuery.refetch()}

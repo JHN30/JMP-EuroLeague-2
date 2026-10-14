@@ -38,6 +38,7 @@ import TeamRosterSection from "./TeamRosterSection";
 import TeamShootingSection from "./TeamShootingSection";
 import TeamStatisticsSection from "./TeamStatisticsSection";
 import { fetchTeamRosterStats } from "./teamRosterStats";
+import { groupLabel, isGroupedTable } from "../standings/standingsGroups";
 import { advancedScopeForPhase, ordinal } from "./teamLeague";
 
 const MotionLink = motion.create(Link);
@@ -229,6 +230,8 @@ function TeamSnapshot({ standingsQuery, teamStatsQuery, clubCode, phaseGames }) 
   }
   const entry = standingsQuery.data.standings.find((row) => row.clubCode === clubCode);
   const basic = entry?.basic;
+  // Grouped tables repeat positions, so the club's place is stated within its own group.
+  const grouped = isGroupedTable(standingsQuery.data.standings);
   if (!basic || !basic.gamesPlayed) {
     return <EmptyText>No record yet for this phase.</EmptyText>;
   }
@@ -309,8 +312,8 @@ function TeamSnapshot({ standingsQuery, teamStatsQuery, clubCode, phaseGames }) 
       <div className="mt-5 grid grid-cols-2 gap-x-4 gap-y-3 border-t border-base-300 pt-4 sm:flex sm:flex-wrap sm:gap-x-8">
         <SnapshotFact
           className="max-sm:col-span-2"
-          label="League position"
-          value={basic.position != null ? `${ordinal(basic.position)} of ${standingsQuery.data.standings.length}` : "-"}
+          label={grouped ? "Group position" : "League position"}
+          value={basic.position != null ? (grouped ? `${ordinal(basic.position)} in ${groupLabel(entry.groupName)}` : `${ordinal(basic.position)} of ${standingsQuery.data.standings.length}`) : "-"}
         />
         <SnapshotFact label="Home" value={basic.homeRecord ?? "-"} />
         <SnapshotFact label="Away" value={basic.awayRecord ?? "-"} />

@@ -4,6 +4,8 @@ import { getLeagueTeamStats, getSeasonStandings } from "../lib/api";
 import CompactMetric from "../lib/CompactMetric";
 import { formatPerGame } from "../lib/format";
 import HeaderStats from "../lib/HeaderStats";
+import { useSummaryTableStage } from "../lib/useSummaryTableStage";
+import { isGroupedTable, mostWinsEntry } from "../standings/standingsGroups";
 
 function parseWins(record) {
   if (!record) return null;
@@ -14,20 +16,24 @@ function parseWins(record) {
 export default function KpiStrip() {
   const { seasonCode } = useParams();
 
+  const phaseCode = useSummaryTableStage(seasonCode);
   const standingsQuery = useQuery({
-    queryKey: ["standings", seasonCode, "RS"],
-    queryFn: () => getSeasonStandings(seasonCode, "RS"),
+    queryKey: ["standings", seasonCode, phaseCode],
+    queryFn: () => getSeasonStandings(seasonCode, phaseCode),
   });
   const standings = standingsQuery.data?.standings ?? [];
   // Best offense and defense come from the pipeline's team totals, which count overtime. The official standings' points
   // are regulation time only, so they would pick the wrong club when overtime games differ between clubs.
   const teamStatsQuery = useQuery({
-    queryKey: ["league-team-stats", seasonCode, "RS"],
-    queryFn: () => getLeagueTeamStats(seasonCode, "RS"),
+    queryKey: ["league-team-stats", seasonCode, phaseCode],
+    queryFn: () => getLeagueTeamStats(seasonCode, phaseCode),
   });
   const standingByClub = new Map(standings.map((entry) => [entry.clubCode, entry]));
 
-  const leader = standings.find((entry) => entry.basic?.position === 1) ?? null;
+  // A grouped table has one leader per group, so the strip shows the most wins in any group instead of a league leader.
+  const grouped = isGroupedTable(standings);
+  const mostWins = grouped ? mostWinsEntry(standings) : null;
+  const leader = grouped ? (mostWins?.entry ?? null) : (standings.find((entry) => entry.basic?.position === 1) ?? null);
 
   let bestOffense = null;
   let bestDefense = null;
@@ -60,8 +66,8 @@ export default function KpiStrip() {
         isLoading={standingsQuery.isLoading}
         isError={standingsQuery.isError}
         value={leader ? `${leader.basic.gamesWon}-${leader.basic.gamesLost}` : "–"}
-        label="Leader in wins"
-        name={leader?.clubName ?? leader?.clubCode}
+        label={grouped ? "Most wins · any group" : "Leader in wins"}
+        name={leader ? `${leader.clubName ?? leader.clubCode}${mostWins?.tied ? ` +${mostWins.tied} level` : ""}` : undefined}
         imageUrl={leader?.crestUrl}
       />
       <CompactMetric

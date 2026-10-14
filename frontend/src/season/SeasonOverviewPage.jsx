@@ -15,8 +15,10 @@ import { useDocumentTitle } from "../lib/useDocumentTitle";
 import { useCurrentPhaseCode } from "../lib/useCurrentPhaseCode";
 import { useMediaQuery } from "../lib/useMediaQuery";
 import { PHASE_NAMES, dateRangeLabel, isChampionshipLabel, phaseSortIndex } from "../lib/phaseSummary";
-import { currentStage, hasLoadingIssues, LOADING_ISSUES_NOTE, stageDescription, stagePlaceholder } from "../lib/seasonFormat";
+import { currentStage, groupedStageCodes, hasLoadingIssues, LOADING_ISSUES_NOTE, stageDescription, stagePlaceholder } from "../lib/seasonFormat";
 import { useSeasonFormat } from "../lib/useSeasonFormat";
+import { useSummaryTableStage } from "../lib/useSummaryTableStage";
+import { isGroupedTable, mostWinsEntry } from "../standings/standingsGroups";
 import { useActiveTheme, themeColor } from "../lib/useActiveTheme";
 import { formatDateTime, formatPerGame, formatSeasonLabel } from "../lib/format";
 import { teamCode } from "../games/gameUtils";
@@ -66,7 +68,7 @@ async function fetchAllPlayedGames(seasonCode) {
   return all;
 }
 
-function SeasonHero({ leader, pointsPerGame, format }) {
+function SeasonHero({ leader, pointsPerGame, format, grouped = false }) {
   const status = format?.status ?? null;
   if (!status) return <Panel className="p-4"><p className="muted">Season status is unavailable.</p></Panel>;
   if (status === "cancelled") {
@@ -106,7 +108,7 @@ function SeasonHero({ leader, pointsPerGame, format }) {
     <div className="season-hero-kpis grid grid-cols-2 gap-3 sm:gap-4" data-testid="season-hero-kpis">
       <div className="kpi-chip">
         <div className="kpi-chip-body">
-          <span className="label">League leader</span>
+          <span className="label">{grouped ? "Most wins · any group" : "League leader"}</span>
           <span className="name">{leader.clubName ?? leader.clubCode}</span>
           <span className="value">
             {leader.basic?.gamesWon ?? "-"}-{leader.basic?.gamesLost ?? "-"}
@@ -259,6 +261,7 @@ function TeamName({ team, dimmed, nameFirst = false }) {
 
 function DefiningGames({ seasonCode, playedGames }) {
   const picks = pickDefiningGames(playedGames);
+  const groupedStages = groupedStageCodes(useSeasonFormat(seasonCode).data ?? null);
 
   return (
     <Panel className="p-4">
@@ -276,7 +279,7 @@ function DefiningGames({ seasonCode, playedGames }) {
             const localWon = game.localScore > game.roadScore;
             const roadWon = game.roadScore > game.localScore;
             const roundLabel = game.roundName ?? (game.roundNumber ? `Round ${game.roundNumber}` : "");
-            const showGroupName = game.phaseCode !== "RS" && game.groupName;
+            const showGroupName = (game.phaseCode !== "RS" || groupedStages.has("RS")) && game.groupName;
             const context = showGroupName ? `${game.groupName} · ${roundLabel}` : roundLabel;
             const statDetail =
               tag === "Highest-scoring game" || tag === "Lowest-scoring game"
@@ -414,8 +417,10 @@ function ScoringTrendChart({ playedGames }) {
     const textColor = themeColor(canvas, "--color-base-content");
     const gridColor = `color-mix(in srgb, ${textColor} 20%, transparent)`;
     const fillColor = `color-mix(in srgb, ${primary} 15%, transparent)`;
-    const postseasonStart = points.findIndex((point) => point.phaseCode !== "RS");
+    // The Top 16 is a table stage, not postseason: the divider starts at the first knockout round.
+    const postseasonStart = points.findIndex((point) => point.phaseCode !== "RS" && point.phaseCode !== "TS");
     const hasPostseason = postseasonStart > 0;
+    const hasTop16 = points.some((point) => point.phaseCode === "TS");
 
     chartRef.current = new Chart(canvas, {
       type: "line",
@@ -444,7 +449,7 @@ function ScoringTrendChart({ playedGames }) {
         layout: { padding: { top: hasPostseason ? 16 : 0 } },
         scales: {
           x: {
-            title: { display: true, text: hasPostseason ? "Regular season round" : "Round", color: textColor },
+            title: { display: true, text: hasPostseason && !hasTop16 ? "Regular season round" : "Round", color: textColor },
             ticks: {
               color: textColor,
               autoSkip: false,
@@ -754,7 +759,9 @@ export default function SeasonOverviewPage() {
       queryFn: () => getSeasonGames(seasonCode, { phase: phase.code, limit: 1, order: "desc" }),
     })),
   });
-  const knockoutPhases = phases.filter((phase) => phase.code !== "RS");
+  // The Top 16 is a table stage, not part of the postseason: its group name covers every game of a 14-game round robin, so it is
+  // neither a series nor a step on the road to the title.
+  const knockoutPhases = phases.filter((phase) => phase.code !== "RS" && phase.code !== "TS");
   const knockoutPhaseGamesQueries = useQueries({
     queries: knockoutPhases.map((phase) => ({
       queryKey: ["overview-phase-games", seasonCode, phase.code],
@@ -773,18 +780,22 @@ export default function SeasonOverviewPage() {
     enabled: phases.some((phase) => phase.code === "FF"),
   });
 
+  const tablePhaseCode = useSummaryTableStage(seasonCode);
   const standingsQuery = useQuery({
-    queryKey: ["standings", seasonCode, "RS"],
-    queryFn: () => getSeasonStandings(seasonCode, "RS"),
+    queryKey: ["standings", seasonCode, tablePhaseCode],
+    queryFn: () => getSeasonStandings(seasonCode, tablePhaseCode),
   });
   // The season's format and status; a failed request leaves the page on its own reading of the games.
   const formatQuery = useSeasonFormat(seasonCode);
   const format = formatQuery.data ?? null;
-  const leader = standingsQuery.data?.standings.find((entry) => entry.basic?.position === 1) ?? null;
+  const tableStandings = standingsQuery.data?.standings ?? [];
+  // Grouped tables repeat positions, so the hero shows the most wins in any group rather than a league leader.
+  const groupedTable = isGroupedTable(tableStandings);
+  const leader = (groupedTable ? mostWinsEntry(tableStandings)?.entry : tableStandings.find((entry) => entry.basic?.position === 1)) ?? null;
   // The leader's points per game from the team totals (overtime counted), not the standings' regulation-only points.
   const leagueTeamStatsQuery = useQuery({
-    queryKey: ["league-team-stats", seasonCode, "RS"],
-    queryFn: () => getLeagueTeamStats(seasonCode, "RS"),
+    queryKey: ["league-team-stats", seasonCode, tablePhaseCode],
+    queryFn: () => getLeagueTeamStats(seasonCode, tablePhaseCode),
   });
   const leaderTotals = leagueTeamStatsQuery.data?.teams.find((team) => team.clubCode === leader?.clubCode);
   const leaderPointsPerGame = leaderTotals?.gamesPlayed ? Number(leaderTotals.own?.points) / leaderTotals.gamesPlayed : null;
@@ -851,7 +862,7 @@ export default function SeasonOverviewPage() {
       ) : (
         <>
           <motion.div variants={sectionItem}>
-            <SeasonHero leader={leader} pointsPerGame={leaderPointsPerGame} format={format} />
+            <SeasonHero leader={leader} pointsPerGame={leaderPointsPerGame} format={format} grouped={groupedTable} />
             {hasLoadingIssues(format) ? <p className="muted mt-2 text-sm">{LOADING_ISSUES_NOTE}</p> : null}
           </motion.div>
           <motion.div variants={sectionItem}>

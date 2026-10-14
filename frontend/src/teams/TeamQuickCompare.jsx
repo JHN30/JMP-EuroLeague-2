@@ -9,6 +9,7 @@ import Panel from "../lib/Panel";
 import PanelHeader from "../lib/PanelHeader";
 import ShortLabel from "../lib/ShortLabel";
 import { TabPanel, TabStrip } from "../lib/TabStrip";
+import { isGroupedTable } from "../standings/standingsGroups";
 import { COMPARE_ROWS } from "./teamLeague";
 
 function ClubLabel({ club }) {
@@ -36,7 +37,11 @@ function clubFromTeam(team) {
 }
 
 // Who this club can be set against: the next opponent, and the league leader (or the runner-up for the leader itself).
-function compareTargets({ clubCode, nextOpponent, standings }) {
+function compareTargets({ clubCode, nextOpponent, standings: tableStandings }) {
+  // In a grouped table the leader is the leader of the club's own group; positions repeat across groups.
+  const grouped = isGroupedTable(tableStandings);
+  const ownGroup = tableStandings.find((row) => row.clubCode === clubCode)?.groupName;
+  const standings = grouped ? tableStandings.filter((row) => row.groupName === ownGroup) : tableStandings;
   const targets = [];
   if (nextOpponent?.clubCode) {
     targets.push({ key: "next", tabLabel: "Next opponent", club: clubFromTeam(nextOpponent) });
@@ -46,7 +51,7 @@ function compareTargets({ clubCode, nextOpponent, standings }) {
   const rival = standings.find((row) => row.basic?.position === (leaderIsSelf ? 2 : 1));
   if (rival && rival.clubCode !== clubCode) {
     const club = { clubCode: rival.clubCode, name: rival.clubName ?? rival.clubCode, tvCode: rival.clubTvCode, crestUrl: rival.crestUrl };
-    const tabLabel = leaderIsSelf ? "Runner-up" : "League leader";
+    const tabLabel = leaderIsSelf ? "Runner-up" : grouped ? "Group leader" : "League leader";
     if (targets[0]?.club.clubCode === rival.clubCode) {
       targets[0].tabLabel = `Next opponent · ${tabLabel.toLowerCase()}`;
     } else {

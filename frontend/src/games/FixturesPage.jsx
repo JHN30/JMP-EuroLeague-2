@@ -1,4 +1,4 @@
-import { useRef } from "react";
+import { useEffect, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { motion } from "motion/react";
 import { useParams, useSearchParams } from "react-router";
@@ -6,6 +6,7 @@ import { getPhases, getRounds, getSeasonGames, getSeasonStandings } from "../lib
 import AsyncState from "../lib/AsyncState";
 import EmptyText from "../lib/EmptyText";
 import CompetitionContext from "../lib/CompetitionContext";
+import LabelledSelect from "../lib/LabelledSelect";
 import PageHeader from "../lib/PageHeader";
 import { useCentredSelection } from "../lib/useCentredSelection";
 import { useDocumentTitle } from "../lib/useDocumentTitle";
@@ -13,6 +14,8 @@ import { listContainer } from "../lib/motion";
 import { usePhaseParam } from "../lib/usePhaseParam";
 import { useSeasonFormat } from "../lib/useSeasonFormat";
 import { TabPanel, TabStrip } from "../lib/TabStrip";
+import { groupedStageCodes } from "../lib/seasonFormat";
+import { groupLabel, groupStandings, selectedGroup } from "../standings/standingsGroups";
 import GameCard from "./GameCard";
 
 // A round never holds more than a handful of games; this is the API's page cap.
@@ -55,23 +58,40 @@ export default function FixturesPage() {
     queryFn: () => getSeasonGames(seasonCode, { phase: phaseCode, round: selectedRound, limit: ROUND_GAME_LIMIT, order: "asc" }),
     enabled: Boolean(phaseCode) && selectedRound !== null,
   });
-  // Same query the dashboard uses, so the records match and are usually already cached.
-  const standingsQuery = useQuery({
-    queryKey: ["standings", seasonCode, "RS"],
-    queryFn: () => getSeasonStandings(seasonCode, "RS"),
-  });
-  // The record under each club is its regular-season record as it stands now (final once the season is over), the same on
-  // every round, as on the league's own site; how the season unfolded round by round is on the Standings race view.
-  const standingByClubCode = new Map(
-    phaseCode === "RS" ? (standingsQuery.data?.standings ?? []).map((entry) => [entry.clubCode, entry]) : [],
-  );
-  // An empty upcoming schedule alone does not establish completion.
+  // A grouped table stage (the regular season and Top 16 of E2012-E2015) shows each club's record in that stage and a group
+  // filter; every other phase keeps the regular-season record under the clubs.
   const format = useSeasonFormat(seasonCode).data ?? null;
+  const groupedStages = groupedStageCodes(format);
+  const groupedPhase = groupedStages.has(phaseCode);
+  const recordPhaseCode = groupedPhase ? phaseCode : "RS";
+  const standingsQuery = useQuery({
+    queryKey: ["standings", seasonCode, recordPhaseCode],
+    queryFn: () => getSeasonStandings(seasonCode, recordPhaseCode),
+  });
+  // The record under each club is its record as it stands now (final once the season is over), the same on every round, as on
+  // the league's own site; how the season unfolded round by round is on the Standings race view. The query is the dashboard's.
+  const standingByClubCode = new Map(
+    phaseCode === "RS" || groupedPhase ? (standingsQuery.data?.standings ?? []).map((entry) => [entry.clubCode, entry]) : [],
+  );
+  const groups = groupedPhase ? groupStandings(standingsQuery.data?.standings ?? []).filter((group) => group.name !== null) : [];
+  const groupName = groups.length > 1 ? selectedGroup(searchParams, groups) : null;
+  // An empty upcoming schedule alone does not establish completion.
   const seasonOver = format
     ? format.status === "completed" || format.status === "cancelled"
     : false;
 
-  const games = gamesQuery.data?.games ?? [];
+  // A group that is not in this phase's table is dropped from the address once the table has loaded.
+  useEffect(() => {
+    if (!standingsQuery.isSuccess || !searchParams.has("group") || groupName !== null) return;
+    setSearchParams((params) => {
+      const next = new URLSearchParams(params);
+      next.delete("group");
+      return next;
+    }, { replace: true });
+  }, [standingsQuery.isSuccess, searchParams, groupName, setSearchParams]);
+
+  const allGames = gamesQuery.data?.games ?? [];
+  const games = groupName === null ? allGames : allGames.filter((game) => game.groupName === groupLabel(groupName));
   const isResolvingRound = roundsQuery.isLoading || nextGameQuery.isLoading;
 
   // Keep the selected round visible in the scrolling strip, also when the strip changes width (a phone turned sideways).
@@ -90,6 +110,15 @@ export default function FixturesPage() {
       const next = new URLSearchParams(params);
       if (code) next.set("phase", code); else next.delete("phase");
       next.delete("round");
+      next.delete("group");
+      return next;
+    });
+  }
+
+  function selectGroup(name) {
+    setSearchParams((params) => {
+      const next = new URLSearchParams(params);
+      if (name) next.set("group", name); else next.delete("group");
       return next;
     });
   }
@@ -164,6 +193,15 @@ export default function FixturesPage() {
         </div>
       ) : null}
 
+      {groups.length > 1 ? (
+        <div className="mb-3 sm:mb-4">
+          <LabelledSelect label="Group" value={groupName ?? ""} onChange={(event) => selectGroup(event.target.value)} className="min-w-0">
+            <option value="">All groups</option>
+            {groups.map((group) => <option key={group.name} value={group.name}>{groupLabel(group.name)}</option>)}
+          </LabelledSelect>
+        </div>
+      ) : null}
+
       <TabPanel id="fixtures-panel" focusKey={`${phaseCode}-${selectedRound}`} scroll={false}>
         {isResolvingRound || gamesQuery.isLoading ? (
           <AsyncState status="loading" label="Loading games" />
@@ -180,9 +218,11 @@ export default function FixturesPage() {
           <EmptyText>No games in this round yet.</EmptyText>
         ) : (
           <div className="fixture-box">
-            {phaseCode === "RS" && standingByClubCode.size > 0 ? (
+            {(phaseCode === "RS" || groupedPhase) && standingByClubCode.size > 0 ? (
               <p className="muted mb-3 text-xs">
-                {format?.status === "cancelled" ? "The record under each club is its regular-season record at suspension." : seasonOver ? "The record under each club is its final regular-season record." : "The record under each club is its regular-season record so far."}
+                {groupedPhase
+                  ? `The record under each club is its ${seasonOver ? "final " : ""}record in its ${format.stages.find((stage) => stage.code === phaseCode)?.name ?? "stage"} group${seasonOver ? "" : " so far"}.`
+                  : format?.status === "cancelled" ? "The record under each club is its regular-season record at suspension." : seasonOver ? "The record under each club is its final regular-season record." : "The record under each club is its regular-season record so far."}
               </p>
             ) : null}
             <motion.div
@@ -198,6 +238,7 @@ export default function FixturesPage() {
                   game={game}
                   seasonCode={seasonCode}
                   cancelled={format?.status === "cancelled"}
+                  showGroup={groupedPhase}
                   standingByClubCode={standingByClubCode}
                 />
               ))}

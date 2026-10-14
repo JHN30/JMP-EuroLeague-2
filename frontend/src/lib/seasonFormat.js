@@ -175,3 +175,18 @@ export function tierEnd(tiers, tier) {
   const ends = (tiers ?? []).filter((entry) => entry.tier === tier).map((entry) => entry.to);
   return ends.length > 0 ? Math.max(...ends) : null;
 }
+
+// The table stage Home and Overview summarise. A season with a grouped table stage reads from the latest table stage with a played
+// game (the Top 16 once it has started), because the regular-season groups are not the whole story by then. Every other season
+// keeps the regular season, so the single-table pages do not change.
+export function summaryTableStage(format) {
+  const tables = format?.stages.filter((stage) => stage.type === "table") ?? [];
+  if (!tables.some((stage) => stage.plannedGroups > 1)) return "RS";
+  return (tables.filter((stage) => stage.observed.gamesPlayed > 0).at(-1) ?? tables[0]).code;
+}
+
+// The table stages that are played in groups (the regular season and Top 16 of E2012-E2015). Only their games carry a group
+// worth showing: a single-table season labels every game "Group Regular Season".
+export function groupedStageCodes(format) {
+  return new Set((format?.stages ?? []).filter((stage) => stage.type === "table" && stage.plannedGroups > 1).map((stage) => stage.code));
+}

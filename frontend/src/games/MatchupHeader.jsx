@@ -2,7 +2,9 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { getSeasonStandings } from "../lib/api";
 import Panel from "../lib/Panel";
+import { groupedStageCodes } from "../lib/seasonFormat";
 import { useSeasonFormat } from "../lib/useSeasonFormat";
+import { groupPositionLabel } from "../standings/standingsGroups";
 import { teamCode, teamName } from "./gameUtils";
 
 const DATE_FORMAT = { weekday: "short", day: "numeric", month: "short", year: "numeric" };
@@ -23,7 +25,7 @@ function Crest({ team }) {
   return <img src={team.crestUrl} alt="" className={`${slot} object-contain`} onError={() => setFailed(true)} />;
 }
 
-function Side({ team, position, won }) {
+function Side({ team, position, groupPlace, won }) {
   return (
     <div className="flex min-w-0 flex-col items-center gap-1 text-center sm:gap-2">
       <Crest team={team} />
@@ -32,7 +34,7 @@ function Side({ team, position, won }) {
         {position != null ? (
           <span className="muted ms-1 inline-block font-normal">
             <span aria-hidden="true">({position})</span>
-            <span className="sr-only">, league position {position}</span>
+            <span className="sr-only">, {groupPlace ? `${groupPlace} position` : `league position ${position}`}</span>
           </span>
         ) : null}
       </p>
@@ -45,14 +47,18 @@ function Side({ team, position, won }) {
 // club's place in the latest regular-season standings, shown for a regular-season game once those have loaded; without it
 // the brackets are left out, with no error and no placeholder.
 export default function MatchupHeader({ game, seasonCode, localWon, roadWon }) {
-  const cancelled = useSeasonFormat(seasonCode).data?.status === "cancelled";
+  const format = useSeasonFormat(seasonCode).data;
+  const cancelled = format?.status === "cancelled";
+  // In a grouped table stage the bracket is the club's place within its own group, from that stage's table.
+  const groupedStage = groupedStageCodes(format).has(game.phaseCode);
   const standingsQuery = useQuery({
-    queryKey: ["standings", seasonCode, "RS"],
-    queryFn: () => getSeasonStandings(seasonCode, "RS"),
-    enabled: game.phaseCode === "RS",
+    queryKey: ["standings", seasonCode, groupedStage ? game.phaseCode : "RS"],
+    queryFn: () => getSeasonStandings(seasonCode, groupedStage ? game.phaseCode : "RS"),
+    enabled: game.phaseCode === "RS" || groupedStage,
   });
-  const positions = new Map((standingsQuery.data?.standings ?? []).map((entry) => [entry.clubCode, entry.basic?.position ?? null]));
-  const positionOf = (team) => (game.phaseCode === "RS" && team?.clubCode ? (positions.get(team.clubCode) ?? null) : null);
+  const entries = new Map((standingsQuery.data?.standings ?? []).map((entry) => [entry.clubCode, entry]));
+  const positionOf = (team) => ((game.phaseCode === "RS" || groupedStage) && team?.clubCode ? (entries.get(team.clubCode)?.basic?.position ?? null) : null);
+  const groupPlaceOf = (team) => (groupedStage && team?.clubCode ? groupPositionLabel(entries.get(team.clubCode)) : null);
   const round = game.roundName ?? (game.roundNumber ? `Round ${game.roundNumber}` : game.phaseName);
 
   return (
@@ -62,7 +68,7 @@ export default function MatchupHeader({ game, seasonCode, localWon, roadWon }) {
         {teamName(game.localTeam)} vs {teamName(game.roadTeam)}
       </h1>
       <div className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2 sm:gap-6">
-        <Side team={game.localTeam} position={positionOf(game.localTeam)} won={localWon} />
+        <Side team={game.localTeam} position={positionOf(game.localTeam)} groupPlace={groupPlaceOf(game.localTeam)} won={localWon} />
         <div className="flex flex-col items-center gap-1 text-center">
           {game.played ? (
             <>
@@ -82,10 +88,10 @@ export default function MatchupHeader({ game, seasonCode, localWon, roadWon }) {
             </>
           )}
         </div>
-        <Side team={game.roadTeam} position={positionOf(game.roadTeam)} won={roadWon} />
+        <Side team={game.roadTeam} position={positionOf(game.roadTeam)} groupPlace={groupPlaceOf(game.roadTeam)} won={roadWon} />
       </div>
       <p className="muted mt-3 text-center text-sm">
-        {round} · {cancelled && !game.played ? "Originally scheduled: " : ""}{formatGameDate(game.scheduledAt)}
+        {groupedStage && game.groupName ? `${game.groupName} · ` : ""}{round} · {cancelled && !game.played ? "Originally scheduled: " : ""}{formatGameDate(game.scheduledAt)}
       </p>
     </Panel>
   );

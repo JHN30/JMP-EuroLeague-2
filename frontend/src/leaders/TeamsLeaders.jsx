@@ -11,7 +11,7 @@ import { TabStrip } from "../lib/TabStrip";
 import { Avatar, BoardHeader, BoardRow, BoardTopLine, CardGrid, CategoryCard, StatChips, StatSelect } from "./LeaderParts";
 import { advancedScopeForPhase } from "../teams/teamLeague";
 import { barShare, rankRows } from "./leaderData";
-import { TEAM_CARDS, TEAM_FAMILIES, TEAM_STATS, formatTeamValue, statByKey, useTeamRows, usable } from "./teamData";
+import { TEAM_CARDS, TEAM_FAMILIES, TEAM_STATS, formatTeamValue, statByKey, useTeamRows, usable, UNADJUSTED_NOTE } from "./teamData";
 
 // ---- Landing ----
 
@@ -89,6 +89,7 @@ function TeamsBoard({ seasonCode, metric, source, params, setParams }) {
       <BoardTopLine>
         <p className="muted text-sm">{hasMode ? (mode === "perGame" ? "Per game" : "Season totals") : "Whole phase"} · overtime counted</p>
       </BoardTopLine>
+      {source.unadjusted ? <p className="muted text-sm">{UNADJUSTED_NOTE}</p> : null}
       <StatSelect families={families} stats={TEAM_STATS.filter((entry) => usable(entry, source))} activeKey={stat.key} onChoose={chooseStat} />
       <div className="max-sm:hidden">
         <TabStrip
@@ -172,6 +173,7 @@ export default function TeamsLeaders({ seasonCode, phaseCode, params, setParams 
   if (source.isError) return <AsyncState status="error" message="Could not load the team leaderboard." onRetry={source.refetch} />;
   return (
     <div className="flex flex-col gap-4">
+      {source.unadjusted ? <p className="muted text-sm">{UNADJUSTED_NOTE}</p> : null}
       {advancedScopeForPhase(phaseCode) === "PS" ? (
         <p className="muted text-sm">Ratings for the play-in, playoffs and Final Four cover the whole postseason together.</p>
       ) : null}

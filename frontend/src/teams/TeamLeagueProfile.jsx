@@ -98,6 +98,7 @@ export default function TeamLeagueProfile({ advancedQuery, clubCode, team }) {
       <p className="muted mt-3 text-sm">
         Ranked among the {rows.length} clubs that have played. A full bar is the best in the league on that number;
         green is the top third and red the bottom third.
+        {rows.some((row) => row.connected === false) ? " These are raw numbers: the clubs played in separate groups, so they have not faced the same schedule and no opponent-adjusted rating is available." : ""}
       </p>
     </Panel>
   );

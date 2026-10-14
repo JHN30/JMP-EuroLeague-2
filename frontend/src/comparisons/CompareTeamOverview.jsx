@@ -93,7 +93,7 @@ function EdgesPanel({ source, entityA, entityB }) {
       <PanelTitle
         kicker="MATCHUP EDGES"
         title="Where each club is stronger"
-        note={`Their places among the ${source.rows.length} clubs on ${edges.length} measures of how a team plays${tied ? `; ${tied} are level` : ""}.`}
+        note={`Their places among the ${source.rows.length} clubs on ${edges.length} measures of how a team plays${tied ? `; ${tied} are level` : ""}.${source.unadjusted ? " The clubs played in separate groups, so these are raw numbers, not adjusted for schedule." : ""}`}
       />
       <div className="grid grid-cols-[minmax(0,1fr)] gap-3 sm:grid-cols-2">
         <EdgeColumn row={rowA} label={entityA.label} leads={aLeads.length} edges={biggest(aLeads, 1)} side="a" />

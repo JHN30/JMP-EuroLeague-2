@@ -17,7 +17,7 @@ import { useSeasonFormat } from "../lib/useSeasonFormat";
 import ChampionPanel from "./ChampionPanel";
 import MatchupDetail from "./MatchupDetail";
 import RacePanel from "./RacePanel";
-import { buildGroupedBracket } from "./groupedBracket";
+import { buildGroupedBracket, GROUPED_POSTSEASON_FAMILIES } from "./groupedBracket";
 
 const PAGE_LIMIT = 100;
 const MAX_PAGES = 6;
@@ -107,6 +107,15 @@ function summaryLine({ bracket, regularSeasonDone, nextRound, totalRounds, serie
   };
 }
 
+// "Four groups; top two per group reach the Playoffs", from the Top 16 stage's own group count and qualification rule.
+const GROUP_COUNT_WORDS = { 2: "Two", 3: "Three", 4: "Four" };
+function top16Summary(stage) {
+  const places = stage?.qualification?.find((rule) => rule.within === "group" && "positions" in rule)?.positions[1];
+  const groups = GROUP_COUNT_WORDS[stage?.plannedGroups] ?? stage?.plannedGroups;
+  const top = { 1: "one", 2: "two", 3: "three", 4: "four" }[places] ?? places;
+  return groups && top ? `${groups} groups; top ${top} per group reach the Playoffs` : "Group stage; the best clubs of each group reach the Playoffs";
+}
+
 export default function PostseasonPage() {
   useDocumentTitle("Postseason");
   const { seasonCode } = useParams();
@@ -118,7 +127,7 @@ export default function PostseasonPage() {
   const format = formatQuery.data ?? null;
   const cancelled = format?.status === "cancelled";
   const enabled = Boolean(format) && !cancelled;
-  const grouped = format?.family === "top16TwoGroups";
+  const grouped = GROUPED_POSTSEASON_FAMILIES.includes(format?.family);
 
   const standingsQuery = useQuery({ queryKey: ["standings", seasonCode, "RS"], queryFn: () => getSeasonStandings(seasonCode, "RS"), enabled });
   const teamsQuery = useQuery({ queryKey: ["teams", seasonCode], queryFn: () => getSeasonTeams(seasonCode), enabled });
@@ -195,7 +204,7 @@ export default function PostseasonPage() {
       sub: regularSeasonDone ? "Finished" : remaining.nextRound && totalRounds ? "Round " + remaining.nextRound + " of " + totalRounds : "Under way",
       state: regularSeasonDone ? "done" : "live",
     },
-    ...(grouped ? [{ title: "Top 16", sub: "Two groups; top four per group reach the Playoffs", state: format.stages.find((stage) => stage.code === "TS")?.dataState === "loaded" ? "done" : format.stages.find((stage) => stage.code === "TS")?.observed.gamesPlayed > 0 ? "live" : "waiting" }] : []),
+    ...(grouped ? [{ title: "Top 16", sub: top16Summary(format.stages.find((stage) => stage.code === "TS")), state: format.stages.find((stage) => stage.code === "TS")?.dataState === "loaded" ? "done" : format.stages.find((stage) => stage.code === "TS")?.observed.gamesPlayed > 0 ? "live" : "waiting" }] : []),
     ...(bracket.playIn.length ? [{
       title: "Play-In",
       sub: dateRange(series, ["PI"]) ?? "Seeds " + (bracket.directSeeds + 1) + " to " + bracket.playInLast,
@@ -249,7 +258,7 @@ export default function PostseasonPage() {
           <p>{stageDescription(regularSeasonStage, format)}</p>
           {grouped ? <>
             <p>{stageDescription(format.stages.find((stage) => stage.code === "TS"), format)}</p>
-            <p>Quarterfinals are best-of-five series between recorded cross-group qualifiers. Three wins are required to advance; labels such as E1 and F4 are Top 16 group places.</p>
+            <p>Quarterfinals are best-of-five series between recorded cross-group qualifiers. Three wins are required to advance; labels such as {bracket.playoffs.find((slot) => slot.label.includes(" v "))?.label ?? "E1 v F4"} are Top 16 group places.</p>
             <p>The Final Four follows the recorded semifinal matchups, championship game and any verified third-place game. Unverified draws and results remain unknown.</p>
           </> : <>
           {bracket.playIn.length ? <p>

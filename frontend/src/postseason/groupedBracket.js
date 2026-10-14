@@ -11,14 +11,23 @@ export function finalFourKind(game) {
   return isChampionshipLabel(label) ? "final" : null;
 }
 
+// The formats whose Top 16 is played in groups and feeds best-of-five quarterfinals: two groups of eight (E2012-E2015) and four
+// groups of four (E2008-E2011).
+export const GROUPED_POSTSEASON_FAMILIES = ["top16TwoGroups", "top16Bo5Playoffs"];
+
+// How many clubs per Top 16 group reach the Playoffs (four of eight, two of four), from the stage's own qualification rule.
+function qualifiersPerGroup(stage) {
+  const rule = stage?.qualification?.find((entry) => entry.within === "group" && "positions" in entry);
+  return rule ? rule.positions[1] : null;
+}
+
 function finalGroupRanks(standings, stage) {
   const groups = new Map();
   for (const row of standings) {
     if (!groups.has(row.groupName)) groups.set(row.groupName, []);
     groups.get(row.groupName).push(row);
   }
-  const complete = groups.size === 2 && ["E", "F"].every((name) => {
-    const rows = groups.get(name) ?? [];
+  const complete = Boolean(stage?.plannedGroups) && groups.size === stage.plannedGroups && !groups.has(null) && !groups.has(undefined) && [...groups.values()].every((rows) => {
     return rows.length === stage?.plannedClubsPerGroup && rows.every((row) => row.basic?.gamesPlayed === stage.gamesPerClub)
       && new Set(rows.map((row) => row.basic?.position)).size === rows.length
       && rows.every((row) => row.basic.position >= 1 && row.basic.position <= rows.length);
@@ -32,8 +41,10 @@ function uniqueSeries(series, stage) {
 }
 
 export function buildGroupedBracket({ standings = [], teams = [], series = [], games = [], format }) {
-  if (format?.family !== "top16TwoGroups") return null;
-  const ranks = finalGroupRanks(standings, format.stages.find((stage) => stage.code === "TS"));
+  if (!GROUPED_POSTSEASON_FAMILIES.includes(format?.family)) return null;
+  const top16 = format.stages.find((stage) => stage.code === "TS");
+  const qualifiers = qualifiersPerGroup(top16);
+  const ranks = finalGroupRanks(standings, top16);
   const identities = new Map(teams.map((team) => [team.clubCode, team]));
   for (const entry of series) for (const side of [entry.clubA, entry.clubB]) if (!identities.has(side.clubCode)) identities.set(side.clubCode, side);
   const club = (code) => {
@@ -67,7 +78,8 @@ export function buildGroupedBracket({ standings = [], teams = [], series = [], g
   const labelOf = (entry) => {
     const a = ranks.get(entry.clubA.clubCode);
     const b = ranks.get(entry.clubB.clubCode);
-    if (!a || !b || a.groupName === b.groupName || a.basic.position + b.basic.position !== 5 || a.basic.position > 4 || b.basic.position > 4) return null;
+    // A quarterfinal joins a group's place n with another group's place (qualifiers + 1 - n): 1-4 and 2-3 of eight, 1-2 of four.
+    if (!qualifiers || !a || !b || a.groupName === b.groupName || a.basic.position + b.basic.position !== qualifiers + 1 || a.basic.position > qualifiers || b.basic.position > qualifiers) return null;
     const first = a.basic.position < b.basic.position ? a : b;
     const second = first === a ? b : a;
     return `${first.groupName}${first.basic.position} v ${second.groupName}${second.basic.position}`;

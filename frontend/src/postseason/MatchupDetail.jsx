@@ -52,11 +52,12 @@ export default function MatchupDetail({ slot, seasonCode }) {
   const comparable = clubs.length === 2 && slot.state !== "done";
   return (
     <Panel className="p-4">
-      <p className="eyebrow mb-0.5">{STAGE_NAMES[slot.stage].toUpperCase() + " · " + slot.label.toUpperCase()}</p>
+      <p className="eyebrow mb-0.5">{(slot.stageName ?? STAGE_NAMES[slot.stage]).toUpperCase() + " · " + slot.label.toUpperCase()}</p>
       <div className="mb-3 grid grid-cols-[minmax(0,1fr)] gap-3 lg:grid-cols-2">
         <Side side={slot.participants[0]} slot={slot} />
         <Side side={slot.participants[1]} slot={slot} />
       </div>
+      {slot.note ? <p className="muted mb-3 text-sm">{slot.note}</p> : null}
       {resultText(slot) ? <p className="mb-3 font-semibold">{resultText(slot)}</p> : null}
       {slot.state === "projected" ? (
         <p className="muted mb-3 text-sm">Projected from the current standings: it changes as the regular season goes on.</p>

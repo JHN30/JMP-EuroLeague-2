@@ -2441,6 +2441,18 @@ button {
     width: 1.125rem;
     border-top: 2px solid color-mix(in srgb, var(--color-base-content) 30%, transparent);
   }
+  /* The elimination bracket (E2000): eight rows for the round of 16; a tie of stage n spans 2^n of them (--r start row, --s span). */
+  .elim-grid {
+    grid-template-rows: auto repeat(8, 7rem);
+  }
+  .elim-head {
+    grid-column: var(--c);
+    grid-row: 1;
+  }
+  .elim-cell {
+    grid-column: var(--c);
+    grid-row: var(--r) / span var(--s);
+  }
 }
 
 /* Pickers: where the browser has customizable selects (Chrome and Edge 135+) the closed select keeps its box and the open list becomes a

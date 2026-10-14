@@ -3,7 +3,7 @@ import { useQueries, useQuery } from "@tanstack/react-query";
 import { Chart } from "chart.js/auto";
 import { motion } from "motion/react";
 import { Link, useParams } from "react-router";
-import { getLeaderStats, getLeagueTeamStats, getPhases, getSeasonGames, getSeasonStandings } from "../lib/api";
+import { getLeaderStats, getLeagueTeamStats, getPhases, getPostseasonSeries, getSeasonGames, getSeasonStandings } from "../lib/api";
 import AsyncState from "../lib/AsyncState";
 import { cardHover, listContainer, listItem, sectionContainer, sectionItem } from "../lib/motion";
 import { withoutComma } from "../lib/playerName";
@@ -23,6 +23,7 @@ import { useActiveTheme, themeColor } from "../lib/useActiveTheme";
 import { isForfeit } from "../lib/forfeit";
 import { formatDateTime, formatPerGame, formatSeasonLabel } from "../lib/format";
 import { teamCode } from "../games/gameUtils";
+import { buildEliminationBracket, eliminationStageLabel, eliminationStageOf } from "../postseason/eliminationBracket";
 
 const MotionLink = motion.create(Link);
 
@@ -262,7 +263,8 @@ function TeamName({ team, dimmed, nameFirst = false }) {
 
 function DefiningGames({ seasonCode, playedGames }) {
   const picks = pickDefiningGames(playedGames);
-  const groupedStages = groupedStageCodes(useSeasonFormat(seasonCode).data ?? null);
+  const format = useSeasonFormat(seasonCode).data ?? null;
+  const groupedStages = groupedStageCodes(format);
 
   return (
     <Panel className="p-4">
@@ -281,7 +283,8 @@ function DefiningGames({ seasonCode, playedGames }) {
             const roadWon = game.roadScore > game.localScore;
             const roundLabel = game.roundName ?? (game.roundNumber ? `Round ${game.roundNumber}` : "");
             const showGroupName = (game.phaseCode !== "RS" || groupedStages.has("RS")) && game.groupName;
-            const context = showGroupName ? `${game.groupName} · ${roundLabel}` : roundLabel;
+            const stageName = eliminationStageLabel(format, game);
+            const context = stageName ?? (showGroupName ? `${game.groupName} · ${roundLabel}` : roundLabel);
             const statDetail =
               tag === "Highest-scoring game" || tag === "Lowest-scoring game"
                 ? `${combined} combined points`
@@ -623,7 +626,7 @@ function SeasonLeaders({ seasonCode }) {
 // group in Play-In and Final Four, 3-5 games per group in Playoffs
 // (best-of-5 series). Grouping by it, rather than by opponent alone,
 // keeps two ties against the same opponent in different phases separate.
-function championRoadSteps(champion, knockoutPhases, knockoutPhaseGamesQueries) {
+function championRoadSteps(champion, knockoutPhases, knockoutPhaseGamesQueries, format = null) {
   if (!champion) return [];
 
   const groups = new Map();
@@ -634,10 +637,13 @@ function championRoadSteps(champion, knockoutPhases, knockoutPhaseGamesQueries) 
       const isRoad = game.roadTeam?.clubCode === champion.clubCode;
       if (!isLocal && !isRoad) continue;
 
-      const key = `${phase.code}:${game.groupName ?? game.gameCode}`;
+      // In the elimination tournament a tie is its stage and opponent (its deciding game has a group label of its own).
+      const stageName = eliminationStageLabel(format, game);
+      const key = stageName ? `${phase.code}:${eliminationStageOf(game.groupName)}:${(isLocal ? game.roadTeam : game.localTeam)?.clubCode}` : `${phase.code}:${game.groupName ?? game.gameCode}`;
       if (!groups.has(key)) {
         groups.set(key, {
           phaseCode: phase.code,
+          stageName,
           opponent: isLocal ? game.roadTeam : game.localTeam,
           games: [],
           championWins: 0,
@@ -676,6 +682,7 @@ function RoadStep({ step, index }) {
   const resultText = isSeries
     ? `Won series ${step.championWins}-${step.opponentWins}`
     : `Won ${championScore}-${opponentScore}`;
+  const detail = step.stageName ? `${step.stageName} · ${resultText}` : resultText;
 
   return (
     <Panel className="flex items-center gap-3 border-success bg-success/10 p-4">
@@ -692,7 +699,7 @@ function RoadStep({ step, index }) {
       ) : null}
       <div className="min-w-0 flex-1">
         <p className="break-words font-medium">Defeated {teamName(step.opponent)}</p>
-        <p className="muted text-xs">{resultText}</p>
+        <p className="muted text-xs">{detail}</p>
       </div>
     </Panel>
   );
@@ -815,8 +822,14 @@ export default function SeasonOverviewPage() {
 
   const playedGames = playedGamesQuery.data ?? [];
   const activePhase = phases.length > 0 ? currentPhaseFromPlayedGames(phases, playedGames) : null;
-  const champion = format?.status === "completed" ? findChampion(finalFourGamesQuery.data?.games ?? []) : null;
-  const roadSteps = championRoadSteps(champion, knockoutPhases, knockoutPhaseGamesQueries);
+  // Without a Final Four the champion of the elimination tournament is the winner of its connected final series.
+  const elimination = format?.family === "eliminationSeries";
+  const eliminationSeriesQuery = useQuery({ queryKey: ["postseason-series", seasonCode], queryFn: () => getPostseasonSeries(seasonCode), enabled: elimination });
+  const eliminationChampion = elimination && format.status === "completed"
+    ? buildEliminationBracket({ series: eliminationSeriesQuery.data?.series ?? [], games: knockoutPhaseGamesQueries.flatMap((query) => query.data?.games ?? []), teams: [], format })?.champion ?? null
+    : null;
+  const champion = format?.status === "completed" ? (elimination ? eliminationChampion : findChampion(finalFourGamesQuery.data?.games ?? [])) : null;
+  const roadSteps = championRoadSteps(champion, knockoutPhases, knockoutPhaseGamesQueries, format);
 
   if (phasesQuery.isLoading) return <AsyncState status="loading" label="Loading phases" fullScreen />;
   if (phasesQuery.isError) {
@@ -829,6 +842,7 @@ export default function SeasonOverviewPage() {
     phaseFirstGameQueries.some((query) => query.isLoading) ||
     phaseLastGameQueries.some((query) => query.isLoading) ||
     knockoutPhaseGamesQueries.some((query) => query.isLoading) ||
+    eliminationSeriesQuery.isLoading ||
     playedGamesQuery.isLoading ||
     finalFourGamesQuery.isLoading ||
     standingsQuery.isLoading ||

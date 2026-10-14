@@ -39,7 +39,7 @@ function FixtureTeam({ team, entry, won, showGroup }) {
 
 // One game on the Games page. Upcoming games put the date and tip-off time in the middle; finished games put the score
 // there, with the winning side filled in.
-export default function GameCard({ game, seasonCode, standingByClubCode, cancelled = false, showGroup = false }) {
+export default function GameCard({ game, seasonCode, standingByClubCode, cancelled = false, showGroup = false, caption = null }) {
   const hasScore = game.played && game.localScore != null && game.roadScore != null;
   const localWon = hasScore && game.localScore > game.roadScore;
   const roadWon = hasScore && game.roadScore > game.localScore;
@@ -48,7 +48,7 @@ export default function GameCard({ game, seasonCode, standingByClubCode, cancell
 
   return (
     <MotionLink to={`/${seasonCode}/games/${game.gameCode}`} className="fixture-card" variants={listItem} {...wideCardHover}>
-      {showGroup && game.groupName ? <span className="muted block text-center text-xs font-semibold tracking-wide uppercase">{game.groupName}</span> : null}
+      {caption ?? (showGroup ? game.groupName : null) ? <span className="muted block text-center text-xs font-semibold tracking-wide uppercase">{caption ?? game.groupName}</span> : null}
       <div className="fixture-card-body">
         <FixtureTeam team={game.localTeam} entry={localEntry} won={localWon} showGroup={showGroup} />
         <motion.div className="fixture-center" variants={centerPop}>

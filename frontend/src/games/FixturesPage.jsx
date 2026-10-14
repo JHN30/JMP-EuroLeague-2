@@ -16,6 +16,7 @@ import { useSeasonFormat } from "../lib/useSeasonFormat";
 import { TabPanel, TabStrip } from "../lib/TabStrip";
 import { groupedStageCodes } from "../lib/seasonFormat";
 import { groupLabel, groupStandings, selectedGroup } from "../standings/standingsGroups";
+import { ELIMINATION_STAGES, eliminationStageLabel, eliminationStageOf } from "../postseason/eliminationBracket";
 import GameCard from "./GameCard";
 
 // A round never holds more than a handful of games; this is the API's page cap.
@@ -34,10 +35,13 @@ export default function FixturesPage() {
   const phases = phasesQuery.data?.phases ?? [];
   const [phaseCode] = usePhaseParam(phases);
 
+  // The original elimination tournament's knockout is browsed by stage: the source's round numbers ("Game 1" to "Game 8") mix its stages.
+  const formatQuery = useSeasonFormat(seasonCode);
+  const stageMode = formatQuery.data?.family === "eliminationSeries" && phaseCode === "PO";
   const roundsQuery = useQuery({
     queryKey: ["rounds", seasonCode, phaseCode],
     queryFn: () => getRounds(seasonCode, phaseCode),
-    enabled: Boolean(phaseCode),
+    enabled: Boolean(phaseCode) && !stageMode && !formatQuery.isLoading,
   });
   const rounds = roundsQuery.data?.rounds ?? [];
 
@@ -45,7 +49,7 @@ export default function FixturesPage() {
   const nextGameQuery = useQuery({
     queryKey: ["fixtures-next", seasonCode, phaseCode],
     queryFn: () => getSeasonGames(seasonCode, { phase: phaseCode, status: "scheduled", order: "asc", limit: 1 }),
-    enabled: Boolean(phaseCode),
+    enabled: Boolean(phaseCode) && !stageMode && !formatQuery.isLoading,
   });
   const defaultRound = nextGameQuery.data?.games[0]?.roundNumber ?? rounds.at(-1)?.number ?? null;
 
@@ -60,7 +64,21 @@ export default function FixturesPage() {
   });
   // A grouped table stage (the regular season and Top 16 of E2012-E2015) shows each club's record in that stage and a group
   // filter; every other phase keeps the regular-season record under the clubs.
-  const format = useSeasonFormat(seasonCode).data ?? null;
+  const format = formatQuery.data ?? null;
+  const stageGamesQuery = useQuery({
+    queryKey: ["fixtures-stages", seasonCode, phaseCode],
+    queryFn: () => getSeasonGames(seasonCode, { phase: phaseCode, limit: ROUND_GAME_LIMIT, order: "asc" }),
+    enabled: stageMode,
+  });
+  const stageGames = stageGamesQuery.data?.games ?? [];
+  const stages = [
+    ...ELIMINATION_STAGES.map((stage, index) => ({ key: stage.id, name: stage.name, games: stageGames.filter((game) => eliminationStageOf(game.groupName) === index) })),
+    { key: "other", name: "Other games", games: stageGames.filter((game) => eliminationStageOf(game.groupName) === -1) },
+  ].filter((stage) => stage.games.length > 0);
+  // With no stage in the URL, open on the first stage that still has a game to play, or the last stage once the knockout is over.
+  const requestedStage = searchParams.get("stage");
+  const defaultStage = stages.find((stage) => stage.games.some((game) => !game.played))?.key ?? stages.at(-1)?.key ?? null;
+  const selectedStage = stages.some((stage) => stage.key === requestedStage) ? requestedStage : defaultStage;
   const groupedStages = groupedStageCodes(format);
   const groupedPhase = groupedStages.has(phaseCode);
   const recordPhaseCode = groupedPhase ? phaseCode : "RS";
@@ -90,9 +108,9 @@ export default function FixturesPage() {
     }, { replace: true });
   }, [standingsQuery.isSuccess, searchParams, groupName, setSearchParams]);
 
-  const allGames = gamesQuery.data?.games ?? [];
+  const allGames = stageMode ? (stages.find((stage) => stage.key === selectedStage)?.games ?? []) : (gamesQuery.data?.games ?? []);
   const games = groupName === null ? allGames : allGames.filter((game) => game.groupName === groupLabel(groupName));
-  const isResolvingRound = roundsQuery.isLoading || nextGameQuery.isLoading;
+  const isResolvingRound = formatQuery.isLoading || (stageMode ? stageGamesQuery.isLoading : roundsQuery.isLoading || nextGameQuery.isLoading);
 
   // Keep the selected round visible in the scrolling strip, also when the strip changes width (a phone turned sideways).
   useCentredSelection(roundStripRef, `${selectedRound}:${rounds.length}`);
@@ -105,11 +123,20 @@ export default function FixturesPage() {
     });
   }
 
+  function selectStage(key) {
+    setSearchParams((params) => {
+      const next = new URLSearchParams(params);
+      next.set("stage", key);
+      return next;
+    });
+  }
+
   function handlePhaseChange(code) {
     setSearchParams((params) => {
       const next = new URLSearchParams(params);
       if (code) next.set("phase", code); else next.delete("phase");
       next.delete("round");
+      next.delete("stage");
       next.delete("group");
       return next;
     });
@@ -131,7 +158,7 @@ export default function FixturesPage() {
   return (
     <div>
       <PageHeader kicker="SCHEDULE" title="Games" />
-      <CompetitionContext seasonCode={seasonCode} phaseCode={phaseCode} roundNumber={selectedRound} />
+      <CompetitionContext seasonCode={seasonCode} phaseCode={phaseCode} roundNumber={stageMode ? null : selectedRound} />
 
       <TabStrip
         ariaLabel="Phase"
@@ -144,7 +171,18 @@ export default function FixturesPage() {
         tabs={phases.map((phase) => ({ key: phase.code, label: phase.name ?? phase.code }))}
       />
 
-      {rounds.length > 0 ? (
+      {stageMode && stages.length > 0 ? (
+        <TabStrip
+          ariaLabel="Stage"
+          panelId="fixtures-panel"
+          activeKey={selectedStage}
+          onChange={selectStage}
+          className="mb-2 w-fit max-w-full sm:mb-6"
+          tabs={stages.map((stage) => ({ key: stage.key, label: `${stage.name} (${stage.games.length})` }))}
+        />
+      ) : null}
+
+      {!stageMode && rounds.length > 0 ? (
         <div className="mb-2 flex items-center gap-1 sm:mb-6 sm:gap-2">
           <motion.button
             type="button"
@@ -202,20 +240,21 @@ export default function FixturesPage() {
         </div>
       ) : null}
 
-      <TabPanel id="fixtures-panel" focusKey={`${phaseCode}-${selectedRound}`} scroll={false}>
-        {isResolvingRound || gamesQuery.isLoading ? (
+      <TabPanel id="fixtures-panel" focusKey={`${phaseCode}-${stageMode ? selectedStage : selectedRound}`} scroll={false}>
+        {isResolvingRound || (!stageMode && gamesQuery.isLoading) ? (
           <AsyncState status="loading" label="Loading games" />
-        ) : roundsQuery.isError || gamesQuery.isError ? (
+        ) : (stageMode ? stageGamesQuery.isError : roundsQuery.isError || gamesQuery.isError) ? (
           <AsyncState
             status="error"
             message="Could not load games."
             onRetry={() => {
               roundsQuery.refetch();
               gamesQuery.refetch();
+              stageGamesQuery.refetch();
             }}
           />
         ) : games.length === 0 ? (
-          <EmptyText>No games in this round yet.</EmptyText>
+          <EmptyText>{stageMode ? "No games in this stage yet." : "No games in this round yet."}</EmptyText>
         ) : (
           <div className="fixture-box">
             {(phaseCode === "RS" || groupedPhase) && standingByClubCode.size > 0 ? (
@@ -226,7 +265,7 @@ export default function FixturesPage() {
               </p>
             ) : null}
             <motion.div
-              key={`${phaseCode}-${selectedRound}`}
+              key={`${phaseCode}-${stageMode ? selectedStage : selectedRound}`}
               className="fixture-grid"
               variants={listContainer}
               initial="hidden"
@@ -239,6 +278,7 @@ export default function FixturesPage() {
                   seasonCode={seasonCode}
                   cancelled={format?.status === "cancelled"}
                   showGroup={groupedPhase}
+                  caption={stageMode ? eliminationStageLabel(format, game) : null}
                   standingByClubCode={standingByClubCode}
                 />
               ))}

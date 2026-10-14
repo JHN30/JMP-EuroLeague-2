@@ -4,6 +4,7 @@ import { getSeasonStandings } from "../lib/api";
 import Panel from "../lib/Panel";
 import { groupedStageCodes } from "../lib/seasonFormat";
 import { useSeasonFormat } from "../lib/useSeasonFormat";
+import { eliminationStageLabel } from "../postseason/eliminationBracket";
 import { groupPositionLabel } from "../standings/standingsGroups";
 import { teamCode, teamName } from "./gameUtils";
 
@@ -59,7 +60,7 @@ export default function MatchupHeader({ game, seasonCode, localWon, roadWon }) {
   const entries = new Map((standingsQuery.data?.standings ?? []).map((entry) => [entry.clubCode, entry]));
   const positionOf = (team) => ((game.phaseCode === "RS" || groupedStage) && team?.clubCode ? (entries.get(team.clubCode)?.basic?.position ?? null) : null);
   const groupPlaceOf = (team) => (groupedStage && team?.clubCode ? groupPositionLabel(entries.get(team.clubCode)) : null);
-  const round = game.roundName ?? (game.roundNumber ? `Round ${game.roundNumber}` : game.phaseName);
+  const round = eliminationStageLabel(format, game) ?? game.roundName ?? (game.roundNumber ? `Round ${game.roundNumber}` : game.phaseName);
 
   return (
     <Panel as="section" className="relative mb-6 overflow-hidden p-4 sm:p-5">

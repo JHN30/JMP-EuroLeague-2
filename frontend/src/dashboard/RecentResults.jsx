@@ -6,13 +6,17 @@ import { getSeasonGames, getSeasonStandings } from "../lib/api";
 import { formatDateTime as formatTime } from "../lib/format";
 import { cardHover, listContainer, listItem } from "../lib/motion";
 import { isForfeit } from "../lib/forfeit";
+import { useSeasonFormat } from "../lib/useSeasonFormat";
+import { eliminationStageLabel } from "../postseason/eliminationBracket";
 import ShortLabel from "../lib/ShortLabel";
 import { shortTeamName, teamCode } from "../games/gameUtils";
 import { WidgetPanel } from "./Dashboard";
 
 const MotionLink = motion.create(Link);
 
-function roundLabel(game) {
+function roundLabel(game, format) {
+  const stage = eliminationStageLabel(format, game);
+  if (stage) return stage;
   if (game.phaseCode && game.phaseCode !== "RS") {
     return game.phaseName ?? game.phaseCode;
   }
@@ -23,6 +27,7 @@ const VISIBLE_ON_MOBILE = 5;
 const LIST_ID = "latest-scores-list";
 
 export function MatchCard({ game, standingByClubCode, seasonCode, showScore, className = "" }) {
+  const format = useSeasonFormat(seasonCode).data;
   const localEntry = game.localTeam?.clubCode ? standingByClubCode.get(game.localTeam.clubCode) : null;
   const roadEntry = game.roadTeam?.clubCode ? standingByClubCode.get(game.roadTeam.clubCode) : null;
   const localWon = showScore && game.localScore != null && game.roadScore != null && game.localScore > game.roadScore;
@@ -31,7 +36,7 @@ export function MatchCard({ game, standingByClubCode, seasonCode, showScore, cla
   return (
     <MotionLink to={`/${seasonCode}/games/${game.gameCode}`} className={`match-card ${className}`} variants={listItem} {...cardHover}>
       <div className="match-card-head">
-        <span>{roundLabel(game)}</span>
+        <span>{roundLabel(game, format)}</span>
         <span className={`status-chip ${showScore ? "final" : "upcoming"}`}>
           {showScore ? (isForfeit(game) ? "Forfeit" : "Final") : formatTime(game.scheduledAt)}
         </span>

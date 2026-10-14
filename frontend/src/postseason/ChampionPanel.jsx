@@ -9,7 +9,8 @@ export default function ChampionPanel({ bracket, seasonLabel }) {
   const rows = placements(bracket) ?? [];
   const finalSlot = bracket.final;
   const runnerUp = finalSlot.participants.find((side) => side.clubCode && side.clubCode !== champion.clubCode);
-  const game = finalSlot.series?.games?.[0];
+  // A final played as a series is dated by its deciding game.
+  const game = finalSlot.series?.games?.at(-1);
   const groups = [];
   for (const row of rows.filter((entry) => entry.order > 2)) {
     const last = groups[groups.length - 1];
@@ -26,7 +27,7 @@ export default function ChampionPanel({ bracket, seasonLabel }) {
           <h2 className="text-2xl font-black wrap-break-word sm:text-3xl">{champion.name}</h2>
           {runnerUp ? (
             <p className="muted mt-1">
-              Won the final against {runnerUp.name} {clubScore(finalSlot, champion.clubCode)}-{clubScore(finalSlot, runnerUp.clubCode)}
+              Won the final {(finalSlot.winTarget ?? 1) > 1 ? "series " : ""}against {runnerUp.name} {clubScore(finalSlot, champion.clubCode)}-{clubScore(finalSlot, runnerUp.clubCode)}
               {game?.scheduledAt ? " on " + formatShortDate(game.scheduledAt) : ""}
             </p>
           ) : null}

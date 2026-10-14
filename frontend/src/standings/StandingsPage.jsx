@@ -185,8 +185,8 @@ export default function StandingsPage() {
             // The play-in, playoffs and Final Four are knockouts: there is never a league table, whatever the state of the season.
             <EmptyText>
               This phase is a knockout, so it has no league table. The matchups and results are on the{" "}
-              <Link to={`/${seasonCode}/playoffs`} className="link link-primary">
-                Format page
+              <Link to={`/${seasonCode}/postseason`} className="link link-primary">
+                Postseason page
               </Link>
               , and every game is under Games.
             </EmptyText>

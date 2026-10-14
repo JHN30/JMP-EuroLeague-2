@@ -89,16 +89,18 @@ test.describe("E2001 thirty-two clubs", () => {
   });
 });
 
-// The source's totals for a club that played a forfeit are empty for that stage; the pages say so.
-for (const [season, forfeitClubs, names, other] of [[2001, ["TEL", "ULK"], ["Maccabi Elite", "Ulker"], "PAN"], [2003, ["TEL", "PAM"], ["Maccabi Elite", "Pamesa Valencia"], "CSK"]]) {
-  test(`${season}: clubs of the forfeit get a note where team totals are missing`, async ({ page, request }) => {
+// The source's totals for a club that played a forfeit cover only the real games (5), while the standings count six; the pages flag it.
+for (const [season, forfeitClubs, names, other, score] of [[2001, ["TEL", "ULK"], ["Maccabi Elite", "Ulker"], "PAN", "2-0"], [2003, ["TEL", "PAM"], ["Maccabi Elite", "Pamesa Valencia"], "CSK", "20-0"]]) {
+  test(`${season}: clubs of the forfeit get a games-played flag beside their team totals`, async ({ page, request }) => {
     await mockLayoutImages(page);
     const { teams } = await (await request.get(`${API}/seasons/${season}/team-stats?phase=TS`)).json();
-    expect(teams.filter((team) => team.own.points === null).map((team) => team.clubCode).sort()).toEqual([...forfeitClubs].sort());
+    expect(teams.filter((team) => team.own.points === null)).toEqual([]);
+    expect(teams.filter((team) => Number(team.gamesPlayed) === 5).map((team) => team.clubCode).sort()).toEqual([...forfeitClubs].sort());
     const note = (text) => page.getByRole("note").filter({ hasText: text });
     await page.goto(`/${season}/teams/${forfeitClubs[0]}?phase=TS`);
-    await expect(note(/Team totals are unavailable for/).first()).toBeVisible({ timeout: 30_000 });
-    await expect(note(/recorded forfeit/).first()).toContainText(names[0]);
+    await expect(note(/Totals cover 5 games\./).first()).toBeVisible({ timeout: 30_000 });
+    await expect(note(/Totals cover 5 games\./).first()).toContainText(`The forfeit against ${names[1]} (${score}) counts in the standings only.`);
+    await expect(page.getByRole("note").filter({ hasText: /unavailable/ })).toHaveCount(0);
     await page.goto(`/${season}/teams/${other}?phase=TS`);
     await expect(page.getByText("GROUP POSITION", { exact: true }).or(page.getByText(/Group position/i)).first()).toBeVisible({ timeout: 30_000 });
     await expect(page.getByRole("note")).toHaveCount(0);
@@ -106,15 +108,15 @@ for (const [season, forfeitClubs, names, other] of [[2001, ["TEL", "ULK"], ["Mac
     await expect(page.getByText(/Played|PLAYED/).first()).toBeVisible({ timeout: 30_000 });
     await expect(page.getByRole("note")).toHaveCount(0);
     await page.goto(`/${season}/leaders?scope=teams&phase=TS`);
-    await expect(note(/Team totals are unavailable for/)).toContainText(names[0], { timeout: 30_000 });
-    await expect(note(/Team totals are unavailable for/)).toContainText(names[1]);
+    await expect(note(/cover 5 games each/)).toContainText(names[0], { timeout: 30_000 });
+    await expect(note(/cover 5 games each/)).toContainText(names[1]);
     await page.goto(`/${season}/leaders?scope=teams&phase=RS`);
     await expect(page.getByText("SCORING").first()).toBeVisible({ timeout: 30_000 });
     await expect(page.getByRole("note")).toHaveCount(0);
     await page.goto(`/${season}/compare?teamA=${forfeitClubs[0]}&teamB=${other}&phase=TS`);
     await page.getByRole("tab", { name: "Statistics" }).click();
-    await expect(note(/Team totals are unavailable for/)).toContainText(names[0], { timeout: 30_000 });
-    await expect(note(/Team totals are unavailable for/)).not.toContainText(names[1]);
+    await expect(note(/Totals cover 5 games\./)).toContainText(names[1], { timeout: 30_000 });
+    await expect(note(/Totals cover 5 games\./)).toHaveCount(1);
   });
 }
 

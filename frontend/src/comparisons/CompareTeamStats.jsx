@@ -7,6 +7,7 @@ import Panel from "../lib/Panel";
 import RevealImage from "../lib/RevealImage";
 import { formatTeamValue, UNADJUSTED_NOTE, usable, useTeamRows } from "../leaders/teamData";
 import useClubEntities from "./useClubEntities";
+import ForfeitStatsNote from "../lib/ForfeitStatsNote";
 import { groupPositionLabel, isGroupedTable } from "../standings/standingsGroups";
 import { STAT_FAMILY_ORDER, directionOf, placeOn, statsOfFamily } from "./teamCompare";
 
@@ -52,6 +53,7 @@ export default function CompareTeamStats({ seasonCode, phaseCode, entityA: picke
         <motion.p variants={listItem} className="muted mb-2 text-center text-xs">
           Per game, overtime counted. Under each bar: the club&apos;s place among the {source.rows.length} clubs.
         </motion.p>
+        <ForfeitStatsNote seasonCode={seasonCode} phaseCode={phaseCode} clubCodes={[entityA.id, entityB.id]} className="muted mb-2 text-center text-xs" />
         {source.unadjusted ? <motion.p variants={listItem} className="muted mb-2 text-center text-xs">{UNADJUSTED_NOTE}</motion.p> : null}
         {groups.map((group) => (
           <div key={group.family}>

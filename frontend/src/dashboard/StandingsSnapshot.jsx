@@ -95,7 +95,7 @@ export default function StandingsSnapshot({ height }) {
           {standings.map((entry) => <StandingRow key={entry.clubCode} entry={entry} />)}
         </motion.ol>
       )}
-      {seasonSlug(seasonCode) !== "2021" && <CompetitionContext seasonCode={seasonCode} phaseCode={phaseCode} roundNumber={query.data?.round} />}
+      {seasonSlug(seasonCode) !== "2021" && <CompetitionContext seasonCode={seasonCode} phaseCode={phaseCode} roundNumber={query.data?.round} className="mt-4 mb-4" />}
       <MotionLink
         to={`/${seasonCode}/standings`}
         className="panel-link mt-4 inline-block"

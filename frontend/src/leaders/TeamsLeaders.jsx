@@ -11,6 +11,7 @@ import { TabStrip } from "../lib/TabStrip";
 import { Avatar, BoardHeader, BoardRow, BoardTopLine, CardGrid, CategoryCard, StatChips, StatSelect } from "./LeaderParts";
 import { advancedScopeForPhase } from "../teams/teamLeague";
 import { barShare, rankRows } from "./leaderData";
+import ForfeitStatsNote from "../lib/ForfeitStatsNote";
 import { TEAM_CARDS, TEAM_FAMILIES, TEAM_STATS, formatTeamValue, statByKey, useTeamRows, usable, UNADJUSTED_NOTE } from "./teamData";
 
 // ---- Landing ----
@@ -49,7 +50,7 @@ function TeamCard({ stat, rows, onOpen, isLoading, isError, onRetry }) {
 
 const PAGE_SIZE = 25;
 
-function TeamsBoard({ seasonCode, metric, source, params, setParams }) {
+function TeamsBoard({ seasonCode, phaseCode, metric, source, params, setParams }) {
   const stat = statByKey(metric) ?? TEAM_STATS[0];
   const mode = params.get("mode") === "accumulated" ? "accumulated" : "perGame";
   const direction = params.get("direction") ?? (stat.lowerIsBetter ? "asc" : "desc");
@@ -90,6 +91,7 @@ function TeamsBoard({ seasonCode, metric, source, params, setParams }) {
         <p className="muted text-sm">{hasMode ? (mode === "perGame" ? "Per game" : "Season totals") : "Whole phase"} · overtime counted</p>
       </BoardTopLine>
       {source.unadjusted ? <p className="muted text-sm">{UNADJUSTED_NOTE}</p> : null}
+      <ForfeitStatsNote seasonCode={seasonCode} phaseCode={phaseCode} />
       <StatSelect families={families} stats={TEAM_STATS.filter((entry) => usable(entry, source))} activeKey={stat.key} onChoose={chooseStat} />
       <div className="max-sm:hidden">
         <TabStrip
@@ -169,11 +171,12 @@ export default function TeamsLeaders({ seasonCode, phaseCode, params, setParams 
     });
   };
 
-  if (metric) return <TeamsBoard seasonCode={seasonCode} metric={metric} source={source} params={params} setParams={setParams} />;
+  if (metric) return <TeamsBoard seasonCode={seasonCode} phaseCode={phaseCode} metric={metric} source={source} params={params} setParams={setParams} />;
   if (source.isError) return <AsyncState status="error" message="Could not load the team leaderboard." onRetry={source.refetch} />;
   return (
     <div className="flex flex-col gap-4">
       {source.unadjusted ? <p className="muted text-sm">{UNADJUSTED_NOTE}</p> : null}
+      <ForfeitStatsNote seasonCode={seasonCode} phaseCode={phaseCode} />
       {advancedScopeForPhase(phaseCode) === "PS" ? (
         <p className="muted text-sm">Ratings for the play-in, playoffs and Final Four cover the whole postseason together.</p>
       ) : null}

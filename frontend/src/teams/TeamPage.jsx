@@ -36,6 +36,7 @@ import TeamLeagueProfile from "./TeamLeagueProfile";
 import TeamQuickCompare from "./TeamQuickCompare";
 import TeamRosterSection from "./TeamRosterSection";
 import TeamShootingSection from "./TeamShootingSection";
+import ForfeitStatsNote from "../lib/ForfeitStatsNote";
 import TeamStatisticsSection from "./TeamStatisticsSection";
 import { fetchTeamRosterStats } from "./teamRosterStats";
 import { groupLabel, isGroupedTable } from "../standings/standingsGroups";
@@ -409,6 +410,7 @@ function OverviewSection({ seasonCode, clubCode, team, phaseCode, standingsQuery
   return (
     <div className="flex flex-col gap-6">
       <TeamSnapshot standingsQuery={standingsQuery} teamStatsQuery={teamStatsQuery} clubCode={clubCode} phaseGames={phaseGames} />
+      <ForfeitStatsNote seasonCode={seasonCode} phaseCode={phaseCode} clubCodes={[clubCode]} />
       <TeamLeaders seasonCode={seasonCode} rosterStatsQuery={rosterStatsQuery} />
       <TeamLeagueProfile advancedQuery={advancedQuery} clubCode={clubCode} team={team} />
       <div className="grid grid-cols-[minmax(0,1fr)] gap-6 lg:grid-cols-2">

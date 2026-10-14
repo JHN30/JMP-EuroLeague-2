@@ -4,6 +4,7 @@ import { teamCode } from "../games/gameUtils";
 import { getLeagueTeamStats } from "../lib/api";
 import AsyncState from "../lib/AsyncState";
 import EmptyText from "../lib/EmptyText";
+import ForfeitStatsNote from "../lib/ForfeitStatsNote";
 import HeaderTip from "../lib/HeaderTip";
 import { barFill, listContainer, listItem } from "../lib/motion";
 import Panel from "../lib/Panel";
@@ -121,6 +122,7 @@ export default function TeamStatisticsSection({ seasonCode, phaseCode, clubCode,
   return (
     <Panel as="section" className="p-4">
       <PanelHeader kicker="STATISTICS" title={`Per game: ${teamName} against its opponents`} />
+      <ForfeitStatsNote seasonCode={seasonCode} phaseCode={phaseCode} clubCodes={[clubCode]} className="muted mb-3 text-sm" />
       <div className="grid gap-x-10 gap-y-6 xl:grid-cols-2">
         <StatGroup key={`${phaseCode}-${traditional.title}`} group={traditional} {...shared} />
         <div className="flex flex-col gap-6">

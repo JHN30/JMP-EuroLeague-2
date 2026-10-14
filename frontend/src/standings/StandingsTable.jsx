@@ -127,6 +127,7 @@ function OverviewTable({ standings, seasonCode, view, showTiers, tierLines, tier
                 </td>
                 <td>
                   <ClubCell entry={entry} seasonCode={seasonCode} shortName={shortNames?.get(entry.clubCode)} />
+                  {entry.bestSixth ? <span className="badge badge-xs badge-secondary ml-1 whitespace-nowrap" title="Best sixth-placed club">Best 6th<span className="sr-only">, best sixth-placed club, qualified</span></span> : null}
                 </td>
                 <td className="hidden sm:table-cell">{entry.basic?.gamesPlayed ?? "-"}</td>
                 <td>{entry.basic?.gamesWon ?? "-"}</td>

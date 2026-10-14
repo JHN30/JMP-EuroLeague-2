@@ -76,7 +76,10 @@ export default function Bracket({ bracket, selectedId, focusClub, onSelect, onFo
     groupedPlace.sf2 = `lg:col-start-2 lg:row-start-4 lg:row-span-2${bracket.connected ? " bk-in" : ""}${bracket.final.sourceSlotIds.length === 2 ? " bk-out" : ""}`;
     groupedPlace.final = `lg:col-start-3 lg:row-start-2 lg:row-span-4${bracket.final.sourceSlotIds.length === 2 ? " bk-in" : ""}`;
   }
-  const headings = hasPlayIn ? HEADINGS : HEADINGS.slice(1).map((heading, index) => ({ ...heading, col: ["lg:col-start-1", "lg:col-start-2", "lg:col-start-3"][index] }));
+  // The Playoffs column names its series length from the stage's win target (best of 3 in E2004-E2007, best of 5 elsewhere).
+  const winTarget = bracket.playoffs[0]?.winTarget;
+  const sized = winTarget > 1 ? HEADINGS.map((heading) => (heading.id === "PO" ? { ...heading, sub: "Best of " + (2 * winTarget - 1) } : heading)) : HEADINGS;
+  const headings = hasPlayIn ? sized : sized.slice(1).map((heading, index) => ({ ...heading, col: ["lg:col-start-1", "lg:col-start-2", "lg:col-start-3"][index] }));
   const cell = (slot) => <Cell key={slot.id} slot={slot} selectedId={selectedId} focusClub={focusClub} onSelect={onSelect} onFocusClub={onFocusClub} note={NOTES[slot.id]} place={bracket.grouped ? groupedPlace : place} />;
   const [pi1, pi2, pi3] = bracket.playIn;
   const [po1, po2, po3, po4] = bracket.playoffs;

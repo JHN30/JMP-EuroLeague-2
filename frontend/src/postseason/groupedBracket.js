@@ -11,9 +11,9 @@ export function finalFourKind(game) {
   return isChampionshipLabel(label) ? "final" : null;
 }
 
-// The formats whose Top 16 is played in groups and feeds best-of-five quarterfinals: two groups of eight (E2012-E2015) and four
-// groups of four (E2008-E2011).
-export const GROUPED_POSTSEASON_FAMILIES = ["top16TwoGroups", "top16Bo5Playoffs"];
+// The formats whose Top 16 is played in groups and feeds the quarterfinals: two groups of eight (E2012-E2015, best-of-five), four
+// groups of four (E2008-E2011, best-of-five) and four groups of four with best-of-three series (E2004-E2007).
+export const GROUPED_POSTSEASON_FAMILIES = ["top16TwoGroups", "top16Bo5Playoffs", "top16Bo3Playoffs"];
 
 // How many clubs per Top 16 group reach the Playoffs (four of eight, two of four), from the stage's own qualification rule.
 function qualifiersPerGroup(stage) {

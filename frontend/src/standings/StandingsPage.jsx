@@ -10,7 +10,7 @@ import PageHeader from "../lib/PageHeader";
 import { EASE_OUT } from "../lib/motion";
 import { useDocumentTitle } from "../lib/useDocumentTitle";
 import { usePhaseParam } from "../lib/usePhaseParam";
-import { tableTiers } from "../lib/seasonFormat";
+import { crossGroupQualifier, crossGroupQualifiers, tableTiers } from "../lib/seasonFormat";
 import { useSeasonFormat } from "../lib/useSeasonFormat";
 import { TabPanel, TabStrip } from "../lib/TabStrip";
 import { resultsByClub } from "./breakdownUtils";
@@ -85,8 +85,10 @@ export default function StandingsPage() {
   const groupName = grouped ? selectedGroup(searchParams, groups) : null;
   const displayedGroups = grouped ? groups.filter((group) => groupName === null || group.name === groupName) : [{ name: null, standings }];
   const groupTiers = grouped ? tableTiers(format, phaseCode, "group") : null;
+  const crossQualifiers = grouped ? crossGroupQualifiers(format, phaseCode, standings) : new Set();
   const destination = stage?.qualification[0]?.to === "TS" ? "Top 16" : "Playoff";
-  const groupTierLabels = { postseason: `${destination} places`, out: "Outside qualification places" };
+  const crossQualifier = grouped ? crossGroupQualifier(format, phaseCode) : null;
+  const groupTierLabels = { postseason: `${destination} places`, out: crossQualifier ? "Outside the group places (one sixth-placed club also qualified)" : "Outside qualification places" };
   const roundsQuery = useQuery({
     queryKey: ["rounds", seasonCode, phaseCode],
     queryFn: () => getRounds(seasonCode, phaseCode),
@@ -309,7 +311,7 @@ export default function StandingsPage() {
                   if (grouped && group.name === null) return <section key="unavailable" aria-label="Group unavailable"><h2 className="text-lg font-semibold">Group unavailable</h2><EmptyText>Group assignments are unavailable for {group.standings.length} clubs.</EmptyText></section>;
                   const clubs = new Set(group.standings.map((row) => row.clubCode));
                   const scopedNet = grouped ? { ...netQuery, data: { ...netQuery.data, standings: (netQuery.data?.standings ?? []).filter((row) => clubs.has(row.clubCode)) } } : netQuery;
-                  const rows = grouped ? group.standings.map((row) => ({ ...row, basic: row.basic ? { ...row.basic, qualified: Boolean(finalGroupSnapshot && groupTiers?.some((tier) => row.basic.position >= tier.from && row.basic.position <= tier.to)) } : null })) : standings;
+                  const rows = grouped ? group.standings.map((row) => ({ ...row, bestSixth: Boolean(finalGroupSnapshot && crossQualifiers.has(row.clubCode)), basic: row.basic ? { ...row.basic, qualified: Boolean(finalGroupSnapshot && (crossQualifiers.has(row.clubCode) || groupTiers?.some((tier) => row.basic.position >= tier.from && row.basic.position <= tier.to))) } : null })) : standings;
                   return (
                     <section key={group.name ?? "ungrouped"} aria-label={grouped ? groupLabel(group.name) : undefined} className="flex min-w-0 flex-col gap-4">
                       {grouped ? <>

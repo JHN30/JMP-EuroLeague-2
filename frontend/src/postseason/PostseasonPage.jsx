@@ -107,6 +107,9 @@ function summaryLine({ bracket, regularSeasonDone, nextRound, totalRounds, serie
   };
 }
 
+const SERIES_WORDS = { 2: "three", 3: "five" };
+const WIN_WORDS = { 2: "Two", 3: "Three" };
+
 // "Four groups; top two per group reach the Playoffs", from the Top 16 stage's own group count and qualification rule.
 const GROUP_COUNT_WORDS = { 2: "Two", 3: "Three", 4: "Four" };
 function top16Summary(stage) {
@@ -258,7 +261,7 @@ export default function PostseasonPage() {
           <p>{stageDescription(regularSeasonStage, format)}</p>
           {grouped ? <>
             <p>{stageDescription(format.stages.find((stage) => stage.code === "TS"), format)}</p>
-            <p>Quarterfinals are best-of-five series between recorded cross-group qualifiers. Three wins are required to advance; labels such as {bracket.playoffs.find((slot) => slot.label.includes(" v "))?.label ?? "E1 v F4"} are Top 16 group places.</p>
+            <p>Quarterfinals are best-of-{SERIES_WORDS[bracket.playoffs[0]?.winTarget] ?? "five"} series between recorded cross-group qualifiers. {WIN_WORDS[bracket.playoffs[0]?.winTarget] ?? "Three"} wins are required to advance; labels such as {bracket.playoffs.find((slot) => slot.label.includes(" v "))?.label ?? "E1 v F4"} are Top 16 group places.</p>
             <p>The Final Four follows the recorded semifinal matchups, championship game and any verified third-place game. Unverified draws and results remain unknown.</p>
           </> : <>
           {bracket.playIn.length ? <p>

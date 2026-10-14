@@ -160,8 +160,27 @@ export function tableTiers(format, stageCode, within = "table") {
   if (format?.status === "cancelled") return null;
   const stage = format?.stages.find((entry) => entry.code === stageCode);
   if (!stage || stage.type !== "table" || stage.qualification.length === 0) return null;
-  if (!stage.qualification.every((rule) => "positions" in rule && rule.within === within)) return null;
-  return stage.qualification.map((rule) => ({ tier: rule.kind === "playIn" ? "playin" : "postseason", from: rule.positions[0], to: rule.positions[1] }));
+  // A cross-group place (the best sixth-placed club) is not a position line; the group lines are still drawn and the club is
+  // marked separately (see crossGroupQualifier).
+  const rules = within === "group" ? stage.qualification.filter((rule) => !("bestOfPosition" in rule)) : stage.qualification;
+  if (rules.length === 0 || !rules.every((rule) => "positions" in rule && rule.within === within)) return null;
+  return rules.map((rule) => ({ tier: rule.kind === "playIn" ? "playin" : "postseason", from: rule.positions[0], to: rule.positions[1] }));
+}
+
+// The place that qualifies across groups ({ position: 6, to: "TS" } for the best sixth-placed club of E2002-E2007), or null. The
+// registry records no criterion, so a page names the qualifier from the next stage's recorded clubs and never ranks the candidates.
+export function crossGroupQualifier(format, stageCode) {
+  const rule = format?.stages.find((entry) => entry.code === stageCode)?.qualification.find((entry) => "bestOfPosition" in entry);
+  return rule ? { position: rule.bestOfPosition, count: rule.count, to: rule.to } : null;
+}
+
+// The clubs of a stage's table that took the cross-group place: those at that position who appear among the destination stage's
+// recorded clubs. Empty until that stage has recorded clubs, so a missing stage marks nobody.
+export function crossGroupQualifiers(format, stageCode, standings) {
+  const rule = crossGroupQualifier(format, stageCode);
+  const reached = format?.stages.find((entry) => entry.code === rule?.to)?.observed.clubs ?? [];
+  if (!rule || reached.length === 0) return new Set();
+  return new Set(standings.filter((row) => row.basic?.position === rule.position && reached.includes(row.clubCode)).map((row) => row.clubCode));
 }
 
 // A position's tier, "out" below every line, null when there are no lines.

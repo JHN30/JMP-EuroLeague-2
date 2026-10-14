@@ -5,6 +5,7 @@ import { Link, useParams, useSearchParams } from "react-router";
 import { shortTeamName, teamCode } from "../games/gameUtils";
 import { getSeasonTeams, getSeasons, getTeamGames } from "../lib/api";
 import AsyncState from "../lib/AsyncState";
+import { isForfeit } from "../lib/forfeit";
 import BackLink from "../lib/BackLink";
 import CompactFilterSelect from "../lib/CompactFilterSelect";
 import CompactMetric from "../lib/CompactMetric";
@@ -61,7 +62,8 @@ function MarginTimeline({ matchups, teamA, teamB, teamAId }) {
   const maxLabels = Math.max(2, Math.floor(wellWidth / 80));
   const nameA = shortTeamName(teamA);
   const nameB = shortTeamName(teamB);
-  const played = useMemo(() => matchups.filter((game) => game.played && game.localScore != null && game.roadScore != null), [matchups]);
+  // The margin chart leaves out a recorded forfeit: its awarded score is not a margin played on court.
+  const played = useMemo(() => matchups.filter((game) => game.played && game.localScore != null && game.roadScore != null && !isForfeit(game)), [matchups]);
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return undefined;
@@ -272,12 +274,14 @@ function SummaryGridStrip({ matchups, teamA, teamB, teamAId }) {
   const played = matchups.filter((game) => game.played && game.localScore != null && game.roadScore != null);
   const { winsA, winsB } = seriesRecord(played, teamAId);
   const streak = currentStreak(played, teamAId);
-  const totalPoints = played.reduce((sum, game) => sum + (game.localScore ?? 0) + (game.roadScore ?? 0), 0);
-  const avgMargin = played.length
-    ? played.reduce((sum, game) => {
+  // The series record counts a recorded forfeit; points and margins do not, since its awarded score was not played.
+  const real = played.filter((game) => !isForfeit(game));
+  const totalPoints = real.reduce((sum, game) => sum + (game.localScore ?? 0) + (game.roadScore ?? 0), 0);
+  const avgMargin = real.length
+    ? real.reduce((sum, game) => {
         const { scoreA, scoreB } = sideForA(game, teamAId);
         return sum + Math.abs(scoreA - scoreB);
-      }, 0) / played.length
+      }, 0) / real.length
     : 0;
 
   return (
@@ -370,8 +374,8 @@ function HeadToHeadBody({ seasonCode, seasons, allTeams }) {
             <Panel as="section" className="p-4">
               <PanelHeader kicker="NOTABLE" title="Notable meetings" />
               <ul className="text-sm max-sm:divide-y max-sm:divide-base-300 sm:space-y-2">
-                {[...matchupsQuery.data].filter((game) => game.played).sort((a, b) => Math.abs((b.localScore ?? 0) - (b.roadScore ?? 0)) - Math.abs((a.localScore ?? 0) - (a.roadScore ?? 0))).slice(0, 3).map((game) => <li key={`margin-${game.seasonCode}-${game.gameCode}`}><Link className="link link-hover flex items-center max-sm:min-h-11" to={`/${game.seasonCode}/games/${game.gameCode}`}>Biggest margin: {game.localScore}-{game.roadScore} ({game.seasonCode})</Link></li>)}
-                {[...matchupsQuery.data].filter((game) => game.played).sort((a, b) => ((b.localScore ?? 0) + (b.roadScore ?? 0)) - ((a.localScore ?? 0) + (a.roadScore ?? 0))).slice(0, 3).map((game) => <li key={`points-${game.seasonCode}-${game.gameCode}`}><Link className="link link-hover flex items-center max-sm:min-h-11" to={`/${game.seasonCode}/games/${game.gameCode}`}>Highest scoring: {game.localScore}-{game.roadScore} ({game.seasonCode})</Link></li>)}
+                {[...matchupsQuery.data].filter((game) => game.played && !isForfeit(game)).sort((a, b) => Math.abs((b.localScore ?? 0) - (b.roadScore ?? 0)) - Math.abs((a.localScore ?? 0) - (a.roadScore ?? 0))).slice(0, 3).map((game) => <li key={`margin-${game.seasonCode}-${game.gameCode}`}><Link className="link link-hover flex items-center max-sm:min-h-11" to={`/${game.seasonCode}/games/${game.gameCode}`}>Biggest margin: {game.localScore}-{game.roadScore} ({game.seasonCode})</Link></li>)}
+                {[...matchupsQuery.data].filter((game) => game.played && !isForfeit(game)).sort((a, b) => ((b.localScore ?? 0) + (b.roadScore ?? 0)) - ((a.localScore ?? 0) + (a.roadScore ?? 0))).slice(0, 3).map((game) => <li key={`points-${game.seasonCode}-${game.gameCode}`}><Link className="link link-hover flex items-center max-sm:min-h-11" to={`/${game.seasonCode}/games/${game.gameCode}`}>Highest scoring: {game.localScore}-{game.roadScore} ({game.seasonCode})</Link></li>)}
               </ul>
             </Panel>
             <Panel as="section" className="p-4">
@@ -400,6 +404,7 @@ function HeadToHeadBody({ seasonCode, seasons, allTeams }) {
                             <ShortLabel short={teamCode(teamA)} full={teamLabel(teamA)} />
                           </span>
                           <span className="tabular-nums">
+                            {isForfeit(game) ? <span className="muted me-1 text-xs font-normal">Forfeit</span> : null}
                             {scoreA ?? "-"}-{scoreB ?? "-"}
                           </span>
                           <span className={bWon ? "text-primary font-bold" : ""}>

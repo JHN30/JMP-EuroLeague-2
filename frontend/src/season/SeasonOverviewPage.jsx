@@ -20,6 +20,7 @@ import { useSeasonFormat } from "../lib/useSeasonFormat";
 import { useSummaryTableStage } from "../lib/useSummaryTableStage";
 import { isGroupedTable, mostWinsEntry } from "../standings/standingsGroups";
 import { useActiveTheme, themeColor } from "../lib/useActiveTheme";
+import { isForfeit } from "../lib/forfeit";
 import { formatDateTime, formatPerGame, formatSeasonLabel } from "../lib/format";
 import { teamCode } from "../games/gameUtils";
 
@@ -202,7 +203,7 @@ function teamName(team) {
 // nail-biters. Each pick avoids games already chosen by an earlier category.
 function pickDefiningGames(playedGames) {
   const withScores = playedGames
-    .filter((game) => game.localScore != null && game.roadScore != null)
+    .filter((game) => game.localScore != null && game.roadScore != null && !isForfeit(game))
     .map((game) => ({
       game,
       margin: Math.abs(game.localScore - game.roadScore),
@@ -323,7 +324,7 @@ function DefiningGames({ seasonCode, playedGames }) {
 function roundScoringSeries(playedGames) {
   const byRound = new Map();
   for (const game of playedGames) {
-    if (game.localScore == null || game.roadScore == null || game.roundNumber == null) continue;
+    if (game.localScore == null || game.roadScore == null || game.roundNumber == null || isForfeit(game)) continue;
     if (!byRound.has(game.roundNumber)) byRound.set(game.roundNumber, { total: 0, count: 0, phaseCode: game.phaseCode ?? "RS" });
     const entry = byRound.get(game.roundNumber);
     entry.total += game.localScore + game.roadScore;

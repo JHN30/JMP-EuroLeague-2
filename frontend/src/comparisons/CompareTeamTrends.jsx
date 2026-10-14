@@ -5,6 +5,7 @@ import { getSeasonTeams, getTeamGames } from "../lib/api";
 import AsyncState from "../lib/AsyncState";
 import EmptyText from "../lib/EmptyText";
 import { formatPerGame } from "../lib/format";
+import { isForfeit } from "../lib/forfeit";
 import { sectionContainer, sectionItem } from "../lib/motion";
 import Panel from "../lib/Panel";
 import RevealImage from "../lib/RevealImage";
@@ -27,7 +28,7 @@ function gamesOf(data, phaseCode, clubCode) {
       const own = home ? game.localScore : game.roadScore;
       const other = home ? game.roadScore : game.localScore;
       const opponent = home ? game.roadTeam : game.localTeam;
-      return { code: game.gameCode, own, other, margin: own - other, note: (home ? "vs " : "at ") + (opponent?.abbreviatedName ?? opponent?.name ?? "TBD") + " " + own + "-" + other };
+      return { code: game.gameCode, forfeit: isForfeit(game), own, other, margin: own - other, note: (home ? "vs " : "at ") + (opponent?.abbreviatedName ?? opponent?.name ?? "TBD") + " " + own + "-" + other };
     });
 }
 
@@ -48,11 +49,14 @@ function Delta({ value, lowerIsBetter = false }) {
 function FormColumn({ label, crestUrl, games }) {
   const recent = games.slice(-WINDOW);
   const wins = recent.filter((game) => game.margin > 0).length;
-  const scored = average(games.map((game) => game.own));
-  const allowed = average(games.map((game) => game.other));
-  const recentScored = average(recent.map((game) => game.own));
-  const recentAllowed = average(recent.map((game) => game.other));
-  const compare = games.length > recent.length;
+  // A forfeit counts in the record and the streak, but its awarded score is no points scored: the averages use real games only.
+  const real = games.filter((game) => !game.forfeit);
+  const recentReal = recent.filter((game) => !game.forfeit);
+  const scored = average(real.map((game) => game.own));
+  const allowed = average(real.map((game) => game.other));
+  const recentScored = average(recentReal.map((game) => game.own));
+  const recentAllowed = average(recentReal.map((game) => game.other));
+  const compare = real.length > recentReal.length;
   return (
     <div className="rounded-field bg-base-200/60 p-4">
       <div className="mb-3 flex items-center gap-3">
@@ -96,25 +100,28 @@ export default function CompareTeamTrends({ seasonCode, phaseCode, entityA: pick
 
   const gamesA = useMemo(() => gamesOf(queryA.data, phaseCode, entityA.id), [queryA.data, phaseCode, entityA.id]);
   const gamesB = useMemo(() => gamesOf(queryB.data, phaseCode, entityB.id), [queryB.data, phaseCode, entityB.id]);
-  const length = Math.max(gamesA.length, gamesB.length);
+  // The charts show scoring, so they leave out a recorded forfeit (its game number is the played games' position).
+  const realA = useMemo(() => gamesA.filter((game) => !game.forfeit), [gamesA]);
+  const realB = useMemo(() => gamesB.filter((game) => !game.forfeit), [gamesB]);
+  const length = Math.max(realA.length, realB.length);
   const labels = useMemo(() => Array.from({ length }, (_, index) => "Game " + (index + 1)), [length]);
   const charts = useMemo(() => {
     const line = (games, pick) => padTo(games.map(pick), length);
     return {
       scored: [
-        { label: entityA.label, points: line(gamesA, (game) => game.own), notes: gamesA.map((game) => game.note) },
-        { label: entityB.label, points: line(gamesB, (game) => game.own), notes: gamesB.map((game) => game.note) },
+        { label: entityA.label, points: line(realA, (game) => game.own), notes: realA.map((game) => game.note) },
+        { label: entityB.label, points: line(realB, (game) => game.own), notes: realB.map((game) => game.note) },
       ],
       allowed: [
-        { label: entityA.label, points: line(gamesA, (game) => game.other), notes: gamesA.map((game) => game.note) },
-        { label: entityB.label, points: line(gamesB, (game) => game.other), notes: gamesB.map((game) => game.note) },
+        { label: entityA.label, points: line(realA, (game) => game.other), notes: realA.map((game) => game.note) },
+        { label: entityB.label, points: line(realB, (game) => game.other), notes: realB.map((game) => game.note) },
       ],
       margin: [
-        { label: entityA.label, points: line(gamesA, (game) => game.margin), notes: gamesA.map((game) => game.note) },
-        { label: entityB.label, points: line(gamesB, (game) => game.margin), notes: gamesB.map((game) => game.note) },
+        { label: entityA.label, points: line(realA, (game) => game.margin), notes: realA.map((game) => game.note) },
+        { label: entityB.label, points: line(realB, (game) => game.margin), notes: realB.map((game) => game.note) },
       ],
     };
-  }, [gamesA, gamesB, length, entityA.label, entityB.label]);
+  }, [realA, realB, length, entityA.label, entityB.label]);
 
   if (queryA.isPending || queryB.isPending) return <AsyncState status="loading" label="Loading the trends" />;
   if (queryA.isError || queryB.isError) {

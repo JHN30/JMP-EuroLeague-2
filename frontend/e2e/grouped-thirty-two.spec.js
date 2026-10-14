@@ -132,3 +132,68 @@ test.describe("layouts", () => {
     });
   }
 });
+
+// A recorded forfeit counts as a win or loss, but its awarded score is not points played: scoring averages, margins and highlights
+// leave it out, and result lists label it.
+const signed = (value) => `${value > 0 ? "+" : ""}${value.toFixed(1)}`;
+const mean = (values) => values.reduce((sum, value) => sum + value, 0) / values.length;
+async function clubGames(request, season, clubCode, phase) {
+  const { games } = await (await request.get(`${API}/seasons/${season}/teams/${clubCode}/games?limit=100&order=asc`)).json();
+  return games.filter((game) => game.played && (!phase || game.phaseCode === phase)).map((game) => {
+    const home = game.localTeam.clubCode === clubCode;
+    return { forfeit: game.gameStatus === "Walkover", own: home ? game.localScore : game.roadScore, other: home ? game.roadScore : game.localScore, at: game.scheduledAt };
+  });
+}
+
+for (const season of [2001, 2003]) {
+  test.describe(`${season} forfeit and score statistics`, () => {
+    test.beforeEach(async ({ page }) => {
+      await mockLayoutImages(page);
+    });
+
+    test("Overview highlights and chart use real games only", async ({ page }) => {
+      await page.goto(`/${season}/overview`);
+      await expect(page.getByRole("heading", { name: "Defining games" })).toBeVisible({ timeout: 30_000 });
+      const text = await page.locator("main").innerText();
+      const combined = [...text.matchAll(/(\d+) combined points/g)].map((match) => Number(match[1]));
+      expect(combined.length).toBeGreaterThan(0);
+      expect(Math.min(...combined)).toBeGreaterThanOrEqual(100);
+    });
+
+    test("Team Games margin strip excludes the forfeit and results label it", async ({ page, request }) => {
+      // The strip covers the whole season, every phase.
+      const games = await clubGames(request, season, "TEL", null);
+      const real = games.filter((game) => !game.forfeit);
+      expect(real.length).toBe(games.length - 1);
+      await page.goto(`/${season}/teams/TEL?phase=TS`);
+      await page.getByRole("tab", { name: "Games" }).click();
+      await expect(page.getByText(`${signed(mean(real.map((game) => game.own - game.other)))} average margin`).first()).toBeVisible({ timeout: 30_000 });
+      await expect(page.getByText("The recorded forfeit is counted in the record but has no margin bar.")).toBeVisible();
+      await expect(page.getByText("Forfeit", { exact: true }).first()).toBeVisible();
+      const wins = games.filter((game) => game.own > game.other).length;
+      await expect(page.getByText(`${wins}-${games.length - wins}`, { exact: true }).first()).toBeVisible();
+    });
+
+    test("Compare trends average only real games and keep the forfeit in the record", async ({ page, request }) => {
+      const games = (await clubGames(request, season, "TEL", "TS")).sort((a, b) => new Date(a.at) - new Date(b.at));
+      const recent = games.slice(-5);
+      const scored = mean(recent.filter((game) => !game.forfeit).map((game) => game.own));
+      await page.goto(`/${season}/compare?teamA=TEL&teamB=CSK&phase=TS`);
+      await page.getByRole("tab", { name: "Trends" }).click();
+      await expect(page.getByText("FORM")).toBeVisible({ timeout: 30_000 });
+      await expect(page.locator("main")).toContainText(scored.toFixed(1));
+      const wins = recent.filter((game) => game.own > game.other).length;
+      await expect(page.locator("main")).toContainText(`Last 5: ${wins}-${5 - wins}`);
+    });
+  });
+}
+
+test("E2003 Head to head leaves the forfeit out of notable meetings and labels it", async ({ page }) => {
+  await mockLayoutImages(page);
+  await page.goto("/2003/compare/head-to-head?teamA=TEL&teamB=PAM");
+  const notable = page.locator("section", { has: page.getByRole("heading", { name: "Notable meetings" }) });
+  await expect(notable).toBeVisible({ timeout: 30_000 });
+  await expect(notable).not.toContainText("20-0");
+  await expect(notable).not.toContainText("0-20");
+  await expect(page.getByText("Forfeit", { exact: true }).first()).toBeVisible();
+});

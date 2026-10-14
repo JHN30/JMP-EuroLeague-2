@@ -9,6 +9,7 @@ import { formatShortDate, formatSignedDecimal, formatTimeOfDay } from "../lib/fo
 import { EASE_OUT, listContainer, listItem, wideCardHover } from "../lib/motion";
 import Panel from "../lib/Panel";
 import PanelHeader from "../lib/PanelHeader";
+import { isForfeit } from "../lib/forfeit";
 import ShortLabel from "../lib/ShortLabel";
 import { TabPanel, TabStrip } from "../lib/TabStrip";
 
@@ -97,18 +98,23 @@ function MarginStrip({ played, seasonCode, clubCode }) {
   if (sides.length === 0) return null;
 
   const wins = sides.filter(({ side }) => side.won).length;
-  const average = sides.reduce((sum, { side }) => sum + side.margin, 0) / sides.length;
+  // A forfeit counts as a win or loss in the record, but its awarded score is no margin: it draws no bar and is left out of the average.
+  const real = sides.filter(({ game }) => !isForfeit(game));
+  const forfeits = sides.length - real.length;
+  const average = real.length > 0 ? real.reduce((sum, { side }) => sum + side.margin, 0) / real.length : null;
   const badges = (
     <>
       <span className="stat-badge stat-badge-neutral">
         {wins}-{sides.length - wins}
       </span>
-      <span className={`stat-badge ${average >= 0 ? "stat-badge-positive" : "stat-badge-negative"}`}>
-        {formatSignedDecimal(average)} average margin
-      </span>
+      {average !== null ? (
+        <span className={`stat-badge ${average >= 0 ? "stat-badge-positive" : "stat-badge-negative"}`}>
+          {formatSignedDecimal(average)} average margin
+        </span>
+      ) : null}
     </>
   );
-  const scale = Math.max(MIN_STRIP_SCALE, ...sides.map(({ side }) => Math.abs(side.margin)));
+  const scale = Math.max(MIN_STRIP_SCALE, ...real.map(({ side }) => Math.abs(side.margin)));
 
   return (
     <Panel as="section" className="p-4">
@@ -119,16 +125,17 @@ function MarginStrip({ played, seasonCode, clubCode }) {
       />
       {/* Below sm the badges sit under the title, where they have the panel's whole width; the other copy is hidden then. */}
       <div className="-mt-2 mb-3 flex flex-wrap gap-2 sm:hidden">{badges}</div>
+      {forfeits > 0 ? <p className="muted -mt-1 mb-2 text-xs">The recorded forfeit is counted in the record but has no margin bar.</p> : null}
       <div ref={scrollRef} className="overflow-x-auto overscroll-x-contain pb-1">
-        <ul className="flex" style={{ minWidth: `${sides.length * STRIP_COLUMN_REM}rem` }}>
-          {sides.map(({ game, side }, index) => {
+        <ul className="flex" style={{ minWidth: `${real.length * STRIP_COLUMN_REM}rem` }}>
+          {real.map(({ game, side }, index) => {
             const half = (Math.abs(side.margin) / scale) * STRIP_HALF_FILL;
             const signed = `${side.margin > 0 ? "+" : ""}${side.margin}`;
             const description = `${roundLabel(game)}: ${side.home ? "vs" : "@"} ${opponentName(side.opponent)}, ${
               side.won ? "won" : "lost"
             } ${side.clubScore}-${side.opponentScore}`;
             return (
-              <li key={game.gameCode} className="flex min-w-0 flex-1 basis-0" style={{ maxWidth: sides.length <= 12 ? "8rem" : "6rem" }}>
+              <li key={game.gameCode} className="flex min-w-0 flex-1 basis-0" style={{ maxWidth: real.length <= 12 ? "8rem" : "6rem" }}>
                 <Link
                   to={`/${seasonCode}/games/${game.gameCode}`}
                   title={description}
@@ -210,6 +217,7 @@ function GameRow({ seasonCode, game, clubCode, isNext }) {
         side.hasScore ? (
           <div className="flex flex-none items-center gap-2">
             <span className={`stat-badge ${side.won ? "stat-badge-positive" : "stat-badge-negative"}`}>{side.won ? "W" : "L"}</span>
+            {isForfeit(game) ? <span className="stat-badge stat-badge-neutral">Forfeit</span> : null}
             <span className="text-right text-lg font-bold tabular-nums sm:w-16">
               {side.clubScore}-{side.opponentScore}
             </span>

@@ -10,6 +10,7 @@ import { sectionContainer, sectionItem } from "../lib/motion";
 import Panel from "../lib/Panel";
 import { nameParts, titleCase } from "../lib/playerName";
 import RevealImage from "../lib/RevealImage";
+import { isForfeit } from "../lib/forfeit";
 import ShortLabel from "../lib/ShortLabel";
 import { Avatar } from "../leaders/LeaderParts";
 import { statNumber } from "../leaders/leaderData";
@@ -159,6 +160,7 @@ function FormList({ games, club, seasonCode }) {
                     <ShortLabel short={teamCode(result.opponent)} full={shortTeamName(result.opponent)} />
                   </span>
                   <span className="flex-none tabular-nums">
+                    {isForfeit(game) ? <span className="muted me-1 text-xs">Forfeit</span> : null}
                     {result.own}-{result.other}
                   </span>
                 </Link>
@@ -319,6 +321,7 @@ function MeetingsPanel({ seasonCode, entityA, entityB }) {
               </span>
               <span className="text-sm">
                 <ShortLabel short={teamCode(game.localTeam)} full={shortTeamName(game.localTeam)} />{" "}
+                {isForfeit(game) ? <span className="muted me-1 text-xs">Forfeit</span> : null}
                 <b className="tabular-nums">{game.played ? `${game.localScore}-${game.roadScore}` : "vs"}</b>{" "}
                 <ShortLabel short={teamCode(game.roadTeam)} full={shortTeamName(game.roadTeam)} />
               </span>

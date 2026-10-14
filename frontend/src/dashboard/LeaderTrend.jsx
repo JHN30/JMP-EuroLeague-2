@@ -4,6 +4,7 @@ import { useParams } from "react-router";
 import { getSeasonStandings, getTeamGames } from "../lib/api";
 import { teamCode } from "../games/gameUtils";
 import { formatPerGame } from "../lib/format";
+import { isForfeit } from "../lib/forfeit";
 import { useSummaryTableStage } from "../lib/useSummaryTableStage";
 import { isGroupedTable, mostWinsEntry } from "../standings/standingsGroups";
 import { WidgetPanel } from "./Dashboard";
@@ -80,7 +81,7 @@ export default function LeaderTrend() {
 
   const games = (gamesQuery.data?.games ?? []).slice().reverse();
   const rows = games
-    .filter((game) => game.localScore != null && game.roadScore != null)
+    .filter((game) => game.localScore != null && game.roadScore != null && !isForfeit(game))
     .map((game) => {
       const isHome = game.localTeam?.clubCode === leaderClubCode;
       const own = isHome ? game.localScore : game.roadScore;

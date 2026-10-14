@@ -5,6 +5,7 @@ import { Link, useParams } from "react-router";
 import { getSeasonGames, getSeasonStandings } from "../lib/api";
 import { formatDateTime as formatTime } from "../lib/format";
 import { cardHover, listContainer, listItem } from "../lib/motion";
+import { isForfeit } from "../lib/forfeit";
 import ShortLabel from "../lib/ShortLabel";
 import { shortTeamName, teamCode } from "../games/gameUtils";
 import { WidgetPanel } from "./Dashboard";
@@ -32,7 +33,7 @@ export function MatchCard({ game, standingByClubCode, seasonCode, showScore, cla
       <div className="match-card-head">
         <span>{roundLabel(game)}</span>
         <span className={`status-chip ${showScore ? "final" : "upcoming"}`}>
-          {showScore ? "Final" : formatTime(game.scheduledAt)}
+          {showScore ? (isForfeit(game) ? "Forfeit" : "Final") : formatTime(game.scheduledAt)}
         </span>
       </div>
       <div className="game-teams">

@@ -134,44 +134,10 @@ button {
                    / gap-6 (between page sections)
 */
 
-.app-panel {
-  border-radius: var(--radius-box);
-  border: 1px solid var(--color-base-300);
-  background-color: var(--color-base-200);
-  box-shadow:
-    0 10px 15px -3px rgb(0 0 0 / 0.1),
-    0 4px 6px -4px rgb(0 0 0 / 0.1);
-}
-
-.app-card {
-  border-radius: var(--radius-box);
-  border: 1px solid var(--color-base-300);
-  background-color: var(--color-base-100);
-  box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
-}
-
 /* Inset well: a Tailwind utility pattern, not a class, used inline wherever
    a chart or stat block needs to sit inside a recessed frame:
      rounded-field border border-base-300 bg-base-100/60 p-2 sm:p-3
 */
-
-.app-card-interactive {
-  transition:
-    transform 200ms ease,
-    border-color 200ms ease,
-    box-shadow 200ms ease;
-}
-.app-card-interactive:hover {
-  transform: translateY(-2px);
-  border-color: color-mix(in srgb, var(--color-primary) 50%, var(--color-base-300));
-  box-shadow:
-    0 10px 15px -3px rgb(0 0 0 / 0.1),
-    0 4px 6px -4px rgb(0 0 0 / 0.1);
-}
-.app-card-interactive:focus-visible {
-  outline: 2px solid var(--color-primary);
-  outline-offset: 2px;
-}
 
 /* Freezes a table's first column during horizontal scroll. Only for tables
    where the identity column (team/opponent name) is already the literal
@@ -335,38 +301,6 @@ button {
   border-radius: var(--radius-box);
 }
 
-.court-lines {
-  background-image:
-    radial-gradient(
-      circle at 50% 115%,
-      transparent 0 6.5rem,
-      color-mix(in srgb, var(--color-base-content) 11%, transparent) 6.55rem 6.62rem,
-      transparent 6.67rem
-    ),
-    linear-gradient(
-      90deg,
-      transparent 49.9%,
-      color-mix(in srgb, var(--color-base-content) 9%, transparent) 50%,
-      transparent 50.1%
-    );
-}
-
-.swatch-orange {
-  background: var(--color-primary);
-}
-.swatch-paper {
-  background: var(--color-base-100);
-}
-.swatch-surface {
-  background: var(--color-base-300);
-}
-.swatch-ink {
-  background: var(--color-base-content);
-}
-.swatch-accent {
-  background: var(--color-accent);
-}
-
 /* theme-aware scrollbars */
 * {
   scrollbar-color: var(--color-base-300) transparent;
@@ -439,35 +373,8 @@ button {
   background: color-mix(in srgb, var(--color-warning) 18%, transparent);
   color: var(--color-warning);
 }
-.stat-badge-leader {
-  background: color-mix(in srgb, var(--color-rank-leader) 20%, transparent);
-  color: var(--color-rank-leader);
-}
 .highlight-leader {
   color: var(--color-rank-leader);
-}
-
-/* big stat callouts */
-.stat-callout {
-  display: flex;
-  flex-direction: column;
-  gap: 0.15rem;
-}
-.stat-callout .value {
-  font-size: 2rem;
-  font-weight: 800;
-  letter-spacing: -0.02em;
-  line-height: 1;
-  font-variant-numeric: tabular-nums;
-  color: var(--color-primary);
-}
-.stat-callout .label {
-  font-size: 0.7rem;
-  color: var(--color-base-content);
-  opacity: 0.7;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
 }
 
 /* rank marker (standings, leaderboards) */
@@ -1177,49 +1084,6 @@ button {
   }
 }
 
-/* Form watch - hottest/coldest team by last-10 record (dashboard) */
-.form-watch-row {
-  display: flex;
-  align-items: center;
-  gap: 0.65rem;
-  padding: 0.55rem 0;
-  border-bottom: 1px solid var(--color-base-300);
-}
-.form-watch-row:last-child {
-  border-bottom: none;
-}
-.fw-icon {
-  width: 1.9rem;
-  height: 1.9rem;
-  border-radius: 999px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 0.9rem;
-  flex: none;
-}
-.fw-icon.hot {
-  background: color-mix(in srgb, var(--color-success) 18%, transparent);
-  color: var(--color-success);
-}
-.fw-icon.cold {
-  background: color-mix(in srgb, var(--color-error) 18%, transparent);
-  color: var(--color-error);
-}
-.fw-body {
-  flex: 1;
-  min-width: 0;
-}
-.fw-team {
-  font-weight: 700;
-  font-size: 0.82rem;
-}
-.fw-streak {
-  font-size: 0.7rem;
-  opacity: 0.7;
-  margin-top: 0.1rem;
-}
-
 /* League leader recent-form trend (dashboard) */
 .leader-trend {
   display: flex;
@@ -1670,15 +1534,6 @@ button {
   .season-leaders-grid .kpi-chip .value {
     font-size: 1.7rem;
   }
-}
-
-/* winner marker - non-color-only leader indicator (comparisons stat rows) */
-.winner-mark {
-  display: inline-block;
-  margin-left: 0.3rem;
-  font-size: 0.6rem;
-  color: var(--color-primary);
-  vertical-align: middle;
 }
 
 /* Tab strips come in three weights: the page's main navigation (1), the filter under it (2), the detail strips inside a

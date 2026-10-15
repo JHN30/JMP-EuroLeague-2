@@ -73,10 +73,6 @@ export const DEFAULT_METRIC: Record<RecordKind, string> = {
   "team-games": "pointsScored",
 };
 
-export function isRecordKind(value: string): value is RecordKind {
-  return (RECORD_KINDS as readonly string[]).includes(value);
-}
-
 // The catalogue entry a request asks for (by its own key or one of the old names), or null when the kind has no such metric.
 export function findRecordMetric(kind: RecordKind, requested: string): RecordMetricDef | null {
   const key = ALIASES[kind]?.[requested] ?? requested;

@@ -50,18 +50,6 @@ export const PLAYER_METRIC_GROUPS = [
   },
 ];
 
-export function metricGroupFor(metricKey) {
-  return PLAYER_METRIC_GROUPS.find((group) => group.options.some(([key]) => key === metricKey))?.group;
-}
-
-export function metricLabelFor(metricKey) {
-  for (const group of PLAYER_METRIC_GROUPS) {
-    const match = group.options.find(([key]) => key === metricKey);
-    if (match) return match[1];
-  }
-  return metricKey;
-}
-
 const PERCENTAGE_KEYS = new Set(
   PLAYER_METRIC_GROUPS.flatMap((group) => group.options)
     .filter(([, label]) => label.endsWith("%"))

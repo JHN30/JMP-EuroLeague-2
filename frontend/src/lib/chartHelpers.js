@@ -31,14 +31,3 @@ export function efficiencyRamp(percentage) {
   const stop = EFFICIENCY_RAMP_STOPS.find((candidate) => value < candidate.max) ?? EFFICIENCY_RAMP_STOPS.at(-1);
   return `color-mix(in srgb, var(--color-primary) ${stop.mixPercent}%, var(--color-base-300))`;
 }
-
-export function computeDomain(values, { paddingRatio = 0.1 } = {}) {
-  const numeric = (values ?? []).filter((value) => typeof value === "number" && Number.isFinite(value));
-  if (numeric.length === 0) return { min: undefined, max: undefined };
-
-  const min = Math.min(...numeric);
-  const max = Math.max(...numeric);
-  const range = max - min || Math.abs(max) || 1;
-  const padding = range * paddingRatio;
-  return { min: min - padding, max: max + padding };
-}

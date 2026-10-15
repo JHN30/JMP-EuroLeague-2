@@ -62,10 +62,13 @@ function InsightCard({ label, team, detail, seasonCode }) {
               event.currentTarget.style.display = "none";
             }}
           />
-        ) : null}
+        ) : (
+          // Keeps the card's height at the season start, so replaying the race doesn't shift the chart below.
+          <span aria-hidden="true" className="h-9 w-9 flex-none sm:h-10 sm:w-10" />
+        )}
       </div>
       <span className="font-semibold">{team ? (team.clubName ?? team.clubCode) : "-"}</span>
-      {detail ? <span className="text-xs text-base-content/70">{detail}</span> : null}
+      <span className="min-h-4 text-xs text-base-content/70">{detail}</span>
     </Link>
   );
 }

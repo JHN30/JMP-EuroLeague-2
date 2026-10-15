@@ -4,7 +4,8 @@ import { usePrefersReducedMotion } from "../lib/usePrefersReducedMotion";
 const STEP_MS = 650;
 
 // A controlled scrubber over steps 0..total, where 0 is the stage or season start. Playing steps forward one round at a time.
-export default function RacePlayback({ total, value, label, endLabel, onChange, startLabel = "Start", stageName }) {
+// `onPlay` runs when Play or Replay starts a run.
+export default function RacePlayback({ total, value, label, endLabel, onChange, onPlay, startLabel = "Start", stageName }) {
   const reducedMotion = usePrefersReducedMotion();
   const [playing, setPlaying] = useState(false);
   const isPlaying = playing && !reducedMotion && value < total;
@@ -28,6 +29,7 @@ export default function RacePlayback({ total, value, label, endLabel, onChange, 
             }
             if (value >= total) onChange(0);
             setPlaying(true);
+            onPlay?.();
           }}
         >
           {isPlaying ? "Pause" : value >= total ? stageName ? `Replay ${stageName}` : "Replay season" : stageName ? `Play ${stageName}` : "Play season"}

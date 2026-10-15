@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { useQueries, useQuery } from "@tanstack/react-query";
 import { motion } from "motion/react";
 import { getRounds, getSeasonStandings } from "../lib/api";
@@ -6,10 +6,12 @@ import AsyncState from "../lib/AsyncState";
 import EmptyText from "../lib/EmptyText";
 import CompetitionContext from "../lib/CompetitionContext";
 import { sectionContainer, sectionItem } from "../lib/motion";
+import { useMediaQuery } from "../lib/useMediaQuery";
 import RaceChart from "./RaceChart";
 import RacePlayback from "./RacePlayback";
 import RaceInsightCards from "./RaceInsightCards";
 import RaceSnapshotTable from "./RaceSnapshotTable";
+import { NARROW_QUERY, SIDE_BY_SIDE_QUERY, raceLayout, stickyBottomOf, useRoomBelowBar } from "./raceSizing";
 
 function combineSnapshots(results) {
   return {
@@ -21,7 +23,7 @@ function combineSnapshots(results) {
 
 // `latestRound` is the last round with standings. The phase lists every scheduled round, but only the played ones
 // have a snapshot, so the race stops there instead of running to the end of the schedule.
-export default function RaceView({ seasonCode, phaseCode, latestRound, latestStandings, shortNames, tiers = null, groupName, tierLabels, stageName, showContext = true }) {
+export default function RaceView({ seasonCode, phaseCode, latestRound, latestStandings, shortNames, abbreviatedNames, tiers = null, groupName, tierLabels, stageName, showContext = true }) {
   const roundsQuery = useQuery({
     queryKey: ["rounds", seasonCode, phaseCode],
     queryFn: () => getRounds(seasonCode, phaseCode),
@@ -90,6 +92,11 @@ export default function RaceView({ seasonCode, phaseCode, latestRound, latestSta
   // Until somebody touches the slider or plays it, the race shows the latest standings.
   const [step, setStep] = useState(null);
   const [focusedClub, setFocusedClub] = useState(null);
+  const [bar, setBar] = useState(null);
+  const room = useRoomBelowBar(bar);
+  const narrow = useMediaQuery(NARROW_QUERY);
+  const sideBySide = useMediaQuery(SIDE_BY_SIDE_QUERY);
+  const raceRef = useRef(null);
 
   if (isLoading) return <AsyncState status="loading" label="Loading standings race" />;
   if (isError) {
@@ -111,6 +118,18 @@ export default function RaceView({ seasonCode, phaseCode, latestRound, latestSta
   const roundNames = new Map((roundsQuery.data?.rounds ?? []).map((entry) => [entry.number, entry.name]));
   const roundLabel = (number) => stageName ? `${stageName}: ${roundNames.get(number) ?? "Round name unavailable"}` : `Round ${number}`;
   const startLabel = stageName ? `${stageName} start` : "Season start";
+  const layout = raceLayout({ room: room.height, teamCount: teamOrder.length, narrow, sideBySide });
+
+  // Play brings the chart up to just under the playback bar, once per run. It measures on the next frame, once the bar has
+  // re-rendered with its Pause label (which can change how the bar wraps).
+  const frameRace = () => {
+    requestAnimationFrame(() => {
+      const race = raceRef.current;
+      if (!race || !bar) return;
+      const top = race.getBoundingClientRect().top + window.scrollY - stickyBottomOf(bar) - 8;
+      window.scrollTo({ top: Math.max(0, top), behavior: "smooth" });
+    });
+  };
 
   return (
     <motion.div className="flex flex-col gap-3" variants={sectionContainer} initial="hidden" animate="show">
@@ -138,7 +157,9 @@ export default function RaceView({ seasonCode, phaseCode, latestRound, latestSta
         </motion.div>
       ) : null}
 
-      <motion.div variants={sectionItem}>
+      <p className="race-hint muted text-xs">Turn your phone sideways for a wider chart.</p>
+      <motion.div ref={setBar} variants={sectionItem} className="race-bar flex flex-wrap items-center gap-x-6 gap-y-2">
+      <div className="min-w-0 flex-[1_1_28rem]">
       <RacePlayback
         total={rounds.length}
         value={shown}
@@ -147,11 +168,28 @@ export default function RaceView({ seasonCode, phaseCode, latestRound, latestSta
         startLabel={stageName ? startLabel : undefined}
         stageName={stageName}
         onChange={setStep}
+        onPlay={frameRace}
       />
+      </div>
+      <label className="flex w-fit items-center gap-2 whitespace-nowrap text-xs text-base-content/70">
+        Team focus
+        <select
+          className="select select-sm select-bordered"
+          value={focusedClub ?? ""}
+          onChange={(event) => setFocusedClub(event.target.value || null)}
+        >
+          <option value="">All teams</option>
+          {teamOrder.map((team) => (
+            <option key={team.clubCode} value={team.clubCode}>
+              {team.clubName ?? team.clubCode}
+            </option>
+          ))}
+        </select>
+      </label>
       </motion.div>
       {showContext ? <CompetitionContext seasonCode={seasonCode} phaseCode={phaseCode} roundNumber={shownRound} /> : null}
 
-      <motion.div variants={sectionItem} className="grid grid-cols-1 gap-3 lg:grid-cols-[minmax(0,1fr)_22rem] xl:grid-cols-[2fr_1fr]">
+      <motion.div ref={raceRef} variants={sectionItem} className="grid grid-cols-1 gap-3 lg:grid-cols-[minmax(0,1fr)_22rem] xl:grid-cols-[2fr_1fr]">
         <RaceChart
           rounds={rounds}
           visibleCount={shown}
@@ -161,6 +199,8 @@ export default function RaceView({ seasonCode, phaseCode, latestRound, latestSta
           onFocusClub={setFocusedClub}
           tiers={tiers}
           roundLabel={stageName ? roundLabel : undefined}
+          layout={layout}
+          followTop={room.stickyBottom}
         />
         <RaceSnapshotTable
           seasonCode={seasonCode}
@@ -170,11 +210,13 @@ export default function RaceView({ seasonCode, phaseCode, latestRound, latestSta
           recordsByRound={recordsByRound}
           teamOrder={teamOrder}
           shortNames={shortNames}
+          abbreviatedNames={abbreviatedNames}
           focusedClub={focusedClub}
           onFocusClub={setFocusedClub}
           tiers={tiers}
           roundLabel={stageName ? roundLabel(shownRound) : undefined}
           startLabel={startLabel}
+          rowHeight={layout.rowHeight}
         />
       </motion.div>
     </motion.div>

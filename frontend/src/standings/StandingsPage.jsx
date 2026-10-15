@@ -76,6 +76,10 @@ export default function StandingsPage() {
   const shortNames = new Map(
     (teamsQuery.data?.teams ?? []).filter((team) => team.tvCode || team.abbreviatedName).map((team) => [team.clubCode, team.tvCode || team.abbreviatedName]),
   );
+  // Beside the Race chart on a desktop there is room for the abbreviated name, so it comes first there.
+  const abbreviatedNames = new Map(
+    (teamsQuery.data?.teams ?? []).filter((team) => team.abbreviatedName || team.tvCode).map((team) => [team.clubCode, team.abbreviatedName || team.tvCode]),
+  );
 
   const round = standingsQuery.data?.round ?? null;
   const standings = standingsQuery.data?.standings ?? [];
@@ -247,6 +251,7 @@ export default function StandingsPage() {
                       latestRound={round}
                       latestStandings={group.standings}
                       shortNames={shortNames}
+                      abbreviatedNames={abbreviatedNames}
                       tiers={grouped ? groupTiers : tiers}
                       groupName={grouped ? group.name : undefined}
                       tierLabels={grouped ? groupTierLabels : undefined}

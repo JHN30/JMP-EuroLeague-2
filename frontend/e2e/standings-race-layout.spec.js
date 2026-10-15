@@ -63,7 +63,7 @@ for (const season of [undefined, FINISHED]) {
     await openRace(page, season);
     const links = snapshotTable(page).locator("tbody tr td:nth-child(2) a");
 
-    await atWidths(page, [320, 390, 1024], async () => {
+    await atWidths(page, [320, 390, 1024, 1280], async () => {
       await page.waitForTimeout(300);
       const box = await snapshotTable(page).evaluate((table) => ({ table: table.getBoundingClientRect().width, room: table.parentElement.clientWidth }));
       expect(box.table).toBeLessThanOrEqual(box.room + 1);
@@ -73,8 +73,8 @@ for (const season of [undefined, FINISHED]) {
       for (const entry of await shownNames(links)) expect(entry.shown.length).toBeLessThanOrEqual(entry.full.length);
     });
 
-    // From sm up to lg, and from xl, the box is wide and the full names show.
-    await atWidths(page, [768, 1280], async () => {
+    // From sm up to lg the table is under the chart, its box is wide and the full names show.
+    await atWidths(page, [768], async () => {
       for (const entry of await shownNames(links)) expect(entry.shown).toBe(entry.full);
     });
   });
@@ -120,10 +120,104 @@ test("the race chart scrolls inside its own box on a phone, keeps the round show
     const sizes = await page
       .locator("main svg[role=img]")
       .first()
-      .evaluate((svg) => ({ svg: svg.getBoundingClientRect().width, box: svg.parentElement.clientWidth, height: svg.getBoundingClientRect().height }));
+      .evaluate((svg) => ({ svg: svg.getBoundingClientRect().width, box: svg.parentElement.clientWidth }));
     expect(sizes.svg).toBeLessThanOrEqual(sizes.box + 1);
-    expect(sizes.height).toBeGreaterThan(900);
+    await expect.poll(async () => (await chartFit(page)).fits).toBe(true);
   });
+});
+
+// The chart box's height against the room under the stuck playback bar.
+const chartFit = (page) =>
+  page.evaluate(() => {
+    const bar = document.querySelector(".race-bar");
+    const box = document.querySelector("main svg[role=img]").closest(".rounded-field");
+    const room = innerHeight - parseFloat(getComputedStyle(bar).top) - bar.offsetHeight;
+    const height = box.getBoundingClientRect().height;
+    return { fits: height <= room, height, room };
+  });
+
+test("on a laptop the whole race chart fits under the sticky playback bar, and Play brings it into view", async ({ page }) => {
+  await openRace(page, FINISHED);
+  for (const [width, height] of [[1366, 768], [1440, 900], [390, 844]]) {
+    await test.step(`${width}x${height}`, async () => {
+      await page.setViewportSize({ width, height });
+      await page.evaluate(() => window.scrollTo(0, 0));
+      await expect.poll(async () => (await chartFit(page)).fits).toBe(true);
+      // Play measures where the chart is, so let the section's entrance slide finish first.
+      await expect
+        .poll(() => page.evaluate(() => getComputedStyle(document.querySelector("main svg[role=img]").closest(".grid")).transform))
+        .toBe("none");
+
+      await page.getByRole("button", { name: /^(Play|Replay) season$/ }).click();
+      const placement = () =>
+        page.evaluate(() => {
+          const bar = document.querySelector(".race-bar").getBoundingClientRect();
+          const box = document.querySelector("main svg[role=img]").closest(".rounded-field").getBoundingClientRect();
+          return { top: Math.round(box.top - bar.bottom), bottom: Math.round(box.bottom - innerHeight) };
+        });
+      await expect.poll(async () => (await placement()).bottom).toBeLessThanOrEqual(0);
+      expect((await placement()).top).toBeGreaterThanOrEqual(0);
+      await page.getByRole("button", { name: "Pause" }).click();
+
+      // At the bottom of the page the controls are still on screen, under the nav.
+      await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
+      const bar = page.locator(".race-bar");
+      const navBottom = await page.locator(".app-nav").evaluate((nav) => nav.getBoundingClientRect().bottom);
+      expect(Math.round((await bar.boundingBox()).y)).toBe(Math.round(navBottom));
+      await expect(page.getByRole("slider", { name: "Round shown in the race" })).toBeInViewport();
+      await expect(page.getByRole("combobox", { name: "Team focus" })).toBeInViewport();
+    });
+  }
+});
+
+test("beside the chart, each table row sits level with its team's lane", async ({ page }) => {
+  await openRace(page, FINISHED);
+  await atWidths(page, [1024, 1280, 1440], async () => {
+    const offsets = await page.evaluate(() => {
+      const svg = document.querySelector("main svg[role=img]");
+      const top = svg.getBoundingClientRect().top;
+      const lanes = [...svg.querySelectorAll("line")]
+        .filter((line) => line.getAttribute("y1") === line.getAttribute("y2"))
+        .map((line) => top + Number(line.getAttribute("y1")));
+      const rows = [...document.querySelectorAll(".race-table tbody tr")];
+      return rows.map((row) => {
+        const rect = row.getBoundingClientRect();
+        const position = Number(row.querySelector("td").textContent);
+        return Math.abs(rect.top + rect.height / 2 - lanes[position - 1]);
+      });
+    });
+    expect(offsets.length).toBeGreaterThan(10);
+    for (const offset of offsets) expect(offset).toBeLessThanOrEqual(4);
+  });
+});
+
+test("where the chart cannot fit, the page follows the focused team while the race plays, and only then", async ({ page }) => {
+  await openRace(page, FINISHED);
+  await page.setViewportSize({ width: 600, height: 320 });
+  const focus = page.getByRole("combobox", { name: "Team focus" });
+  const crestOnScreen = () =>
+    page.evaluate(() => {
+      const crest = document.querySelector("main svg[role=img] circle[stroke-width='4']").getBoundingClientRect();
+      const navBottom = document.querySelector(".app-nav").getBoundingClientRect().bottom;
+      return crest.top >= navBottom && crest.bottom <= innerHeight;
+    });
+
+  // The club last at the latest round, shown at the bottom of the chart.
+  await focus.selectOption({ index: await focus.locator("option").count() - 1 });
+  await page.getByRole("button", { name: /^(Play|Replay) season$/ }).click();
+  for (let check = 0; check < 6; check++) {
+    await page.waitForTimeout(1300);
+    expect(await crestOnScreen()).toBe(true);
+  }
+  await page.getByRole("button", { name: "Pause" }).click();
+
+  // Where the chart fits, playing never scrolls the page.
+  await page.setViewportSize({ width: 1366, height: 768 });
+  await page.getByRole("button", { name: /^(Play|Replay) season$/ }).click();
+  await page.waitForTimeout(800);
+  const settled = await page.evaluate(() => Math.round(scrollY));
+  await page.waitForTimeout(2600);
+  expect(await page.evaluate(() => Math.round(scrollY))).toBe(settled);
 });
 
 test("the cards, legend and playback controls stay inside the screen on a phone", async ({ page }) => {

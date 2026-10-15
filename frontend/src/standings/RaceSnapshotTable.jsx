@@ -27,7 +27,8 @@ function teamName(team) {
 }
 
 // The standings as they were after `round` (null is the season start, when everyone is 0-0), so the table follows
-// whatever point of the race the chart is showing. Movement is against the round before.
+// whatever point of the race the chart is showing. Movement is against the round before. From lg, beside the chart, each
+// row takes the chart's `rowHeight` so it sits level with its team's lane, and shows the club's abbreviated name.
 export default function RaceSnapshotTable({
   seasonCode,
   round,
@@ -36,11 +37,13 @@ export default function RaceSnapshotTable({
   recordsByRound,
   teamOrder,
   shortNames,
+  abbreviatedNames,
   focusedClub,
   onFocusClub,
   tiers = null,
   roundLabel,
   startLabel = "Season start",
+  rowHeight,
 }) {
   const reducedMotion = usePrefersReducedMotion();
   const positions = round != null ? positionsByRound.get(round) : null;
@@ -67,8 +70,8 @@ export default function RaceSnapshotTable({
     });
 
   return (
-    <div className="panel overflow-x-auto p-2">
-      <p className="px-2 pb-1 text-xs font-semibold text-base-content/70">
+    <div className="panel overflow-x-auto p-2" style={{ "--race-row": `${rowHeight}px` }}>
+      <p className="race-table-title px-2 pb-1 text-xs font-semibold text-base-content/70">
         {round == null ? startLabel : roundLabel ? `Standings after ${roundLabel}` : `Standings after round ${round}`}
       </p>
       <table className="table race-table">
@@ -96,7 +99,7 @@ export default function RaceSnapshotTable({
                 <td>
                   <Link
                     to={`/${seasonCode}/teams/${team.clubCode}`}
-                    aria-label={shortNames?.get(team.clubCode) ? teamName(team) : undefined}
+                    aria-label={shortNames?.get(team.clubCode) || abbreviatedNames?.get(team.clubCode) ? teamName(team) : undefined}
                     className="link link-hover flex items-center gap-2 font-medium"
                     onClick={(event) => event.stopPropagation()}
                   >
@@ -104,17 +107,20 @@ export default function RaceSnapshotTable({
                       <img src={team.crestUrl} alt="" className="h-5 w-5 flex-none object-contain" />
                     ) : null}
                     {shortNames?.get(team.clubCode) ? (
-                      <span className="hidden text-xs leading-tight max-sm:inline lg:max-xl:inline">{shortNames.get(team.clubCode)}</span>
+                      <span className="hidden text-xs leading-tight max-sm:inline">{shortNames.get(team.clubCode)}</span>
+                    ) : null}
+                    {abbreviatedNames?.get(team.clubCode) ? (
+                      <span className="hidden max-w-40 truncate lg:inline" title={teamName(team)}>{abbreviatedNames.get(team.clubCode)}</span>
                     ) : null}
                     <span
-                      className={`max-w-40 truncate ${shortNames?.get(team.clubCode) ? "max-sm:hidden lg:max-xl:hidden" : ""}`}
+                      className={`max-w-40 truncate ${shortNames?.get(team.clubCode) ? "max-sm:hidden" : ""} ${abbreviatedNames?.get(team.clubCode) ? "lg:hidden" : ""}`}
                       title={teamName(team)}
                     >
                       {teamName(team)}
                     </span>
                   </Link>
                 </td>
-                <td className="tabular-nums">{record ? `${record.won}-${record.lost}` : "-"}</td>
+                <td className="whitespace-nowrap tabular-nums">{record ? `${record.won}-${record.lost}` : "-"}</td>
                 <td>
                   <MovementIndicator change={change} />
                 </td>

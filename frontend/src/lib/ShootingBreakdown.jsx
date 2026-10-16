@@ -12,7 +12,9 @@ import ShootingLegend from "./ShootingLegend";
 import { zoneExtremes } from "./shotBreakdown";
 
 // The cards, the court and the tables of the team and player Shooting tabs, shared by both.
-const COURT_MAX_WIDTH = "46rem";
+// Never wider than 46rem, and no taller than the window less the page header and the legend, so the whole court is in view
+// when scrolled to, without becoming small on a short window.
+const COURT_MAX_WIDTH = "min(46rem, max(24rem, calc(100svh - 8rem)))";
 
 export function MetricCard({ label, value, detail }) {
   return (
@@ -68,7 +70,7 @@ function BreakdownTable({ firstColumn, shareHeader = "Share", columns, rows, dot
             key={row.key}
             variants={listItem}
             layout="position"
-            className={`${GRID} gap-y-1 border-b border-base-300 py-2 text-sm last:border-0`}
+            className={`${GRID} gap-y-1 border-b border-base-300 py-1 text-sm last:border-0`}
           >
             <span className={NAME_CELL}>
               {dotValue ? (
@@ -134,7 +136,7 @@ export function ZonesPanel({ rows, title, favorable = true, stackBadges = false,
   ) : null;
 
   return (
-    <Panel as="section" className="p-4">
+    <Panel as="section" className="p-3">
       <PanelHeader
         kicker="ZONES"
         title={title}
@@ -146,7 +148,7 @@ export function ZonesPanel({ rows, title, favorable = true, stackBadges = false,
       ) : (
         <BreakdownTable firstColumn={plainWording ? null : "Zone"} shareHeader="Share" columns={ZONE_COLUMNS} rows={rows} dotValue={(row) => row.fg} adaptive={adaptive} />
       )}
-      <p className="muted mt-3 text-sm">
+      <p className="muted mt-2 text-sm">
         {plainWording
           ? "Hottest and coldest only count zones with a fair number of attempts."
           : "Most used first. The dot is the zone's FG% on the same colour scale as the court; the bar is its share of the shots. Hottest and coldest only count zones with a fair number of attempts."}
@@ -166,14 +168,14 @@ export function SituationsPanel({ rows, title, plainWording = false, adaptive = 
   const columns = plainWording ? PLAIN_SITUATION_COLUMNS : SITUATION_COLUMNS;
 
   return (
-    <Panel as="section" className="p-4">
+    <Panel as="section" className="p-3">
       <PanelHeader kicker="STYLE" title={title} />
       {hasPoints ? (
         <BreakdownTable firstColumn={plainWording ? null : "Situation"} shareHeader={plainWording ? "Of att." : "Of pts"} columns={columns} rows={shown} adaptive={adaptive} />
       ) : (
         <EmptyText>No made shots in this selection.</EmptyText>
       )}
-      <p className="muted mt-3 text-sm">
+      <p className="muted mt-2 text-sm">
         {plainWording
           ? "A basket can be in more than one situation (a fast break off a turnover counts in both)."
           : "Share of the points from field goals. The feed only marks shots that scored, so there is no shooting percentage here. A basket can be in more than one group (a fast break off a turnover counts in both), and every basket that is none of them is half court."}
@@ -212,7 +214,10 @@ export default function ShootingBreakdown({
       {shots.length === 0 ? (
         <EmptyText>No attempts match these filters.</EmptyText>
       ) : (
-        <div className={`grid gap-4 xl:grid-cols-[minmax(0,46rem)_minmax(0,1fr)] ${phoneLayout ? "grid-cols-[minmax(0,1fr)]" : ""}`}>
+        <div
+          className={`grid gap-4 xl:grid-cols-[minmax(0,var(--court-width))_minmax(0,1fr)] ${phoneLayout ? "grid-cols-[minmax(0,1fr)]" : ""}`}
+          style={{ "--court-width": COURT_MAX_WIDTH }}
+        >
           <div className={`flex flex-col justify-center gap-3 rounded-field border border-base-300 bg-base-100/60 ${phoneLayout ? "p-2 sm:p-3" : "p-3"}`}>
             <motion.div
               key={presentation}

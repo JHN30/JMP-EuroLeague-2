@@ -407,3 +407,17 @@ test("the Zones and Style tables name their columns at every width, leave out Ha
     expectNoSidewaysScroll(page);
   });
 });
+
+test("the whole court is in view once scrolled to, and is not small", async ({ page }) => {
+  const { slug, team, rival } = await liveTeam(page);
+  await openShooting(page, { team, rival, slug });
+  await expect(page.getByText("Where the shots come from")).toBeVisible({ timeout: 30_000 });
+  const courtImage = page.getByRole("img", { name: /shot locations/ });
+  for (const [width, height] of [[1280, 800], [1440, 900], [1920, 1080]]) {
+    await page.setViewportSize({ width, height });
+    await courtImage.evaluate((el) => window.scrollBy(0, el.getBoundingClientRect().top - 96));
+    const court = await courtImage.boundingBox();
+    expect(court.y + court.height).toBeLessThanOrEqual(height);
+    expect(court.width).toBeGreaterThanOrEqual(Math.min(700, height - 160));
+  }
+});

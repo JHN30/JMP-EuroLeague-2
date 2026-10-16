@@ -112,26 +112,26 @@ test("below 640px the filters sit behind one button that counts the changed ones
   await atWidths(page, [390], async () => {
     await expect(filtersButton(page)).toHaveText(/^Filters\s*▾?$/);
     await expect(filtersButton(page)).toHaveAttribute("aria-expanded", "false");
-    await expect(select(page, "Team")).toBeHidden();
+    await expect(select(page, "Player")).toBeHidden();
     await filtersButton(page).click();
     await expect(filtersButton(page)).toHaveAttribute("aria-expanded", "true");
 
-    // Team and Player take a line each; Shot type and Result share one in two columns.
-    const [team, player, shotType, result, context] = await Promise.all(
-      ["Team", "Player", "Shot type", "Result", "Play context"].map((name) => boxOf(select(page, name))),
+    // Player takes a line; Shot type and Result share one in two columns.
+    const [player, shotType, result, context] = await Promise.all(
+      ["Player", "Shot type", "Result", "Play context"].map((name) => boxOf(select(page, name))),
     );
-    expect(player.top).toBeGreaterThan(team.bottom - 1);
     expect(Math.abs(shotType.top - result.top)).toBeLessThan(2);
     expect(result.left).toBeGreaterThan(shotType.right);
+    expect(shotType.top).toBeGreaterThan(player.bottom - 1);
     expect(context.top).toBeGreaterThan(shotType.bottom - 1);
 
-    await select(page, "Team").selectOption({ label: CZV.name });
     await select(page, "Shot type").selectOption("3");
+    await select(page, "Result").selectOption("made");
     await expect(filtersButton(page)).toContainText("2 active");
     await filtersButton(page).click();
-    await expect(select(page, "Team")).toBeHidden();
+    await expect(select(page, "Player")).toBeHidden();
     await expect(filtersButton(page)).toContainText("2 active");
-    await expect(page.getByRole("img", { name: /Shot chart: 10 of/ })).toBeVisible();
+    await expect(page.getByRole("img", { name: /Shot chart, Panathinaikos.*: 5 attempts shown/ })).toBeVisible();
   });
   await atWidths(page, [320], async () => {
     await filtersButton(page).click();
@@ -142,20 +142,18 @@ test("below 640px the filters sit behind one button that counts the changed ones
   });
 });
 
-test("the Period select is left out on a phone for the map and the heatmap, where the quarter buttons do its job, and kept for the comparison", async ({ page }) => {
+test("the Period select is left out on a phone for both views, where the quarter buttons do its job", async ({ page }) => {
   await openShooting(page);
   await atWidths(page, [390], async () => {
     await filtersButton(page).click();
     await expect(select(page, "Period")).toBeHidden();
-    await mode(page, "Zone heatmap");
+    await mode(page, "Shooting zones");
     await expect(select(page, "Period")).toBeHidden();
-    await mode(page, "Shooting comparison");
-    await expect(select(page, "Period")).toBeVisible();
-    await expect(select(page, "Team")).toHaveCount(0);
     await mode(page, "Shot map");
   });
   await atWidths(page, [768, 1280], async () => {
-    for (const name of ["Team", "Player", "Shot type", "Period", "Result", "Play context"]) await expect(select(page, name)).toBeVisible();
+    for (const name of ["Player", "Shot type", "Period", "Result", "Play context"]) await expect(select(page, name)).toBeVisible();
+    await expect(select(page, "Team")).toHaveCount(0);
   });
 });
 
@@ -189,7 +187,7 @@ test("the quarter buttons share one row with no scrolling, with short labels bel
   await expect(row.getByRole("button", { name: "Q2", exact: true })).toHaveAttribute("aria-pressed", "true");
 });
 
-test("the court, the legend and the zone table fit every width, and the table has no inner scroll at 320px", async ({ page }) => {
+test("the legend and the zone table fit every width, and the table has no inner scroll at 320px", async ({ page }) => {
   await openShooting(page);
   const zones = page.locator(".panel").filter({ has: page.getByRole("heading", { name: "Zone comparison" }) });
   const tableBox = zones.locator(".overflow-x-auto");
@@ -211,9 +209,20 @@ test("the court, the legend and the zone table fit every width, and the table ha
   });
 });
 
+test("the courts and the legend fit every width", async ({ page }) => {
+  await openShooting(page);
+  for (const name of ["Shot map", "Shooting zones"]) {
+    await mode(page, name);
+    await atWidths(page, [320, 390, 639, 768, 1024], async () => {
+      await expectNoPageOverflow(page);
+      expect(await holdsContent(studio(page))).toBe(true);
+    });
+  }
+});
+
 test("a narrow heatmap labels each zone with its percentage in larger type, and a wide one keeps made over attempts", async ({ page }) => {
   await openShooting(page);
-  await mode(page, "Zone heatmap");
+  await mode(page, "Shooting zones");
   const chipTexts = () =>
     page.locator(".court-chip text").evaluateAll((texts) =>
       texts.map((text) => ({ text: text.textContent, height: text.getBoundingClientRect().height })),
@@ -225,9 +234,9 @@ test("a narrow heatmap labels each zone with its percentage in larger type, and 
       expect(height).toBeGreaterThanOrEqual(10);
     }
   });
-  await atWidths(page, [1024], async () => {
-    await expect.poll(async () => (await chipTexts()).some(({ text }) => text.includes("/"))).toBe(true);
-  });
+  // The courts are as tall as the window leaves room for, so a tall window is what makes them wide enough.
+  await page.setViewportSize({ width: 1600, height: 1400 });
+  await expect.poll(async () => (await chipTexts()).some(({ text }) => text.includes("/"))).toBe(true);
 });
 
 test("in each zone the team with the higher FG% is shaded in its own colour, and a tie or a one-sided zone is not", async ({ page }) => {
@@ -258,28 +267,30 @@ test("in each zone the team with the higher FG% is shaded in its own colour, and
   }
 });
 
-test("the comparison panels stack on a phone with their stat lines inside their boxes, side by side from 640px", async ({ page }) => {
+test("the team panels stack on a phone with their stat lines inside their boxes, side by side from 640px, on both views", async ({ page }) => {
   await openShooting(page);
-  await mode(page, "Shooting comparison");
   const panels = studio(page).locator(".panel").filter({ has: page.getByText("eFG%", { exact: true }) });
-  await expect(panels).toHaveCount(2);
+  for (const name of ["Shot map", "Shooting zones"]) {
+    await mode(page, name);
+    await expect(panels).toHaveCount(2);
 
-  await atWidths(page, [320, 390, 639], async () => {
-    await expectNoPageOverflow(page);
-    expect(await holdsContent(panels)).toBe(true);
-    const [first, second] = await Promise.all([boxOf(panels.nth(0)), boxOf(panels.nth(1))]);
-    expect(second.top).toBeGreaterThan(first.bottom - 1);
-    await expect(panels.nth(0).locator("p.tabular-nums").first()).toHaveText(/\d+-\d+ \(\d+\.\d%\)/);
-    // A percentage never splits in the middle: each stat cell is as wide as its widest word.
-    expect(await panels.nth(0).locator("p.tabular-nums").evaluateAll((cells) => cells.every((cell) => cell.scrollWidth <= cell.clientWidth + 1))).toBe(true);
-    // The club name is the short one on a phone.
-    await expect(panels.nth(1).getByText("CZV", { exact: true })).toBeVisible();
-  });
-  await atWidths(page, [768, 1024], async () => {
-    await expectNoPageOverflow(page);
-    const [first, second] = await Promise.all([boxOf(panels.nth(0)), boxOf(panels.nth(1))]);
-    expect(Math.abs(first.top - second.top)).toBeLessThan(2);
-  });
+    await atWidths(page, [320, 390, 639], async () => {
+      await expectNoPageOverflow(page);
+      expect(await holdsContent(panels)).toBe(true);
+      const [first, second] = await Promise.all([boxOf(panels.nth(0)), boxOf(panels.nth(1))]);
+      expect(second.top).toBeGreaterThan(first.bottom - 1);
+      await expect(panels.nth(0).locator("p.tabular-nums").first()).toHaveText(/\d+-\d+ \(\d+\.\d%\)/);
+      // A percentage never splits in the middle: each stat cell is as wide as its widest word.
+      expect(await panels.nth(0).locator("p.tabular-nums").evaluateAll((cells) => cells.every((cell) => cell.scrollWidth <= cell.clientWidth + 1))).toBe(true);
+      // The club name is the short one on a phone.
+      await expect(panels.nth(1).getByText("CZV", { exact: true })).toBeVisible();
+    });
+    await atWidths(page, [768, 1024], async () => {
+      await expectNoPageOverflow(page);
+      const [first, second] = await Promise.all([boxOf(panels.nth(0)), boxOf(panels.nth(1))]);
+      expect(Math.abs(first.top - second.top)).toBeLessThan(2);
+    });
+  }
 });
 
 test("a game without shots says so and fits a phone", async ({ page }) => {

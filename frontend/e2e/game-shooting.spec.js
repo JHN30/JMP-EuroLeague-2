@@ -38,8 +38,12 @@ async function openShooting(page, options = {}) {
   await expect(page.getByRole("heading", { name: "Zone comparison" })).toBeVisible();
 }
 
-const court = (page) => page.getByRole("img", { name: /Shot chart/ });
 const zoneRow = (page, zone) => page.locator("tbody tr").filter({ has: page.getByRole("cell", { name: zone, exact: true }) });
+
+// Team A's court is the first on the page, Team B's the second; the shot map and the zones each have their own.
+const court = (page, side = 0) => page.getByRole("img", { name: /Shot chart, / }).nth(side);
+const zoneCourt = (page, side = 0) => page.getByRole("img", { name: /Shooting zones, / }).nth(side);
+const openZones = (page) => page.getByRole("tab", { name: "Shooting zones", exact: true }).click();
 
 test("the court is a landscape FIBA half court that scales with the window", async ({ page }) => {
   await page.setViewportSize({ width: 1600, height: 900 });
@@ -58,6 +62,23 @@ test("the court is a landscape FIBA half court that scales with the window", asy
   // At its widest the court is drawn at one pixel per centimetre, never more.
   await page.setViewportSize({ width: 2400, height: 1200 });
   expect((await court(page).boundingBox()).width).toBeLessThanOrEqual(1555);
+});
+
+test("each zone has its own shot on Team A's court, and Team B's court shades only its zone", async ({ page }) => {
+  await openShooting(page);
+  await openZones(page);
+
+  await expect(zoneCourt(page).locator("[data-zone]")).toHaveCount(14);
+  for (const zone of ZONE_NAMES) {
+    await expect(zoneCourt(page).locator(`[data-zone="${zone}"]`)).toHaveCount(1);
+  }
+  await expect(zoneCourt(page).locator('path[data-zone="Restricted area"] title')).toHaveText("Restricted area · 1-1 (100.0%)");
+  await expect(zoneCourt(page).locator('path[data-zone="Right wing 3"] title')).toHaveText("Right wing 3 · 1-1 (100.0%)");
+  await expect(zoneCourt(page).locator('path[data-zone="Deep 3"] title')).toHaveText("Deep 3 · 0-1 (0.0%)");
+
+  // Team B took two shots in the Restricted area and none elsewhere.
+  await expect(zoneCourt(page, 1).locator("[data-zone]")).toHaveCount(1);
+  await expect(zoneCourt(page, 1).locator('path[data-zone="Restricted area"] title')).toHaveText("Restricted area · 1-2 (50.0%)");
 });
 
 test("each zone of the table gets its own shot", async ({ page }) => {
@@ -113,13 +134,21 @@ test("a shot past half court sits on the half-court line and says where it was t
   expect(title).toContain("past the half-court line, 14.6 m from the baseline");
 });
 
-test("a shot without a location is counted, not drawn", async ({ page }) => {
+test("a shot without a location is not drawn", async ({ page }) => {
   await openShooting(page);
 
-  // 17 attempts, one of them without a location.
-  await expect(court(page).locator("[data-zone]")).toHaveCount(16);
+  // 17 attempts, one of them without a location: Team A has 14 drawn and Team B 2.
+  await expect(court(page).locator("[data-zone]")).toHaveCount(14);
+  await expect(court(page, 1).locator("[data-zone]")).toHaveCount(2);
   await expect(zoneRow(page, "Location unknown").locator("td").nth(1)).toHaveText("1");
-  await expect(zoneRow(page, "Location unknown").locator("td").nth(2)).toHaveText("—");
+});
+
+test("both teams' courts follow the filters", async ({ page }) => {
+  await openShooting(page);
+  await page.getByLabel("Result").selectOption({ label: "Made" });
+  // Team A's two makes and Team B's one.
+  await expect(court(page).locator("[data-zone]")).toHaveCount(2);
+  await expect(court(page, 1).locator("[data-zone]")).toHaveCount(1);
 });
 
 test("the table follows the filters", async ({ page }) => {
@@ -138,7 +167,7 @@ test("shot type and result filters exist on the shot map only", async ({ page })
   await expect(page.getByLabel("Shot type")).toBeVisible();
   await expect(page.getByLabel("Result")).toBeVisible();
 
-  for (const mode of ["Zone heatmap", "Shooting comparison"]) {
+  for (const mode of ["Shooting zones"]) {
     await page.getByRole("tab", { name: mode, exact: true }).click();
     await expect(page.getByLabel("Period")).toBeVisible();
     await expect(page.getByLabel("Shot type")).toHaveCount(0);
@@ -146,56 +175,58 @@ test("shot type and result filters exist on the shot map only", async ({ page })
   }
 });
 
-test("a result filter set on the shot map does not reach the heatmap", async ({ page }) => {
+test("a result filter set on the shot map does not reach the zones", async ({ page }) => {
   await openShooting(page);
   await page.getByLabel("Result").selectOption({ label: "Made" });
-  await expect(zoneRow(page, "Left corner 3").locator("td").nth(1)).toHaveText("—");
+  await expect(court(page).locator("[data-zone]")).toHaveCount(2);
 
-  await page.getByRole("tab", { name: "Zone heatmap", exact: true }).click();
-  // Misses are back: every zone with a shot is shaded and the table shows all of Team A's shots again.
-  await expect(court(page).locator("[data-zone]")).toHaveCount(14);
-  await expect(zoneRow(page, "Left corner 3").locator("td").nth(1)).toHaveText("7.1%");
+  await openZones(page);
+  // Misses are back: every zone with a shot is shaded.
+  await expect(zoneCourt(page).locator("[data-zone]")).toHaveCount(14);
 
   await page.getByRole("tab", { name: "Shot map", exact: true }).click();
   await expect(page.getByLabel("Result")).toHaveValue("made");
 });
 
-test("the zone heatmap shades each zone with attempts and labels it with made over attempts", async ({ page }) => {
+test("the zones shade each zone with attempts and label it with made over attempts", async ({ page }) => {
   await openShooting(page);
-  await page.getByRole("tab", { name: "Zone heatmap", exact: true }).click();
+  await openZones(page);
 
   // Thirteen court regions and the backcourt strip, each with an attempt; no markers.
-  await expect(court(page).locator("[data-zone]")).toHaveCount(14);
-  await expect(court(page).locator('path[data-zone="Restricted area"] title')).toHaveText("Restricted area · 2-3 (66.7%)");
-  await expect(court(page).locator('rect[data-zone="Backcourt"] title')).toHaveText("Backcourt · 0-1 (0.0%)");
-  // Team A's make plus Team B's make and miss in the Restricted area: 2 of 3.
-  await expect(court(page).getByText("2/3", { exact: true })).toBeVisible();
-  await expect(court(page).getByText("67%", { exact: true })).toBeVisible();
-  // The strip is labelled, there is no watermark, and the zone table stays below the court.
-  await expect(court(page).getByText("BACKCOURT", { exact: true })).toBeVisible();
-  await expect(court(page).getByText("FIBA HALF COURT")).toHaveCount(0);
-  const courtBox = await court(page).boundingBox();
-  const tableBox = await page.getByRole("heading", { name: "Zone comparison" }).boundingBox();
-  expect(tableBox.y).toBeGreaterThan(courtBox.y + courtBox.height);
+  await expect(zoneCourt(page).locator("[data-zone]")).toHaveCount(14);
+  await expect(zoneCourt(page).locator('rect[data-zone="Backcourt"] title')).toHaveText("Backcourt · 0-1 (0.0%)");
+  // A court this small labels its zones with the percentage only; the tooltip above carries made over attempts.
+  await expect(zoneCourt(page, 1).getByText("50%", { exact: true })).toBeVisible();
+  // The strip is labelled and there is no watermark.
+  await expect(zoneCourt(page).getByText("BACKCOURT", { exact: true })).toBeVisible();
+  await expect(zoneCourt(page).getByText("FIBA HALF COURT")).toHaveCount(0);
 });
 
 test("a zone without attempts is left empty on the heatmap", async ({ page }) => {
   await mockGameApi(page, { shots: [shot(1, "A", "2FGM", 0, 50)] });
   await page.goto(`/${SEASON}/games/1`);
   await page.getByRole("tab", { name: "Shooting", exact: true }).click();
-  await page.getByRole("tab", { name: "Zone heatmap", exact: true }).click();
+  await openZones(page);
 
-  await expect(court(page).locator("[data-zone]")).toHaveCount(1);
-  await expect(court(page).getByText("1/1", { exact: true })).toBeVisible();
+  await expect(zoneCourt(page).locator("[data-zone]")).toHaveCount(1);
+  await expect(zoneCourt(page).getByText("100%", { exact: true })).toBeVisible();
 });
 
-test("the court shrinks to fit the window height", async ({ page }) => {
-  for (const height of [700, 1200]) {
-    await page.setViewportSize({ width: 1600, height });
+test("both teams' panels sit side by side and fit one screen once the mode strip is at the top", async ({ page }) => {
+  for (const height of [900, 1080]) {
+    await page.setViewportSize({ width: 1280, height });
     await openShooting(page);
-    const box = await court(page).boundingBox();
-    expect(box.height).toBeLessThanOrEqual(height * 0.9 + 1);
-    expect(box.width / box.height).toBeCloseTo(1555 / 1540, 2);
+    const strip = page.getByRole("tablist", { name: "Shooting presentation" });
+    for (const show of [() => page.getByRole("tab", { name: "Shot map", exact: true }).click(), () => openZones(page)]) {
+      await show();
+      await strip.scrollIntoViewIfNeeded();
+      await page.evaluate(() => window.scrollBy(0, document.querySelector('[role="tablist"][aria-label="Shooting presentation"]').getBoundingClientRect().top - 80));
+      const panels = page.locator("#shooting-presentation-panel .panel");
+      const [first, second] = await Promise.all([panels.nth(0).boundingBox(), panels.nth(1).boundingBox()]);
+      expect(Math.abs(first.y - second.y)).toBeLessThan(2);
+      expect(second.x).toBeGreaterThan(first.x + first.width - 1);
+      expect(first.y + first.height).toBeLessThanOrEqual(height);
+    }
   }
 });
 
@@ -208,11 +239,11 @@ test("the zone table spans the whole panel", async ({ page }) => {
   expect(table.width).toBeGreaterThan(panel.width - 40);
 });
 
-test("the Shooting tab offers the shot map, the zone heatmap and the team comparison only", async ({ page }) => {
+test("the Shooting tab offers the shot map and the shooting zones only", async ({ page }) => {
   await openShooting(page);
 
   const tabs = page.getByRole("tablist", { name: "Shooting presentation" }).getByRole("tab");
-  await expect(tabs).toHaveText(["Shot map", "Zone heatmap", "Shooting comparison"]);
+  await expect(tabs).toHaveText(["Shot map", "Shooting zones"]);
 });
 
 test("a game without shots says so", async ({ page }) => {

@@ -42,8 +42,8 @@ import TeamLabel, { TeamName } from "./TeamLabel";
 import OverviewTab from "./OverviewTab";
 import PlayerLink from "./PlayerLink";
 import RotationsTab from "./RotationsTab";
-import ZoneComparison from "./ZoneComparison";
 import { TabPanel, TabStrip } from "../lib/TabStrip";
+import ZoneComparison from "./ZoneComparison";
 
 const GAME_TABS = [
   { key: "overview", label: "Overview" },
@@ -356,8 +356,7 @@ const PLAY_CONTEXT_FILTERS = [
 
 const PRESENTATION_MODES = [
   { key: "map", label: "Shot map" },
-  { key: "heatmap", label: "Zone heatmap" },
-  { key: "comparison", label: "Shooting comparison" },
+  { key: "zones", label: "Shooting zones" },
 ];
 
 function formatPeriodOption(option) {
@@ -446,7 +445,11 @@ function MiniShootingLine({ shots, test }) {
   );
 }
 
-function TeamComparisonPanel({ team, shots }) {
+// Each court is as tall as the room left under the page's header, tabs and filters, so both teams sit in one screen.
+const COURT_MAX_WIDTH = "max(18rem, calc(100svh - 20rem))";
+
+// One team's side of the comparison: its 2PT/3PT/eFG line over its own court, as markers or as zones.
+function TeamComparisonPanel({ team, shots, teams, mode }) {
   const twoPoint = (shot) => shot.actionCode.startsWith("2");
   const threePoint = (shot) => shot.actionCode.startsWith("3");
   const made = shots.filter((shot) => shot.actionCode.endsWith("M"));
@@ -489,7 +492,18 @@ function TeamComparisonPanel({ team, shots }) {
         </div>
       </div>
       <div className="rounded-field border border-base-300 bg-base-100/60 p-1 sm:p-2">
-        <ShootingCourt shots={shots} teams={[team]} mode="heatmap" compactBelow={420} ariaLabel={`${teamName(team)} shooting zones`} />
+        <ShootingCourt
+          shots={shots}
+          teams={teams}
+          mode={mode}
+          maxWidth={COURT_MAX_WIDTH}
+          compactBelow={340}
+          ariaLabel={
+            mode === "heatmap"
+              ? `Shooting zones, ${teamName(team)}`
+              : `Shot chart, ${teamName(team)}: ${formatCount(shots.length)} attempts shown`
+          }
+        />
       </div>
     </Panel>
   );
@@ -497,7 +511,6 @@ function TeamComparisonPanel({ team, shots }) {
 
 function ShootingTab({ shots, localTeam, roadTeam }) {
   const [presentationMode, setPresentationMode] = useState("map");
-  const [teamFilter, setTeamFilter] = useState("both");
   const [playerFilter, setPlayerFilter] = useState("all");
   const [shotTypeFilter, setShotTypeFilter] = useState("all");
   const [periodFilter, setPeriodFilter] = useState("all");
@@ -516,10 +529,7 @@ function ShootingTab({ shots, localTeam, roadTeam }) {
     };
   }
 
-  const isComparison = presentationMode === "comparison";
-  const teamFilteredShots =
-    teamFilter === "both" || isComparison ? shots : shots.filter((shot) => shot.clubCode === teamFilter);
-  const players = [...new Map(teamFilteredShots.map((shot) => [shot.personCode, shot.playerName])).entries()].filter(
+  const players = [...new Map(shots.map((shot) => [shot.personCode, shot.playerName])).entries()].filter(
     ([code]) => code,
   );
   const effectivePlayerFilter = players.some(([code]) => code === playerFilter) ? playerFilter : "all";
@@ -527,7 +537,7 @@ function ShootingTab({ shots, localTeam, roadTeam }) {
   const periodNumbers = [...new Set(shots.map((shot) => periodNumberForMinute(shot.minute)))].sort((a, b) => a - b);
   const periodOptions = ["all", ...periodNumbers.map(String)];
   // Shot type and result only make sense on the shot map: a heatmap of misses is all 0% and of makes all 100%, and the
-  // zones already separate twos from threes. Their selects are hidden elsewhere, so they must not filter there either.
+  // zones already separate twos from threes. Their selects are hidden on the zones, so they must not filter there either.
   const showsShotFilters = presentationMode === "map";
   const shotTypeTest = showsShotFilters ? SHOT_TYPE_FILTERS.find((filter) => filter.key === shotTypeFilter)?.test ?? (() => true) : () => true;
   const resultTest = showsShotFilters ? RESULT_FILTERS.find((filter) => filter.key === resultFilter)?.test ?? (() => true) : () => true;
@@ -543,16 +553,12 @@ function ShootingTab({ shots, localTeam, roadTeam }) {
     });
   }
 
-  const playerFilteredShots =
-    effectivePlayerFilter === "all"
-      ? teamFilteredShots
-      : teamFilteredShots.filter((shot) => shot.personCode === effectivePlayerFilter);
-  const filteredShots = applySharedFilters(playerFilteredShots);
+  const filteredShots = applySharedFilters(
+    effectivePlayerFilter === "all" ? shots : shots.filter((shot) => shot.personCode === effectivePlayerFilter),
+  );
+  const teamShots = (team) => filteredShots.filter((shot) => shot.clubCode === team?.clubCode);
 
-  // The quarter buttons under the strip set the period on the map and the heatmap, so a phone leaves the Period select out there.
-  const hasPlayback = !isComparison;
   const activeFilters = [
-    !isComparison && teamFilter !== "both",
     effectivePlayerFilter !== "all",
     showsShotFilters && shotTypeFilter !== "all",
     periodFilter !== "all",
@@ -574,13 +580,6 @@ function ShootingTab({ shots, localTeam, roadTeam }) {
           tabs={PRESENTATION_MODES}
         />
         <FilterDisclosure activeCount={activeFilters} gridClassName="min-[24rem]:grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
-          {isComparison ? null : (
-            <LabelledSelect label="Team" labelClassName="max-sm:col-span-full" value={teamFilter} onChange={(event) => changeFilter(setTeamFilter)(event.target.value)}>
-              <option value="both">Both teams</option>
-              {localTeam?.clubCode ? <option value={localTeam.clubCode}>{teamName(localTeam)}</option> : null}
-              {roadTeam?.clubCode ? <option value={roadTeam.clubCode}>{teamName(roadTeam)}</option> : null}
-            </LabelledSelect>
-          )}
           <LabelledSelect
             label="Player"
             labelClassName="max-sm:col-span-full"
@@ -609,7 +608,7 @@ function ShootingTab({ shots, localTeam, roadTeam }) {
           ) : null}
           <LabelledSelect
             label="Period"
-            labelClassName={hasPlayback ? "max-sm:hidden" : ""}
+            labelClassName="max-sm:hidden"
             value={periodFilter}
             onChange={(event) => changeFilter(setPeriodFilter)(event.target.value)}
           >
@@ -647,42 +646,33 @@ function ShootingTab({ shots, localTeam, roadTeam }) {
         </FilterDisclosure>
 
         <TabPanel id="shooting-presentation-panel" focusKey={presentationMode} scroll={false}>
-          {presentationMode === "map" || presentationMode === "heatmap" ? (
-            <>
-              <div className="mb-3">
-                <QuarterPlayback
-                  periodOptions={periodOptions}
-                  activeOption={periodFilter}
-                  onSelect={setPeriodFilter}
-                  playing={quarterPlaying}
-                  onPlayingChange={setQuarterPlaying}
-                />
-              </div>
-              <div className="rounded-field border border-base-300 bg-base-100/60 p-1 sm:p-3">
-                <ShootingCourt
-                  shots={filteredShots}
-                  teams={[localTeam, roadTeam]}
-                  mode={presentationMode === "heatmap" ? "heatmap" : "markers"}
-                  compactBelow={420}
-                  ariaLabel={`Shot chart: ${formatCount(filteredShots.length)} of ${formatCount(shots.length)} attempts shown`}
-                />
-              </div>
-              <div className="mt-3">
-                {presentationMode === "heatmap" ? <HeatmapLegend /> : <ShootingLegend teams={[localTeam, roadTeam]} />}
-              </div>
-            </>
-          ) : null}
-
-          {presentationMode === "comparison" ? (
-            <div className="grid gap-4 sm:grid-cols-2">
-              <TeamComparisonPanel team={localTeam} shots={applySharedFilters(shots.filter((shot) => shot.clubCode === localTeam?.clubCode))} />
-              <TeamComparisonPanel team={roadTeam} shots={applySharedFilters(shots.filter((shot) => shot.clubCode === roadTeam?.clubCode))} />
-            </div>
-          ) : null}
+          <div className="mb-3">
+            <QuarterPlayback
+              periodOptions={periodOptions}
+              activeOption={periodFilter}
+              onSelect={setPeriodFilter}
+              playing={quarterPlaying}
+              onPlayingChange={setQuarterPlaying}
+            />
+          </div>
+          <div className="grid gap-4 sm:grid-cols-2">
+            {[localTeam, roadTeam].map((team, index) => (
+              <TeamComparisonPanel
+                key={team?.clubCode ?? index}
+                team={team}
+                shots={teamShots(team)}
+                teams={[localTeam, roadTeam]}
+                mode={presentationMode === "zones" ? "heatmap" : "markers"}
+              />
+            ))}
+          </div>
+          <div className="mt-3">
+            {presentationMode === "zones" ? <HeatmapLegend /> : <ShootingLegend teams={[localTeam, roadTeam]} />}
+          </div>
         </TabPanel>
       </Panel>
 
-      {presentationMode !== "comparison" ? <ZoneComparison localTeam={localTeam} roadTeam={roadTeam} shots={filteredShots} /> : null}
+      <ZoneComparison localTeam={localTeam} roadTeam={roadTeam} shots={filteredShots} />
     </div>
   );
 }

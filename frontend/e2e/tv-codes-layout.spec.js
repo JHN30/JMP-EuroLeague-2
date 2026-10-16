@@ -143,7 +143,6 @@ async function openComparison(page, { localTeam, roadTeam }) {
   await page.setViewportSize({ width: 1280, height: HEIGHT });
   await page.goto(`/${SEASON}/games/1`);
   await page.getByRole("tab", { name: "Shooting", exact: true }).click();
-  await page.getByRole("tab", { name: "Shooting comparison", exact: true }).click();
   return page.locator(".panel .panel").filter({ has: page.getByText("eFG%", { exact: true }) });
 }
 

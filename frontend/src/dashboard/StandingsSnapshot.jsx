@@ -13,13 +13,13 @@ import { WidgetPanel } from "./Dashboard";
 
 const MotionLink = motion.create(Link);
 
-function StandingRow({ entry }) {
+function StandingRow({ entry, seasonCode }) {
   return (
       <motion.li variants={listItem} className="flex items-center gap-3">
         <span className={`rank ${entry.basic?.position === 1 ? "rank-1" : ""}`}>
           {entry.basic?.position ?? "-"}
         </span>
-        <span className="flex flex-1 items-center gap-2 font-medium">
+        <Link to={`/${seasonCode}/teams/${entry.clubCode}`} className="link-hover flex flex-1 items-center gap-2 font-medium">
           {entry.crestUrl ? (
             <img
               src={entry.crestUrl}
@@ -35,7 +35,7 @@ function StandingRow({ entry }) {
           ) : (
             (entry.clubName ?? entry.clubCode)
           )}
-        </span>
+        </Link>
         <span className="muted font-semibold tabular-nums">
           {entry.basic?.gamesWon ?? "-"}-{entry.basic?.gamesLost ?? "-"}
         </span>
@@ -80,7 +80,7 @@ export default function StandingsSnapshot({ height }) {
             <section key={group.name ?? "none"} aria-label={groupLabel(group.name)}>
               <h3 className="muted mb-2 text-xs font-semibold tracking-wide uppercase">{groupLabel(group.name)}</h3>
               <ol className="space-y-2">
-                {group.standings.map((entry) => <StandingRow key={entry.clubCode} entry={entry} />)}
+                {group.standings.map((entry) => <StandingRow key={entry.clubCode} entry={entry} seasonCode={seasonCode} />)}
               </ol>
             </section>
           ))}
@@ -92,7 +92,7 @@ export default function StandingsSnapshot({ height }) {
           initial="hidden"
           animate="show"
         >
-          {standings.map((entry) => <StandingRow key={entry.clubCode} entry={entry} />)}
+          {standings.map((entry) => <StandingRow key={entry.clubCode} entry={entry} seasonCode={seasonCode} />)}
         </motion.ol>
       )}
       {seasonSlug(seasonCode) !== "2021" && <CompetitionContext seasonCode={seasonCode} phaseCode={phaseCode} roundNumber={query.data?.round} className="mt-4 mb-4" />}

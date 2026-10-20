@@ -39,7 +39,7 @@ export default function RaceChart({ rounds, visibleCount, standingsByRound, team
     setLastCount(visibleCount);
     setJump(Math.abs(visibleCount - lastCount));
   }
-  const duration = jump > 1 ? 0.35 : 0.6;
+  const duration = jump > 1 ? 0.5 : 0.9;
   const move = { duration, ease: "easeInOut" };
 
   const teamCount = teamOrder.length;

@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { usePrefersReducedMotion } from "../lib/usePrefersReducedMotion";
 
-const STEP_MS = 650;
+const STEP_MS = 1000;
 
 // A controlled scrubber over steps 0..total, where 0 is the stage or season start. Playing steps forward one round at a time.
 // `onPlay` runs when Play or Replay starts a run.

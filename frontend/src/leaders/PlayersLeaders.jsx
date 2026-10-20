@@ -1,6 +1,7 @@
 import { useMemo, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { motion } from "motion/react";
+import { Link } from "react-router";
 import { getLeaderForm, getLeaderStats, getSeasonGames } from "../lib/api";
 import AsyncState from "../lib/AsyncState";
 import EmptyText from "../lib/EmptyText";
@@ -74,6 +75,7 @@ function PlayerCard({ stat, seasonCode, phaseCode, mode, onOpen }) {
         name: displayName(row),
         imageUrl: row.playerImageUrl,
         team: teamOf(row),
+        to: `/${seasonCode}/players/${row.personKey}`,
         valueText: formatPlayerValue(stat, value, mode),
         share: barShare(value, lowerFirst ? worst : best, lowerFirst ? best : Math.min(worst, 0)),
       }))}
@@ -134,19 +136,21 @@ function FormSection({ seasonCode, phaseCode, openMetric }) {
               const recent = player.recent[statKey];
               const difference = recent - player.season[statKey];
               return (
-                <li key={player.personKey} className="flex items-center gap-2 border-b border-base-300 py-2 last:border-0 sm:gap-3">
-                  <RankBadge rank={index + 1} />
-                  <Avatar imageUrl={player.imageUrl} />
-                  <div className="min-w-0 flex-1">
-                    <p className="font-semibold max-sm:line-clamp-2 max-sm:wrap-break-word sm:truncate">{displayName({ playerName: player.playerName, personKey: player.personKey })}</p>
-                    <TeamTag code={player.clubCode} name={player.clubName} tvCode={player.clubTvCode} crestUrl={player.crestUrl} />
-                  </div>
-                  <div className="flex-none text-right">
-                    <p className="text-xl font-black tabular-nums">{recent.toFixed(1)}</p>
-                    <p className={`text-xs tabular-nums ${difference >= 0 ? "text-success" : "text-error"}`} title="Against their season average">
-                      {formatSignedDecimal(difference)} vs {player.season[statKey].toFixed(1)}
-                    </p>
-                  </div>
+                <li key={player.personKey} className="border-b border-base-300 last:border-0">
+                  <Link to={`/${seasonCode}/players/${player.personKey}`} className="board-row-link flex items-center gap-2 py-2 sm:gap-3">
+                      <RankBadge rank={index + 1} />
+                    <Avatar imageUrl={player.imageUrl} />
+                    <div className="min-w-0 flex-1">
+                      <p className="font-semibold max-sm:line-clamp-2 max-sm:wrap-break-word sm:truncate">{displayName({ playerName: player.playerName, personKey: player.personKey })}</p>
+                      <TeamTag code={player.clubCode} name={player.clubName} tvCode={player.clubTvCode} crestUrl={player.crestUrl} />
+                    </div>
+                    <div className="flex-none text-right">
+                      <p className="text-xl font-black tabular-nums">{recent.toFixed(1)}</p>
+                      <p className={`text-xs tabular-nums ${difference >= 0 ? "text-success" : "text-error"}`} title="Against their season average">
+                        {formatSignedDecimal(difference)} vs {player.season[statKey].toFixed(1)}
+                      </p>
+                    </div>
+                  </Link>
                 </li>
               );
             })}
@@ -160,18 +164,20 @@ function FormSection({ seasonCode, phaseCode, openMetric }) {
           ) : (
             <ul className="flex flex-col">
               {[...climbers, ...fallers].map(({ player, change }) => (
-                <li key={player.personKey} className="flex items-center gap-2 border-b border-base-300 py-2 last:border-0 sm:gap-3">
-                  <span className={`w-10 text-sm font-bold tabular-nums ${change > 0 ? "text-success" : "text-error"}`}>
-                    {change > 0 ? "▲" : "▼"}
-                    {Math.abs(change)}
-                  </span>
-                  <Avatar imageUrl={player.imageUrl} size="h-9 w-9" />
-                  <div className="min-w-0 flex-1">
-                    <p className="text-sm font-semibold max-sm:line-clamp-2 max-sm:wrap-break-word sm:truncate">{displayName({ playerName: player.playerName, personKey: player.personKey })}</p>
-                    <p className="muted text-xs tabular-nums">
-                      #{player.rank[statKey].before} → #{player.rank[statKey].now}
-                    </p>
-                  </div>
+                <li key={player.personKey} className="border-b border-base-300 last:border-0">
+                  <Link to={`/${seasonCode}/players/${player.personKey}`} className="board-row-link flex items-center gap-2 py-2 sm:gap-3">
+                    <span className={`w-10 text-sm font-bold tabular-nums ${change > 0 ? "text-success" : "text-error"}`}>
+                      {change > 0 ? "▲" : "▼"}
+                      {Math.abs(change)}
+                    </span>
+                    <Avatar imageUrl={player.imageUrl} size="h-9 w-9" />
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-semibold max-sm:line-clamp-2 max-sm:wrap-break-word sm:truncate">{displayName({ playerName: player.playerName, personKey: player.personKey })}</p>
+                      <p className="muted text-xs tabular-nums">
+                        #{player.rank[statKey].before} → #{player.rank[statKey].now}
+                      </p>
+                    </div>
+                  </Link>
                 </li>
               ))}
             </ul>

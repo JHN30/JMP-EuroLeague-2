@@ -17,7 +17,7 @@ import { LEADER_STATS, TEAM_CARDS, TEAM_SECTION_NAMES, TEAM_TOTAL_CARDS, formatT
 
 // ---- Landing ----
 
-function TeamCard({ stat, rows, mode, onOpen, isLoading, isError, onRetry }) {
+function TeamCard({ stat, seasonCode, rows, mode, onOpen, isLoading, isError, onRetry }) {
   const direction = stat.lowerIsBetter ? 1 : -1;
   const valued = rows.map((row) => ({ row, value: stat.get(row, mode) })).filter((entry) => entry.value !== null && !Number.isNaN(entry.value));
   valued.sort((a, b) => direction * (a.value - b.value));
@@ -39,6 +39,7 @@ function TeamCard({ stat, rows, mode, onOpen, isLoading, isError, onRetry }) {
         name: row.name,
         imageUrl: row.crestUrl,
         crest: true,
+        to: `/${seasonCode}/teams/${row.clubCode}`,
         team: { code: row.standing?.basic ? `${row.standing.basic.gamesWon}-${row.standing.basic.gamesLost}` : null },
         valueText: formatTeamValue(stat, value, mode),
         share: barShare(value, stat.lowerIsBetter ? worst : best, stat.lowerIsBetter ? best : Math.min(worst, 0)),
@@ -199,7 +200,7 @@ export default function TeamsLeaders({ seasonCode, phaseCode, params, setParams 
             <PanelHeader title={family} />
             <CardGrid>
               {stats.map((stat) => (
-                <TeamCard key={stat.key} stat={stat} rows={source.rows} mode={mode} isLoading={source.isLoading} isError={false} onOpen={() => openMetric(stat.key)} />
+                <TeamCard key={stat.key} stat={stat} seasonCode={seasonCode} rows={source.rows} mode={mode} isLoading={source.isLoading} isError={false} onOpen={() => openMetric(stat.key)} />
               ))}
             </CardGrid>
           </section>

@@ -53,6 +53,7 @@ function AdvancedCard({ stat, seasonCode, scope, onOpen }) {
         name: displayName(entry),
         imageUrl: entry.imageUrl,
         team: teamOf(entry),
+        to: `/${seasonCode}/players/${entry.personKey}`,
         valueText: formatAdvancedValue(stat, entry.value),
         share: barShare(Number(entry.value), stat.lowerIsBetter ? worst : best, stat.lowerIsBetter ? best : Math.min(worst, 0)),
       }))}

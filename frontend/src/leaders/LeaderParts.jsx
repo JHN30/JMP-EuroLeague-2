@@ -83,7 +83,7 @@ export function RankBadge({ rank }) {
 
 // ---- A landing card: the top five for one category ----
 
-// `entries`: { key, rank, name, imageUrl, crest, team: { code, name, crestUrl }, valueText, share } in rank order.
+// `entries`: { key, rank, name, imageUrl, crest, team: { code, name, crestUrl }, valueText, share, to } in rank order; `to` opens the person's or club's page.
 export function CategoryCard({ kicker, title, tip, entries, isLoading, isError, onRetry, onOpen, footnote }) {
   return (
     <Panel className="flex flex-col p-4">
@@ -103,28 +103,35 @@ export function CategoryCard({ kicker, title, tip, entries, isLoading, isError, 
         <EmptyText>No one yet.</EmptyText>
       ) : (
         <motion.ol className="flex flex-1 flex-col" variants={listContainer} initial="hidden" animate="show">
-          {entries.map((entry) => (
-            <motion.li key={entry.key} variants={listItem} className="border-b border-base-300 py-2 last:border-0">
-              <div className="flex items-center gap-2 sm:gap-3">
-                <RankBadge rank={entry.rank} />
-                {/* The top row stands out with larger sizes from sm; on a phone they would leave too little room for a long name. */}
-                <Avatar imageUrl={entry.imageUrl} crest={entry.crest} size={entry.rank === 1 ? "h-10 w-10 sm:h-12 sm:w-12" : "h-10 w-10"} />
-                <div className="min-w-0 flex-1">
-                  <p className={`font-semibold max-sm:line-clamp-2 max-sm:wrap-break-word sm:truncate ${entry.rank === 1 ? "text-sm sm:text-base" : "text-sm"}`}>{entry.name}</p>
-                  <TeamTag {...entry.team} />
-                </div>
-                <span className={`font-black tabular-nums ${entry.rank === 1 ? "text-xl text-primary sm:text-2xl" : "text-lg"}`}>{entry.valueText}</span>
-              </div>
-              <div aria-hidden="true" className="mt-1.5 ml-10 h-1 overflow-hidden rounded-full bg-base-300">
-                <motion.div
-                  className="h-full rounded-full bg-primary/70"
-                  initial={{ width: 0 }}
-                  animate={{ width: `${entry.share}%` }}
-                  transition={{ duration: 0.6, ease: EASE_OUT, delay: 0.15 }}
-                />
-              </div>
-            </motion.li>
-          ))}
+          {entries.map((entry) => {
+            // A row with a `to` is one link; the team tag inside stays text, since links do not nest.
+            const Row = entry.to ? Link : "div";
+            const rowProps = entry.to ? { to: entry.to, className: "board-row-link block" } : {};
+            return (
+              <motion.li key={entry.key} variants={listItem} className="border-b border-base-300 py-2 last:border-0">
+                <Row {...rowProps}>
+                  <div className="flex items-center gap-2 sm:gap-3">
+                    <RankBadge rank={entry.rank} />
+                    {/* The top row stands out with larger sizes from sm; on a phone they would leave too little room for a long name. */}
+                    <Avatar imageUrl={entry.imageUrl} crest={entry.crest} size={entry.rank === 1 ? "h-10 w-10 sm:h-12 sm:w-12" : "h-10 w-10"} />
+                    <div className="min-w-0 flex-1">
+                      <p className={`font-semibold max-sm:line-clamp-2 max-sm:wrap-break-word sm:truncate ${entry.rank === 1 ? "text-sm sm:text-base" : "text-sm"}`}>{entry.name}</p>
+                      <TeamTag {...entry.team} />
+                    </div>
+                    <span className={`font-black tabular-nums ${entry.rank === 1 ? "text-xl text-primary sm:text-2xl" : "text-lg"}`}>{entry.valueText}</span>
+                  </div>
+                  <div aria-hidden="true" className="mt-1.5 ml-10 h-1 overflow-hidden rounded-full bg-base-300">
+                    <motion.div
+                      className="h-full rounded-full bg-primary/70"
+                      initial={{ width: 0 }}
+                      animate={{ width: `${entry.share}%` }}
+                      transition={{ duration: 0.6, ease: EASE_OUT, delay: 0.15 }}
+                    />
+                  </div>
+                </Row>
+              </motion.li>
+            );
+          })}
         </motion.ol>
       )}
       {footnote ? <p className="muted mt-2 text-xs">{footnote}</p> : null}

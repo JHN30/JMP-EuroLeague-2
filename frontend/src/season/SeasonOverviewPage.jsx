@@ -21,7 +21,7 @@ import { useSummaryTableStage } from "../lib/useSummaryTableStage";
 import { isGroupedTable, mostWinsEntry } from "../standings/standingsGroups";
 import { useActiveTheme, themeColor } from "../lib/useActiveTheme";
 import { isForfeit } from "../lib/forfeit";
-import { formatDateTime, formatPerGame, formatSeasonLabel } from "../lib/format";
+import { formatDate, formatPerGame, formatSeasonLabel } from "../lib/format";
 import { teamCode } from "../games/gameUtils";
 import { buildEliminationBracket, eliminationStageLabel, eliminationStageOf } from "../postseason/eliminationBracket";
 
@@ -211,20 +211,23 @@ function pickDefiningGames(playedGames) {
       combined: game.localScore + game.roadScore,
     }));
 
+  // Games often tie on the value (a one-point margin especially), so the latest played game among the tied ones is
+  // picked, and `shared` counts the other games with that same value.
   const chosen = new Map();
-  function take(sorted, tag) {
-    for (const entry of sorted) {
-      if (!chosen.has(entry.game.gameCode)) {
-        chosen.set(entry.game.gameCode, { ...entry, tag });
-        return;
-      }
-    }
+  function take(value, direction, tag) {
+    const sorted = [...withScores].sort(
+      (a, b) => direction * (value(a) - value(b)) || String(b.game.scheduledAt).localeCompare(String(a.game.scheduledAt)),
+    );
+    const entry = sorted.find((candidate) => !chosen.has(candidate.game.gameCode));
+    if (!entry) return;
+    const shared = withScores.filter((other) => value(other) === value(entry)).length - 1;
+    chosen.set(entry.game.gameCode, { ...entry, tag, shared });
   }
 
-  take([...withScores].sort((a, b) => a.margin - b.margin), "Closest game");
-  take([...withScores].sort((a, b) => b.combined - a.combined), "Highest-scoring game");
-  take([...withScores].sort((a, b) => a.combined - b.combined), "Lowest-scoring game");
-  take([...withScores].sort((a, b) => b.margin - a.margin), "Biggest blowout");
+  take((entry) => entry.margin, 1, "Closest game");
+  take((entry) => entry.combined, -1, "Highest-scoring game");
+  take((entry) => entry.combined, 1, "Lowest-scoring game");
+  take((entry) => entry.margin, -1, "Biggest blowout");
 
   return [...chosen.values()];
 }
@@ -278,7 +281,7 @@ function DefiningGames({ seasonCode, playedGames }) {
           initial="hidden"
           animate="show"
         >
-          {picks.map(({ game, margin, combined, tag }) => {
+          {picks.map(({ game, margin, combined, tag, shared }) => {
             const localWon = game.localScore > game.roadScore;
             const roadWon = game.roadScore > game.localScore;
             const roundLabel = game.roundName ?? (game.roundNumber ? `Round ${game.roundNumber}` : "");
@@ -313,7 +316,8 @@ function DefiningGames({ seasonCode, playedGames }) {
                   </span>
                 </div>
                 <p className="muted mt-1 text-xs">
-                  {context} · {statDetail} · {formatDateTime(game.scheduledAt)}
+                  {context} · {statDetail} · {formatDate(game.scheduledAt)}
+                  {shared > 0 ? ` · Shared with ${shared} other ${shared === 1 ? "game" : "games"}` : ""}
                 </p>
               </MotionLink>
             );
@@ -888,12 +892,6 @@ export default function SeasonOverviewPage() {
               activePhaseCode={format ? (currentStage(format)?.code ?? null) : champion ? null : activePhase?.code}
             />
           </motion.div>
-          <motion.div variants={sectionItem}>
-            <ScoringTrendChart playedGames={playedGames} />
-          </motion.div>
-          <motion.div variants={sectionItem}>
-            <DefiningGames seasonCode={seasonCode} playedGames={playedGames} />
-          </motion.div>
         </>
       )}
 
@@ -903,6 +901,17 @@ export default function SeasonOverviewPage() {
       <motion.div variants={sectionItem}>
         <SeasonLeaders seasonCode={seasonCode} />
       </motion.div>
+
+      {summaryLoading || summaryError ? null : (
+        <>
+          <motion.div variants={sectionItem}>
+            <DefiningGames seasonCode={seasonCode} playedGames={playedGames} />
+          </motion.div>
+          <motion.div variants={sectionItem}>
+            <ScoringTrendChart playedGames={playedGames} />
+          </motion.div>
+        </>
+      )}
 
       {summaryLoading || summaryError ? null : (
         <motion.div variants={sectionItem}>

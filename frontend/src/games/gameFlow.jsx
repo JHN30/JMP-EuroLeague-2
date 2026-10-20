@@ -6,7 +6,7 @@ import Panel from "../lib/Panel";
 import PanelHeader from "../lib/PanelHeader";
 import { useActiveTheme, themeColor } from "../lib/useActiveTheme";
 import { buildMarginSeries, eventMoment, momentLabel } from "./gameFlowData";
-import { teamName } from "./gameUtils";
+import { teamCode, teamName } from "./gameUtils";
 import { TeamName } from "./TeamLabel";
 
 export function PeriodTable({ periodScores, localTeam, roadTeam, forfeit = false }) {
@@ -203,8 +203,8 @@ export function ScoreFlowChart({ flow, localTeam, roadTeam, compact = false }) {
     const bound = Math.max(2 * step, Math.ceil((largest + 1) / step) * step);
 
     const redraw = () => chartRef.current?.draw();
-    const home = { code: localTeam?.clubCode ?? teamName(localTeam), crest: loadCrest(localTeam?.crestUrl, redraw) };
-    const road = { code: roadTeam?.clubCode ?? teamName(roadTeam), crest: loadCrest(roadTeam?.crestUrl, redraw) };
+    const home = { code: teamCode(localTeam), crest: loadCrest(localTeam?.crestUrl, redraw) };
+    const road = { code: teamCode(roadTeam), crest: loadCrest(roadTeam?.crestUrl, redraw) };
 
     chartRef.current = new Chart(canvas, {
       type: "line",

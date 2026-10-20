@@ -23,7 +23,7 @@ export const TEAM_STATS = [
   { key: "wins", family: "Record", label: "Wins", short: "W", kind: "int", needs: "standings", get: (row) => row.standing?.basic?.gamesWon ?? null },
   { key: "winPct", family: "Record", label: "Win %", short: "PCT", kind: "percent", needs: "standings",
     get: (row) => (row.standing?.basic?.gamesPlayed ? (row.standing.basic.gamesWon / row.standing.basic.gamesPlayed) * 100 : null) },
-  { key: "pointDiff", family: "Record", label: "Point differential", short: "DIFF", kind: "signed", get: (row, mode) => {
+  { key: "pointDiff", family: "Record", label: "Point differential", short: "DIFF", kind: "signed", totals: true, get: (row, mode) => {
     const scored = own("points")(row, mode);
     const allowed = against("points")(row, mode);
     return scored == null || allowed == null ? null : scored - allowed;
@@ -31,8 +31,14 @@ export const TEAM_STATS = [
 
   { key: "points", family: "Scoring", label: "Points", short: "PTS", kind: "count", get: own("points") },
   { key: "twoPointersMade", family: "Scoring", label: "2-pointers made", short: "2PM", kind: "count", get: own("fieldGoalsMade2") },
+  { key: "twoPointersAttempted", family: "Scoring", label: "2-pointers attempted", short: "2PA", kind: "count", get: own("fieldGoalsAttempted2") },
   { key: "threePointersMade", family: "Scoring", label: "3-pointers made", short: "3PM", kind: "count", get: own("fieldGoalsMade3") },
+  { key: "threePointersAttempted", family: "Scoring", label: "3-pointers attempted", short: "3PA", kind: "count", get: own("fieldGoalsAttempted3") },
   { key: "freeThrowsMade", family: "Scoring", label: "Free throws made", short: "FTM", kind: "count", get: own("freeThrowsMade") },
+  { key: "ftRate", family: "Scoring", label: "Free throw rate", short: "FT rate", kind: "percent", needs: "advanced", get: advanced("ftRate", 100), tip: "Free throws made per field goal attempt" },
+  { key: "oppTovPct", family: "Defense", label: "Opponents' turnover %", short: "OPP TOV%", kind: "percent", needs: "advanced", get: advanced("oppTovPct", 100), tip: "Turnovers the opponents commit per 100 of their possessions" },
+  { key: "oppFtRate", family: "Defense", label: "Opponents' free throw rate", short: "OPP FT rate", kind: "percent", lowerIsBetter: true, needs: "advanced", get: advanced("oppFtRate", 100), tip: "Free throws the opponents make per field goal attempt" },
+  { key: "freeThrowsAttempted", family: "Scoring", label: "Free throws attempted", short: "FTA", kind: "count", get: own("freeThrowsAttempted") },
   { key: "ortg", family: "Scoring", label: "Offensive rating", short: "ORtg", kind: "decimal", needs: "advanced", get: advanced("offensiveRating"), tip: "Points scored per 100 possessions" },
 
   { key: "fieldGoalPct", family: "Shooting", label: "Field goal %", short: "FG%", kind: "percent", get: share("own", "fieldGoalsMadeTotal", "fieldGoalsAttemptedTotal") },
@@ -49,6 +55,7 @@ export const TEAM_STATS = [
   { key: "drbPct", family: "Rebounding", label: "Defensive rebound %", short: "DRB%", kind: "percent", needs: "advanced", get: advanced("drbPct", 100) },
 
   { key: "assists", family: "Playmaking", label: "Assists", short: "AST", kind: "count", get: own("assistances") },
+  { key: "astTo", family: "Playmaking", label: "Assist to turnover", short: "AST/TO", kind: "decimal", get: (row) => (Number(row.stats?.own?.turnovers) > 0 ? Number(row.stats.own.assistances) / Number(row.stats.own.turnovers) : null) },
   { key: "turnovers", family: "Playmaking", label: "Turnovers", short: "TO", kind: "count", lowerIsBetter: true, get: own("turnovers") },
   { key: "tovPct", family: "Playmaking", label: "Turnover %", short: "TOV%", kind: "percent", lowerIsBetter: true, needs: "advanced", get: advanced("tovPct", 100) },
   { key: "pace", family: "Playmaking", label: "Pace", short: "PACE", kind: "decimal", needs: "advanced", get: advanced("pace"), tip: "Possessions per 40 minutes" },
@@ -61,20 +68,49 @@ export const TEAM_STATS = [
   { key: "steals", family: "Defense", label: "Steals", short: "STL", kind: "count", get: own("steals") },
   { key: "blocks", family: "Defense", label: "Blocks", short: "BLK", kind: "count", get: own("blocksFavour") },
   { key: "fouls", family: "Defense", label: "Fouls committed", short: "FC", kind: "count", lowerIsBetter: true, get: own("foulsCommited") },
+  { key: "foulsDrawn", family: "Defense", label: "Fouls drawn", short: "FD", kind: "count", get: own("foulsReceived") },
 
   { key: "net", family: "Efficiency", label: "Net rating", short: "NET", kind: "signed", needs: "advanced", get: advanced("netRating"), tip: "Offensive minus defensive rating, per 100 possessions" },
   { key: "srs", family: "Efficiency", label: "Simple rating (SRS)", short: "SRS", kind: "signed", needs: "advanced", get: advanced("srs"), tip: "Average margin adjusted for the strength of the schedule" },
   { key: "mov", family: "Efficiency", label: "Margin of victory", short: "MOV", kind: "signed", needs: "advanced", get: advanced("mov") },
 ];
 
-export const TEAM_CARDS = ["points", "oppPoints", "net", "ortg", "drtg", "threePct", "rebounds", "assists", "steals"];
+// The Leaders page lays the stats out in the same sections as the players' (scoring, playmaking, rebounding, defense), then the
+// club-only ones (record, efficiency). `family` above is what the other pages group by; these are the Leaders' own, in order.
+export const TEAM_SECTIONS = {
+  Scoring: [
+    "points", "efgPct", "tsPct", "twoPointersAttempted", "twoPointersMade", "twoPct", "threePointersAttempted", "threePointersMade", "threePct",
+    "freeThrowsAttempted", "freeThrowsMade", "freeThrowPct", "ftRate", "fieldGoalPct",
+  ],
+  Playmaking: ["assists", "astTo", "turnovers", "tovPct", "pace"],
+  Rebounding: ["rebounds", "offensiveRebounds", "orbPct", "defensiveRebounds", "drbPct"],
+  Defense: ["oppPoints", "oppEfgPct", "oppFieldGoalPct", "oppThreePct", "oppTovPct", "oppFtRate", "steals", "blocks", "fouls", "foulsDrawn"],
+  Record: ["wins", "winPct", "pointDiff"],
+  Efficiency: ["ortg", "drtg", "net", "srs", "mov"],
+};
+export const TEAM_SECTION_NAMES = Object.keys(TEAM_SECTIONS);
+// Every stat in the Leaders' order, with the Leaders' section as its family.
+export const LEADER_STATS = TEAM_SECTION_NAMES.flatMap((name) => TEAM_SECTIONS[name].map((key) => ({ ...TEAM_STATS.find((stat) => stat.key === key), family: name })));
+export const leaderStatByKey = (key) => LEADER_STATS.find((stat) => stat.key === key);
+
+// The landing's cards, in the order they appear within their section. Season totals leave out the percentages, ratings and rates.
+export const TEAM_CARDS = Object.values(TEAM_SECTIONS).flat().filter((key) => !["fieldGoalPct"].includes(key));
+export const TEAM_TOTAL_CARDS = [
+  "points", "twoPointersAttempted", "twoPointersMade", "threePointersAttempted", "threePointersMade", "freeThrowsAttempted", "freeThrowsMade",
+  "assists", "turnovers", "rebounds", "offensiveRebounds", "defensiveRebounds",
+  "oppPoints", "steals", "blocks", "fouls", "foulsDrawn",
+  "wins", "pointDiff",
+];
 export const statByKey = (key) => TEAM_STATS.find((stat) => stat.key === key);
 
 export function formatTeamValue(stat, value, mode) {
   if (value === null || value === undefined || Number.isNaN(value)) return "—";
   if (stat.kind === "percent") return `${value.toFixed(1)}%`;
   if (stat.kind === "int") return String(Math.round(value));
-  if (stat.kind === "signed") return `${value > 0 ? "+" : ""}${value.toFixed(1)}`;
+  if (stat.kind === "signed") {
+    const text = stat.totals && mode === "accumulated" ? Math.round(value).toLocaleString() : value.toFixed(1);
+    return `${value > 0 ? "+" : ""}${text}`;
+  }
   if (stat.kind === "count" && mode === "accumulated") return Math.round(value).toLocaleString();
   return value.toFixed(1);
 }

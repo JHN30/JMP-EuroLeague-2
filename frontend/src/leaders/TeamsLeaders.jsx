@@ -6,19 +6,20 @@ import FilterDisclosure from "../games/FilterDisclosure";
 import LabelledSelect from "../lib/LabelledSelect";
 import { listContainer } from "../lib/motion";
 import Panel from "../lib/Panel";
+import PanelHeader from "../lib/PanelHeader";
 import SearchField from "../lib/SearchField";
 import { TabStrip } from "../lib/TabStrip";
-import { Avatar, BoardHeader, BoardRow, BoardTopLine, CardGrid, CategoryCard, StatChips, StatSelect } from "./LeaderParts";
+import { Avatar, BoardHeader, BoardRow, BoardTopLine, CardGrid, CategoryCard, ModeSelect, ModeTabs, StatChips, StatSelect } from "./LeaderParts";
 import { advancedScopeForPhase } from "../teams/teamLeague";
 import { barShare, rankRows } from "./leaderData";
 import ForfeitStatsNote from "../lib/ForfeitStatsNote";
-import { TEAM_CARDS, TEAM_FAMILIES, TEAM_STATS, formatTeamValue, statByKey, useTeamRows, usable, UNADJUSTED_NOTE } from "./teamData";
+import { LEADER_STATS, TEAM_CARDS, TEAM_SECTION_NAMES, TEAM_TOTAL_CARDS, formatTeamValue, leaderStatByKey, useTeamRows, usable, UNADJUSTED_NOTE } from "./teamData";
 
 // ---- Landing ----
 
-function TeamCard({ stat, rows, onOpen, isLoading, isError, onRetry }) {
+function TeamCard({ stat, rows, mode, onOpen, isLoading, isError, onRetry }) {
   const direction = stat.lowerIsBetter ? 1 : -1;
-  const valued = rows.map((row) => ({ row, value: stat.get(row, "perGame") })).filter((entry) => entry.value !== null && !Number.isNaN(entry.value));
+  const valued = rows.map((row) => ({ row, value: stat.get(row, mode) })).filter((entry) => entry.value !== null && !Number.isNaN(entry.value));
   valued.sort((a, b) => direction * (a.value - b.value));
   const ranked = rankRows(valued.slice(0, 5), (entry) => entry.value);
   const best = ranked[0]?.value ?? null;
@@ -39,7 +40,7 @@ function TeamCard({ stat, rows, onOpen, isLoading, isError, onRetry }) {
         imageUrl: row.crestUrl,
         crest: true,
         team: { code: row.standing?.basic ? `${row.standing.basic.gamesWon}-${row.standing.basic.gamesLost}` : null },
-        valueText: formatTeamValue(stat, value, "perGame"),
+        valueText: formatTeamValue(stat, value, mode),
         share: barShare(value, stat.lowerIsBetter ? worst : best, stat.lowerIsBetter ? best : Math.min(worst, 0)),
       }))}
     />
@@ -51,7 +52,7 @@ function TeamCard({ stat, rows, onOpen, isLoading, isError, onRetry }) {
 const PAGE_SIZE = 25;
 
 function TeamsBoard({ seasonCode, phaseCode, metric, source, params, setParams }) {
-  const stat = statByKey(metric) ?? TEAM_STATS[0];
+  const stat = leaderStatByKey(metric) ?? LEADER_STATS[0];
   const mode = params.get("mode") === "accumulated" ? "accumulated" : "perGame";
   const direction = params.get("direction") ?? (stat.lowerIsBetter ? "asc" : "desc");
   const search = params.get("search") ?? "";
@@ -66,7 +67,7 @@ function TeamsBoard({ seasonCode, phaseCode, metric, source, params, setParams }
   const last = ranked.length ? ranked[ranked.length - 1].value : 0;
   const top = sign === 1 ? last : best;
   const bottom = sign === 1 ? best : Math.min(last, 0);
-  const hasMode = stat.kind === "count";
+  const hasMode = stat.kind === "count" || stat.totals;
 
   function update(patch) {
     setParams((current) => {
@@ -79,9 +80,9 @@ function TeamsBoard({ seasonCode, phaseCode, metric, source, params, setParams }
     });
   }
 
-  const families = TEAM_FAMILIES.filter((entry) => TEAM_STATS.some((candidate) => candidate.family === entry && usable(candidate, source)));
+  const families = TEAM_SECTION_NAMES.filter((entry) => LEADER_STATS.some((candidate) => candidate.family === entry && usable(candidate, source)));
   const chooseStat = (key) => {
-    setFamily(statByKey(key)?.family ?? family);
+    setFamily(leaderStatByKey(key)?.family ?? family);
     update({ metric: key, direction: undefined, offset: undefined });
   };
 
@@ -92,7 +93,8 @@ function TeamsBoard({ seasonCode, phaseCode, metric, source, params, setParams }
       </BoardTopLine>
       {source.unadjusted ? <p className="muted text-sm">{UNADJUSTED_NOTE}</p> : null}
       <ForfeitStatsNote seasonCode={seasonCode} phaseCode={phaseCode} />
-      <StatSelect families={families} stats={TEAM_STATS.filter((entry) => usable(entry, source))} activeKey={stat.key} onChoose={chooseStat} />
+      {hasMode ? <ModeTabs ariaLabel="Team statistics mode" mode={mode} onChange={(key) => update({ mode: key === "perGame" ? undefined : key })} /> : null}
+      <StatSelect families={families} stats={LEADER_STATS.filter((entry) => usable(entry, source))} activeKey={stat.key} onChoose={chooseStat} />
       <div className="max-sm:hidden">
         <TabStrip
           scrolling
@@ -105,17 +107,14 @@ function TeamsBoard({ seasonCode, phaseCode, metric, source, params, setParams }
         />
         <StatChips
           id="leaders-team-stats"
-          items={TEAM_STATS.filter((entry) => entry.family === family && usable(entry, source))}
+          items={LEADER_STATS.filter((entry) => entry.family === family && usable(entry, source))}
           activeKey={stat.key}
           onChoose={chooseStat}
         />
       </div>
       <div className="grid grid-cols-2 items-end gap-3 max-sm:[&_select]:w-full sm:flex sm:flex-wrap">
         {hasMode ? (
-          <LabelledSelect label="Team statistics" ariaLabel="Team statistics mode" value={mode} onChange={(event) => update({ mode: event.target.value === "perGame" ? undefined : event.target.value })}>
-            <option value="perGame">Per game</option>
-            <option value="accumulated">Totals</option>
-          </LabelledSelect>
+          <ModeSelect label="Team statistics" ariaLabel="Team statistics mode" mode={mode} onChange={(key) => update({ mode: key === "perGame" ? undefined : key })} />
         ) : null}
         <LabelledSelect label="Order" ariaLabel="Team sort direction" value={direction} onChange={(event) => update({ direction: event.target.value })}>
           <option value="desc">Highest first</option>
@@ -159,6 +158,14 @@ function TeamsBoard({ seasonCode, phaseCode, metric, source, params, setParams }
 
 export default function TeamsLeaders({ seasonCode, phaseCode, params, setParams }) {
   const metric = params.get("metric");
+  const mode = params.get("mode") === "accumulated" ? "accumulated" : "perGame";
+  const setMode = (key) =>
+    setParams((current) => {
+      const next = new URLSearchParams(current);
+      if (key === "perGame") next.delete("mode");
+      else next.set("mode", key);
+      return next;
+    });
   const source = useTeamRows(seasonCode, phaseCode);
   // Opening a category swaps the page's view on one path (only `?metric=` changes), so ScrollToTop does not run: the page goes to the top
   // by itself. Going back to the categories does the same, from the page's back link (LeadersPage).
@@ -174,17 +181,30 @@ export default function TeamsLeaders({ seasonCode, phaseCode, params, setParams 
   if (metric) return <TeamsBoard seasonCode={seasonCode} phaseCode={phaseCode} metric={metric} source={source} params={params} setParams={setParams} />;
   if (source.isError) return <AsyncState status="error" message="Could not load the team leaderboard." onRetry={source.refetch} />;
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-8">
       {source.unadjusted ? <p className="muted text-sm">{UNADJUSTED_NOTE}</p> : null}
       <ForfeitStatsNote seasonCode={seasonCode} phaseCode={phaseCode} />
       {advancedScopeForPhase(phaseCode) === "PS" ? (
         <p className="muted text-sm">Ratings for the play-in, playoffs and Final Four cover the whole postseason together.</p>
       ) : null}
-      <CardGrid>
-        {TEAM_CARDS.map((key) => statByKey(key)).filter((stat) => usable(stat, source)).map((stat) => (
-          <TeamCard key={stat.key} stat={stat} rows={source.rows} isLoading={source.isLoading} isError={false} onOpen={() => openMetric(stat.key)} />
-        ))}
-      </CardGrid>
+      <div>
+        <ModeTabs ariaLabel="Team statistics mode" mode={mode} onChange={setMode} />
+        <ModeSelect label="Team statistics" ariaLabel="Team statistics mode" mode={mode} onChange={setMode} />
+      </div>
+      {TEAM_SECTION_NAMES.map((family) => {
+        const stats = (mode === "accumulated" ? TEAM_TOTAL_CARDS : TEAM_CARDS).map((key) => leaderStatByKey(key)).filter((stat) => stat.family === family && usable(stat, source));
+        if (stats.length === 0) return null;
+        return (
+          <section key={family} className="flex flex-col gap-4" aria-label={family}>
+            <PanelHeader title={family} />
+            <CardGrid>
+              {stats.map((stat) => (
+                <TeamCard key={stat.key} stat={stat} rows={source.rows} mode={mode} isLoading={source.isLoading} isError={false} onOpen={() => openMetric(stat.key)} />
+              ))}
+            </CardGrid>
+          </section>
+        );
+      })}
     </div>
   );
 }

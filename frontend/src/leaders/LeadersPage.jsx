@@ -19,8 +19,8 @@ const SCOPES = [
 ];
 // What belongs to one scope's view and must not leak into another's when the scope changes.
 const SCOPE_PARAMS = ["metric", "mode", "direction", "minGames", "minMinutes", "team", "position", "search", "offset", "ascope"];
-// What an open board adds to the address; the scope, the phase and the advanced scope stay when going back to the cards.
-const BOARD_PARAMS = SCOPE_PARAMS.filter((name) => name !== "ascope");
+// What an open board adds to the address; the scope, the phase, the totals choice and the advanced scope stay when going back to the cards.
+const BOARD_PARAMS = SCOPE_PARAMS.filter((name) => name !== "ascope" && name !== "mode");
 
 // The league leaders: players (per game and totals), teams, and the advanced player metrics. Each scope opens on a grid of
 // category cards (the top five of each) and opens a full leaderboard for one stat; everything is in the URL so a leaderboard

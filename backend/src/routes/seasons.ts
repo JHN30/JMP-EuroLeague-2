@@ -40,7 +40,9 @@ import {
   getRoundStatLeaders,
   getRoundStatRows,
   getClubPlayersAdvanced,
+  ROUND_PER_100_METRICS,
   ROUND_STAT_METRICS,
+  type RoundPer100Metric,
   type RoundStatMetric,
   getUsageLeaders,
   getPlayerClubs,
@@ -375,7 +377,8 @@ seasonRouter.get("/:seasonCode/advanced/standings", async (req, res) => {
 });
 
 const ROUND_STAT_METRIC_KEYS = Object.keys(ROUND_STAT_METRICS);
-const ADVANCED_LEADER_METRICS = ["per", "winShares", "winSharesPer40", "rapm", "onOff", ...ROUND_STAT_METRIC_KEYS];
+const WIN_SHARE_METRICS = ["winShares", "offWinShares", "defWinShares", "winSharesPer40"] as const;
+const ADVANCED_LEADER_METRICS = ["per", ...WIN_SHARE_METRICS, "rapm", "onOff", ...ROUND_STAT_METRIC_KEYS, ...Object.keys(ROUND_PER_100_METRICS)];
 // Default minimum minutes (on court for RAPM and on/off) per metric in a full season. Early in a season nobody has
 // that many, so the default drops to a small floor and the response says the season is still early. A metric not listed
 // here (the round-table rates) uses the PER default.
@@ -474,18 +477,19 @@ seasonRouter.get("/:seasonCode/advanced/leaders", async (req, res) => {
         personKey: row.personKey, playerName: row.playerName, ...club(row.clubCode),
         games: row.gamesPlayed, seconds: row.secondsPlayed, value: row.per,
       }));
-    } else if (metric === "winSharesPer40" || metric === "winShares") {
+    } else if ((WIN_SHARE_METRICS as readonly string[]).includes(metric)) {
       const rows = await getWinShareLeaders(season.seasonCode, scope, round, minSeconds, LEADERS_EVERYONE);
-      if (metric === "winShares") rows.sort((x, y) => Number(y.winShares ?? -Infinity) - Number(x.winShares ?? -Infinity));
+      const shareKey = metric as (typeof WIN_SHARE_METRICS)[number];
+      if (shareKey !== "winSharesPer40") rows.sort((x, y) => Number(y[shareKey] ?? -Infinity) - Number(x[shareKey] ?? -Infinity));
       total = rows.length;
       entries = page(rows).map((row) => ({
         personKey: row.personKey, playerName: row.playerName, ...club(row.clubCode),
         games: row.gamesPlayed, seconds: row.secondsPlayed,
-        value: metric === "winShares" ? row.winShares : row.winSharesPer40,
+        value: row[shareKey],
         winShares: row.winShares, winSharesPer40: row.winSharesPer40,
       }));
     } else {
-      const rows = await getRoundStatLeaders(season.seasonCode, scope, round, metric as RoundStatMetric, minSeconds, order === "asc", LEADERS_EVERYONE);
+      const rows = await getRoundStatLeaders(season.seasonCode, scope, round, metric as RoundStatMetric | RoundPer100Metric, minSeconds, order === "asc", LEADERS_EVERYONE);
       total = rows.length;
       entries = page(rows).map((row) => ({
         personKey: row.personKey, playerName: row.playerName, ...club(row.clubCode),

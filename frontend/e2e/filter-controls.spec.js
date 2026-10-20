@@ -23,10 +23,11 @@ test("uses compact native selects for statistics and comparison filters", async 
 
   // The landing shows category cards; the filters live on a full leaderboard.
   await page.getByRole("button", { name: "See the full leaderboard" }).first().click();
-  const playerMode = page.getByLabel("Player statistics mode");
-  await expect(playerMode).toHaveJSProperty("tagName", "SELECT");
-  await playerMode.selectOption("accumulated");
-  await expect(playerMode).toHaveValue("accumulated");
+  await expect(page.getByRole("tablist", { name: "Statistic family" })).toBeVisible();
+  // The mode is a strip on a desktop window (and a select on a phone).
+  const playerMode = page.getByRole("tablist", { name: "Player statistics mode" });
+  await playerMode.getByRole("tab", { name: "Totals" }).click();
+  await expect(playerMode.getByRole("tab", { name: "Totals" })).toHaveAttribute("aria-selected", "true");
 
   const playerDirection = page.getByLabel("Player sort direction");
   await playerDirection.selectOption("asc");

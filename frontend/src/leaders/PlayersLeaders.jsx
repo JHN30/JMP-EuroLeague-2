@@ -13,9 +13,9 @@ import PanelHeader from "../lib/PanelHeader";
 import { nameParts, titleCase } from "../lib/playerName";
 import SearchField from "../lib/SearchField";
 import { TabStrip } from "../lib/TabStrip";
-import { Avatar, BoardHeader, BoardRow, BoardTopLine, CardGrid, CategoryCard, RankBadge, StatChips, StatSelect, TeamTag } from "./LeaderParts";
+import { Avatar, BoardHeader, BoardRow, BoardTopLine, CardGrid, CategoryCard, ModeSelect, ModeTabs, RankBadge, StatChips, StatSelect, TeamTag } from "./LeaderParts";
 import { barShare, fetchFullPlayerBoard, formatPlayerValue, hasVolume, playerValue, rankRows, statNumber } from "./leaderData";
-import { FORM_STATS, PLAYER_CARDS, PLAYER_FAMILIES, PLAYER_STATS } from "./leaderDefs";
+import { FORM_STATS, PLAYER_CARDS, PLAYER_FAMILIES, PLAYER_STATS, PLAYER_TOTAL_CARDS } from "./leaderDefs";
 
 const PAGE_SIZE = 25;
 const FORM_GAMES = 5;
@@ -37,22 +37,23 @@ const teamOf = (player) => ({ code: player.clubCode, name: player.clubName, tvCo
 
 // ---- Landing: a card per category, then who is hot and who has moved ----
 
-function PlayerCard({ stat, seasonCode, phaseCode, onOpen }) {
+function PlayerCard({ stat, seasonCode, phaseCode, mode, onOpen }) {
+  const lowerFirst = stat.lowerIsBetter && !stat.showMost;
   const query = useQuery({
-    queryKey: ["leaders-card", seasonCode, phaseCode, stat.key],
+    queryKey: ["leaders-card", seasonCode, phaseCode, stat.key, mode],
     queryFn: () =>
       getLeaderStats(seasonCode, {
         phase: phaseCode,
-        mode: "perGame",
+        mode,
         sort: stat.key,
-        order: stat.lowerIsBetter ? "asc" : "desc",
+        order: lowerFirst ? "asc" : "desc",
         // A stat that needs volume is read from a longer list, since the first few may not qualify.
         limit: stat.volume ? CARD_POOL : 5,
         qualified: true,
       }),
     enabled: Boolean(phaseCode),
   });
-  const players = (query.data?.players ?? []).filter((player) => playerValue(player, stat) !== null && hasVolume(player, stat, "perGame")).slice(0, 5);
+  const players = (query.data?.players ?? []).filter((player) => playerValue(player, stat) !== null && hasVolume(player, stat, mode)).slice(0, 5);
   const ranked = rankRows(players, (player) => playerValue(player, stat));
   const best = ranked[0]?.value ?? null;
   const worst = ranked.length ? ranked[ranked.length - 1].value : 0;
@@ -66,15 +67,15 @@ function PlayerCard({ stat, seasonCode, phaseCode, onOpen }) {
       isError={query.isError}
       onRetry={() => query.refetch()}
       onOpen={onOpen}
-      footnote={stat.volume ? `Needs ${stat.volume.label}.` : null}
+      footnote={stat.volume ? `Needs ${stat.volume.label}.` : stat.showMost ? "Most first." : null}
       entries={ranked.map(({ row, rank, value }) => ({
         key: row.personKey,
         rank,
         name: displayName(row),
         imageUrl: row.playerImageUrl,
         team: teamOf(row),
-        valueText: formatPlayerValue(stat, value, "perGame"),
-        share: barShare(value, stat.lowerIsBetter ? worst : best, stat.lowerIsBetter ? best : Math.min(worst, 0)),
+        valueText: formatPlayerValue(stat, value, mode),
+        share: barShare(value, lowerFirst ? worst : best, lowerFirst ? best : Math.min(worst, 0)),
       }))}
     />
   );
@@ -184,14 +185,35 @@ function FormSection({ seasonCode, phaseCode, openMetric }) {
   );
 }
 
-function PlayersLanding({ seasonCode, phaseCode, openMetric }) {
+function PlayersLanding({ seasonCode, phaseCode, params, setParams, openMetric }) {
+  const mode = params.get("mode") === "accumulated" ? "accumulated" : "perGame";
+  const setMode = (key) =>
+    setParams((current) => {
+      const next = new URLSearchParams(current);
+      if (key === "perGame") next.delete("mode");
+      else next.set("mode", key);
+      return next;
+    });
   return (
     <div className="flex flex-col gap-8">
-      <CardGrid>
-        {PLAYER_CARDS.map((key) => (
-          <PlayerCard key={key} stat={statByKey(key)} seasonCode={seasonCode} phaseCode={phaseCode} onOpen={() => openMetric(key)} />
-        ))}
-      </CardGrid>
+      <div>
+        <ModeTabs ariaLabel="Player statistics mode" mode={mode} onChange={setMode} />
+        <ModeSelect label="Player statistics" ariaLabel="Player statistics mode" mode={mode} onChange={setMode} />
+      </div>
+      {PLAYER_FAMILIES.map((family) => {
+        const keys = (mode === "accumulated" ? PLAYER_TOTAL_CARDS : PLAYER_CARDS).filter((key) => statByKey(key).family === family);
+        if (keys.length === 0) return null;
+        return (
+          <section key={family} className="flex flex-col gap-4" aria-label={family}>
+            <PanelHeader title={family} />
+            <CardGrid>
+              {keys.map((key) => (
+                <PlayerCard key={key} stat={statByKey(key)} seasonCode={seasonCode} phaseCode={phaseCode} mode={mode} onOpen={() => openMetric(key, statByKey(key).showMost ? "desc" : undefined)} />
+              ))}
+            </CardGrid>
+          </section>
+        );
+      })}
       <FormSection seasonCode={seasonCode} phaseCode={phaseCode} openMetric={openMetric} />
     </div>
   );
@@ -200,10 +222,6 @@ function PlayersLanding({ seasonCode, phaseCode, openMetric }) {
 // ---- The full board for one stat ----
 
 const MIN_GAMES_OPTIONS = [1, 5, 10, 15];
-const MODES = [
-  { key: "perGame", label: "Per game" },
-  { key: "accumulated", label: "Totals" },
-];
 
 function PlayersBoard({ seasonCode, phaseCode, metric, params, setParams }) {
   const stat = statByKey(metric) ?? PLAYER_STATS[0];
@@ -268,6 +286,7 @@ function PlayersBoard({ seasonCode, phaseCode, metric, params, setParams }) {
       return next;
     });
   }
+  const setMode = (key) => update({ mode: key === "perGame" ? undefined : key, offset: undefined });
   const chooseStat = (key) => update({ metric: key, direction: undefined, offset: undefined, mode: stat.kind === "games" ? mode : params.get("mode") });
   const pickStat = (key) => {
     setFamily(statByKey(key)?.family ?? family);
@@ -289,6 +308,7 @@ function PlayersBoard({ seasonCode, phaseCode, metric, params, setParams }) {
         </p>
       </BoardTopLine>
 
+      <ModeTabs ariaLabel="Player statistics mode" mode={mode} onChange={setMode} />
       <StatSelect families={PLAYER_FAMILIES} stats={PLAYER_STATS} activeKey={stat.key} onChoose={pickStat} />
       <div className="max-sm:hidden">
         <TabStrip
@@ -304,13 +324,7 @@ function PlayersBoard({ seasonCode, phaseCode, metric, params, setParams }) {
       </div>
 
       <div className="grid grid-cols-2 items-end gap-3 max-sm:[&_select]:w-full sm:flex sm:flex-wrap">
-        <LabelledSelect label="Player statistics" ariaLabel="Player statistics mode" value={mode} onChange={(event) => update({ mode: event.target.value === "perGame" ? undefined : event.target.value, offset: undefined })}>
-          {MODES.map((option) => (
-            <option key={option.key} value={option.key}>
-              {option.label}
-            </option>
-          ))}
-        </LabelledSelect>
+        <ModeSelect label="Player statistics" ariaLabel="Player statistics mode" mode={mode} onChange={setMode} />
         <LabelledSelect label="Order" ariaLabel="Player sort direction" value={direction} onChange={(event) => update({ direction: event.target.value, offset: undefined })}>
           <option value="desc">Highest first</option>
           <option value="asc">Lowest first</option>
@@ -402,12 +416,13 @@ export default function PlayersLeaders({ seasonCode, phaseCode, params, setParam
   const metric = params.get("metric");
   // Opening a category swaps the page's view on one path (only `?metric=` changes), so ScrollToTop does not run: the page goes to the top
   // by itself. Going back to the categories does the same, from the page's back link (LeadersPage).
-  const openMetric = (key) => {
+  const openMetric = (key, direction) => {
     window.scrollTo(0, 0);
     setParams((current) => {
       const next = new URLSearchParams(current);
       next.set("metric", key);
       next.delete("offset");
+      if (direction) next.set("direction", direction);
       return next;
     });
   };
@@ -415,6 +430,6 @@ export default function PlayersLeaders({ seasonCode, phaseCode, params, setParam
   return metric ? (
     <PlayersBoard seasonCode={seasonCode} phaseCode={phaseCode} metric={metric} params={params} setParams={setParams} />
   ) : (
-    <PlayersLanding seasonCode={seasonCode} phaseCode={phaseCode} openMetric={openMetric} />
+    <PlayersLanding seasonCode={seasonCode} phaseCode={phaseCode} params={params} setParams={setParams} openMetric={openMetric} />
   );
 }

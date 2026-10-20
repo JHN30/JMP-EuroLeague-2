@@ -264,6 +264,8 @@ export const ROUND_STAT_METRICS = {
   usgPct: playerRoundStats.usgPct,
   astPct: playerRoundStats.astPct,
   trbPct: playerRoundStats.trbPct,
+  orbPct: playerRoundStats.orbPct,
+  drbPct: playerRoundStats.drbPct,
   stlPct: playerRoundStats.stlPct,
   blkPct: playerRoundStats.blkPct,
   tovPct: playerRoundStats.tovPct,
@@ -274,16 +276,34 @@ export const ROUND_STAT_METRICS = {
 } as const;
 export type RoundStatMetric = keyof typeof ROUND_STAT_METRICS;
 
+// Per-100-possession figures the pipeline does not publish, worked out from the round table's running counts and the
+// possessions the player was on the floor for. Leaderboards only: the player pages keep to the published columns.
+const roundPer100 = (count: SQL) => sql<number>`100 * (${count}) / nullif(${playerRoundStats.possessionsPlayed}, 0)`.mapWith(Number);
+const twoPointersMade = sql`${playerRoundStats.fieldGoalsMade} - ${playerRoundStats.threePointersMade}`;
+const twoPointersAttempted = sql`${playerRoundStats.fieldGoalsAttempted} - ${playerRoundStats.threePointersAttempted}`;
+export const ROUND_PER_100_METRICS = {
+  twoPointersAttemptedPer100: roundPer100(twoPointersAttempted),
+  twoPointersMadePer100: roundPer100(twoPointersMade),
+  threePointersAttemptedPer100: roundPer100(sql`${playerRoundStats.threePointersAttempted}`),
+  threePointersMadePer100: roundPer100(sql`${playerRoundStats.threePointersMade}`),
+  freeThrowsAttemptedPer100: roundPer100(sql`${playerRoundStats.freeThrowsAttempted}`),
+  freeThrowsMadePer100: roundPer100(sql`${playerRoundStats.freeThrowsMade}`),
+  offensiveReboundsPer100: roundPer100(sql`${playerRoundStats.offensiveRebounds}`),
+  defensiveReboundsPer100: roundPer100(sql`${playerRoundStats.defensiveRebounds}`),
+  foulsPer100: roundPer100(sql`${playerRoundStats.foulsCommitted}`),
+} as const;
+export type RoundPer100Metric = keyof typeof ROUND_PER_100_METRICS;
+
 export async function getRoundStatLeaders(
   seasonCode: string,
   scope: string,
   round: number,
-  metric: RoundStatMetric,
+  metric: RoundStatMetric | RoundPer100Metric,
   minSeconds: number,
   ascending: boolean,
   limit: number,
 ) {
-  const column = ROUND_STAT_METRICS[metric];
+  const column = metric in ROUND_STAT_METRICS ? ROUND_STAT_METRICS[metric as RoundStatMetric] : ROUND_PER_100_METRICS[metric as RoundPer100Metric];
   return catalogRead(() =>
     db.select({
       personKey: playerRoundStats.personKey,
@@ -319,6 +339,8 @@ export async function getRoundStatRows(seasonCode: string, scope: string, round:
       usgPct: playerRoundStats.usgPct,
       astPct: playerRoundStats.astPct,
       trbPct: playerRoundStats.trbPct,
+      orbPct: playerRoundStats.orbPct,
+      drbPct: playerRoundStats.drbPct,
       stlPct: playerRoundStats.stlPct,
       blkPct: playerRoundStats.blkPct,
       tovPct: playerRoundStats.tovPct,
@@ -392,6 +414,8 @@ export async function getWinShareLeaders(
       gamesPlayed: playerRoundWinShares.gamesPlayed,
       secondsPlayed: playerRoundWinShares.secondsPlayed,
       winShares: playerRoundWinShares.winShares,
+      offWinShares: playerRoundWinShares.offWinShares,
+      defWinShares: playerRoundWinShares.defWinShares,
       winSharesPer40: playerRoundWinShares.winSharesPer40,
     })
       .from(playerRoundWinShares)

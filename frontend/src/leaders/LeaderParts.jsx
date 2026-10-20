@@ -9,6 +9,7 @@ import Panel from "../lib/Panel";
 import { Silhouette } from "../lib/PlayerPortrait";
 import RevealImage from "../lib/RevealImage";
 import ShortLabel from "../lib/ShortLabel";
+import { TabStrip } from "../lib/TabStrip";
 
 // ---- Small pieces shared by the three leaderboards ----
 
@@ -140,6 +141,29 @@ export function CardGrid({ children }) {
 }
 
 // ---- Controls shared by the full boards ----
+
+// Per game or season totals: a strip from sm up, a dropdown on a phone. Place ModeTabs where the strip belongs and ModeSelect among
+// the phone's other selects; each hides itself at the other size.
+const MODES = [
+  { key: "perGame", label: "Per game" },
+  { key: "accumulated", label: "Totals" },
+];
+
+export function ModeTabs({ ariaLabel, mode, onChange, panelId }) {
+  return <TabStrip scrolling ariaLabel={ariaLabel} level={2} panelId={panelId} activeKey={mode} onChange={onChange} className="w-fit max-sm:hidden" tabs={MODES} />;
+}
+
+export function ModeSelect({ label, ariaLabel, mode, onChange }) {
+  return (
+    <LabelledSelect label={label} ariaLabel={ariaLabel} labelClassName="sm:hidden" value={mode} onChange={(event) => onChange(event.target.value)}>
+      {MODES.map((option) => (
+        <option key={option.key} value={option.key}>
+          {option.label}
+        </option>
+      ))}
+    </LabelledSelect>
+  );
+}
 
 // The line above a board: what the board shows. The way back to the cards is the page's back link (LeadersPage).
 export function BoardTopLine({ children }) {

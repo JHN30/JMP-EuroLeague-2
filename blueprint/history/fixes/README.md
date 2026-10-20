@@ -83,3 +83,4 @@ every such change so it can be found later.
 - [compare-trends-rosters-advanced-and-picker.md](compare-trends-rosters-advanced-and-picker.md)
 - [postseason-page-with-a-real-bracket.md](postseason-page-with-a-real-bracket.md)
 - [page-addresses-tab-titles-and-public-files.md](page-addresses-tab-titles-and-public-files.md)
+- [leaders-totals-on-landing.md](leaders-totals-on-landing.md): Per game / Totals on the Leaders landings, sectioned cards for players, teams and advanced, and the added stats

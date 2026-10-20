@@ -50,8 +50,8 @@ export function edgesBetween(rows, clubA, clubB) {
   }).filter(Boolean);
 }
 
-// Free throws made are on the Leaders board but left out of the comparison.
-const LEFT_OUT = new Set(["freeThrowsMade"]);
+// Free throws made, the attempts, assist-to-turnover, fouls drawn and the free throw rates and forced turnovers are on the Leaders board but left out of the comparison.
+const LEFT_OUT = new Set(["freeThrowsMade", "twoPointersAttempted", "threePointersAttempted", "freeThrowsAttempted", "astTo", "foulsDrawn", "ftRate", "oppTovPct", "oppFtRate"]);
 
 export function statsOfFamily(family, usableFn, source) {
   return TEAM_STATS.filter((stat) => stat.family === family && !LEFT_OUT.has(stat.key) && usableFn(stat, source));

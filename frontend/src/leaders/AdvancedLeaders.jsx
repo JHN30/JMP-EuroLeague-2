@@ -8,11 +8,12 @@ import FilterDisclosure from "../games/FilterDisclosure";
 import LabelledSelect from "../lib/LabelledSelect";
 import { listContainer } from "../lib/motion";
 import Panel from "../lib/Panel";
+import PanelHeader from "../lib/PanelHeader";
 import { nameParts, titleCase } from "../lib/playerName";
 import { TabStrip } from "../lib/TabStrip";
 import { Avatar, BoardHeader, BoardRow, BoardTopLine, CardGrid, CategoryCard, StatChips, StatSelect, TeamTag } from "./LeaderParts";
 import { barShare, formatAdvancedValue } from "./leaderData";
-import { ADVANCED_CARDS, ADVANCED_FAMILIES, ADVANCED_SCOPES, ADVANCED_STATS } from "./leaderDefs";
+import { ADVANCED_FAMILIES, ADVANCED_SCOPES, ADVANCED_STATS } from "./leaderDefs";
 
 const PAGE_SIZE = 25;
 const MINUTE_OPTIONS = [0, 100, 200, 300, 500, 800];
@@ -141,7 +142,7 @@ function AdvancedBoard({ seasonCode, scope, metric, params, setParams }) {
         />
       </div>
       <div className="grid grid-cols-2 items-end gap-3 max-sm:[&_select]:w-full sm:flex sm:flex-wrap">
-        <LabelledSelect label="Order" ariaLabel="Advanced sort direction" value={direction} onChange={(event) => update({ direction: event.target.value, offset: undefined })} disabled={["rapm", "onOff", "per", "winShares", "winSharesPer40"].includes(stat.key)}>
+        <LabelledSelect label="Order" ariaLabel="Advanced sort direction" value={direction} onChange={(event) => update({ direction: event.target.value, offset: undefined })} disabled={["rapm", "onOff", "per", "winShares", "offWinShares", "defWinShares", "winSharesPer40"].includes(stat.key)}>
           <option value="desc">Highest first</option>
           <option value="asc">Lowest first</option>
         </LabelledSelect>
@@ -248,11 +249,18 @@ export default function AdvancedLeaders({ seasonCode, params, setParams }) {
         {metric ? (
           <AdvancedBoard seasonCode={seasonCode} scope={scope} metric={metric} params={params} setParams={setParams} />
         ) : (
-          <CardGrid>
-            {ADVANCED_CARDS.map((key) => (
-              <AdvancedCard key={key} stat={statByKey(key)} seasonCode={seasonCode} scope={scope} onOpen={() => openMetric(key)} />
+          <div className="flex flex-col gap-8">
+            {ADVANCED_FAMILIES.map((family) => (
+              <section key={family} className="flex flex-col gap-4" aria-label={family}>
+                <PanelHeader title={family} />
+                <CardGrid>
+                  {ADVANCED_STATS.filter((stat) => stat.family === family).map((stat) => (
+                    <AdvancedCard key={stat.key} stat={stat} seasonCode={seasonCode} scope={scope} onOpen={() => openMetric(stat.key)} />
+                  ))}
+                </CardGrid>
+              </section>
             ))}
-          </CardGrid>
+          </div>
         )}
       </div>
     </div>

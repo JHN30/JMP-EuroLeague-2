@@ -66,6 +66,7 @@ Core Phase 1 data includes:
 
 Data rules:
 
+- The pipeline's table documentation (the data dictionary, Gold table reference, Bronze and Silver catalogs and statistics glossary) is kept in `docs_from_warehouse/`, a local untracked copy from the warehouse project, and is the contract for the `app_*` tables. It currently documents EuroLeague; EuroCup coverage and rules are added there as the warehouse implements them.
 - Every season-dependent query must be scoped by both competition code and season code.
 - Browsing, existing records, player season history, and head-to-head are scoped to seasons both allowed for the database target and actually loaded. Local development accepts `E2000` to `E2026`; Neon initially accepts `E2023` to `E2026`. Feature 34 adapts existing archive views to historical data without adding new career leaderboards or importing older seasons into Neon.
 - Keep scheduled, live/unknown, postponed/cancelled when supplied, and completed games distinct.
@@ -165,7 +166,7 @@ Deployment rules:
 
 - Public, internet-facing, read-only analytics application
 - No authentication, profiles, roles, comments, or personal-user data in Phase 1
-- Phase 1 remains EuroLeague-only. Feature 34 extends local development to `E2000` to `E2026`; production remains limited to the loaded `E2023` to `E2026` seasons pending a separate rollout decision.
+- Phase 1 production remains EuroLeague-only. Feature 34 extends local development to `E2000` to `E2026`; production remains limited to the loaded `E2023` to `E2026` seasons pending a separate rollout decision. Feature 35 adds EuroCup (`U` seasons) to local development only, read from the local `gold` schema; nothing EuroCup is published to Neon or deployed until a separate decision.
 - Current-season data may be incomplete and will change as games are played
 - Historical source data contains known gaps and anomalies; correctness includes exposing uncertainty rather than hiding it
 - Expected initial traffic and data volume are modest, but list endpoints should still use bounded responses, filters, and pagination where result sets can grow
@@ -182,7 +183,7 @@ Deployment rules:
 - Older-season production imports and a paid Neon storage expansion until historical support passes local validation and a separate rollout is approved
 - New career or all-season leaderboards and new player-career features beyond adapting the existing loaded-season views
 - Per-36 and per-30 player statistics (per-100 figures are published and shown)
-- EuroCup, ABA League, NBA, or other competitions
+- ABA League, NBA, or other competitions. EuroCup is not excluded from local development (feature 35), but its Neon publishing and production rollout are.
 - User authentication and account recovery
 - Favorites, notifications, social features, and user-generated content
 - Payments, subscriptions, and advertising integrations

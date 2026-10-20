@@ -233,6 +233,12 @@ Scaffolding, shared layout, design tokens, database connection setup, and deploy
 - `euroleague_historical_formats.md` is a working research reference, not an audited rulebook. 34a records source links and unresolved rules in `blueprint/reference/historical-season-inventory.md`; later leaves update evidence for their own seasons. That report does not become a second executable format registry.
 - All data/API/browser verification is local. Check `/api/health` for `target: local` before any browser run, never open the real `.env`, and leave older-season production publishing and deployment for a separate explicit decision after local acceptance.
 
+- [ ] 35. **EuroCup (local only)** - Show EuroCup seasons (whichever `U` seasons the warehouse loads) alongside EuroLeague in the app, read from the local `gold` schema that the warehouse pipeline fills (`python gold_etl/main.py -cp eurocup`). Local development and tests only: no Neon publish, production rollout, push or deployment, and no change to the four-season Neon allowlist. EuroLeague behavior stays exactly as it is. Leaves are proposed and are split further at `/feature` time.
+  - [ ] 35a. **EuroCup data and format inventory** - Read-only report in `blueprint/reference/`: which `U` seasons the local Gold tables hold, their phases, groups, rounds and playoff formats, game statuses, and statistics, play-by-play and shot coverage, checked against `docs_from_warehouse/` and the local data. Separate verified facts from open questions, and name any prerequisite warehouse work (the warehouse docs and Gold records tables do not support EuroCup yet). No app code, schema or data change.
+  - [ ] 35b. **Competition-aware API** - Replace the hard-coded EuroLeague competition code in the backend with a validated competition scope (EuroLeague by default, so every current request and response is unchanged), covering the season catalog, standings, games, teams, players, statistics, advanced and records routes, still scoped by both competition code and season code. Local target only.
+  - [ ] 35c. **Competition selector and EuroCup pages** - A competition choice in the season selector, and the existing pages showing EuroCup seasons with their own verified phases, groups and playoff formats, honest empty states where EuroCup data or coverage is missing, and no EuroLeague-only wording on EuroCup pages.
+  - [ ] 35d. **EuroCup acceptance** - A data, API and browser matrix over every loaded EuroCup season and the unchanged EuroLeague pages, against the local target only (`/api/health` must report `target: local`); root build and frontend lint must pass; acceptance report and the prerequisites for any later Neon publish.
+
 ## Deferred beyond Phase 1
 
 - JMP Rating, win probabilities, and the Predictor page
@@ -240,7 +246,7 @@ Scaffolding, shared layout, design tokens, database connection setup, and deploy
 - Older-season Neon imports, paid storage expansion and historical production rollout until feature 34 passes local acceptance and a separate rollout is approved
 - New career or all-season leaderboards and additional player-career features beyond adapting the existing loaded-season views
 - Per-36 and per-30 player statistics (per-100 figures are published and shown)
-- EuroCup and other competitions
+- Other competitions (ABA League, NBA); EuroCup is feature 35 locally, and its Neon publishing and production rollout are deferred
 - Authentication, profiles, saved favorites, and other user-specific data
 - Cloudflare edge caching for the API: switch the `www` record from DNS-only to proxied (SSL mode Full (strict), with Render's certificate still renewing), send `Cache-Control` on `/api/seasons` replies, and add a Cloudflare cache rule for `/api/*`, so repeat requests are answered by Cloudflare without reaching Render or Neon
 - Cache clearing on pipeline publish: a protected endpoint the pipeline calls after publishing that empties the server cache (and purges Cloudflare once edge caching is on), so cached replies can live much longer than 10 minutes

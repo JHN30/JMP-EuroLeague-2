@@ -24,7 +24,7 @@ import {
   teamShotZoneStats,
 } from "./season-advanced-schema";
 
-// Read-only access to the advanced tables. They are filled for every supported season (E2024 onward); callers pass a supported season.
+// Read-only access to the advanced tables. They are filled for every supported season (E2018 onward); callers pass a supported season.
 // Round tables are cumulative (a row is the state after round_number), so nothing here sums across rounds or scopes.
 const COMPETITION_CODE = "E";
 const RAPM_SCOPE = "all";

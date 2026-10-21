@@ -70,7 +70,7 @@ Navigate to Compare to start from the games of the coming round, or to Postseaso
 Every number comes from a curated data pipeline that publishes to a PostgreSQL database. The app reads those tables as published instead of recomputing them.
 
 Key concepts:
-- Four seasons, 2023-24 to 2026-27
+- Nine seasons, 2018-19 to 2026-27
 - Qualified players (a minimum of games) for rankings and leaders
 - Advanced statistics (PER, Win Shares, RAPM, on/off) shown with their sample size
 
@@ -202,7 +202,7 @@ LOCAL_DB_URL=postgresql://postgres:password@localhost:5432/database
 # LOCAL_DB_SCHEMA=gold
 ```
 
-With `DB_TARGET=local` the API reads `LOCAL_DB_URL` and accepts every season the local copy holds (2000-01 to 2026-27); with `neon` it serves the four published seasons. A running development backend reports its target at `/api/health`. The browser tests (`npm run test:browser`) must only run against a local database: check that `/api/health` says `"target":"local"` first.
+With `DB_TARGET=local` the API reads `LOCAL_DB_URL` and accepts every season the local copy holds (2000-01 to 2026-27); with `neon` it serves the nine published seasons (2018-19 to 2026-27). A running development backend reports its target at `/api/health`. The browser tests (`npm run test:browser`) must only run against a local database: check that `/api/health` says `"target":"local"` first.
 
 The frontend reads one optional variable, `VITE_API_URL` (default `http://localhost:3000/api` in development and `/api` in a production build, which the API serves on the same origin). It is public, so it must never hold a secret.
 

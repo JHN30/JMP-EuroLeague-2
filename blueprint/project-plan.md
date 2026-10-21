@@ -6,12 +6,13 @@ JMP Euroleague should give basketball fans one clear, fast place to explore Euro
 
 This is a new PERN implementation of the existing JMP Euroleague product. The immediate goal is to prove the architecture and user experience with a few seasons before expanding the historical range. Phase 1 covers:
 
+- `E2018` to `E2022`: the 2018-19 to 2022-23 seasons, added to Neon after the first four
 - `E2023`: the 2023-24 season
 - `E2024`: the 2024-25 season
 - `E2025`: the 2025-26 season
 - `E2026`: the 2026-27 season
 
-Feature 34 expands development and validation to every modern EuroLeague season from `E2000` (2000-01) through `E2026` (2026-27), using the local PostgreSQL copy of the application tables. Production stays on the four loaded Neon seasons above until a separately approved historical import and deployment. Build the shared foundations first, then adapt one format era or exceptional season at a time; seasons with the same rules share implementation and each receives its own data verification.
+Feature 34 expands development and validation to every modern EuroLeague season from `E2000` (2000-01) through `E2026` (2026-27), using the local PostgreSQL copy of the application tables. Production serves the nine Neon seasons `E2018` to `E2026`; seasons before `E2018` stay local until a separately approved historical import and deployment. Build the shared foundations first, then adapt one format era or exceptional season at a time; seasons with the same rules share implementation and each receives its own data verification.
 
 The previous custom JMP Rating and prediction experience is not part of this phase. Pages must explain official and descriptive statistics rather than imply predictive meaning.
 
@@ -26,7 +27,7 @@ Users should not need an account or specialist analytics knowledge. The main exp
 
 ## 3. Features - What does the MVP need?
 
-- Global season selection for loaded, allowed seasons: `E2000` to `E2026` locally, initially `E2023` to `E2026` in production
+- Global season selection for loaded, allowed seasons: `E2000` to `E2026` locally, `E2018` to `E2026` in production
 - Home dashboard with standings, recent results, upcoming games, and statistical leaders
 - Official standings by available competition phase
 - Fixtures and completed results grouped by round
@@ -68,7 +69,7 @@ Data rules:
 
 - The pipeline's table documentation (the data dictionary, Gold table reference, Bronze and Silver catalogs and statistics glossary) is kept in `docs_from_warehouse/`, a local untracked copy from the warehouse project, and is the contract for the `app_*` tables. It currently documents EuroLeague; EuroCup coverage and rules are added there as the warehouse implements them.
 - Every season-dependent query must be scoped by both competition code and season code.
-- Browsing, existing records, player season history, and head-to-head are scoped to seasons both allowed for the database target and actually loaded. Local development accepts `E2000` to `E2026`; Neon initially accepts `E2023` to `E2026`. Feature 34 adapts existing archive views to historical data without adding new career leaderboards or importing older seasons into Neon.
+- Browsing, existing records, player season history, and head-to-head are scoped to seasons both allowed for the database target and actually loaded. Local development accepts `E2000` to `E2026`; Neon accepts `E2018` to `E2026`. Feature 34 adapts existing archive views to historical data without adding new career leaderboards or importing older seasons into Neon.
 - Keep scheduled, live/unknown, postponed/cancelled when supplied, and completed games distinct.
 - Treat `NULL` as unavailable; never silently convert missing statistics to zero.
 - Preserve stable source identifiers and use them for joins and URLs where appropriate.
@@ -160,13 +161,13 @@ Deployment rules:
 - Restrict CORS to the real frontend origins in production.
 - Keep the API deployable independently from the frontend.
 - The schedule and mechanism for importing/refreshing EuroLeague data are still TBD; do not add an automatic production cron until its source, ownership, retry behavior, and idempotency are defined.
-- Feature 34 is developed and tested locally before any production expansion. Before browser tests, `/api/health` must report `target: local`. Verify local/Neon schema and publishing compatibility, and the existing four-season allowlist, without directing a development backend or test run at Neon. Paying for more Neon storage, importing older production seasons, publishing and deploying remain separate decisions.
+- Feature 34 is developed and tested locally before any production expansion. Before browser tests, `/api/health` must report `target: local`. Verify local/Neon schema and publishing compatibility, and the nine-season Neon allowlist, without directing a development backend or test run at Neon. Paying for more Neon storage, importing older production seasons, publishing and deploying remain separate decisions.
 
 ## 9. Usage model and constraints
 
 - Public, internet-facing, read-only analytics application
 - No authentication, profiles, roles, comments, or personal-user data in Phase 1
-- Phase 1 production remains EuroLeague-only. Feature 34 extends local development to `E2000` to `E2026`; production remains limited to the loaded `E2023` to `E2026` seasons pending a separate rollout decision. Feature 35 adds EuroCup (`U` seasons) to local development only, read from the local `gold` schema; nothing EuroCup is published to Neon or deployed until a separate decision.
+- Phase 1 production remains EuroLeague-only. Feature 34 extends local development to `E2000` to `E2026`; production remains limited to the loaded `E2018` to `E2026` seasons pending a separate rollout decision. Feature 35 adds EuroCup (`U` seasons) to local development only, read from the local `gold` schema; nothing EuroCup is published to Neon or deployed until a separate decision.
 - Current-season data may be incomplete and will change as games are played
 - Historical source data contains known gaps and anomalies; correctness includes exposing uncertainty rather than hiding it
 - Expected initial traffic and data volume are modest, but list endpoints should still use bounded responses, filters, and pagination where result sets can grow

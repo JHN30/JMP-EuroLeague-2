@@ -6,13 +6,13 @@ JMP Euroleague should give basketball fans one clear, fast place to explore Euro
 
 This is a new PERN implementation of the existing JMP Euroleague product. The immediate goal is to prove the architecture and user experience with a few seasons before expanding the historical range. Phase 1 covers:
 
-- `E2018` to `E2022`: the 2018-19 to 2022-23 seasons, added to Neon after the first four
+- `E2000` to `E2022`: the 2000-01 to 2022-23 seasons, added to Neon after the first four
 - `E2023`: the 2023-24 season
 - `E2024`: the 2024-25 season
 - `E2025`: the 2025-26 season
 - `E2026`: the 2026-27 season
 
-Feature 34 expands development and validation to every modern EuroLeague season from `E2000` (2000-01) through `E2026` (2026-27), using the local PostgreSQL copy of the application tables. Production serves the nine Neon seasons `E2018` to `E2026`; seasons before `E2018` stay local until a separately approved historical import and deployment. Build the shared foundations first, then adapt one format era or exceptional season at a time; seasons with the same rules share implementation and each receives its own data verification.
+Feature 34 expands development and validation to every modern EuroLeague season from `E2000` (2000-01) through `E2026` (2026-27), using the local PostgreSQL copy of the application tables. Neon now holds the same `E2000` to `E2026` seasons as the local copy, so production serves all 27. Build the shared foundations first, then adapt one format era or exceptional season at a time; seasons with the same rules share implementation and each receives its own data verification.
 
 The previous custom JMP Rating and prediction experience is not part of this phase. Pages must explain official and descriptive statistics rather than imply predictive meaning.
 
@@ -27,7 +27,7 @@ Users should not need an account or specialist analytics knowledge. The main exp
 
 ## 3. Features - What does the MVP need?
 
-- Global season selection for loaded, allowed seasons: `E2000` to `E2026` locally, `E2018` to `E2026` in production
+- Global season selection for loaded, allowed seasons: `E2000` to `E2026` locally and in production
 - Home dashboard with standings, recent results, upcoming games, and statistical leaders
 - Official standings by available competition phase
 - Fixtures and completed results grouped by round
@@ -60,8 +60,8 @@ Core Phase 1 data includes:
 - Play-by-play events and shot locations where the pipeline supplies them
 - Play-in, playoff, and Final Four matchup relationships/results
 - Precomputed team-season statistics, coverage summaries, and postseason series from the pipeline's `app_*` tables
-- Advanced statistics from the pipeline's `app_*` advanced tables (`E2018` to `E2026`): round-by-round team and player ratings, win shares, splits, on/off, lineups, RAPM, and shot-zone and play-by-play team stats. These are read as published; the API does not recompute them.
-- Per-game advanced statistics for players and teams, published to Neon by the project owner for `E2018` to `E2026`: `app_game_player_advanced`, `app_game_team_advanced`, `app_game_team_score_flow`, `app_game_team_shot_splits`, `app_game_team_possessions`, `app_game_team_shot_zones`, `app_game_player_on_court`, and `app_game_team_lineup_stints`. These are read as published; the Game Detail page does not recompute them in the API or frontend.
+- Advanced statistics from the pipeline's `app_*` advanced tables (`E2000` to `E2026`): round-by-round team and player ratings, win shares, splits, on/off, lineups, RAPM, and shot-zone and play-by-play team stats. These are read as published; the API does not recompute them.
+- Per-game advanced statistics for players and teams, published to Neon by the project owner for `E2000` to `E2026`: `app_game_player_advanced`, `app_game_team_advanced`, `app_game_team_score_flow`, `app_game_team_shot_splits`, `app_game_team_possessions`, `app_game_team_shot_zones`, `app_game_player_on_court`, and `app_game_team_lineup_stints`. These are read as published; the Game Detail page does not recompute them in the API or frontend.
 - Data-quality annotations or correction flags that are safe and useful to show in the UI
 - Feature 34's season-format metadata and verified exception rules, initially maintained in a small typed backend registry using existing application tables. Store new source-derived fields in the pipeline only when the inventory establishes a necessary gap; do not introduce a parallel competition database or duplicate the pipeline's statistics calculations.
 
@@ -69,7 +69,7 @@ Data rules:
 
 - The pipeline's table documentation (the data dictionary, Gold table reference, Bronze and Silver catalogs and statistics glossary) is kept in `docs_from_warehouse/`, a local untracked copy from the warehouse project, and is the contract for the `app_*` tables. It currently documents EuroLeague; EuroCup coverage and rules are added there as the warehouse implements them.
 - Every season-dependent query must be scoped by both competition code and season code.
-- Browsing, existing records, player season history, and head-to-head are scoped to seasons both allowed for the database target and actually loaded. Local development accepts `E2000` to `E2026`; Neon accepts `E2018` to `E2026`. Feature 34 adapts existing archive views to historical data without adding new career leaderboards or importing older seasons into Neon.
+- Browsing, existing records, player season history, and head-to-head are scoped to seasons both allowed for the database target and actually loaded. Local development and Neon both accept `E2000` to `E2026`. Feature 34 adapts existing archive views to historical data without adding new career leaderboards.
 - Keep scheduled, live/unknown, postponed/cancelled when supplied, and completed games distinct.
 - Treat `NULL` as unavailable; never silently convert missing statistics to zero.
 - Preserve stable source identifiers and use them for joins and URLs where appropriate.
@@ -161,13 +161,13 @@ Deployment rules:
 - Restrict CORS to the real frontend origins in production.
 - Keep the API deployable independently from the frontend.
 - The schedule and mechanism for importing/refreshing EuroLeague data are still TBD; do not add an automatic production cron until its source, ownership, retry behavior, and idempotency are defined.
-- Feature 34 is developed and tested locally before any production expansion. Before browser tests, `/api/health` must report `target: local`. Verify local/Neon schema and publishing compatibility, and the nine-season Neon allowlist, without directing a development backend or test run at Neon. Paying for more Neon storage, importing older production seasons, publishing and deploying remain separate decisions.
+- Feature 34 is developed and tested locally before any production expansion. Before browser tests, `/api/health` must report `target: local`. Verify local/Neon schema and publishing compatibility, and the Neon season allowlist, without directing a development backend or test run at Neon. Paying for more Neon storage, importing older production seasons, publishing and deploying remain separate decisions.
 
 ## 9. Usage model and constraints
 
 - Public, internet-facing, read-only analytics application
 - No authentication, profiles, roles, comments, or personal-user data in Phase 1
-- Phase 1 production remains EuroLeague-only. Feature 34 extends local development to `E2000` to `E2026`; production remains limited to the loaded `E2018` to `E2026` seasons pending a separate rollout decision. Feature 35 adds EuroCup (`U` seasons) to local development only, read from the local `gold` schema; nothing EuroCup is published to Neon or deployed until a separate decision.
+- Phase 1 production remains EuroLeague-only. Feature 34 extends local development to `E2000` to `E2026`; production serves the same `E2000` to `E2026` seasons. Feature 35 adds EuroCup (`U` seasons) to local development only, read from the local `gold` schema; nothing EuroCup is published to Neon or deployed until a separate decision.
 - Current-season data may be incomplete and will change as games are played
 - Historical source data contains known gaps and anomalies; correctness includes exposing uncertainty rather than hiding it
 - Expected initial traffic and data volume are modest, but list endpoints should still use bounded responses, filters, and pagination where result sets can grow
@@ -181,7 +181,6 @@ Deployment rules:
 - JMP Rating calculations
 - Win-probability predictions and the Predictor page
 - Seasons before `E2000`, including the separate 2000-01 FIBA SuproLeague competition
-- Older-season production imports and a paid Neon storage expansion until historical support passes local validation and a separate rollout is approved
 - New career or all-season leaderboards and new player-career features beyond adapting the existing loaded-season views
 - Per-36 and per-30 player statistics (per-100 figures are published and shown)
 - ABA League, NBA, or other competitions. EuroCup is not excluded from local development (feature 35), but its Neon publishing and production rollout are.

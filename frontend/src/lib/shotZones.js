@@ -1,6 +1,6 @@
 // FIBA half-court geometry and the 14 shot zones, in the feed's own frame: centimetres from the hoop, +y toward the
-// half-court line, +x toward the shooter's right. The classifier and the court drawing both read these constants, so
-// the zones cannot drift from the lines on the floor.
+// half-court line, +x toward the shooter's left (facing the basket), so negative x is the shooter's right. The classifier
+// and the court drawing both read these constants, so the zones cannot drift from the lines on the floor.
 export const COURT = {
   halfWidth: 750,
   baselineY: -157.5,
@@ -57,7 +57,7 @@ export const isThreePointer = (shot) => shot.actionCode.startsWith("3");
 
 export function classifyShotZone(coordX, coordY, isThree) {
   if (coordY > COURT.halfCourtY) return "Backcourt";
-  const side = coordX < 0 ? "Left" : "Right";
+  const side = coordX < 0 ? "Right" : "Left";
   const distance = Math.hypot(coordX, coordY);
   const angle = (Math.atan2(Math.max(coordY, 0), Math.abs(coordX)) * 180) / Math.PI;
 
@@ -92,9 +92,9 @@ export function summarizeZones(shots) {
 export const countWithoutLocation = (shots) => shots.filter((shot) => !hasLocation(shot)).length;
 
 // The court is drawn landscape: the hoop on the left, the half-court line on the right and the shooter's right
-// toward the top of the picture. A quarter turn of the feed's frame.
+// toward the top of the picture, as on EuroLeague's own chart. The feed's frame with x and y swapped.
 export function toScreen(coordX, coordY) {
-  return { x: coordY, y: -coordX };
+  return { x: coordY, y: coordX };
 }
 
 // Where a shot is drawn: a shot past the half-court line sits on the line, at its own lateral position.

@@ -1,8 +1,8 @@
 import { CORNER_ANGLE, CORNER_THREE_MAX_Y, COURT, DEEP_THREE_DISTANCE, WING_ANGLE } from "./shotZones";
 
 // The 13 on-court zones as closed regions that tile the half court, in the feed's frame (hoop at the origin, +y toward
-// the half-court line), built from the same constants as the classifier. Backcourt has no area on the court and is
-// drawn by the court component as a strip outside the half-court line.
+// the half-court line, +x toward the shooter's left), built from the same constants as the classifier. Backcourt has no
+// area on the court and is drawn by the court component as a strip outside the half-court line.
 const { halfWidth, baselineY, halfCourtY, laneHalfWidth, freeThrowY, restrictedRadius, threePointRadius, threePointSidelineX } = COURT;
 
 const rad = (degrees) => (degrees * Math.PI) / 180;
@@ -34,7 +34,7 @@ function path(segments, mirror = false) {
     .join(" ")} Z`;
 }
 
-const rightSide = {
+const leftSide = {
   "corner mid-range": [
     ["M", [laneHalfWidth, baselineY]],
     ["L", [threePointSidelineX, baselineY]],
@@ -83,18 +83,18 @@ const lane = path([
 export const ZONE_SHAPES = {
   "Restricted area": restrictedArea,
   "In the paint": `${lane} ${restrictedArea}`,
-  "Left corner mid-range": path(rightSide["corner mid-range"], true),
-  "Left wing mid-range": path(rightSide["wing mid-range"], true),
+  "Left corner mid-range": path(leftSide["corner mid-range"]),
+  "Left wing mid-range": path(leftSide["wing mid-range"]),
   "Central mid-range": path([
     ["M", laneTopAtWing],
     ["L", arcAtWing],
     ["A", threePointRadius, 1, mirrorPoint(arcAtWing)],
     ["L", mirrorPoint(laneTopAtWing)],
   ]),
-  "Right wing mid-range": path(rightSide["wing mid-range"]),
-  "Right corner mid-range": path(rightSide["corner mid-range"]),
-  "Left corner 3": path(rightSide["corner 3"], true),
-  "Left wing 3": path(rightSide["wing 3"], true),
+  "Right wing mid-range": path(leftSide["wing mid-range"], true),
+  "Right corner mid-range": path(leftSide["corner mid-range"], true),
+  "Left corner 3": path(leftSide["corner 3"]),
+  "Left wing 3": path(leftSide["wing 3"]),
   "Top of the key 3": path([
     ["M", arcAtWing],
     ["L", deepAtWing],
@@ -102,8 +102,8 @@ export const ZONE_SHAPES = {
     ["L", mirrorPoint(arcAtWing)],
     ["A", threePointRadius, 0, arcAtWing],
   ]),
-  "Right wing 3": path(rightSide["wing 3"]),
-  "Right corner 3": path(rightSide["corner 3"]),
+  "Right wing 3": path(leftSide["wing 3"], true),
+  "Right corner 3": path(leftSide["corner 3"], true),
   "Deep 3": path([
     ["M", deepAtSideline],
     ["A", DEEP_THREE_DISTANCE, 1, mirrorPoint(deepAtSideline)],
@@ -116,15 +116,15 @@ export const ZONE_SHAPES = {
 export const ZONE_LABEL_POINTS = {
   "Restricted area": [0, 70],
   "In the paint": [0, 290],
-  "Left corner mid-range": [-450, 90],
-  "Left wing mid-range": [-345, 395],
+  "Left corner mid-range": [450, 90],
+  "Left wing mid-range": [345, 395],
   "Central mid-range": [0, 540],
-  "Right wing mid-range": [345, 395],
-  "Right corner mid-range": [450, 90],
-  "Left corner 3": [-705, -5],
-  "Left wing 3": [-560, 520],
+  "Right wing mid-range": [-345, 395],
+  "Right corner mid-range": [-450, 90],
+  "Left corner 3": [705, -5],
+  "Left wing 3": [560, 520],
   "Top of the key 3": [0, 770],
-  "Right wing 3": [560, 520],
-  "Right corner 3": [705, -5],
+  "Right wing 3": [-560, 520],
+  "Right corner 3": [-705, -5],
   "Deep 3": [0, 1080],
 };

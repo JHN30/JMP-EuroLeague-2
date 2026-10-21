@@ -6,16 +6,16 @@ import { SEASON, mockGameApi, shot } from "./support/game-fixtures";
 const ZONE_SHOTS = [
   ["Restricted area", "2FGM", 0, 50],
   ["In the paint", "2FGA", 200, 300],
-  ["Left corner mid-range", "2FGA", -400, 100],
-  ["Left wing mid-range", "2FGA", -350, 350],
+  ["Left corner mid-range", "2FGA", 400, 100],
+  ["Left wing mid-range", "2FGA", 350, 350],
   ["Central mid-range", "2FGA", 0, 500],
-  ["Right wing mid-range", "2FGA", 350, 350],
-  ["Right corner mid-range", "2FGA", 400, 100],
-  ["Left corner 3", "3FGA", -700, 50],
-  ["Left wing 3", "3FGA", -500, 480],
+  ["Right wing mid-range", "2FGA", -350, 350],
+  ["Right corner mid-range", "2FGA", -400, 100],
+  ["Left corner 3", "3FGA", 700, 50],
+  ["Left wing 3", "3FGA", 500, 480],
   ["Top of the key 3", "3FGA", 100, 700],
-  ["Right wing 3", "3FGM", 500, 480],
-  ["Right corner 3", "3FGA", 700, 50],
+  ["Right wing 3", "3FGM", -500, 480],
+  ["Right corner 3", "3FGA", -700, 50],
   ["Deep 3", "3FGA", 0, 950],
   ["Backcourt", "3FGA", 300, 1250],
 ];
@@ -102,20 +102,31 @@ test("each zone of the table gets its own shot", async ({ page }) => {
 });
 
 test("a shot is drawn with the hoop on the left and the shooter's right at the top", async ({ page }) => {
+  // The feed's negative x is the shooter's right, as on EuroLeague's own chart.
   await mockGameApi(page, {
-    shots: [shot(1, "A", "2FGM", 350, 350), shot(2, "A", "2FGM", -350, 350), shot(3, "A", "2FGM", 0, 50)],
+    shots: [shot(1, "A", "2FGM", -400, 300), shot(2, "A", "2FGM", 400, 300), shot(3, "A", "2FGM", 0, 50)],
   });
   await page.goto(`/${SEASON}/games/1`);
   await page.getByRole("tab", { name: "Shooting", exact: true }).click();
 
-  const centre = async (zone, attribute) => Number(await court(page).locator(`[data-zone="${zone}"] circle`).first().getAttribute(attribute));
-  // Distance from the baseline runs to the right; the right wing is above the left wing.
-  expect(await centre("Right wing mid-range", "cx")).toBe(350);
-  expect(await centre("Right wing mid-range", "cy")).toBe(-350);
-  expect(await centre("Left wing mid-range", "cx")).toBe(350);
-  expect(await centre("Left wing mid-range", "cy")).toBe(350);
-  expect(await centre("Restricted area", "cx")).toBe(50);
-  expect(await centre("Restricted area", "cy")).toBe(0);
+  const marker = (ordinal) => court(page).locator(".court-marker").nth(ordinal);
+  const centre = async (ordinal, attribute) => Number(await marker(ordinal).locator("circle").getAttribute(attribute));
+  // Distance from the baseline runs to the right; the shooter's right is the top half, the shooter's left the bottom.
+  expect(await centre(0, "cx")).toBe(300);
+  expect(await centre(0, "cy")).toBe(-400);
+  expect(await marker(0).getAttribute("data-zone")).toContain("Right");
+  expect(await centre(1, "cx")).toBe(300);
+  expect(await centre(1, "cy")).toBe(400);
+  expect(await marker(1).getAttribute("data-zone")).toContain("Left");
+  expect(await centre(2, "cx")).toBe(50);
+  expect(await centre(2, "cy")).toBe(0);
+
+  // The zone regions use the same mapping: the shooter's right zones fill the top half.
+  await openZones(page);
+  const zoneBox = async (zone) => zoneCourt(page).locator(`path[data-zone="${zone}"]`).boundingBox();
+  const svgBox = await zoneCourt(page).boundingBox();
+  expect((await zoneBox("Right wing mid-range")).y + (await zoneBox("Right wing mid-range")).height).toBeLessThanOrEqual(svgBox.y + svgBox.height / 2 + 1);
+  expect((await zoneBox("Left wing mid-range")).y).toBeGreaterThanOrEqual(svgBox.y + svgBox.height / 2 - 1);
 });
 
 test("a shot past half court sits on the half-court line and says where it was taken", async ({ page }) => {
@@ -125,7 +136,7 @@ test("a shot past half court sits on the half-court line and says where it was t
 
   const marker = court(page).locator('[data-zone="Backcourt"]');
   await expect(marker.locator("circle")).toHaveAttribute("cx", "1242.5");
-  await expect(marker.locator("circle")).toHaveAttribute("cy", "-100");
+  await expect(marker.locator("circle")).toHaveAttribute("cy", "100");
   const title = await marker.locator("title").textContent();
   expect(title).toContain("ONE, AL");
   expect(title).toContain("Made 3PT");

@@ -244,8 +244,8 @@ test("in each zone the team with the higher FG% is shaded in its own colour, and
     shot(1, "A", "2FGM", 0, 50), shot(2, "A", "2FGM", 0, 60), // Restricted area: A 2/2
     shot(3, "B", "2FGM", 0, 40), shot(4, "B", "2FGA", 10, 60), // B 1/2
     shot(5, "A", "2FGA", 200, 300), shot(6, "B", "2FGM", 200, 300), // In the paint: A 0/1, B 1/1
-    shot(7, "A", "3FGM", -500, 480), // Left wing 3: only A
-    shot(8, "A", "3FGA", 500, 480), shot(9, "B", "3FGA", 500, 480), // Right wing 3: both 0/1
+    shot(7, "A", "3FGM", 500, 480), // Left wing 3: only A
+    shot(8, "A", "3FGA", -500, 480), shot(9, "B", "3FGA", -500, 480), // Right wing 3: both 0/1
   ];
   await openShooting(page, { shots });
   const zones = page.locator(".panel").filter({ has: page.getByRole("heading", { name: "Zone comparison" }) });

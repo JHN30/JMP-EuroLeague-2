@@ -5,7 +5,8 @@ import { ZONE_LABEL_POINTS, ZONE_SHAPES } from "./zoneShapes";
 
 // One SVG unit is one centimetre. The picture is the FIBA half court seen from the side: the baseline on the left, the
 // half-court line on the right, the hoop on the left. Lines and zone regions are drawn in the feed's own frame (hoop at
-// the origin) inside one quarter-turn group; markers and chips are placed with toScreen so they are never rotated.
+// the origin) inside one group that swaps x and y, the same mapping as toScreen; markers and chips are placed with
+// toScreen so their shapes and text are never transformed.
 // A strip outside the half-court line stands for the Backcourt zone, whose shots are drawn on the line itself.
 const MARGIN = 20;
 const STRIP_GAP = 15;
@@ -19,8 +20,8 @@ const VIEW_BOX = `${VIEW_LEFT} ${VIEW_TOP} ${VIEW_WIDTH} ${VIEW_HEIGHT}`;
 // Never wider than one pixel per centimetre and never taller than 90% of the window, so the whole court fits on screen.
 const MAX_WIDTH = `min(${VIEW_WIDTH}px, calc(90vh * ${VIEW_WIDTH / VIEW_HEIGHT}))`;
 const LINE_WIDTH = 5;
-// (x, y) in the feed's frame -> (y, -x) on screen.
-const QUARTER_TURN = "matrix(0 -1 1 0 0 0)";
+// (x, y) in the feed's frame -> (y, x) on screen, so the shooter's right (-x) is at the top.
+const FEED_TO_SCREEN = "matrix(0 1 1 0 0 0)";
 
 // An arc between two points that bulges toward +y when it runs from +x to -x.
 function arc(radius, from, to) {
@@ -46,7 +47,7 @@ function CourtMarkings({ lineColor }) {
   const { baselineY, halfCourtY, backboardY, backboardHalfWidth, rimRadius, centerCircleRadius } = COURT;
 
   return (
-    <g transform={QUARTER_TURN} fill="none" stroke={lineColor} strokeWidth={LINE_WIDTH} opacity={0.48}>
+    <g transform={FEED_TO_SCREEN} fill="none" stroke={lineColor} strokeWidth={LINE_WIDTH} opacity={0.48}>
       <line x1={-backboardHalfWidth} y1={backboardY} x2={backboardHalfWidth} y2={backboardY} />
       <circle cx={0} cy={0} r={rimRadius} />
       <rect x={-laneHalfWidth} y={baselineY} width={laneHalfWidth * 2} height={freeThrowY - baselineY} />
@@ -117,7 +118,7 @@ function zoneTitle(stat) {
 // A zone with attempts is filled by FG% in the efficiency ramp; one without is left as the bare floor.
 function ZoneFills({ stats, lineColor }) {
   return (
-    <g transform={QUARTER_TURN} stroke={lineColor} strokeOpacity={0.4} strokeWidth={3} fillRule="evenodd">
+    <g transform={FEED_TO_SCREEN} stroke={lineColor} strokeOpacity={0.4} strokeWidth={3} fillRule="evenodd">
       {stats.map((stat) =>
         ZONE_SHAPES[stat.zone] ? (
           <path

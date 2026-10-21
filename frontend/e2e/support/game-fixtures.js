@@ -116,7 +116,7 @@ export const NO_ADVANCED = { available: false, scope: "all", round: 2, minSeason
 export const NO_TEAM_FLOW = { available: false, teams: [] };
 
 // One field-goal attempt for the Shooting tab. `club` is "A" (local) or "B" (road); coordinates are centimetres from the
-// hoop, +y toward the half-court line and +x toward the shooter's right.
+// hoop, +y toward the half-court line and +x toward the shooter's left (negative x is the shooter's right).
 export function shot(shotOrdinal, club, actionCode, coordX, coordY, overrides = {}) {
   return {
     shotOrdinal,

@@ -14,6 +14,7 @@ import { useDebouncedValue } from "../lib/useDebouncedValue";
 import { usePhaseParam } from "../lib/usePhaseParam";
 import { TabPanel, TabStrip } from "../lib/TabStrip";
 import BackLink from "../lib/BackLink";
+import { PLAYER_STAT_TIPS } from "./statTips";
 import CompareFixtures, { ComparisonContext } from "./CompareFixtures";
 import PickerPanel, { PickerImage, PickerOption } from "./PickerPanel";
 import PlayerPairHeader from "./PlayerPairHeader";
@@ -35,16 +36,11 @@ import {
 } from "../lib/api";
 import { PLAYER_METRIC_GROUPS, formatStatValue } from "../lib/statsFields";
 
-const PLAYER_COMPARISON_ROWS = PLAYER_METRIC_GROUPS.flatMap((group) => [
-  { type: "header", key: group.group, label: group.label },
-  ...group.options.map(([key, label]) => ({
-    type: "metric",
-    key: `${group.group}-${key}`,
-    group: group.group,
-    metricKey: key,
-    label,
-  })),
-]);
+const PLAYER_COMPARISON_SECTIONS = PLAYER_METRIC_GROUPS.map((group) => ({
+  key: group.group,
+  label: group.label,
+  rows: group.options.map(([key, label]) => ({ key: `${group.group}-${key}`, group: group.group, metricKey: key, label })),
+}));
 
 // The player page's readable name and tip for each statistic ("Double-doubles", not "DD").
 const PLAYER_STAT_DEFS = new Map(PLAYER_STAT_GROUPS.flatMap((group) => group.stats).map((stat) => [stat.field, stat]));
@@ -389,29 +385,28 @@ function PlayerComparisonTable({ seasonCode, phaseCode, mode, entityA, entityB }
         <motion.div variants={listItem} className="mb-4">
           <PlayerPairHeader seasonCode={seasonCode} entityA={entityA} entityB={entityB} rowA={a} rowB={b} />
         </motion.div>
-        {PLAYER_COMPARISON_ROWS.map((row) => {
-        if (row.type === "header") {
-          return (
-            <motion.h3 key={row.key} variants={listItem} className="bg-base-200 -mx-3 px-3 py-2 text-sm font-bold">
-              {row.label}
+        {PLAYER_COMPARISON_SECTIONS.map((section) => (
+          <div key={section.key}>
+            <motion.h3 variants={listItem} className="bg-base-200 -mx-3 px-3 py-2 text-sm font-bold">
+              {section.label}
             </motion.h3>
-          );
-        }
-        return (
-          <ComparisonRow
-            key={row.key}
-            animated
-            compact
-            label={PLAYER_STAT_DEFS.get(row.metricKey)?.label ?? row.label}
-            tip={PLAYER_STAT_DEFS.get(row.metricKey)?.tip}
-            rawA={a?.[row.group]?.[row.metricKey]}
-            rawB={b?.[row.group]?.[row.metricKey]}
-            displayA={formatStatValue(row.metricKey, a?.[row.group]?.[row.metricKey])}
-            displayB={formatStatValue(row.metricKey, b?.[row.group]?.[row.metricKey])}
-            direction={PLAYER_METRIC_DIRECTIONS[row.metricKey]}
-          />
-        );
-        })}
+              {section.rows.map((row) => (
+                <ComparisonRow
+                  key={row.key}
+                  animated
+                  compact
+                  dense
+                  label={PLAYER_STAT_DEFS.get(row.metricKey)?.label ?? row.label}
+                  tip={PLAYER_STAT_DEFS.get(row.metricKey)?.tip ?? PLAYER_STAT_TIPS[row.metricKey]}
+                  rawA={a?.[row.group]?.[row.metricKey]}
+                  rawB={b?.[row.group]?.[row.metricKey]}
+                  displayA={formatStatValue(row.metricKey, a?.[row.group]?.[row.metricKey])}
+                  displayB={formatStatValue(row.metricKey, b?.[row.group]?.[row.metricKey])}
+                  direction={PLAYER_METRIC_DIRECTIONS[row.metricKey]}
+                />
+              ))}
+          </div>
+        ))}
       </motion.div>
     </Panel>
   );

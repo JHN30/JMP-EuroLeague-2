@@ -9,6 +9,7 @@ import { formatTeamValue, UNADJUSTED_NOTE, usable, useTeamRows } from "../leader
 import useClubEntities from "./useClubEntities";
 import ForfeitStatsNote from "../lib/ForfeitStatsNote";
 import { groupPositionLabel, isGroupedTable } from "../standings/standingsGroups";
+import { TEAM_STAT_TIPS } from "./statTips";
 import { STAT_FAMILY_ORDER, directionOf, placeOn, statsOfFamily } from "./teamCompare";
 
 function ClubHead({ row, label, groupRows }) {
@@ -51,7 +52,7 @@ export default function CompareTeamStats({ seasonCode, phaseCode, entityA: picke
           <ClubHead row={rowB} label={entityB.label} groupRows={groupRows} />
         </motion.div>
         <motion.p variants={listItem} className="muted mb-2 text-center text-xs">
-          Per game, overtime counted. Under each bar: the club&apos;s place among the {source.rows.length} clubs.
+          Per game, overtime counted. Beside each value: the club&apos;s place among the {source.rows.length} clubs.
         </motion.p>
         <ForfeitStatsNote seasonCode={seasonCode} phaseCode={phaseCode} clubCodes={[entityA.id, entityB.id]} className="muted mb-2 text-center text-xs" />
         {source.unadjusted ? <motion.p variants={listItem} className="muted mb-2 text-center text-xs">{UNADJUSTED_NOTE}</motion.p> : null}
@@ -68,8 +69,9 @@ export default function CompareTeamStats({ seasonCode, phaseCode, entityA: picke
                   key={stat.key}
                   animated
                   compact
+                  dense
                   label={stat.label}
-                  tip={stat.tip}
+                  tip={stat.tip ?? TEAM_STAT_TIPS[stat.key]}
                   rawA={a?.value ?? null}
                   rawB={b?.value ?? null}
                   displayA={formatTeamValue(stat, a?.value, "perGame")}

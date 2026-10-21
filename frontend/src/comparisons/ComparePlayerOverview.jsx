@@ -19,6 +19,7 @@ import { playedLog, viewGame } from "../players/gameLog";
 import { ordinal } from "../teams/teamLeague";
 import CompareRadar from "./CompareRadar";
 import { chartNames } from "./playerLabels";
+import HeaderTip from "../lib/HeaderTip";
 import PlayerPairHeader from "./PlayerPairHeader";
 
 const FORM_GAMES = 5;
@@ -127,6 +128,7 @@ function SeasonLinePanel({ pool, entityA, entityB, playerA, playerB, seasonCode 
               key={stat.label}
               animated
               compact
+              dense
               label={stat.label}
               tip={stat.title}
               rawA={a.value}
@@ -158,13 +160,15 @@ function FormList({ games, label, seasonCode }) {
         <>
           <div className="mb-2 flex flex-wrap gap-x-5 gap-y-1">
             {[
-              ["PTS", "pts"],
-              ["REB", "reb"],
-              ["AST", "ast"],
-              ["PIR", "pir"],
-            ].map(([name, key]) => (
+              ["PTS", "pts", "Points"],
+              ["REB", "reb", "Rebounds"],
+              ["AST", "ast", "Assists"],
+              ["PIR", "pir", "Performance index rating"],
+            ].map(([name, key, full]) => (
               <span key={key} className="flex flex-col">
-                <span className="muted text-xs font-bold uppercase tracking-wide">{name}</span>
+                <span className="muted text-xs font-bold uppercase tracking-wide">
+                  <HeaderTip tip={`${full} per game over these ${views.length} games`}>{name}</HeaderTip>
+                </span>
                 <span className="text-lg font-bold tabular-nums">{formatPerGame(average(key))}</span>
               </span>
             ))}

@@ -59,6 +59,7 @@ function Group({ family, data }) {
             key={stat.key}
             animated
             compact
+            dense
             label={family === "Per 100 possessions" ? `${stat.label} per 100` : stat.label}
             tip={stat.tip}
             rawA={a === null ? null : Number(a)}
@@ -113,7 +114,7 @@ export default function ComparePlayerAdvanced({ seasonCode, phaseCode, entityA, 
           <PlayerPairHeader seasonCode={seasonCode} entityA={entityA} entityB={entityB} rowA={rowA} rowB={rowB} />
         </motion.div>
         <motion.p variants={listItem} className="muted mb-2 text-center text-xs">
-          Running values after the latest round. Under each bar: the place among players with enough minutes. Hover or tap a name for what it means.
+          Running values after the latest round. Beside each value: the place among players with enough minutes. Hover or tap a name for what it means.
         </motion.p>
         {ADVANCED_FAMILIES.map((family) => (
           <Group key={family} family={family} data={shown} />

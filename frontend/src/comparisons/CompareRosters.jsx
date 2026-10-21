@@ -15,6 +15,7 @@ import { Avatar } from "../leaders/LeaderParts";
 import { formatAdvancedValue } from "../leaders/leaderData";
 import { advancedScopeForPhase } from "../teams/teamLeague";
 import { fetchTeamRosterStats } from "../teams/teamRosterStats";
+import { ROSTER_SUMMARY_TIPS } from "./statTips";
 import useClubEntities from "./useClubEntities";
 
 const ROSTER_LIMIT = 100;
@@ -116,7 +117,7 @@ function SummaryRows({ a, b, entityA, entityB, crestA, crestB }) {
         </div>
       </motion.div>
       {rows.map((row) => (
-        <ComparisonRow animated compact key={row.label} label={row.label} rawA={row.raw[0]} rawB={row.raw[1]} displayA={row.show(row.raw[0])} displayB={row.show(row.raw[1])} direction={row.direction} />
+        <ComparisonRow animated compact dense key={row.label} label={row.label} tip={ROSTER_SUMMARY_TIPS[row.label]} rawA={row.raw[0]} rawB={row.raw[1]} displayA={row.show(row.raw[0])} displayB={row.show(row.raw[1])} direction={row.direction} />
       ))}
     </motion.div>
   );

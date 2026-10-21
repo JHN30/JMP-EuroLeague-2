@@ -24,7 +24,7 @@ test("Compare opens on the games of a round, and a game opens the comparison of 
 
   // The statistics put the two clubs side by side with their places in the league.
   await sections.getByRole("tab", { name: "Statistics" }).click();
-  await expect(page.getByText(/Under each bar: the club/)).toBeVisible();
+  await expect(page.getByText(/Beside each value: the club/)).toBeVisible();
   await expect(page.getByText(/^#\d+ of \d+$/).first()).toBeVisible();
   await expect(page.getByLabel("Team A")).toHaveCount(0);
   await expect(page.getByRole("tablist", { name: "Comparison type" })).toHaveCount(0);

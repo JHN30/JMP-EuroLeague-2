@@ -33,7 +33,8 @@ function Track({ width, position, anchor, title, animated }) {
 // average) and `avgA`/`avgB` (their printed text, shown under the bar). `animated` makes the row take part in a
 // staggered entrance (it must sit inside a motion parent using the list variants) and grows its bars. `bars={false}` leaves
 // the bars out and shows only the printed values and the highlight on the better side. `compact` tightens the row's padding
-// and gaps below sm. `sideA`/`sideB` (a crest and a code, say) sit over each side's value below sm only, for a row whose two
+// and gaps below sm. `dense` (the Compare page) tightens the row at every width and puts `avgA`/`avgB` on the value's line, away
+// from the centre, instead of under the bar. `sideA`/`sideB` (a crest and a code, say) sit over each side's value below sm only, for a row whose two
 // sides are not labelled nearby.
 export default function ComparisonRow({
   label,
@@ -50,6 +51,7 @@ export default function ComparisonRow({
   animated = false,
   bars = true,
   compact = false,
+  dense = false,
   sideA = null,
   sideB = null,
 }) {
@@ -58,13 +60,16 @@ export default function ComparisonRow({
   const aMissing = rawA === null || rawA === undefined;
   const bMissing = rawB === null || rawB === undefined;
   const Root = animated ? motion.div : "div";
+  // A dense row keeps its average beside the value, so the line under the bar is left out.
+  const avgBelow = !dense;
+  const sidePad = dense ? "p-1" : `p-2 ${compact ? "max-sm:p-1.5" : ""}`;
 
   return (
     <Root
-      className={`flex flex-1 flex-col justify-center border-b border-base-300 py-3 last:border-0 ${compact ? "max-sm:py-2" : ""}`}
+      className={`flex flex-1 flex-col justify-center border-b border-base-300 last:border-0 ${dense ? "py-1.5" : `py-3 ${compact ? "max-sm:py-2" : ""}`}`}
       {...(animated ? { variants: listItem } : {})}
     >
-      <div className={`mb-2 text-center ${compact ? "max-sm:mb-1" : ""}`}>
+      <div className={`text-center ${dense ? "mb-0.5" : `mb-2 ${compact ? "max-sm:mb-1" : ""}`}`}>
         <span className="text-xs font-bold tracking-wide uppercase">
           {tip ? <HeaderTip tip={tip}>{label}</HeaderTip> : label}
         </span>
@@ -72,10 +77,13 @@ export default function ComparisonRow({
           <span className="muted ml-2 text-[0.65rem] tracking-wide uppercase">Lower is better</span>
         ) : null}
       </div>
-      <div className={`grid grid-cols-2 gap-4 ${compact ? "max-sm:gap-2" : ""}`}>
-        <div className={`rounded-field p-2 ${compact ? "max-sm:p-1.5" : ""} ${winner === "a" ? "bg-primary/10 text-primary" : ""}`}>
+      <div className={`grid grid-cols-2 ${dense ? "gap-3 max-sm:gap-2" : `gap-4 ${compact ? "max-sm:gap-2" : ""}`}`}>
+        <div className={`rounded-field ${sidePad} ${winner === "a" ? "bg-primary/10 text-primary" : ""}`}>
           {sideA ? <div className="mb-1 flex justify-end sm:hidden">{sideA}</div> : null}
-          <div className={`${bars ? "mb-1 " : ""}text-right font-semibold tabular-nums`}>{aMissing ? "—" : displayA}</div>
+          <div className={`${bars && !dense ? "mb-1 " : ""}${dense ? "flex items-baseline justify-end gap-2 " : ""}text-right font-semibold tabular-nums`}>
+            {dense && avgA ? <span className="muted text-xs font-normal">{avgA}</span> : null}
+            <span>{aMissing ? "—" : displayA}</span>
+          </div>
           {bars ? (
             <Track
               width={aMissing ? 0 : widthA}
@@ -85,11 +93,14 @@ export default function ComparisonRow({
               animated={animated}
             />
           ) : null}
-          {avgA ? <div className="muted mt-1 text-right text-xs tabular-nums">{avgA}</div> : null}
+          {avgA && avgBelow ? <div className="muted mt-1 text-right text-xs tabular-nums">{avgA}</div> : null}
         </div>
-        <div className={`rounded-field p-2 ${compact ? "max-sm:p-1.5" : ""} ${winner === "b" ? "bg-primary/10 text-primary" : ""}`}>
+        <div className={`rounded-field ${sidePad} ${winner === "b" ? "bg-primary/10 text-primary" : ""}`}>
           {sideB ? <div className="mb-1 flex justify-start sm:hidden">{sideB}</div> : null}
-          <div className={`${bars ? "mb-1 " : ""}text-left font-semibold tabular-nums`}>{bMissing ? "—" : displayB}</div>
+          <div className={`${bars && !dense ? "mb-1 " : ""}${dense ? "flex items-baseline justify-start gap-2 " : ""}text-left font-semibold tabular-nums`}>
+            <span>{bMissing ? "—" : displayB}</span>
+            {dense && avgB ? <span className="muted text-xs font-normal">{avgB}</span> : null}
+          </div>
           {bars ? (
             <Track
               width={bMissing ? 0 : widthB}
@@ -99,7 +110,7 @@ export default function ComparisonRow({
               animated={animated}
             />
           ) : null}
-          {avgB ? <div className="muted mt-1 text-left text-xs tabular-nums">{avgB}</div> : null}
+          {avgB && avgBelow ? <div className="muted mt-1 text-left text-xs tabular-nums">{avgB}</div> : null}
         </div>
       </div>
     </Root>

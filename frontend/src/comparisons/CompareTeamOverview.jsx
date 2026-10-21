@@ -17,6 +17,7 @@ import { statNumber } from "../leaders/leaderData";
 import { useTeamRows } from "../leaders/teamData";
 import { fetchTeamRosterStats } from "../teams/teamRosterStats";
 import { edgesBetween } from "./teamCompare";
+import { RECORD_TIPS } from "./statTips";
 import useClubEntities from "./useClubEntities";
 
 const GAMES_LIMIT = 100;
@@ -214,8 +215,8 @@ function FormPanel({ seasonCode, phaseCode, entityA, entityB, hosted }) {
         <FormList games={playedA} club={entityA} seasonCode={seasonCode} />
         <FormList games={playedB} club={entityB} seasonCode={seasonCode} />
       </div>
-      <ComparisonRow label="Home record" rawA={homeA.share} rawB={homeB.share} displayA={show(homeA)} displayB={show(homeB)} direction="higher" sideA={sideA} sideB={sideB} />
-      <ComparisonRow label="Away record" rawA={awayA.share} rawB={awayB.share} displayA={show(awayA)} displayB={show(awayB)} direction="higher" sideA={sideA} sideB={sideB} />
+      <ComparisonRow dense label="Home record" tip={RECORD_TIPS["Home record"]} rawA={homeA.share} rawB={homeB.share} displayA={show(homeA)} displayB={show(homeB)} direction="higher" sideA={sideA} sideB={sideB} />
+      <ComparisonRow dense label="Away record" tip={RECORD_TIPS["Away record"]} rawA={awayA.share} rawB={awayB.share} displayA={show(awayA)} displayB={show(awayB)} direction="higher" sideA={sideA} sideB={sideB} />
     </Panel>
   );
 }

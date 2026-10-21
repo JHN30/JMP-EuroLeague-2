@@ -226,7 +226,7 @@ test.describe("on a phone", () => {
     await expectHeader(header);
     // The Statistics tab carries no note about the tips: the rows are named in full.
     await expect(page.getByText("Hover or tap a name for what it means.")).toHaveCount(0);
-    await expect(page.getByText("Team wins when playing", { exact: true }).first()).toBeAttached();
+    await expect(page.getByText(/^Team wins when playing/).first()).toBeAttached();
     for (const label of ["Double-doubles", "Triple-doubles", "Possessions"]) {
       await expect(page.locator(".header-tip-label", { hasText: label }).first()).toBeAttached();
     }
@@ -252,6 +252,8 @@ test.describe("on a phone", () => {
     await openTab(page, slug, a, b, "Statistics");
     const label = page.locator(".header-tip-label", { hasText: "Double-doubles" });
     await expect(label).toBeAttached({ timeout: 30_000 });
+    // The pointer rests in a corner, so scrolling never brings another label under it (which would open that label's tip).
+    await page.mouse.move(0, 0);
     await label.scrollIntoViewIfNeeded();
     const tip = page.locator("[role=tooltip]");
     // A pause between taps keeps the browser from reading two quick taps as a double-tap.
@@ -265,4 +267,16 @@ test.describe("on a phone", () => {
     await label.tap();
     await expect(tip).toHaveCount(1);
   });
+});
+
+test("every statistic row of the player comparison has a hover tip", async ({ page }) => {
+  test.setTimeout(120_000);
+  const { slug, a, b } = await livePlayers(page);
+  const rowNames = page.locator("main span.text-xs.font-bold.tracking-wide.uppercase");
+  for (const tab of ["Overview", "Statistics", "Advanced"]) {
+    await openTab(page, slug, a, b, tab);
+    await expect(rowNames.first()).toBeVisible({ timeout: 30_000 });
+    expect(await rowNames.count()).toBeGreaterThan(1);
+    await expect(page.locator("main span.text-xs.font-bold.tracking-wide.uppercase:not(:has(.header-tip-label))")).toHaveCount(0);
+  }
 });

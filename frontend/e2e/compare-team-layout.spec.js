@@ -224,3 +224,15 @@ test.describe("states and long names at 320px", () => {
     await expectNoSidewaysScroll(page);
   });
 });
+
+test("every statistic row of the team comparison has a hover tip", async ({ page }) => {
+  test.setTimeout(120_000);
+  const { slug, teams } = await liveSeason(page);
+  const rowNames = page.locator("main span.text-xs.font-bold.tracking-wide.uppercase");
+  for (const tab of ["Overview", "Statistics", "Rosters"]) {
+    await openTab(page, slug, teams, tab);
+    await expect(rowNames.first()).toBeVisible({ timeout: 30_000 });
+    expect(await rowNames.count()).toBeGreaterThan(1);
+    await expect(page.locator("main span.text-xs.font-bold.tracking-wide.uppercase:not(:has(.header-tip-label))")).toHaveCount(0);
+  }
+});

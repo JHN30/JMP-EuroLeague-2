@@ -148,13 +148,12 @@ test("a failed box score shows a retry for the rows and keeps the Four Factors",
   await expect(factorRow(page, "Offense", "eFG%")).toContainText("59.0%");
 });
 
-test("an unplayed game has no comparison and does not request advanced stats", async ({ page }) => {
+test("an unplayed game has no comparison tab and does not request advanced stats", async ({ page }) => {
   const requests = [];
   await mockGameApi(page, { played: false, requests });
   await page.goto(`/${SEASON}/games/1`);
-  await page.getByRole("tab", { name: "Team comparison", exact: true }).click();
 
-  await expect(page.getByText("Team comparison isn't available until this game is played.")).toBeVisible();
+  await expect(page.getByRole("tab", { name: "Team comparison", exact: true })).toHaveCount(0);
   await expect(page.getByText("Four Factors")).toHaveCount(0);
   expect(requests.some((pathname) => pathname.endsWith("/advanced"))).toBe(false);
 });

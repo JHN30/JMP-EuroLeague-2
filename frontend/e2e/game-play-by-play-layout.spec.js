@@ -166,13 +166,7 @@ test("the event count badge, Show 60 more and the empty states fit a phone", asy
   await expectNoPageOverflow(page);
 });
 
-test("an unplayed game and an empty feed say so and fit a phone", async ({ page }) => {
-  await openPlayByPlay(page, { played: false, events: [] });
-  await expect(page.getByText("Play-by-play isn't available until this game is played.")).toBeVisible();
-  await atWidths(page, [320], async () => {
-    await expectNoPageOverflow(page);
-  });
-  await page.unroute("**/api/**");
+test("an empty feed says so and fits a phone", async ({ page }) => {
   await openPlayByPlay(page, { events: [] });
   await expect(page.getByText("Play-by-play isn't available for this game yet.")).toBeVisible();
   await atWidths(page, [320], async () => {

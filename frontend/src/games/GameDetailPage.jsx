@@ -55,6 +55,9 @@ const GAME_TABS = [
   { key: "play-by-play", label: "Play-by-play" },
 ];
 
+// A game that has not been played has only its preview: every other tab needs a played game.
+const UNPLAYED_TABS = GAME_TABS.slice(0, 1);
+
 function madeAttempted(made, attempted) {
   if (made == null && attempted == null) return formatMissing(null);
   return `${formatMissing(made)}-${formatMissing(attempted)}`;
@@ -1071,7 +1074,7 @@ function TeamComparisonTab({ game, boxScoreQuery, advancedQuery, teamFlowQuery }
 export default function GameDetailPage() {
   const { seasonCode, gameCode } = useParams();
   const cancelled = useSeasonFormat(seasonCode).data?.status === "cancelled";
-  const [tab, setTab] = useState("overview");
+  const [selectedTab, setTab] = useState("overview");
 
   const gameQuery = useQuery({
     queryKey: ["game", seasonCode, gameCode],
@@ -1079,12 +1082,14 @@ export default function GameDetailPage() {
     retry: false,
   });
   const game = gameQuery.data?.game;
+  // An unplayed game has no other tab, whichever one was last open.
+  const tab = game?.played === false ? "overview" : selectedTab;
   useDocumentTitle(game ? `${teamName(game.localTeam)} vs ${teamName(game.roadTeam)}` : "Games");
 
   const boxScoreQuery = useQuery({
     queryKey: ["box-score", seasonCode, gameCode],
     queryFn: () => getBoxScore(seasonCode, gameCode),
-    enabled: gameQuery.isSuccess,
+    enabled: gameQuery.isSuccess && game?.played === true,
   });
 
   const playByPlayQuery = useQuery({
@@ -1156,7 +1161,7 @@ export default function GameDetailPage() {
       <MatchupHeader game={game} seasonCode={seasonCode} localWon={localWon} roadWon={roadWon} />
       <CompetitionContext seasonCode={seasonCode} gameCode={game.gameCode} game={game} />
 
-      <TabStrip ariaLabel="Game detail" level={1} panelId="game-detail-panel" activeKey={tab} onChange={setTab} scrolling className="mb-4 lg:w-fit" tabs={GAME_TABS} />
+      <TabStrip ariaLabel="Game detail" level={1} panelId="game-detail-panel" activeKey={tab} onChange={setTab} scrolling className="mb-4 lg:w-fit" tabs={game.played ? GAME_TABS : UNPLAYED_TABS} />
 
       <TabPanel id="game-detail-panel" focusKey={tab} scroll={false}>
         <motion.div key={tab} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.25 }}>

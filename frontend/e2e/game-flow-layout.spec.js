@@ -226,19 +226,3 @@ test("the Team comparison tab is compact below 640px and every value and average
   });
 });
 
-test("each tab's note for a game that is not played stays inside the panel at 320px", async ({ page }) => {
-  await openTab(page, "Game flow", { game: { played: false, localScore: null, roadScore: null }, mock: { played: false } });
-  await atWidths(page, [320], async (width) => {
-    const note = page.getByText("Game flow isn't available until this game is played.");
-    await expect(note).toBeVisible();
-    expect(await insideScreen(note, width)).toBe(true);
-    await expectNoPageOverflow(page);
-  });
-  await page.getByRole("tab", { name: "Team comparison", exact: true }).click();
-  await atWidths(page, [320], async (width) => {
-    const note = page.getByText("Team comparison isn't available until this game is played.");
-    await expect(note).toBeVisible();
-    expect(await insideScreen(note, width)).toBe(true);
-    await expectNoPageOverflow(page);
-  });
-});

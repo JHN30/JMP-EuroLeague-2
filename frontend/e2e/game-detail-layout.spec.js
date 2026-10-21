@@ -166,7 +166,7 @@ test("a team still to be set shows TBD, and a game to come shows the Scheduled b
   await page.reload();
   await atWidths(page, [320], async () => {
     await expect(page.getByText("Scheduled", { exact: true })).toBeVisible();
-    await expect(page.getByText("Overview isn't available until this game is played.")).toBeVisible();
+    await expect(page.getByRole("tab")).toHaveCount(1);
     await expectNoPageOverflow(page);
   });
 });

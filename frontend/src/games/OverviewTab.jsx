@@ -1,5 +1,6 @@
 import { useMemo } from "react";
 import { motion } from "motion/react";
+import { Link } from "react-router";
 import AsyncState from "../lib/AsyncState";
 import ComparisonRow from "../lib/ComparisonRow";
 import EmptyText from "../lib/EmptyText";
@@ -9,7 +10,7 @@ import Panel from "../lib/Panel";
 import PanelHeader from "../lib/PanelHeader";
 import { PeriodTable, ScoreFlowChart } from "./gameFlow";
 import { computeGameFlow } from "./gameFlowData";
-import { teamName } from "./gameUtils";
+import { teamCode, teamName } from "./gameUtils";
 import { attachAdvanced } from "./AdvancedBoxScore";
 import { bestPlayerMetric, gameLeaders, keyStatRows, pickBestPlayer } from "./overview";
 import PlayerLink from "./PlayerLink";
@@ -111,10 +112,35 @@ function FlowSection({ game, playByPlayQuery }) {
   return <ScoreFlowChart flow={flow} localTeam={game.localTeam} roadTeam={game.roadTeam} compact />;
 }
 
+// A game that has not been played has no summary: the Compare page, opened on this game, is where its two teams are weighed.
+function GamePreview({ game, seasonCode }) {
+  const { localTeam, roadTeam } = game;
+  if (!localTeam?.clubCode || !roadTeam?.clubCode) {
+    return <EmptyText>The teams for this game aren't known yet.</EmptyText>;
+  }
+  const params = new URLSearchParams({ teamA: localTeam.clubCode, teamB: roadTeam.clubCode, game: game.gameCode });
+  return (
+    <Panel className="p-4 sm:p-5">
+      <PanelHeader kicker="GAME PREVIEW" title="This game hasn't been played yet" />
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <p className="muted">See how these two teams compare.</p>
+        <Link
+          to={`/${seasonCode}/compare?${params}`}
+          state={{ fromGame: game.gameCode }}
+          aria-label={`Compare ${teamName(localTeam)} and ${teamName(roadTeam)}`}
+          className="btn btn-primary w-full flex-none sm:w-auto"
+        >
+          Compare {teamCode(localTeam)} and {teamCode(roadTeam)}
+        </Link>
+      </div>
+    </Panel>
+  );
+}
+
 // The game summary: line score, standouts, leaders, key stats, and a compact score flow.
 export default function OverviewTab({ game, seasonCode, boxScoreQuery, playByPlayQuery, advancedQuery, teamFlowQuery }) {
   if (!game.played) {
-    return <EmptyText>Overview isn't available until this game is played.</EmptyText>;
+    return <GamePreview game={game} seasonCode={seasonCode} />;
   }
   if (boxScoreQuery.isLoading) return <AsyncState status="loading" label="Loading the overview" />;
   if (boxScoreQuery.isError) {

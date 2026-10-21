@@ -1,7 +1,7 @@
 import { useEffect, useId, useRef, useState } from "react";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { motion } from "motion/react";
-import { useParams, useSearchParams } from "react-router";
+import { useLocation, useParams, useSearchParams } from "react-router";
 import AsyncState from "../lib/AsyncState";
 import LabelledSelect from "../lib/LabelledSelect";
 import Panel from "../lib/Panel";
@@ -431,6 +431,7 @@ function ComparisonsBody({
   initialGame,
 }) {
   const [, setSearchParams] = useSearchParams();
+  const location = useLocation();
   const [view, setView] = useState(initialView);
   const [section, setSection] = useState(firstSection(initialView));
   const [mode, setMode] = useState("perGame");
@@ -446,6 +447,8 @@ function ComparisonsBody({
   });
   // The game the comparison was opened from (a pick on the upcoming-games panel), kept in the URL so the context survives a refresh.
   const [gameCode, setGameCode] = useState(initialGame);
+  // The game page whose "Compare" button opened this comparison: while the comparison is still that game's, the way back is that game.
+  const [fromGame] = useState(() => location.state?.fromGame ?? null);
 
   // Resolve player entities named only by personKey in the URL (teams
   // resolve synchronously above from the already-loaded team list).
@@ -617,6 +620,8 @@ function ComparisonsBody({
     );
   }
 
+  const cameFromGame = fromGame != null && view === "teams" && String(gameCode) === String(fromGame);
+
   // A comparison is open: only what it needs, the way back, the sections and the statistics phase.
   const sections =
     view === "teams"
@@ -634,7 +639,11 @@ function ComparisonsBody({
         ];
   return (
     <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3, ease: EASE_OUT }}>
-      <BackLink to={`/${seasonCode}/compare?view=${view}`} label={view === "teams" ? "Games" : "Players"} onBack={handleBack} />
+      {cameFromGame ? (
+        <BackLink to={`/${seasonCode}/games/${fromGame}`} label="Game" />
+      ) : (
+        <BackLink to={`/${seasonCode}/compare?view=${view}`} label={view === "teams" ? "Games" : "Players"} onBack={handleBack} />
+      )}
       <PageHeader
         kicker="HEAD-TO-HEAD"
         title="Compare"

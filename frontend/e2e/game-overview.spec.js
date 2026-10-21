@@ -23,13 +23,32 @@ test("the game page opens on the Overview tab with a line score and totals", asy
   await expect(page.locator("table tbody tr", { hasText: "Margin" }).locator("td")).toHaveText(["Margin", "+2", "+10", "-7", "+5", "+10"]);
 });
 
-test("an unplayed game's Overview says it is not available yet", async ({ page }) => {
-  await mockGameApi(page, { played: false });
+test("an unplayed game shows only the Overview tab and does not request the box score", async ({ page }) => {
+  const requests = [];
+  await mockGameApi(page, { played: false, requests });
   await page.goto(`/${SEASON}/games/1`);
 
+  await expect(page.getByRole("tab")).toHaveCount(1);
   await expect(page.getByRole("tab", { name: "Overview" })).toHaveAttribute("aria-selected", "true");
-  await expect(page.getByText("Overview isn't available until this game is played.")).toBeVisible();
+  await expect(page.getByRole("heading", { name: "This game hasn't been played yet" })).toBeVisible();
+  await expect(page.getByRole("link", { name: /^Compare / })).toHaveAttribute("href", /\/compare\?teamA=.+&teamB=.+&game=1$/);
   await expect(page.getByRole("alert")).toHaveCount(0);
+  expect(requests.some((pathname) => pathname.endsWith("/box-score"))).toBe(false);
+});
+
+test("Compare, opened from an unplayed game, goes back to that game", async ({ page }) => {
+  await mockGameApi(page, { played: false });
+  await page.route(`**/api/seasons/${SEASON}/phases`, (route) => route.fulfill({ json: { phases: [{ code: "RS", name: "Regular season" }] } }));
+  await page.route(`**/api/seasons/${SEASON}/teams`, (route) =>
+    route.fulfill({ json: { teams: [{ clubCode: "A", name: "Team A" }, { clubCode: "B", name: "Team B" }] } }),
+  );
+  await page.goto(`/${SEASON}/games/1`);
+  await page.getByRole("link", { name: /^Compare / }).click();
+
+  const back = page.getByRole("link", { name: "Back to Game" });
+  await expect(back).toHaveAttribute("href", `/${SEASON}/games/1`);
+  await back.click();
+  await expect(page).toHaveURL(new RegExp(`/${SEASON}/games/1$`));
 });
 
 test("each team's best player and game leaders come from the box score, linked to their pages", async ({ page }) => {

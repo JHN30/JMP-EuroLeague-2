@@ -62,7 +62,7 @@ function PlayerCard({ player, seasonCode }) {
 }
 
 export default function PlayersPage() {
-  useDocumentTitle("Players", "EuroLeague player statistics: points, rebounds, assists, PIR and more, searchable by player and club.");
+  useDocumentTitle("Players");
   const { seasonCode } = useParams();
   const [search, setSearch] = useState("");
   const [offset, setOffset] = useState(0);

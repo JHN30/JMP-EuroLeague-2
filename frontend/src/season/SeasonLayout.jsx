@@ -107,13 +107,11 @@ export default function SeasonLayout({ themePreference }) {
   return (
     <BackTargetContext.Provider value={setBackTarget}>
       <div className="min-h-screen">
-        <div data-nosnippet>
-          <a href="#main-content" className="skip-link">
-            Skip to main content
-          </a>
-        </div>
+        <a href="#main-content" className="skip-link">
+          Skip to main content
+        </a>
         <header className="app-nav">
-          <div data-nosnippet className="flex h-12 shrink-0 items-center justify-between gap-3 px-3 sm:px-5 lg:px-8">
+          <div className="flex h-12 shrink-0 items-center justify-between gap-3 px-3 sm:px-5 lg:px-8">
             <div className="flex min-w-0 items-center gap-2">
               <Link to={`/${seasonCode}/home`} aria-label="Home" className="flex shrink-0 items-center gap-2">
                 <img src="/logo-header.png" alt="" aria-hidden="true" className="brand-mark" />

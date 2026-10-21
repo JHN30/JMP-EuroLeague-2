@@ -14,7 +14,7 @@ import { shortTeamName } from "../games/gameUtils";
 const MotionLink = motion.create(Link);
 
 export default function TeamsPage() {
-  useDocumentTitle("Teams", "EuroLeague clubs with their record, rosters and team statistics for the season.");
+  useDocumentTitle("Teams");
   const { seasonCode } = useParams();
 
   const teamsQuery = useQuery({

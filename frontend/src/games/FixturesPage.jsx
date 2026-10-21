@@ -23,7 +23,7 @@ import GameCard from "./GameCard";
 const ROUND_GAME_LIMIT = 100;
 
 export default function FixturesPage() {
-  useDocumentTitle("Games", "Every EuroLeague game of the season: results, schedule and box scores, round by round.");
+  useDocumentTitle("Games");
   const { seasonCode } = useParams();
   const [searchParams, setSearchParams] = useSearchParams();
   const roundStripRef = useRef(null);

@@ -77,7 +77,7 @@ function useNow(intervalMs) {
 }
 
 export default function Dashboard() {
-  useDocumentTitle("Home", "The current EuroLeague round: results, upcoming games, standings and league leaders.");
+  useDocumentTitle("Home");
   const { seasonCode } = useParams();
   const standingsQuery = useQuery({
     queryKey: ["standings", seasonCode, "RS"],

@@ -26,14 +26,6 @@
     <meta property="og:description" content="Standings, games, teams, players, leaders, comparisons and the postseason bracket for EuroLeague seasons 2000-01 to 2026-27." />
     <meta property="og:image" content="https://www.jmpeuroleague.com/android-chrome-512x512.png" />
     <meta name="twitter:card" content="summary" />
-    <script type="application/ld+json">
-      {
-        "@context": "https://schema.org",
-        "@type": "WebSite",
-        "name": "JMP EuroLeague",
-        "url": "https://www.jmpeuroleague.com/"
-      }
-    </script>
     <script>
       try {
         const saved = localStorage.getItem("euroleague-theme");
@@ -49,24 +41,7 @@
     </script>
   </head>
   <body>
-    <div id="root">
-      <!-- Crawlable summary for search engines and no-script readers; React replaces it as soon as the app loads. -->
-      <main style="max-width: 40rem; margin: 0 auto; padding: 2rem 1rem; font-family: system-ui, sans-serif">
-        <h1>JMP EuroLeague</h1>
-        <p>
-          JMP EuroLeague is a free EuroLeague basketball statistics site covering every season from 2000-01 to 2026-27.
-          Follow the current round, browse standings, results and box scores, and dig into team and player statistics.
-        </p>
-        <ul>
-          <li><a href="/2026/standings">Standings</a>: regular-season and Play-In tables, round by round.</li>
-          <li><a href="/2026/games">Games</a>: every result and schedule with full box scores.</li>
-          <li><a href="/2026/teams">Teams</a> and <a href="/2026/players">players</a>: rosters, averages, totals and advanced statistics.</li>
-          <li><a href="/2026/leaders">Leaders</a> and <a href="/2026/records">records</a>: who tops each category.</li>
-          <li><a href="/2026/compare">Compare</a> players or teams side by side, and follow the <a href="/2026/postseason">postseason bracket</a>.</li>
-        </ul>
-        <noscript><p>This site needs JavaScript to show live data.</p></noscript>
-      </main>
-    </div>
+    <div id="root"></div>
     <script type="module" src="/src/main.jsx"></script>
   </body>
 </html>

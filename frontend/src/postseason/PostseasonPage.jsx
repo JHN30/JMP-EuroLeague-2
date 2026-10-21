@@ -130,7 +130,7 @@ function top16Summary(stage) {
 }
 
 export default function PostseasonPage() {
-  useDocumentTitle("Postseason", "The EuroLeague postseason bracket: Play-In, playoffs and Final Four, series by series.");
+  useDocumentTitle("Postseason");
   const { seasonCode } = useParams();
   const [selectedId, setSelectedId] = useState(null);
   const [focusClub, setFocusClub] = useState(null);

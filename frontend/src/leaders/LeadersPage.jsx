@@ -26,7 +26,7 @@ const BOARD_PARAMS = SCOPE_PARAMS.filter((name) => name !== "ascope" && name !==
 // category cards (the top five of each) and opens a full leaderboard for one stat; everything is in the URL so a leaderboard
 // can be shared.
 export default function LeadersPage() {
-  useDocumentTitle("Leaders");
+  useDocumentTitle("Leaders", "EuroLeague statistical leaders: top players and teams in points, rebounds, assists, steals, blocks and PIR.");
   const { seasonCode } = useParams();
   const [params, setParams] = useSearchParams();
   const scope = SCOPES.some((entry) => entry.key === params.get("scope")) ? params.get("scope") : "players";

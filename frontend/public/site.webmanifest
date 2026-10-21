@@ -1,7 +1,7 @@
 {
   "name": "JMP EuroLeague",
   "short_name": "JMP EuroLeague",
-  "description": "Standings, games, teams, players, leaders, comparisons and the postseason bracket for EuroLeague seasons 2023-24 to 2026-27.",
+  "description": "Standings, games, teams, players, leaders, comparisons and the postseason bracket for EuroLeague seasons 2000-01 to 2026-27.",
   "id": "/",
   "start_url": "/",
   "scope": "/",

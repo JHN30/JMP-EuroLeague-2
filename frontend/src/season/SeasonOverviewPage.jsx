@@ -749,7 +749,7 @@ function RoadToTitle({ champion, steps }) {
 
 export default function SeasonOverviewPage() {
   const { seasonCode } = useParams();
-  useDocumentTitle("Overview");
+  useDocumentTitle("Overview", "EuroLeague season overview: regular-season leaders, team and player statistics, and how the season is shaping up.");
 
   const phasesQuery = useQuery({
     queryKey: ["phases", seasonCode],

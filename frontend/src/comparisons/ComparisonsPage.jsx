@@ -713,7 +713,7 @@ function ComparisonsBody({
 }
 
 export default function ComparisonsPage() {
-  useDocumentTitle("Compare");
+  useDocumentTitle("Compare", "Compare EuroLeague players or teams side by side across any stat.");
   const { seasonCode } = useParams();
   const [searchParams] = useSearchParams();
 

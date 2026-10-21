@@ -45,7 +45,7 @@ const BREAKDOWN_TABS = [
 const PHONE_VIEW_OPTIONS = [...VIEW_TABS, ...BREAKDOWN_TABS.filter((tab) => tab.key !== "overview")];
 
 export default function StandingsPage() {
-  useDocumentTitle("Standings");
+  useDocumentTitle("Standings", "EuroLeague standings by round: wins, losses, points and tiebreakers for every club, regular season and Play-In.");
   const { seasonCode } = useParams();
   const [searchParams, setSearchParams] = useSearchParams();
   const [view, setView] = useState("overall");

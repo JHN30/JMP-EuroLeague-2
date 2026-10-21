@@ -57,7 +57,7 @@ function RecordsContent({ data }) {
 // The archive-to-date records over the loaded seasons: four kinds (player and team, season and single game), each with its traditional and advanced
 // metrics. The choices are in the address (`type`, `metric`; the defaults are left out) so a view can be linked and Back steps through them.
 export default function RecordsPage() {
-  useDocumentTitle("Records");
+  useDocumentTitle("Records", "EuroLeague single-game and season records for players and teams.");
   const { seasonCode } = useParams();
   const [params, setParams] = useSearchParams();
   const family = pickKey(FAMILIES, params.get("type"), DEFAULT_FAMILY);

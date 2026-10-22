@@ -1,4 +1,5 @@
 User-agent: *
-Allow: /
+Allow: /api/
+Disallow: /*?
 
 Sitemap: https://www.jmpeuroleague.com/sitemap.xml

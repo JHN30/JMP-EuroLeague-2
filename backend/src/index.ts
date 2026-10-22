@@ -20,11 +20,19 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use("/api/seasons", responseCache, seasonRouter);
 
-app.get("/api/health", async (req, res) => {
+// Outside production the health answers also say which database the server reads, so a dev backend can be checked without its .env.
+const healthTarget = ENV.NODE_ENV === "production" ? {} : { target: ENV.DB_TARGET };
+
+// Render calls this every 5 seconds, so it must not touch the database: a query that often keeps Neon from ever scaling to zero.
+app.get("/api/health", (req, res) => {
+  res.json({ status: "ok", ...healthTarget });
+});
+
+// The database check, for manual use only; Render does not call it.
+app.get("/api/health/db", async (req, res) => {
   try {
     await db.execute(sql`select 1`);
-    // Outside production the answer also says which database the server reads, so a dev backend can be checked without its .env.
-    res.json({ status: "ok", database: "connected", ...(ENV.NODE_ENV === "production" ? {} : { target: ENV.DB_TARGET }) });
+    res.json({ status: "ok", database: "connected", ...healthTarget });
   } catch {
     res.status(503).json({
       error: { code: "DATABASE_UNAVAILABLE", message: "Database unavailable" },

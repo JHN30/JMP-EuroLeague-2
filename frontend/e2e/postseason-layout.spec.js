@@ -69,11 +69,12 @@ for (const season of SEASONS) {
         const compare = page.locator(".scroll-mt-28").getByRole("link", { name: /^Compare / });
         if (phone && (await compare.count())) expect((await compare.boundingBox()).height).toBeGreaterThanOrEqual(43.5);
 
-        // The race table (a season in progress) has nothing to scroll sideways.
+        // The race's zone tables (a season in progress) have nothing to scroll sideways.
         const race = page.getByRole("heading", { name: "Race for the bracket" });
         if (await race.count()) {
-          const box = await page.locator("table").evaluate((table) => table.parentElement.scrollWidth - table.parentElement.clientWidth);
-          expect(box).toBeLessThanOrEqual(1);
+          const overflows = await page.locator("main table").evaluateAll((tables) => tables.map((table) => table.parentElement.scrollWidth - table.parentElement.clientWidth));
+          expect(overflows.length).toBeGreaterThan(0);
+          expect(Math.max(...overflows)).toBeLessThanOrEqual(1);
         }
       });
     }

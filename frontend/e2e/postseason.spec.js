@@ -37,6 +37,14 @@ test("a season in progress shows a projected bracket and the race for it", async
   await expect(page.getByText(/the bracket is a projection/)).toBeVisible();
   await expect(page.getByText("Projected").first()).toBeVisible();
   await expect(page.getByRole("heading", { name: "Race for the bracket" })).toBeVisible();
+  // One zone per side of each line, every club still in the race in exactly one of them.
+  for (const zone of ["Playoffs 1-6", "Play-In 7-10"]) await expect(page.getByRole("heading", { name: zone, exact: true })).toBeVisible();
+  await expect(page.getByRole("heading", { name: /^Chasing \d+(-\d+)?$/ })).toBeVisible();
+  await expect(page.getByRole("columnheader", { name: "vs 7th" })).toBeVisible();
+  // Margins are whole wins, never half games.
+  const margins = await page.locator("main table tbody tr td:last-child").allTextContents();
+  expect(margins.length).toBeGreaterThan(0);
+  for (const margin of margins) expect(margin).toMatch(/^(Level|[+-]\d+ W)/);
   expect(errors).toEqual([]);
 });
 

@@ -152,6 +152,10 @@ test("an ongoing direct-eight race uses eight places, but incomplete fixtures ca
   await page.goto("/2016/postseason");
   await expect(page.getByRole("heading", { name: "Race for the bracket" })).toBeVisible();
   await expect(page.getByText(/Top 8: straight to the Playoffs/)).toBeVisible();
+  // Two zones, measured against 9th and 8th: no Play-In zone between them.
+  await expect(page.getByRole("heading", { name: "Playoffs 1-8", exact: true })).toBeVisible();
+  await expect(page.getByRole("heading", { name: /^Chasing \d+(-\d+)?$/ })).toBeVisible();
+  await expect(page.getByRole("columnheader", { name: "vs 9th" })).toBeVisible();
   await expect(page.locator("main")).not.toContainText(/Play-In|Play-in/);
   incomplete = true;
   await page.reload();

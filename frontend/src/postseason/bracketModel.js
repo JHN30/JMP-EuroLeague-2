@@ -239,3 +239,10 @@ export function raceStatus(standings, remainingByClub, { directSeeds = DEFAULT_D
     }),
   );
 }
+
+// Wins ahead of another club (negative when behind), and how many fewer games the club has played (negative when the
+// other club has played fewer).
+export function raceMargin(entry, other) {
+  const played = (side) => side.basic.gamesWon + side.basic.gamesLost;
+  return { wins: entry.basic.gamesWon - other.basic.gamesWon, inHand: played(other) - played(entry) };
+}

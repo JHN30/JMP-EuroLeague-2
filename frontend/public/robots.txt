@@ -1,5 +1,8 @@
 User-agent: *
 Allow: /api/
 Disallow: /*?
+Disallow: /20
+Allow: /2026/
+Disallow: /2026/*?
 
 Sitemap: https://www.jmpeuroleague.com/sitemap.xml

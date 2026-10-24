@@ -81,9 +81,26 @@ for (const [kind, info] of Object.entries(KINDS)) {
           expect(row.scheduledAt).toEqual(expect.any(String));
         }
       }
+
+      // The best of each season: one per season, oldest first, at least as high as any of the best 50 from its season.
+      const seasonCodes = body.bySeason.map((row) => row.seasonCode);
+      expect(seasonCodes).toEqual([...new Set(seasonCodes)].sort());
+      for (const row of body.records) expect(body.bySeason.find((best) => best.seasonCode === row.seasonCode).numericValue).toBeGreaterThanOrEqual(row.numericValue);
+      // The progression: opens with the first season's best, every step higher than the one before, and ends at the record that stands.
+      expect(body.progression[0]).toEqual(body.bySeason[0]);
+      body.progression.slice(1).forEach((row, index) => expect(row.numericValue).toBeGreaterThan(body.progression[index].numericValue));
+      expect(body.progression.at(-1).numericValue).toBe(body.records[0].numericValue);
     });
   }
 }
+
+test("the best of each season and the progression reach the seasons the best 50 leave out", async ({ request }) => {
+  const body = await (await records(request, "player-seasons", "pointsScored")).json();
+  expect(body.records.every((row) => row.seasonCode >= "E2016")).toBe(true);
+  expect(body.bySeason[0].seasonCode).toBe("E2000");
+  expect(body.bySeason.length).toBeGreaterThanOrEqual(27);
+  expect(body.progression[0].seasonCode).toBe("E2000");
+});
 
 test("the pictures are really there: portraits and crests come through where the data has them", async ({ request }) => {
   const seasons = await (await records(request, "player-seasons", "pointsScored")).json();

@@ -115,7 +115,7 @@ export function Progression({ steps }) {
 }
 
 // The best of each season that has any, with the record that stands marked. Below sm a row is two lines: the season and the value, then the holder.
-export function BestOfEachSeason({ records, overall }) {
+export function BestOfEachSeason({ records, overallKey }) {
   return (
     <Panel as="section" className="p-5">
       <PanelHeader kicker="BY SEASON" title="Best in each season" />
@@ -127,7 +127,7 @@ export function BestOfEachSeason({ records, overall }) {
               <Holder record={record} short />
             </div>
             <div className="flex flex-none items-center gap-2 max-sm:order-2 max-sm:justify-end sm:flex-col sm:items-end sm:gap-1">
-              {record === overall ? <span className="badge badge-primary badge-sm sm:order-2">Record</span> : null}
+              {record.key === overallKey ? <span className="badge badge-primary badge-sm sm:order-2">Record</span> : null}
               <span className="text-lg font-bold tabular-nums sm:order-1">{record.valueText}</span>
             </div>
           </motion.li>

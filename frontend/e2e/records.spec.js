@@ -26,6 +26,11 @@ const ROWS = {
     },
   ],
 };
+// The best of each season and the progression the API sends with the rows. The player lists open with a 2005 season that is not among the rows,
+// as an early season that never reaches the best 50 does; the other families send their rows as both.
+const OLD = { seasonCode: "2005", personKey: "p0", playerName: "ZERO, OLD", clubName: "Club Z", clubTvCodes: "ZZZ", playerImageUrl: null, clubImageUrl: null, numericValue: 400 };
+const PLAYER_LISTS = [OLD, ROWS.player[2], ROWS.player[1], ROWS.player[0]];
+const LISTS = { player: { bySeason: PLAYER_LISTS, progression: PLAYER_LISTS } };
 const ROUTES = { "player-seasons": "player", "single-games": "game", "team-seasons": "team", "team-games": "teamgame" };
 const ADVANCED = ["per", "winShares", "gameScore", "offensiveRating", "netRating"];
 const MIN_GAMES = { "player-seasons": ["per"], "team-seasons": ["offensiveRating", "netRating"] };
@@ -44,7 +49,9 @@ async function mockApi(page, { rows = {}, delay = {}, fail = false } = {}) {
     const wait = delay[metric];
     if (wait) await new Promise((resolve) => setTimeout(resolve, wait));
     const minGames = MIN_GAMES[match[1]]?.includes(metric) ? 20 : null;
-    return route.fulfill({ json: { label: "Points", metric, group: ADVANCED.includes(metric) ? "advanced" : "traditional", minGames, records: data[ROUTES[match[1]]] } });
+    const family = ROUTES[match[1]];
+    const lists = family in rows || !LISTS[family] ? { bySeason: data[family], progression: data[family] } : LISTS[family];
+    return route.fulfill({ json: { label: "Points", metric, group: ADVANCED.includes(metric) ? "advanced" : "traditional", minGames, records: data[family], ...lists } });
   });
 }
 
@@ -114,25 +121,32 @@ test("the podium, the progression, the best of each season and the Top 50 read f
   // A row without pictures shows none, and nothing breaks.
   await expect(podium.nth(2).locator("img")).toHaveCount(0);
 
-  // The progression: each record that beat the one before, with its gain, the last one marked as the one that stands.
+  // The progression: the API's steps, with each gain worked out on the page, the last one marked as the one that stands. It opens with the
+  // 2005 season that is not among the best 50.
   const progression = page.locator("section", { has: page.getByRole("heading", { name: "Record progression" }) }).locator("li");
-  await expect(progression).toHaveCount(3);
-  await expect(progression.nth(0)).toContainText("700");
-  await expect(progression.nth(1)).toContainText("780");
-  await expect(progression.nth(1)).toContainText("+80");
-  await expect(progression.nth(2)).toContainText("+40");
-  await expect(progression.nth(2)).toContainText("Current record");
+  await expect(progression).toHaveCount(4);
+  await expect(progression.nth(0)).toContainText("Old Zero");
+  await expect(progression.nth(0)).toContainText("400");
+  await expect(progression.nth(1)).toContainText("+300");
+  await expect(progression.nth(2)).toContainText("780");
+  await expect(progression.nth(2)).toContainText("+80");
+  await expect(progression.nth(3)).toContainText("+40");
+  await expect(progression.nth(3)).toContainText("Current record");
 
-  // The best of each season: one entry per season, the overall record marked.
+  // The best of each season: the API's list, the 2005 season included, the overall record marked.
   const best = page.locator("section", { has: page.getByRole("heading", { name: "Best in each season" }) }).locator("li");
-  await expect(best).toHaveCount(3);
-  await expect(best.nth(0)).toContainText("Al One");
-  await expect(best.nth(1)).toContainText("Ben Two");
-  await expect(best.nth(2)).toContainText("Record");
+  await expect(best).toHaveCount(4);
+  await expect(best.nth(0)).toContainText("2005-06");
+  await expect(best.nth(0)).toContainText("Old Zero");
+  await expect(best.nth(1)).toContainText("Al One");
+  await expect(best.nth(2)).toContainText("Ben Two");
+  await expect(best.nth(3)).toContainText("Record");
+  await expect(best.getByText("Record", { exact: true })).toHaveCount(1);
 
-  // The Top 50: all four rows, in rank order, with the pictures on the rows that have them.
+  // The Top 50: the four rows, in rank order, with the pictures on the rows that have them; the 2005 season is not among them.
   const rows = page.locator("tbody tr");
   await expect(rows).toHaveCount(4);
+  await expect(page.locator("tbody")).not.toContainText("Old Zero");
   await expect(rows.nth(3)).toContainText("Dee Four");
   await expect(rows.nth(0).locator("img")).toHaveCount(2);
   await expect(rows.nth(3).locator("img")).toHaveCount(0);

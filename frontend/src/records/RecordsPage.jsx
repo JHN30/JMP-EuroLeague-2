@@ -11,7 +11,7 @@ import { TabStrip } from "../lib/TabStrip";
 import ViewSelect from "../lib/ViewSelect";
 import { useDocumentTitle } from "../lib/useDocumentTitle";
 import { Board, BestOfEachSeason, Podium, Progression } from "./RecordParts";
-import { DEFAULT_FAMILY, DEFAULT_METRIC, FAMILIES, GROUPS, allMetrics, bestOfEachSeason, describeRecord, metricsOf, pickKey, recordProgression } from "./recordData";
+import { DEFAULT_FAMILY, DEFAULT_METRIC, FAMILIES, GROUPS, allMetrics, describeRecord, metricsOf, pickKey, withGains } from "./recordData";
 
 const PANEL_ID = "records-panel";
 
@@ -24,8 +24,13 @@ async function fetchRecords(seasonCode, family, metric) {
   return { ...data, family, metricKey: metric };
 }
 
+// The Podium and the Top 50 read `records`, the overall best 50. The progression and the best of each season are the API's own lists over every
+// loaded season, so a season that never reaches the best 50 still shows in them.
 function RecordsContent({ data }) {
-  const records = useMemo(() => (data.records ?? []).map((row) => describeRecord(data.family, data.group, row)), [data]);
+  const [records, bySeason, progression] = useMemo(() => {
+    const describe = (rows) => (rows ?? []).map((row) => describeRecord(data.family, data.group, row));
+    return [describe(data.records), describe(data.bySeason), describe(data.progression)];
+  }, [data]);
   if (records.length === 0) {
     return (
       <Panel className="p-6">
@@ -44,8 +49,8 @@ function RecordsContent({ data }) {
       ) : null}
       <Podium records={records} label={data.label} />
       <div className="mt-6 grid grid-cols-[minmax(0,1fr)] gap-6 lg:grid-cols-2">
-        <Progression steps={recordProgression(records)} />
-        <BestOfEachSeason records={bestOfEachSeason(records)} overall={records[0]} />
+        <Progression steps={withGains(progression)} />
+        <BestOfEachSeason records={bySeason} overallKey={records[0].key} />
       </div>
       <div className="mt-6">
         <Board family={data.family} metricKey={data.metricKey} label={data.label} records={records} />

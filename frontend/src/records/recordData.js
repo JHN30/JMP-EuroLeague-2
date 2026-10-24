@@ -86,7 +86,6 @@ export function describeRecord(family, group, row) {
     seasonCode: row.seasonCode,
     season: formatSeasonLabel(row.seasonCode),
     date: row.scheduledAt ? formatDate(row.scheduledAt) : null,
-    when: row.scheduledAt ? new Date(row.scheduledAt).getTime() : null,
     gameCode: row.gameCode ?? null,
     gameTo: row.gameCode ? `/${slug}/games/${row.gameCode}` : null,
     value: row.numericValue,
@@ -95,26 +94,5 @@ export function describeRecord(family, group, row) {
   };
 }
 
-// Each record that beat every one before it, oldest first, with how far it beat the previous record by (null for the first).
-export function recordProgression(records) {
-  // Games go by when they were played; a season total has no date, so those go by season.
-  const oldestFirst = records.slice().sort((a, b) => {
-    if (a.when !== null && b.when !== null) return a.when - b.when || (a.gameCode ?? 0) - (b.gameCode ?? 0);
-    return a.seasonCode.localeCompare(b.seasonCode);
-  });
-  return oldestFirst.reduce((steps, record) => {
-    const previous = steps.at(-1);
-    if (previous && record.value <= previous.record.value) return steps;
-    return [...steps, { record, gain: previous ? record.value - previous.record.value : null }];
-  }, []);
-}
-
-// The best row of each season that has any, oldest season first.
-export function bestOfEachSeason(records) {
-  const best = new Map();
-  for (const record of records) {
-    const held = best.get(record.seasonCode);
-    if (!held || record.value > held.value) best.set(record.seasonCode, record);
-  }
-  return [...best.values()].sort((a, b) => a.seasonCode.localeCompare(b.seasonCode));
-}
+// The API's progression (oldest first), each step with how far it beat the previous record by (null for the first).
+export const withGains = (records) => records.map((record, index) => ({ record, gain: index === 0 ? null : record.value - records[index - 1].value }));

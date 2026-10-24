@@ -139,6 +139,9 @@ const LONG = {
 };
 const longRows = (count) => Array.from({ length: count }, (_, index) => ({ ...LONG, personKey: `p${index}`, seasonCode: String(2025 - (index % 3)), numericValue: 900 - index }));
 
+// A best of each season and a progression as long as the archive's: 27 seasons, each value higher than the last.
+const longSeasons = Array.from({ length: 27 }, (_, index) => ({ ...LONG, personKey: `s${index}`, seasonCode: String(2000 + index), numericValue: 500 + index }));
+
 async function mockRecords(page, { rows, delay, fail = false }) {
   await page.route("**/api/**", async (route) => {
     const { pathname } = new URL(route.request().url());
@@ -146,7 +149,7 @@ async function mockRecords(page, { rows, delay, fail = false }) {
     if (!/\/records\//.test(pathname)) return route.fulfill({ status: 404, json: {} });
     if (delay) await delay;
     if (fail) return route.fulfill({ status: 500, json: {} });
-    return route.fulfill({ json: { label: "Points", metric: "pointsScored", group: "traditional", minGames: 20, records: rows } });
+    return route.fulfill({ json: { label: "Points", metric: "pointsScored", group: "traditional", minGames: 20, records: rows, bySeason: rows.length ? longSeasons : [], progression: rows.length ? longSeasons : [] } });
   });
 }
 

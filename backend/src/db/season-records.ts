@@ -81,20 +81,41 @@ export function findRecordMetric(kind: RecordKind, requested: string): RecordMet
 
 export type RecordRow = { seasonCode: string; value: string | null; numericValue: number } & Record<string, unknown>;
 
-// A value as the tables store it: a numeric column comes back as a string, a measure as a number.
-type Scored = { seasonCode: string; value: string | number | null };
+// A value as the tables store it: a numeric column comes back as a string, a measure as a number. A game row also has its day and code.
+type Scored = { seasonCode: string; value: string | number | null; scheduledAt?: Date | null; gameCode?: number };
+type Ranked<Row extends Scored> = Omit<Row, "value"> & { value: string; numericValue: number };
+
+// What a records route answers for one metric: the best 50 over the loaded seasons, the best of each season that has any, and the record
+// progression. The last two come from every row read, so a season that never reaches the best 50 still has its entry.
+export type RecordLists = { records: RecordRow[]; bySeason: RecordRow[]; progression: RecordRow[] };
 
 // A picture URL as the pipeline stored it, or null when there is none (never an empty string).
 const picture = (url: string | null | undefined) => (url ? url : null);
 
-// Drops rows with no usable value, orders the rest highest first (ties broken by `tie`) and keeps the best 50.
-// `value` always leaves as a string, as the routes have always sent it.
-function best<Row extends Scored>(rows: Row[], tie: (a: Row, b: Row) => number): Array<Omit<Row, "value"> & { value: string; numericValue: number }> {
-  return rows
+// Season by season; within a season, games by day and then by code (a season total has neither).
+function oldestFirst(a: Ranked<Scored>, b: Ranked<Scored>) {
+  return a.seasonCode.localeCompare(b.seasonCode) || (a.scheduledAt?.getTime() ?? 0) - (b.scheduledAt?.getTime() ?? 0) || (a.gameCode ?? 0) - (b.gameCode ?? 0);
+}
+
+// The first season's best opens the progression; after it, every row that beat the standing record, oldest first. Only the first season's
+// best counts from that season, so the chain does not open with the first nights of the archive.
+function progressionOf<Row extends Scored>(ranked: Ranked<Row>[], first: Ranked<Row> | undefined): Ranked<Row>[] {
+  if (!first) return [];
+  const later = ranked.filter((row) => row.seasonCode !== first.seasonCode).sort(oldestFirst);
+  return later.reduce((steps, row) => (row.numericValue > steps[steps.length - 1].numericValue ? [...steps, row] : steps), [first]);
+}
+
+// Drops rows with no usable value, orders the rest highest first (ties broken by `tie`), and answers the best 50, the best of each season and
+// the progression. `value` always leaves as a string, as the routes have always sent it.
+function best<Row extends Scored>(rows: Row[], tie: (a: Row, b: Row) => number) {
+  const ranked: Ranked<Row>[] = rows
     .filter((row) => row.value !== null && row.value !== undefined && Number.isFinite(Number(row.value)))
     .sort((a, b) => Number(b.value) - Number(a.value) || a.seasonCode.localeCompare(b.seasonCode) || tie(a, b))
-    .slice(0, LIMIT)
     .map((row) => ({ ...row, value: String(row.value), numericValue: Number(row.value) }));
+  const seasonBest = new Map<string, Ranked<Row>>();
+  for (const row of ranked) if (!seasonBest.has(row.seasonCode)) seasonBest.set(row.seasonCode, row);
+  const bySeason = [...seasonBest.values()].sort((a, b) => a.seasonCode.localeCompare(b.seasonCode));
+  return { records: ranked.slice(0, LIMIT), bySeason, progression: progressionOf(ranked, bySeason[0]) };
 }
 
 // The box-score column of a game table (player or team) behind a traditional metric.
@@ -374,8 +395,8 @@ async function teamGameRecords(metric: RecordMetricDef) {
   return best(perSeason.flat(), (a, b) => a.gameCode - b.gameCode || a.clubCode.localeCompare(b.clubCode));
 }
 
-// The best 50 rows of one record kind and metric over the loaded seasons, highest first.
-export async function getRecordRows(kind: RecordKind, metric: RecordMetricDef): Promise<RecordRow[]> {
+// The best 50 rows of one record kind and metric over the loaded seasons (highest first), the best of each season and the progression.
+export async function getRecordRows(kind: RecordKind, metric: RecordMetricDef): Promise<RecordLists> {
   if (kind === "player-seasons") return playerSeasonRecords(metric);
   if (kind === "single-games") return singleGameRecords(metric);
   if (kind === "team-seasons") return teamSeasonRecords(metric);

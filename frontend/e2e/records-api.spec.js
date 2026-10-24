@@ -18,8 +18,8 @@ const TRADITIONAL = [
   ["freeThrowsMade", "Free throws made"],
   ["pir", "PIR"],
 ];
-// An advanced entry is key, label, format, whether lower is better, and the minimum number of games a season rating needs (the server
-// leaves out players and clubs with fewer).
+// An advanced entry is key, label, format, whether lower is better, the minimum number of games a season rating needs (the server
+// leaves out players and clubs with fewer), and the minutes or shots it also needs, as the answer words them.
 const MIN_SEASON_GAMES = 20;
 const ORTG = ["offensiveRating", "Offensive rating", "decimal"];
 const DRTG = ["defensiveRating", "Defensive rating", "decimal", true];
@@ -45,9 +45,27 @@ const TEAM_SEASON = [
   ["defensiveReboundPct", "Defensive rebound %", "percent"],
   ["assistRatio", "Assist ratio", "percent"],
 ].map(([key, label, format, lower]) => [key, label, format, lower, MIN_SEASON_GAMES]);
+const MINUTES = "10+ minutes a game";
+const SHOOTING = "10+ minutes and 4+ field goal attempts a game";
+const PLAYER_SEASON = [
+  ["per", "PER", "decimal", false, MIN_SEASON_GAMES],
+  ["winShares", "Win Shares", "decimal"],
+  ["offensiveWinShares", "Offensive Win Shares", "decimal"],
+  ["defensiveWinShares", "Defensive Win Shares", "decimal"],
+  ["winSharesPer40", "Win Shares / 40", "decimal3", false, MIN_SEASON_GAMES, MINUTES],
+  ["trueShootingPct", "True shooting %", "percent", false, MIN_SEASON_GAMES, SHOOTING],
+  ["effectiveFieldGoalPct", "Effective FG%", "percent", false, MIN_SEASON_GAMES, SHOOTING],
+  ["usagePct", "Usage %", "percent", false, MIN_SEASON_GAMES, MINUTES],
+  ["assistPct", "Assist %", "percent", false, MIN_SEASON_GAMES, MINUTES],
+  ["reboundPct", "Rebound %", "percent", false, MIN_SEASON_GAMES, MINUTES],
+  ["stealPct", "Steal %", "percent", false, MIN_SEASON_GAMES, MINUTES],
+  ["blockPct", "Block %", "percent", false, MIN_SEASON_GAMES, MINUTES],
+  ["gameScoreAverage", "Game Score average", "decimal", false, MIN_SEASON_GAMES, MINUTES],
+  ["pie", "PIE", "percent", false, MIN_SEASON_GAMES, MINUTES],
+];
 const KINDS = {
-  "player-seasons": { advanced: [["per", "PER", "decimal", false, MIN_SEASON_GAMES], ["winShares", "Win Shares", "decimal"]], players: true },
-  "single-games": { advanced: [["gameScore", "Game Score", "decimal"]], players: true },
+  "player-seasons": { advanced: PLAYER_SEASON, players: true },
+  "single-games": { advanced: [["gameScore", "Game Score", "decimal"], ["gamePer", "Game PER", "decimal", false, undefined, "10+ minutes in the game"]], players: true },
   "team-seasons": { advanced: TEAM_SEASON, players: false },
   "team-games": { advanced: [ORTG, DRTG, NET, PACE, EFG, TS], players: false },
 };
@@ -63,7 +81,7 @@ test("the backend reads the local database", async ({ request }) => {
 for (const [kind, info] of Object.entries(KINDS)) {
   const metrics = [
     ...TRADITIONAL.map(([key, label]) => ({ key, label, group: "traditional", format: "count", lowerIsBetter: false })),
-    ...info.advanced.map(([key, label, format, lower, minGames]) => ({ key, label, group: "advanced", format, lowerIsBetter: lower ?? false, minGames })),
+    ...info.advanced.map(([key, label, format, lower, minGames, volume]) => ({ key, label, group: "advanced", format, lowerIsBetter: lower ?? false, minGames, volume })),
   ];
   for (const metric of metrics) {
     test(`${kind}: ${metric.key} is the best 50, best first, with its label, group, format, direction and pictures`, async ({ request }) => {
@@ -75,6 +93,7 @@ for (const [kind, info] of Object.entries(KINDS)) {
       expect(body.group).toBe(metric.group);
       expect(body.format).toBe(metric.format);
       expect(body.lowerIsBetter).toBe(metric.lowerIsBetter);
+      expect(body.volume).toBe(metric.volume ?? null);
       // Every comparison below runs in the metric's direction: `better(a, b)` is how far a is ahead of b.
       const better = (a, b) => (metric.lowerIsBetter ? b - a : a - b);
       // The minimum number of games of a 34-game regular season: said by the answer. Each row of a metric that has one says its

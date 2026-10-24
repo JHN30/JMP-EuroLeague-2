@@ -589,7 +589,8 @@ for (const kind of RECORD_KINDS) {
     const minGames = per === "game" ? RECORD_MIN_GAMES : (metric.minGames ?? null);
     const label = per === "game" ? `${metric.label} per game` : metric.label;
     const lowerIsBetter = metric.lowerIsBetter ?? false;
-    res.json({ metric: requested, label, group: metric.group, minGames, per, lowerIsBetter, format: recordFormat(metric, per), ...(await getRecordRows(kind, metric, per)) });
+    const volume = metric.volume ?? null;
+    res.json({ metric: requested, label, group: metric.group, minGames, per, lowerIsBetter, format: recordFormat(metric, per), volume, ...(await getRecordRows(kind, metric, per)) });
   });
 }
 

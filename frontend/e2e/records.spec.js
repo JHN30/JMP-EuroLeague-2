@@ -49,6 +49,19 @@ const TEAM_METRICS = {
   turnoverPct: { label: "Turnover %", format: "percent", lowerIsBetter: true, minGames: 20, records: [club("2025", "OLY", "Olympiacos", 0.1152)] },
   netRating: { label: "Net rating", format: "signed", lowerIsBetter: false, minGames: 20, records: [club("2025", "OLY", "Olympiacos", 21.53)] },
 };
+// A player-season rate with a minimum of minutes and shots beyond games, and Win Shares / 40 with three decimals.
+const player = (seasonCode, personKey, playerName, numericValue) => ({ seasonCode, personKey, playerName, clubName: "Club A", clubTvCodes: "AAA", playerImageUrl: null, clubImageUrl: null, numericValue });
+const PLAYER_METRICS = {
+  trueShootingPct: {
+    label: "True shooting %",
+    format: "percent",
+    lowerIsBetter: false,
+    minGames: 20,
+    volume: "10+ minutes and 4+ field goal attempts a game",
+    records: [player("2000", "p9", "DJORDJEVIC, SASA", 0.7766)],
+  },
+  winSharesPer40: { label: "Win Shares / 40", format: "decimal3", lowerIsBetter: false, minGames: 20, volume: "10+ minutes a game", records: [player("2011", "p8", "KIRILENKO, ANDREI", 0.3506)] },
+};
 
 // Mocks the seasons and the four record routes. `rows` replaces a family's rows; `delay` holds back the answer for a metric for that many
 // milliseconds; `fail` makes the record routes answer 500. An answer says its group, and its minimum number of games for the ratings that have one.
@@ -64,22 +77,22 @@ async function mockApi(page, { rows = {}, delay = {}, fail = false } = {}) {
     const wait = delay[metric];
     if (wait) await new Promise((resolve) => setTimeout(resolve, wait));
     const family = ROUTES[match[1]];
-    const teamMetric = family === "team" ? TEAM_METRICS[metric] : null;
-    if (teamMetric) {
-      const oldestFirst = teamMetric.records.slice().sort((a, b) => a.seasonCode.localeCompare(b.seasonCode));
-      return route.fulfill({ json: { ...teamMetric, metric, group: "advanced", per: "total", bySeason: oldestFirst, progression: oldestFirst } });
+    const ownMetric = (family === "team" ? TEAM_METRICS : family === "player" ? PLAYER_METRICS : {})[metric];
+    if (ownMetric) {
+      const oldestFirst = ownMetric.records.slice().sort((a, b) => a.seasonCode.localeCompare(b.seasonCode));
+      return route.fulfill({ json: { volume: null, ...ownMetric, metric, group: "advanced", per: "total", bySeason: oldestFirst, progression: oldestFirst } });
     }
     const lists = family in rows || !LISTS[family] ? { bySeason: data[family], progression: data[family] } : LISTS[family];
     // Per game: the same rows over 30 games, so the values have decimals; a club needs 20 games of a 34-game season.
     if (url.searchParams.get("per") === "game") {
       const perGame = (list) => list.map((row) => ({ ...row, numericValue: row.numericValue / 30 }));
-      const json = { label: "Points per game", metric, group: "traditional", per: "game", minGames: 20, format: "decimal", lowerIsBetter: false };
+      const json = { label: "Points per game", metric, group: "traditional", per: "game", minGames: 20, format: "decimal", lowerIsBetter: false, volume: null };
       return route.fulfill({ json: { ...json, records: perGame(data[family]), bySeason: perGame(lists.bySeason), progression: perGame(lists.progression) } });
     }
     const minGames = MIN_GAMES[match[1]]?.includes(metric) ? 20 : null;
     const group = ADVANCED.includes(metric) ? "advanced" : "traditional";
     const format = group === "advanced" ? "decimal" : "count";
-    return route.fulfill({ json: { label: "Points", metric, group, per: "total", minGames, format, lowerIsBetter: false, records: data[family], ...lists } });
+    return route.fulfill({ json: { label: "Points", metric, group, per: "total", minGames, format, lowerIsBetter: false, volume: null, records: data[family], ...lists } });
   });
 }
 
@@ -192,7 +205,22 @@ test("the groups and metrics of each record type, and what a choice keeps", asyn
   await expect(metricTabs(page).first()).toHaveText("Points");
   await expect(metricTabs(page).last()).toHaveText("PIR");
   await tab(page, "Advanced").click();
-  await expect(metricTabs(page)).toHaveText(["PER", "Win Shares"]);
+  await expect(metricTabs(page)).toHaveText([
+    "PER",
+    "Win Shares",
+    "Offensive Win Shares",
+    "Defensive Win Shares",
+    "Win Shares / 40",
+    "True shooting %",
+    "Effective FG%",
+    "Usage %",
+    "Assist %",
+    "Rebound %",
+    "Steal %",
+    "Block %",
+    "Game Score average",
+    "PIE",
+  ]);
   await expect(tab(page, "PER")).toHaveAttribute("aria-selected", "true");
   await expect(page).toHaveURL(/metric=per/);
   // Back to the traditional group opens its first metric, which is the default and so leaves the address.
@@ -203,7 +231,7 @@ test("the groups and metrics of each record type, and what a choice keeps", asyn
   // Player games has Game Score; the clubs have the two ratings.
   await tab(page, "Player games").click();
   await tab(page, "Advanced").click();
-  await expect(metricTabs(page)).toHaveText(["Game Score"]);
+  await expect(metricTabs(page)).toHaveText(["Game Score", "Game PER"]);
   await tab(page, "Team seasons").click();
   await tab(page, "Advanced").click();
   await expect(metricTabs(page)).toHaveText([
@@ -333,6 +361,18 @@ test("a lower-is-better metric ranks from the lowest and says so; percentages an
   await page.goto("/2026/records?type=team&metric=netRating");
   await expect(page.locator("ol").first().locator("> li").first()).toContainText("+21.5");
   await expect(page.getByText("Lower is better.", { exact: true })).toHaveCount(0);
+});
+
+test("a player rate says the minutes and shots it needs beyond games, and Win Shares / 40 reads with three decimals", async ({ page }) => {
+  await mockApi(page);
+  await page.goto("/2026/records?metric=trueShootingPct");
+  await expect(
+    page.getByText("Counts players with at least 20 games of a 34-game regular season, or the same share of a shorter or longer one. Also needs 10+ minutes and 4+ field goal attempts a game."),
+  ).toBeVisible();
+  await expect(page.locator("ol").first().locator("> li").first()).toContainText("77.7%");
+  await page.goto("/2026/records?metric=winSharesPer40");
+  await expect(page.getByText("Also needs 10+ minutes a game.")).toBeVisible();
+  await expect(page.locator("ol").first().locator("> li").first()).toContainText("0.351");
 });
 
 test("the records with a minimum number of games say so", async ({ page }) => {

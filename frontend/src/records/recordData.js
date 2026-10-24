@@ -41,8 +41,23 @@ const ADVANCED = {
   player: [
     { key: "per", label: "PER" },
     { key: "winShares", label: "Win Shares" },
+    { key: "offensiveWinShares", label: "Offensive Win Shares" },
+    { key: "defensiveWinShares", label: "Defensive Win Shares" },
+    { key: "winSharesPer40", label: "Win Shares / 40" },
+    TS,
+    EFG,
+    { key: "usagePct", label: "Usage %" },
+    { key: "assistPct", label: "Assist %" },
+    { key: "reboundPct", label: "Rebound %" },
+    { key: "stealPct", label: "Steal %" },
+    { key: "blockPct", label: "Block %" },
+    { key: "gameScoreAverage", label: "Game Score average" },
+    { key: "pie", label: "PIE" },
   ],
-  game: [{ key: "gameScore", label: "Game Score" }],
+  game: [
+    { key: "gameScore", label: "Game Score" },
+    { key: "gamePer", label: "Game PER" },
+  ],
   team: [
     ORTG,
     DRTG,
@@ -69,6 +84,7 @@ const ADVANCED = {
 const VALUE_FORMATS = {
   count: formatCount,
   decimal: (value) => formatDecimal(value, 1),
+  decimal3: (value) => formatDecimal(value, 3),
   signed: (value) => formatSignedDecimal(value, 1),
   percent: (value) => `${formatDecimal(value * 100, 1)}%`,
 };

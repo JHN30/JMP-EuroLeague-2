@@ -1,7 +1,7 @@
 import { and, asc, desc, eq, gte, inArray, isNotNull, sql } from "drizzle-orm";
 import type { PgColumn } from "drizzle-orm/pg-core";
 import { db } from "./client";
-import { gamePlayerAdvanced, gameTeamAdvanced, playerRoundRatings, playerRoundWinShares, standingsStats } from "./season-advanced-schema";
+import { gamePlayerAdvanced, gameTeamAdvanced, playerRoundRatings, playerRoundStats, playerRoundWinShares, standingsStats } from "./season-advanced-schema";
 import { catalogRead, SUPPORTED_SEASONS } from "./season-catalog";
 import { seasonFormat } from "./season-format-registry";
 import { getTeams } from "./season-identities";
@@ -18,8 +18,9 @@ export type RecordGroup = "traditional" | "advanced";
 // (seasonMinGames), and every row says the minimum of its season.
 // `lowerIsBetter` ranks from the lowest (the best defense allows the fewest points). `format` says how the page writes the value: whole
 // numbers for totals, one decimal for rates, a sign for margins, and a stored fraction as a percentage.
-export type RecordFormat = "count" | "decimal" | "signed" | "percent";
-export type RecordMetricDef = { key: string; label: string; group: RecordGroup; minGames?: number; lowerIsBetter?: boolean; format?: RecordFormat };
+// `volume` names a minimum beyond games (minutes, shots) for the page to say.
+export type RecordFormat = "count" | "decimal" | "decimal3" | "signed" | "percent";
+export type RecordMetricDef = { key: string; label: string; group: RecordGroup; minGames?: number; lowerIsBetter?: boolean; format?: RecordFormat; volume?: string };
 // A season record as the season's total or as its per-game average.
 export const RECORD_PERS = ["total", "game"] as const;
 export type RecordPer = (typeof RECORD_PERS)[number];
@@ -90,12 +91,39 @@ const TEAM_GAME_ADVANCED: Array<[RecordMetricDef, PgColumn]> = [
 ];
 const columnOf = (catalogue: Array<[RecordMetricDef, PgColumn]>, key: string) => catalogue.find(([metric]) => metric.key === key)![1];
 
+// A player's season rate needs 10 minutes a game, and a shooting percentage also 4 field goal attempts a game (the Leaders boards' MINUTES
+// and FIELD_GOALS rules), so a few minutes or shots cannot set a record. Both read the same round row as the value.
+type PlayerVolume = "minutes" | "shooting";
+const PLAYER_VOLUME_TEXT: Record<PlayerVolume, string> = { minutes: "10+ minutes a game", shooting: "10+ minutes and 4+ field goal attempts a game" };
+type PlayerRoundTable = typeof playerRoundRatings | typeof playerRoundWinShares | typeof playerRoundStats;
+type PlayerSeasonSource = { metric: RecordMetricDef; table: PlayerRoundTable; column: PgColumn; volume?: PlayerVolume };
+const playerSeason = (key: string, label: string, table: PlayerRoundTable, column: PgColumn, extra: Partial<RecordMetricDef> = {}, volume?: PlayerVolume): PlayerSeasonSource => ({
+  metric: { key, label, group: "advanced", ...extra, ...(volume ? { minGames: MIN_SEASON_GAMES, volume: PLAYER_VOLUME_TEXT[volume] } : {}) },
+  table,
+  column,
+  volume,
+});
+const PLAYER_SEASON_ADVANCED: PlayerSeasonSource[] = [
+  playerSeason("per", "PER", playerRoundRatings, playerRoundRatings.per, { minGames: MIN_SEASON_GAMES }),
+  playerSeason("winShares", "Win Shares", playerRoundWinShares, playerRoundWinShares.winShares),
+  playerSeason("offensiveWinShares", "Offensive Win Shares", playerRoundWinShares, playerRoundWinShares.offWinShares),
+  playerSeason("defensiveWinShares", "Defensive Win Shares", playerRoundWinShares, playerRoundWinShares.defWinShares),
+  playerSeason("winSharesPer40", "Win Shares / 40", playerRoundWinShares, playerRoundWinShares.winSharesPer40, { format: "decimal3" }, "minutes"),
+  playerSeason("trueShootingPct", "True shooting %", playerRoundStats, playerRoundStats.tsPct, { format: "percent" }, "shooting"),
+  playerSeason("effectiveFieldGoalPct", "Effective FG%", playerRoundStats, playerRoundStats.efgPct, { format: "percent" }, "shooting"),
+  playerSeason("usagePct", "Usage %", playerRoundStats, playerRoundStats.usgPct, { format: "percent" }, "minutes"),
+  playerSeason("assistPct", "Assist %", playerRoundStats, playerRoundStats.astPct, { format: "percent" }, "minutes"),
+  playerSeason("reboundPct", "Rebound %", playerRoundStats, playerRoundStats.trbPct, { format: "percent" }, "minutes"),
+  playerSeason("stealPct", "Steal %", playerRoundStats, playerRoundStats.stlPct, { format: "percent" }, "minutes"),
+  playerSeason("blockPct", "Block %", playerRoundStats, playerRoundStats.blkPct, { format: "percent" }, "minutes"),
+  playerSeason("gameScoreAverage", "Game Score average", playerRoundStats, playerRoundStats.gameScoreAverage, {}, "minutes"),
+  playerSeason("pie", "PIE", playerRoundStats, playerRoundStats.pie, { format: "percent" }, "minutes"),
+];
+
 const ADVANCED: Record<RecordKind, RecordMetricDef[]> = {
-  "player-seasons": [
-    { key: "per", label: "PER", group: "advanced", minGames: MIN_SEASON_GAMES },
-    { key: "winShares", label: "Win Shares", group: "advanced" },
-  ],
-  "single-games": [{ key: "gameScore", label: "Game Score", group: "advanced" }],
+  "player-seasons": PLAYER_SEASON_ADVANCED.map((source) => source.metric),
+  // Game PER counts players with 10 minutes in the game, as the game page's best player does; a few minutes can give any number.
+  "single-games": [advanced("gameScore", "Game Score"), advanced("gamePer", "Game PER", { volume: "10+ minutes in the game" })],
   "team-seasons": TEAM_SEASON_ADVANCED.map(([metric]) => ({ ...metric, minGames: MIN_SEASON_GAMES })),
   "team-games": TEAM_GAME_ADVANCED.map(([metric]) => metric),
 };
@@ -200,11 +228,12 @@ async function clubLooks(seasonCode: string) {
 
 // ---- Player seasons ----
 
-// PER and Win Shares after the season's latest round (scope `all`, as the Leaders Advanced board reads them), for the players the season
-// statistics mark qualified, so that nobody sets a record in a handful of games.
+// An advanced player metric after the season's latest round (scope `all`, as the Leaders Advanced board reads them), for the players the
+// season statistics mark qualified, with the metric's minutes or shots a game, so that nobody sets a record in a handful of games.
 async function advancedPlayerSeasonRows(seasonCode: string, key: string, minGames: number | undefined) {
-  const table = key === "per" ? playerRoundRatings : playerRoundWinShares;
-  const column = key === "per" ? playerRoundRatings.per : playerRoundWinShares.winShares;
+  const { table, column, volume } = PLAYER_SEASON_ADVANCED.find((source) => source.metric.key === key)!;
+  const minutes = volume ? sql`${table.secondsPlayed} >= 600 * ${table.gamesPlayed}` : undefined;
+  const shots = volume === "shooting" ? sql`${playerRoundStats.fieldGoalsAttempted} >= 4 * ${playerRoundStats.gamesPlayed}` : undefined;
   const inSeason = and(eq(table.competitionCode, COMPETITION_CODE), eq(table.seasonCode, seasonCode), eq(table.scope, "all"));
   const [latest] = await catalogRead(() => db.select({ round: sql<number | null>`max(${table.roundNumber})` }).from(table).where(inSeason));
   if (latest?.round === null || latest?.round === undefined) return [];
@@ -229,7 +258,7 @@ async function advancedPlayerSeasonRows(seasonCode: string, key: string, minGame
         eq(seasonStatsTraditional.mode, "accumulated"),
         eq(seasonStatsTraditional.qualified, true),
       ))
-      .where(and(inSeason, eq(table.roundNumber, round), isNotNull(column), minGames === undefined ? undefined : sql`${seasonStatsTraditional.gamesPlayed} >= ${minGames}`))
+      .where(and(inSeason, eq(table.roundNumber, round), isNotNull(column), minutes, shots, minGames === undefined ? undefined : sql`${seasonStatsTraditional.gamesPlayed} >= ${minGames}`))
       .orderBy(desc(column), asc(table.personKey))
       .limit(LIMIT),
   );
@@ -288,7 +317,7 @@ async function singleGameRecords(metric: RecordMetricDef) {
               return db.select({ ...shape, value: column }).from(gamePlayerStats).innerJoin(games, gameJoin).where(played).orderBy(desc(column)).limit(LIMIT);
             })
           : catalogRead(() =>
-              db.select({ ...shape, value: gamePlayerAdvanced.gameScore })
+              db.select({ ...shape, value: metric.key === "gamePer" ? gamePlayerAdvanced.gamePer : gamePlayerAdvanced.gameScore })
                 .from(gamePlayerAdvanced)
                 .innerJoin(gamePlayerStats, and(
                   eq(gamePlayerStats.competitionCode, gamePlayerAdvanced.competitionCode),
@@ -298,8 +327,12 @@ async function singleGameRecords(metric: RecordMetricDef) {
                   eq(gamePlayerStats.personKey, gamePlayerAdvanced.personKey),
                 ))
                 .innerJoin(games, gameJoin)
-                .where(and(played, isNotNull(gamePlayerAdvanced.gameScore)))
-                .orderBy(desc(gamePlayerAdvanced.gameScore))
+                .where(
+                  metric.key === "gamePer"
+                    ? and(played, isNotNull(gamePlayerAdvanced.gamePer), gte(gamePlayerAdvanced.secondsPlayed, 600))
+                    : and(played, isNotNull(gamePlayerAdvanced.gameScore)),
+                )
+                .orderBy(desc(metric.key === "gamePer" ? gamePlayerAdvanced.gamePer : gamePlayerAdvanced.gameScore))
                 .limit(LIMIT),
             ),
         clubLooks(seasonCode),

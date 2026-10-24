@@ -43,11 +43,13 @@ function RecordsContent({ data }) {
   const holders = FAMILIES.find((entry) => entry.key === data.family)?.club ? "clubs" : "players";
   return (
     <motion.div key={`${data.family}-${data.metricKey}-${data.per}`} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3, ease: EASE_OUT }}>
-      {/* The minimum is for a 34-game regular season; each season keeps the same share of its own (22 of 38, 6 of 10). */}
-      {data.minGames || data.lowerIsBetter ? (
+      {/* The minimum is for a 34-game regular season; each season keeps the same share of its own (22 of 38, 6 of 10). `volume` is a further
+          minimum of minutes or shots, worded by the API. */}
+      {data.minGames || data.lowerIsBetter || data.volume ? (
         <p className="muted mb-4 text-sm">
           {data.lowerIsBetter ? <span>Lower is better. </span> : null}
           {data.minGames ? `Counts ${holders} with at least ${data.minGames} games of a 34-game regular season, or the same share of a shorter or longer one.` : null}
+          {data.volume ? <span> Also needs {data.volume}.</span> : null}
         </p>
       ) : null}
       <Podium records={records} label={data.label} />

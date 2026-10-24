@@ -123,7 +123,9 @@ test("the metric select on a phone lists the group's metrics and a choice loads 
   await expect(page.getByText("Ranked by Rebounds")).toBeVisible({ timeout: 45_000 });
   // The group strip changes the options and keeps a valid metric.
   await page.getByRole("tab", { name: "Advanced", exact: true }).click();
-  await expect(select.locator("option")).toHaveText(["PER", "Win Shares"]);
+  await expect(select.locator("option")).toHaveCount(14);
+  await expect(select.locator("option").first()).toHaveText("PER");
+  await expect(select.locator("option").last()).toHaveText("PIE");
   await expect(select).toHaveValue("per");
   await expect(page).toHaveURL(/metric=per/);
   await expectNoSidewaysScroll(page);
@@ -152,7 +154,7 @@ async function mockRecords(page, { rows, delay, fail = false }) {
     if (!/\/records\//.test(pathname)) return route.fulfill({ status: 404, json: {} });
     if (delay) await delay;
     if (fail) return route.fulfill({ status: 500, json: {} });
-    return route.fulfill({ json: { label: "Points", metric: "pointsScored", group: "traditional", minGames: 20, format: "count", lowerIsBetter: false, records: rows, bySeason: rows.length ? longSeasons : [], progression: rows.length ? longSeasons : [] } });
+    return route.fulfill({ json: { label: "Points", metric: "pointsScored", group: "traditional", minGames: 20, format: "count", lowerIsBetter: false, volume: null, records: rows, bySeason: rows.length ? longSeasons : [], progression: rows.length ? longSeasons : [] } });
   });
 }
 

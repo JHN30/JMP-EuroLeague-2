@@ -94,5 +94,32 @@ export function describeRecord(family, group, row) {
   };
 }
 
-// The API's progression (oldest first), each step with how far it beat the previous record by (null for the first).
-export const withGains = (records) => records.map((record, index) => ({ record, gain: index === 0 ? null : record.value - records[index - 1].value }));
+// Every season from the first code to the last. A code is a letter prefix and the season's starting year (E2000).
+function seasonCodesBetween(first, last) {
+  const [, prefix, from] = /^(\D*)(\d{4})$/.exec(first);
+  const to = Number(/(\d{4})$/.exec(last)[1]);
+  return Array.from({ length: to - Number(from) + 1 }, (_, index) => `${prefix}${Number(from) + index}`);
+}
+
+// One slot per season from the first season best to the last, oldest first: the season's best row (null for a season without one, so a gap
+// stays a gap), the record as it stood after the season, and whether the season set it. `gain` is how far the season beat the record standing
+// before it (null for the first record). A season's best is its last progression step whenever it has one, so the step's value is the bar's.
+export function timelineSeasons(bySeason, progression) {
+  if (bySeason.length === 0) return [];
+  const best = new Map(bySeason.map((record) => [record.seasonCode, record]));
+  const lastStep = new Map(progression.map((step) => [step.seasonCode, step]));
+  let standing = null;
+  return seasonCodesBetween(bySeason[0].seasonCode, bySeason.at(-1).seasonCode).map((seasonCode) => {
+    const step = lastStep.get(seasonCode);
+    const before = standing;
+    if (step) standing = step.value;
+    return {
+      seasonCode,
+      season: formatSeasonLabel(seasonCode),
+      record: best.get(seasonCode) ?? null,
+      standing,
+      setRecord: Boolean(step),
+      gain: step && before !== null ? step.value - before : null,
+    };
+  });
+}

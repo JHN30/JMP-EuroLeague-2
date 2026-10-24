@@ -46,6 +46,8 @@ for (const family of CASES) {
     await page.goto(`/${slug}/records${family.query}`);
     await expect(page.getByRole("heading", { name: "Top 50" })).toBeVisible({ timeout: 45_000 });
     await expect(page.locator("tbody tr")).not.toHaveCount(0);
+    // Every season under the timeline's disclosure, open for every width so its rows are checked too.
+    await page.getByText(/^Show every season/).click();
 
     for (const width of WIDTHS) {
       await test.step(`${width}px`, async () => {
@@ -161,6 +163,8 @@ test("very long names wrap inside their panels at 320px, and the loading, error 
   await page.goto("/2025/records");
   await expect(page.getByRole("heading", { name: "Top 50" })).toBeVisible({ timeout: 45_000 });
   await expect(page.getByText("Counts players with at least 20 games of a 34-game regular season, or the same share of a shorter or longer one.")).toBeVisible();
+  await page.getByText("Show every season (27)").click();
+  await expect(page.locator("details li")).toHaveCount(27);
   await expectNoSidewaysScroll(page);
   await expect.poll(() => outsidePanels(page), { timeout: 20_000 }).toEqual([]);
   await page.unrouteAll({ behavior: "ignoreErrors" });

@@ -86,54 +86,27 @@ export function Podium({ records, label }) {
   );
 }
 
-// Every record that beat the one before it, oldest first, the last of them the record that stands.
-export function Progression({ steps }) {
+// The best of each season that has one (timeline slots), with the seasons that set the record and the record that stands marked. Below sm a row
+// is two lines: the season and the value, then the holder.
+export function SeasonList({ seasons, overallKey }) {
   return (
-    <Panel as="section" className="p-5">
-      <PanelHeader kicker="PROGRESSION" title="Record progression" />
-      <motion.ol className="relative mt-4 ml-1.5 border-l border-base-300" variants={listContainer} initial="hidden" animate="show">
-        {steps.map(({ record, gain }, index) => {
-          const current = index === steps.length - 1;
-          return (
-            <motion.li key={record.key} variants={listItem} className="relative pb-5 pl-6 last:pb-0">
-              <span aria-hidden="true" className={`absolute top-1.5 -left-1.5 size-3 rounded-full border-2 border-base-100 ${current ? "bg-primary" : "bg-base-content/40"}`} />
-              <p className="flex flex-wrap items-baseline gap-x-2">
-                <span className="text-xl font-bold tabular-nums">{record.valueText}</span>
-                {gain !== null ? <span className="text-sm font-semibold text-success">+{record.format(gain)}</span> : null}
-                {current ? <span className="badge badge-primary badge-sm">Current record</span> : null}
-              </p>
-              <div className="mt-1 flex flex-wrap items-center gap-x-2 text-sm">
-                <Holder record={record} size="h-7 w-7" />
-                <span className="muted max-sm:basis-full">{whenText(record)}</span>
-              </div>
-            </motion.li>
-          );
-        })}
-      </motion.ol>
-    </Panel>
-  );
-}
-
-// The best of each season that has any, with the record that stands marked. Below sm a row is two lines: the season and the value, then the holder.
-export function BestOfEachSeason({ records, overallKey }) {
-  return (
-    <Panel as="section" className="p-5">
-      <PanelHeader kicker="BY SEASON" title="Best in each season" />
-      <motion.ul className="mt-2 divide-y divide-base-300" variants={listContainer} initial="hidden" animate="show">
-        {records.map((record) => (
-          <motion.li key={`best-${record.seasonCode}`} variants={listItem} className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-4 gap-y-1 py-3 sm:flex">
-            <span className="muted w-16 flex-none text-sm font-semibold tabular-nums max-sm:order-1">{record.season}</span>
-            <div className="min-w-0 flex-1 max-sm:order-3 max-sm:col-span-2">
-              <Holder record={record} short />
-            </div>
-            <div className="flex flex-none items-center gap-2 max-sm:order-2 max-sm:justify-end sm:flex-col sm:items-end sm:gap-1">
-              {record.key === overallKey ? <span className="badge badge-primary badge-sm sm:order-2">Record</span> : null}
-              <span className="text-lg font-bold tabular-nums sm:order-1">{record.valueText}</span>
-            </div>
-          </motion.li>
-        ))}
-      </motion.ul>
-    </Panel>
+    <ul className="divide-y divide-base-300">
+      {seasons.map(({ record, setRecord, gain }) => (
+        <li key={`best-${record.seasonCode}`} className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-4 gap-y-1 py-3 sm:flex">
+          <span className="muted w-16 flex-none text-sm font-semibold tabular-nums max-sm:order-1">{record.season}</span>
+          <div className="min-w-0 flex-1 max-sm:order-3 max-sm:col-span-2">
+            <Holder record={record} short />
+          </div>
+          <div className="flex flex-none flex-wrap items-center justify-end gap-x-2 gap-y-1 max-sm:order-2 sm:flex-col sm:items-end sm:gap-1">
+            <span className="text-lg font-bold tabular-nums">{record.valueText}</span>
+            {setRecord ? (
+              <span className={`text-xs font-semibold ${gain === null ? "muted" : "text-success"}`}>{gain === null ? "First record" : `New record +${record.format(gain)}`}</span>
+            ) : null}
+            {record.key === overallKey ? <span className="badge badge-primary badge-sm">Record</span> : null}
+          </div>
+        </li>
+      ))}
+    </ul>
   );
 }
 

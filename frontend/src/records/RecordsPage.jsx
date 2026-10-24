@@ -10,8 +10,9 @@ import Panel from "../lib/Panel";
 import { TabStrip } from "../lib/TabStrip";
 import ViewSelect from "../lib/ViewSelect";
 import { useDocumentTitle } from "../lib/useDocumentTitle";
-import { Board, BestOfEachSeason, Podium, Progression } from "./RecordParts";
-import { DEFAULT_FAMILY, DEFAULT_METRIC, FAMILIES, GROUPS, allMetrics, describeRecord, metricsOf, pickKey, withGains } from "./recordData";
+import { Board, Podium } from "./RecordParts";
+import RecordTimeline from "./RecordTimeline";
+import { DEFAULT_FAMILY, DEFAULT_METRIC, FAMILIES, GROUPS, allMetrics, describeRecord, metricsOf, pickKey } from "./recordData";
 
 const PANEL_ID = "records-panel";
 
@@ -24,8 +25,8 @@ async function fetchRecords(seasonCode, family, metric) {
   return { ...data, family, metricKey: metric };
 }
 
-// The Podium and the Top 50 read `records`, the overall best 50. The progression and the best of each season are the API's own lists over every
-// loaded season, so a season that never reaches the best 50 still shows in them.
+// The Podium and the Top 50 read `records`, the overall best 50. The timeline reads the API's own lists over every loaded season (the best of
+// each season and the progression), so a season that never reaches the best 50 still shows in it.
 function RecordsContent({ data }) {
   const [records, bySeason, progression] = useMemo(() => {
     const describe = (rows) => (rows ?? []).map((row) => describeRecord(data.family, data.group, row));
@@ -48,9 +49,8 @@ function RecordsContent({ data }) {
         </p>
       ) : null}
       <Podium records={records} label={data.label} />
-      <div className="mt-6 grid grid-cols-[minmax(0,1fr)] gap-6 lg:grid-cols-2">
-        <Progression steps={withGains(progression)} />
-        <BestOfEachSeason records={bySeason} overallKey={records[0].key} />
+      <div className="mt-6">
+        <RecordTimeline bySeason={bySeason} progression={progression} overallKey={records[0].key} label={data.label} />
       </div>
       <div className="mt-6">
         <Board family={data.family} metricKey={data.metricKey} label={data.label} records={records} />

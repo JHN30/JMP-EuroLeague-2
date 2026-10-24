@@ -63,7 +63,7 @@ test("shows archive-to-date player-season records", async ({ page }) => {
   await page.goto("/2026/records");
   await expect(page.getByRole("heading", { name: "Records", exact: true })).toBeVisible();
   await expect(page.getByText("The highest season totals by one player.")).toBeVisible();
-  await expect(page.getByRole("heading", { name: "Best in each season" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Best of each season" })).toBeVisible();
   await expect(page.getByText("Cal Three").first()).toBeVisible();
 });
 
@@ -102,7 +102,7 @@ test("shows team-game records: the club, its opponent, the date and the game", a
   await expect(row.getByRole("link", { name: "Game", exact: true })).toHaveAttribute("href", "/2025/games/77");
 });
 
-test("the podium, the progression, the best of each season and the Top 50 read from the rows, with the pictures the rows carry", async ({ page }) => {
+test("the podium, the timeline and the Top 50 read from the rows, with the pictures the rows carry", async ({ page }) => {
   await mockApi(page);
   await page.goto("/2026/records");
 
@@ -121,27 +121,30 @@ test("the podium, the progression, the best of each season and the Top 50 read f
   // A row without pictures shows none, and nothing breaks.
   await expect(podium.nth(2).locator("img")).toHaveCount(0);
 
-  // The progression: the API's steps, with each gain worked out on the page, the last one marked as the one that stands. It opens with the
-  // 2005 season that is not among the best 50.
-  const progression = page.locator("section", { has: page.getByRole("heading", { name: "Record progression" }) }).locator("li");
-  await expect(progression).toHaveCount(4);
-  await expect(progression.nth(0)).toContainText("Old Zero");
-  await expect(progression.nth(0)).toContainText("400");
-  await expect(progression.nth(1)).toContainText("+300");
-  await expect(progression.nth(2)).toContainText("780");
-  await expect(progression.nth(2)).toContainText("+80");
-  await expect(progression.nth(3)).toContainText("+40");
-  await expect(progression.nth(3)).toContainText("Current record");
+  // The timeline: one panel in place of the progression and best-in-each-season panels. It reads the API's lists, so it opens with the 2005
+  // season that is not among the best 50; the summary and the chart's name give the record that stands.
+  await expect(page.getByRole("heading", { name: "Record progression" })).toHaveCount(0);
+  await expect(page.getByRole("heading", { name: "Best in each season" })).toHaveCount(0);
+  const timeline = page.locator("section", { has: page.getByRole("heading", { name: "Best of each season" }) });
+  await expect(timeline.getByText("Record: 820, Cal Three, 2026-27. Set 4 times since 2005-06.")).toBeVisible();
+  await expect(timeline.getByRole("img", { name: "Points: the best of each season from 2005-06 to 2026-27. Record 820 by Cal Three, 2026-27." })).toBeVisible();
 
-  // The best of each season: the API's list, the 2005 season included, the overall record marked.
-  const best = page.locator("section", { has: page.getByRole("heading", { name: "Best in each season" }) }).locator("li");
+  // Every season under the disclosure, closed at first: oldest first, each record-setting season with its gain, the overall record marked once.
+  const best = timeline.locator("details li");
+  await expect(best.first()).toBeHidden();
+  await timeline.getByText("Show every season (4)").click();
   await expect(best).toHaveCount(4);
   await expect(best.nth(0)).toContainText("2005-06");
   await expect(best.nth(0)).toContainText("Old Zero");
+  await expect(best.nth(0)).toContainText("First record");
   await expect(best.nth(1)).toContainText("Al One");
+  await expect(best.nth(1)).toContainText("New record +300");
   await expect(best.nth(2)).toContainText("Ben Two");
+  await expect(best.nth(2)).toContainText("New record +80");
+  await expect(best.nth(3)).toContainText("New record +40");
   await expect(best.nth(3)).toContainText("Record");
   await expect(best.getByText("Record", { exact: true })).toHaveCount(1);
+  await expect(page.getByRole("link", { name: "Old Zero" })).toHaveAttribute("href", "/2005/players/p0");
 
   // The Top 50: the four rows, in rank order, with the pictures on the rows that have them; the 2005 season is not among them.
   const rows = page.locator("tbody tr");

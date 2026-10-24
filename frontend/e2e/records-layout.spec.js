@@ -10,6 +10,7 @@ test.beforeEach(async ({ page }) => { await mockLayoutImages(page); });
 const WIDTHS = [1280, 1024, 1023, 768, 640, 639, 390, 320];
 const CASES = [
   { name: "player seasons", query: "", column: "Player", pictures: true },
+  { name: "player seasons, per game", query: "?per=game", column: "Player", pictures: true },
   { name: "player seasons, a rating", query: "?metric=per", column: "Player", pictures: true },
   { name: "player games", query: "?type=game&metric=pir", column: "Player", game: true, pictures: true },
   { name: "team seasons", query: "?type=team&metric=totalRebounds", column: "Club", club: true, pictures: true },

@@ -17,10 +17,13 @@ export type RecordGroup = "traditional" | "advanced";
 // put a club at the top after a few games. It is the minimum of a 34-game regular season; each season scales it to its own length
 // (seasonMinGames), and every row says the minimum of its season.
 export type RecordMetricDef = { key: string; label: string; group: RecordGroup; minGames?: number };
+// A season record as the season's total or as its per-game average.
+export const RECORD_PERS = ["total", "game"] as const;
+export type RecordPer = (typeof RECORD_PERS)[number];
 
 const LIMIT = 50;
 // 20 of a 34-game regular season leaves a finished season whole and keeps a season in progress out until it is past the middle.
-const MIN_SEASON_GAMES = 20;
+export const MIN_SEASON_GAMES = 20;
 const REFERENCE_SEASON_GAMES = 34;
 
 // The same share of the season's own regular season (a club's games in its group): 22 of 38, 24 of 40, 6 of 10. A season without a
@@ -72,6 +75,11 @@ export const DEFAULT_METRIC: Record<RecordKind, string> = {
   "team-seasons": "points",
   "team-games": "pointsScored",
 };
+
+// Per game is a season reading of a counted total: a single game is already one game, and the advanced metrics are already rates.
+export function perGameAvailable(kind: RecordKind, metric: RecordMetricDef): boolean {
+  return (kind === "player-seasons" || kind === "team-seasons") && metric.group === "traditional";
+}
 
 // The catalogue entry a request asks for (by its own key or one of the old names), or null when the kind has no such metric.
 export function findRecordMetric(kind: RecordKind, requested: string): RecordMetricDef | null {
@@ -183,14 +191,18 @@ async function advancedPlayerSeasonRows(seasonCode: string, key: string, minGame
   );
 }
 
-async function playerSeasonRecords(metric: RecordMetricDef) {
+async function playerSeasonRecords(metric: RecordMetricDef, per: RecordPer) {
   const perSeason = await Promise.all(
     SUPPORTED_SEASONS.map(async (seasonCode) => {
       const minGames = metric.minGames === undefined ? undefined : seasonMinGames(seasonCode, metric.minGames);
-      const rows = metric.group === "traditional" ? await getSeasonRecordRows(seasonCode, metric.key as RecordMetric, LIMIT) : await advancedPlayerSeasonRows(seasonCode, metric.key, minGames);
+      // A per-game record needs the season's share of 20 games, as a rating does, so a few hot games cannot set one.
+      const perGameMinGames = per === "game" ? seasonMinGames(seasonCode, MIN_SEASON_GAMES) : undefined;
+      const rows =
+        metric.group === "traditional" ? await getSeasonRecordRows(seasonCode, metric.key as RecordMetric, LIMIT, perGameMinGames) : await advancedPlayerSeasonRows(seasonCode, metric.key, minGames);
       return rows.map((player) => ({
-        // The games behind a rating that has a minimum, and the season's minimum.
+        // The games behind a rating or a per-game average, and the season's minimum.
         ...(minGames !== undefined && "gamesPlayed" in player ? { gamesPlayed: Number(player.gamesPlayed), minGames } : {}),
+        ...(perGameMinGames !== undefined ? { gamesPlayed: Number(player.gamesPlayed), minGames: perGameMinGames } : {}),
         seasonCode,
         personKey: player.personKey,
         playerName: player.playerName,
@@ -262,7 +274,7 @@ async function singleGameRecords(metric: RecordMetricDef) {
 
 // ---- Team seasons ----
 
-async function teamSeasonRecords(metric: RecordMetricDef) {
+async function teamSeasonRecords(metric: RecordMetricDef, per: RecordPer) {
   if (metric.group === "advanced") {
     // A club's rating after the season's latest round (scope `all`), as the standings read it.
     const perSeason = await Promise.all(
@@ -289,13 +301,14 @@ async function teamSeasonRecords(metric: RecordMetricDef) {
     return best(perSeason.flat(), (a, b) => a.clubCode.localeCompare(b.clubCode));
   }
 
-  // The season's sum of the club's game totals, over the games played.
+  // The season's sum of the club's game totals, over the games played; per game, that sum over those games.
   const column = boxColumn(gameTeamStats, metric.key);
   const clubCode = sql<string | null>`case when ${gameTeamStats.side} = 'local' then ${games.localClubCode} else ${games.roadClubCode} end`;
   const clubName = sql<string | null>`case when ${gameTeamStats.side} = 'local' then ${games.localClubName} else ${games.roadClubName} end`;
   const total = sql<string | null>`sum(${column})`;
-  const rows = await catalogRead(() =>
-    db.select({ seasonCode: gameTeamStats.seasonCode, clubCode, clubName, value: total })
+  const played = sql<number>`count(*)::int`;
+  const totals = await catalogRead(() =>
+    db.select({ seasonCode: gameTeamStats.seasonCode, clubCode, clubName, gamesPlayed: played, value: total })
       .from(gameTeamStats)
       .innerJoin(games, and(
         eq(games.competitionCode, gameTeamStats.competitionCode),
@@ -310,6 +323,14 @@ async function teamSeasonRecords(metric: RecordMetricDef) {
       ))
       .groupBy(gameTeamStats.seasonCode, clubCode, clubName),
   );
+  // A club needs the season's share of 20 games for a per-game record, as for the season ratings, so a few games cannot set one.
+  const rows =
+    per === "game"
+      ? totals.flatMap(({ value, ...row }) => {
+          const minGames = seasonMinGames(row.seasonCode, MIN_SEASON_GAMES);
+          return row.gamesPlayed >= minGames && value !== null ? [{ ...row, minGames, value: Number(value) / row.gamesPlayed }] : [];
+        })
+      : totals.map(({ seasonCode, clubCode, clubName, value }) => ({ seasonCode, clubCode, clubName, value }));
   const looks = new Map<string, Awaited<ReturnType<typeof clubLooks>>>(await Promise.all(SUPPORTED_SEASONS.map(async (seasonCode) => [seasonCode, await clubLooks(seasonCode)] as const)));
   const withClub = rows.flatMap((row) => {
     if (row.clubCode === null) return [];
@@ -396,9 +417,10 @@ async function teamGameRecords(metric: RecordMetricDef) {
 }
 
 // The best 50 rows of one record kind and metric over the loaded seasons (highest first), the best of each season and the progression.
-export async function getRecordRows(kind: RecordKind, metric: RecordMetricDef): Promise<RecordLists> {
-  if (kind === "player-seasons") return playerSeasonRecords(metric);
+// `per` is "game" only where perGameAvailable says so; the route checks it.
+export async function getRecordRows(kind: RecordKind, metric: RecordMetricDef, per: RecordPer = "total"): Promise<RecordLists> {
+  if (kind === "player-seasons") return playerSeasonRecords(metric, per);
   if (kind === "single-games") return singleGameRecords(metric);
-  if (kind === "team-seasons") return teamSeasonRecords(metric);
+  if (kind === "team-seasons") return teamSeasonRecords(metric, per);
   return teamGameRecords(metric);
 }

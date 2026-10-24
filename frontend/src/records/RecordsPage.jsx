@@ -10,9 +10,10 @@ import Panel from "../lib/Panel";
 import { TabStrip } from "../lib/TabStrip";
 import ViewSelect from "../lib/ViewSelect";
 import { useDocumentTitle } from "../lib/useDocumentTitle";
+import { ModeSelect, ModeTabs } from "../leaders/LeaderParts";
 import { Board, Podium } from "./RecordParts";
 import RecordTimeline from "./RecordTimeline";
-import { DEFAULT_FAMILY, DEFAULT_METRIC, FAMILIES, GROUPS, allMetrics, describeRecord, metricsOf, pickKey } from "./recordData";
+import { DEFAULT_FAMILY, DEFAULT_METRIC, FAMILIES, GROUPS, allMetrics, describeRecord, metricsOf, perGameAvailable, pickKey } from "./recordData";
 
 const PANEL_ID = "records-panel";
 
@@ -20,8 +21,8 @@ const FETCHERS = { player: getPlayerSeasonRecords, game: getSingleGameRecords, t
 
 // What one family and metric hold, tagged with the choice that fetched it so the page draws it as that family even while the next choice
 // is loading.
-async function fetchRecords(seasonCode, family, metric) {
-  const data = await FETCHERS[family](seasonCode, metric);
+async function fetchRecords(seasonCode, family, metric, per) {
+  const data = await FETCHERS[family](seasonCode, metric, per);
   return { ...data, family, metricKey: metric };
 }
 
@@ -29,7 +30,7 @@ async function fetchRecords(seasonCode, family, metric) {
 // each season and the progression), so a season that never reaches the best 50 still shows in it.
 function RecordsContent({ data }) {
   const [records, bySeason, progression] = useMemo(() => {
-    const describe = (rows) => (rows ?? []).map((row) => describeRecord(data.family, data.group, row));
+    const describe = (rows) => (rows ?? []).map((row) => describeRecord(data.family, data.group, row, data.per));
     return [describe(data.records), describe(data.bySeason), describe(data.progression)];
   }, [data]);
   if (records.length === 0) {
@@ -41,7 +42,7 @@ function RecordsContent({ data }) {
   }
   const holders = FAMILIES.find((entry) => entry.key === data.family)?.club ? "clubs" : "players";
   return (
-    <motion.div key={`${data.family}-${data.metricKey}`} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3, ease: EASE_OUT }}>
+    <motion.div key={`${data.family}-${data.metricKey}-${data.per}`} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3, ease: EASE_OUT }}>
       {/* The minimum is for a 34-game regular season; each season keeps the same share of its own (22 of 38, 6 of 10). */}
       {data.minGames ? (
         <p className="muted mb-4 text-sm">
@@ -70,6 +71,9 @@ export default function RecordsPage() {
   const metrics = allMetrics(family);
   const metric = pickKey(metrics, params.get("metric"), DEFAULT_METRIC);
   const group = metrics.find((entry) => entry.key === metric).group;
+  const hasPer = perGameAvailable(family, group);
+  // Anything but `per=game` where per game exists reads as totals.
+  const per = hasPer && params.get("per") === "game" ? "game" : "total";
 
   function setAddress(changes) {
     setParams((current) => {
@@ -82,15 +86,24 @@ export default function RecordsPage() {
     });
   }
 
-  // Changing the kind keeps the metric when the new kind has it, and otherwise opens the default; a group opens its first metric.
-  const chooseFamily = (key) => setAddress({ type: [key, DEFAULT_FAMILY], metric: [allMetrics(key).some((entry) => entry.key === metric) ? metric : DEFAULT_METRIC, DEFAULT_METRIC] });
-  const chooseGroup = (key) => setAddress({ metric: [metricsOf(family, key)[0].key, DEFAULT_METRIC] });
+  // Changing the kind keeps the metric when the new kind has it, and otherwise opens the default; a group opens its first metric. Per game
+  // stays chosen while the new choice has it, and leaves the address when it does not.
+  const keepPer = (nextFamily, nextGroup) => [per === "game" && perGameAvailable(nextFamily, nextGroup) ? "game" : "total", "total"];
+  const chooseFamily = (key) => {
+    const nextMetric = allMetrics(key).some((entry) => entry.key === metric) ? metric : DEFAULT_METRIC;
+    const nextGroup = allMetrics(key).find((entry) => entry.key === nextMetric).group;
+    setAddress({ type: [key, DEFAULT_FAMILY], metric: [nextMetric, DEFAULT_METRIC], per: keepPer(key, nextGroup) });
+  };
+  const chooseGroup = (key) => setAddress({ metric: [metricsOf(family, key)[0].key, DEFAULT_METRIC], per: keepPer(family, key) });
   const chooseMetric = (key) => setAddress({ metric: [key, DEFAULT_METRIC] });
+  // ModeTabs and ModeSelect name the choices as Leaders does (perGame, accumulated).
+  const choosePer = (key) => setAddress({ per: [key === "perGame" ? "game" : "total", "total"] });
+  const perMode = per === "game" ? "perGame" : "accumulated";
 
   // The rows stay on screen while the next choice loads; the full loading state is only for the very first load.
   const query = useQuery({
-    queryKey: ["records", seasonCode, family, metric],
-    queryFn: () => fetchRecords(seasonCode, family, metric),
+    queryKey: ["records", seasonCode, family, metric, per],
+    queryFn: () => fetchRecords(seasonCode, family, metric, per),
     placeholderData: keepPreviousData,
   });
 
@@ -101,8 +114,15 @@ export default function RecordsPage() {
       <TabStrip scrolling ariaLabel="Record type" level={1} panelId={PANEL_ID} activeKey={family} onChange={chooseFamily} className="mb-4 w-fit" tabs={FAMILIES} />
       <TabStrip scrolling ariaLabel="Metric group" level={2} panelId={PANEL_ID} activeKey={group} onChange={chooseGroup} className="mb-3 w-fit max-sm:[--tab-height:2.75rem]!" tabs={GROUPS} />
       {/* The metrics of a group are one select below sm, where a strip of eleven tabs would be a long swipe, and the strip from sm. */}
-      <ViewSelect className="mb-6 sm:hidden" label="Metric" value={metric} options={metricsOf(family, group)} onChange={chooseMetric} />
-      <TabStrip scrolling ariaLabel="Record metric" level={3} panelId={PANEL_ID} activeKey={metric} onChange={chooseMetric} className="mb-6 max-sm:hidden" tabs={metricsOf(family, group)} />
+      <ViewSelect className={`sm:hidden ${hasPer ? "mb-3" : "mb-6"}`} label="Metric" value={metric} options={metricsOf(family, group)} onChange={chooseMetric} />
+      <TabStrip scrolling ariaLabel="Record metric" level={3} panelId={PANEL_ID} activeKey={metric} onChange={chooseMetric} className={`max-sm:hidden ${hasPer ? "mb-3" : "mb-6"}`} tabs={metricsOf(family, group)} />
+      {/* Totals or per game, for the season records of the traditional metrics only. */}
+      {hasPer ? (
+        <div className="mb-6">
+          <ModeTabs ariaLabel="Totals or per game" mode={perMode} onChange={choosePer} panelId={PANEL_ID} />
+          <ModeSelect label="Show" ariaLabel="Totals or per game" mode={perMode} onChange={choosePer} />
+        </div>
+      ) : null}
 
       <div id={PANEL_ID} aria-busy={query.isPlaceholderData} className={query.isPlaceholderData ? "opacity-60 transition-opacity" : "transition-opacity"}>
         {query.isError ? (

@@ -48,10 +48,16 @@ async function mockApi(page, { rows = {}, delay = {}, fail = false } = {}) {
     const metric = url.searchParams.get("metric");
     const wait = delay[metric];
     if (wait) await new Promise((resolve) => setTimeout(resolve, wait));
-    const minGames = MIN_GAMES[match[1]]?.includes(metric) ? 20 : null;
     const family = ROUTES[match[1]];
     const lists = family in rows || !LISTS[family] ? { bySeason: data[family], progression: data[family] } : LISTS[family];
-    return route.fulfill({ json: { label: "Points", metric, group: ADVANCED.includes(metric) ? "advanced" : "traditional", minGames, records: data[family], ...lists } });
+    // Per game: the same rows over 30 games, so the values have decimals; a club needs 20 games of a 34-game season.
+    if (url.searchParams.get("per") === "game") {
+      const perGame = (list) => list.map((row) => ({ ...row, numericValue: row.numericValue / 30 }));
+      const json = { label: "Points per game", metric, group: "traditional", per: "game", minGames: 20 };
+      return route.fulfill({ json: { ...json, records: perGame(data[family]), bySeason: perGame(lists.bySeason), progression: perGame(lists.progression) } });
+    }
+    const minGames = MIN_GAMES[match[1]]?.includes(metric) ? 20 : null;
+    return route.fulfill({ json: { label: "Points", metric, group: ADVANCED.includes(metric) ? "advanced" : "traditional", per: "total", minGames, records: data[family], ...lists } });
   });
 }
 
@@ -221,6 +227,47 @@ test("the record type and the metric are in the address, the defaults are not, a
   await expect(tab(page, "Points")).toHaveAttribute("aria-selected", "true");
   await page.goto("/2026/records?type=team&metric=per");
   await expect(tab(page, "Points")).toHaveAttribute("aria-selected", "true");
+});
+
+test("totals or per game: offered for the season records of the traditional metrics, kept in the address and asked of the API", async ({ page }) => {
+  const asked = [];
+  page.on("request", (request) => {
+    if (request.url().includes("/records/")) asked.push(new URL(request.url()).searchParams.get("per"));
+  });
+  await mockApi(page);
+  await page.goto("/2026/records");
+  const choice = page.getByRole("tablist", { name: "Totals or per game" });
+  await expect(choice.getByRole("tab", { name: "Totals" })).toHaveAttribute("aria-selected", "true");
+  expect(asked.at(-1)).toBeNull();
+
+  // Per game: in the address and the request, with the per-game label, one decimal and the minimum-games note.
+  await choice.getByRole("tab", { name: "Per game" }).click();
+  await expect(page).toHaveURL(/[?&]per=game\b/);
+  await expect.poll(() => asked.at(-1)).toBe("game");
+  await expect(page.locator("thead")).toContainText("Points per game");
+  await expect(page.locator("ol").first().locator("> li").first()).toContainText("27.3");
+  await expect(page.getByText("Counts players with at least 20 games of a 34-game regular season, or the same share of a shorter or longer one.")).toBeVisible();
+
+  // Team seasons keep it, with the clubs' minimum; Player games has no per-game view, so the choice goes and so does `per`.
+  await tab(page, "Team seasons").click();
+  await expect(page).toHaveURL(/[?&]per=game\b/);
+  await expect(page.getByText("Counts clubs with at least 20 games of a 34-game regular season, or the same share of a shorter or longer one.")).toBeVisible();
+  await tab(page, "Player games").click();
+  await expect(page).not.toHaveURL(/per=/);
+  await expect(choice).toHaveCount(0);
+
+  // The Advanced group has none either.
+  await page.goto("/2026/records?per=game");
+  await tab(page, "Advanced").click();
+  await expect(page).not.toHaveURL(/per=/);
+  await expect(page.getByRole("tablist", { name: "Totals or per game" })).toHaveCount(0);
+
+  // A value the page does not know reads as totals and is not sent.
+  asked.length = 0;
+  await page.goto("/2026/records?per=bogus");
+  await expect(page.getByRole("tablist", { name: "Totals or per game" }).getByRole("tab", { name: "Totals" })).toHaveAttribute("aria-selected", "true");
+  await expect.poll(() => asked.length).toBeGreaterThan(0);
+  expect(asked.every((value) => value === null)).toBe(true);
 });
 
 test("the records with a minimum number of games say so", async ({ page }) => {

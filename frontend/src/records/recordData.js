@@ -56,6 +56,9 @@ export const allMetrics = (family) => [
   ...ADVANCED[family].map((metric) => ({ ...metric, group: "advanced" })),
 ];
 
+// Per game is offered for the season records of the traditional metrics: a single game is one game, and the advanced metrics are rates.
+export const perGameAvailable = (family, group) => (family === "player" || family === "team") && group === "traditional";
+
 // A value from the address, or the default when it is not one of the keys.
 export function pickKey(entries, value, fallback) {
   return entries.some((entry) => entry.key === value) ? value : fallback;
@@ -63,15 +66,15 @@ export function pickKey(entries, value, fallback) {
 
 // One record row as the page shows it. The picture of a player is the headshot (`portraitUrl`), of a club its crest (`crestUrl`); the second line is
 // a player's club (with its crest beside it) or the opponent of a team game. A part the row does not have is null. `shortName` and
-// `shortLine` are the same two with the club's TV code, for the places with little room (below sm).
-export function describeRecord(family, group, row) {
+// `shortLine` are the same two with the club's TV code, for the places with little room (below sm). `per` is the reply's "total" or "game".
+export function describeRecord(family, group, row, per = "total") {
   const slug = seasonSlug(row.seasonCode);
   const isClub = FAMILIES.find((entry) => entry.key === family)?.club ?? false;
   const clubName = row.clubName ?? null;
   const clubCode = row.clubTvCodes ?? row.clubTvCode ?? null;
   const opponent = row.opponentName ?? row.opponentTvCode ?? null;
-  // A rating or a Game Score has decimals; a total is a whole number.
-  const format = (value) => (group === "advanced" ? formatDecimal(value, 1) : formatCount(value));
+  // A rating, a Game Score or a per-game average has decimals; a total is a whole number.
+  const format = (value) => (group === "advanced" || per === "game" ? formatDecimal(value, 1) : formatCount(value));
   return {
     key: `${row.seasonCode}-${row.personKey ?? row.clubCode}-${row.gameCode ?? "season"}`,
     name: isClub ? (clubName ?? row.clubCode ?? "-") : displayName(row.playerName),

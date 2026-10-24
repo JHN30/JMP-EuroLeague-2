@@ -341,8 +341,10 @@ export type RecordMetric =
   | "freeThrowsMade"
   | "pir";
 
-// A season's top players on one whole-season total, for the records page: only the fields it shows.
-export async function getSeasonRecordRows(seasonCode: string, metric: RecordMetric, limit: number) {
+// A season's top players on one whole-season total, for the records page: only the fields it shows. With `perGameMinGames`, the per-game
+// average instead, among the qualified players (as the leaderboards rank them) with at least that many games.
+export async function getSeasonRecordRows(seasonCode: string, metric: RecordMetric, limit: number, perGameMinGames?: number) {
+  const perGame = perGameMinGames !== undefined;
   const column = SORTABLE_FIELDS[metric];
   return catalogRead(() =>
     db.select({
@@ -352,6 +354,8 @@ export async function getSeasonRecordRows(seasonCode: string, metric: RecordMetr
       clubTvCodes: seasonStatsTraditional.clubTvCodes,
       playerImageUrl: seasonStatsTraditional.playerImageUrl,
       clubImageUrl: seasonStatsTraditional.clubImageUrl,
+      gamesPlayed: seasonStatsTraditional.gamesPlayed,
+      minGames: seasonStatsTraditional.minGames,
       value: column,
     })
       .from(seasonStatsTraditional)
@@ -359,7 +363,9 @@ export async function getSeasonRecordRows(seasonCode: string, metric: RecordMetr
         eq(seasonStatsTraditional.competitionCode, COMPETITION_CODE),
         eq(seasonStatsTraditional.seasonCode, seasonCode),
         eq(seasonStatsTraditional.phaseCode, "all"),
-        eq(seasonStatsTraditional.mode, "accumulated"),
+        eq(seasonStatsTraditional.mode, perGame ? "perGame" : "accumulated"),
+        perGame ? eq(seasonStatsTraditional.qualified, true) : undefined,
+        perGame ? sql`${seasonStatsTraditional.gamesPlayed} >= ${perGameMinGames}` : undefined,
       ))
       .orderBy(sql`${column} DESC NULLS LAST`, asc(seasonStatsTraditional.entryOrdinal))
       .limit(limit),

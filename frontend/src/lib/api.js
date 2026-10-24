@@ -228,8 +228,9 @@ export async function getPlayerGames(seasonCode, personKey, { limit, offset } = 
   return data;
 }
 
-export async function getPlayerSeasonRecords(seasonCode, metric) {
-  const { data } = await api.get(`/seasons/${seasonCode}/records/player-seasons`, { params: { metric } });
+// `per` is "game" for per-game season records; totals leave it out.
+export async function getPlayerSeasonRecords(seasonCode, metric, per) {
+  const { data } = await api.get(`/seasons/${seasonCode}/records/player-seasons`, { params: { metric, ...(per === "game" ? { per } : {}) } });
   return data;
 }
 
@@ -238,8 +239,8 @@ export async function getSingleGameRecords(seasonCode, metric) {
   return data;
 }
 
-export async function getTeamSeasonRecords(seasonCode, metric) {
-  const { data } = await api.get(`/seasons/${seasonCode}/records/team-seasons`, { params: { metric } });
+export async function getTeamSeasonRecords(seasonCode, metric, per) {
+  const { data } = await api.get(`/seasons/${seasonCode}/records/team-seasons`, { params: { metric, ...(per === "game" ? { per } : {}) } });
   return data;
 }
 

@@ -94,6 +94,51 @@ for (const [kind, info] of Object.entries(KINDS)) {
   }
 }
 
+// Per game: the season records of the traditional metrics, for qualified players and clubs with the season's share of 20 games (each row
+// says its games and that minimum).
+for (const kind of ["player-seasons", "team-seasons"]) {
+  test(`${kind}: every traditional metric per game is the best 50 of the averages, with its games and minimum`, async ({ request }) => {
+    test.setTimeout(120_000);
+    for (const [key, label] of TRADITIONAL) {
+      const response = await request.get(`${API}/seasons/${SEASON}/records/${kind}?metric=${key}&per=game`);
+      expect(response.status(), key).toBe(200);
+      const body = await response.json();
+      expect(body.per, key).toBe("game");
+      expect(body.label, key).toBe(`${label} per game`);
+      expect(body.minGames, key).toBe(MIN_SEASON_GAMES);
+      expect(body.records.length, key).toBeGreaterThan(0);
+      body.records.forEach((row, index) => {
+        if (index > 0) expect(row.numericValue, key).toBeLessThanOrEqual(body.records[index - 1].numericValue);
+        expect(Number.isInteger(row.minGames) && row.minGames > 0, `${key} ${row.seasonCode} minGames`).toBe(true);
+        expect(row.gamesPlayed, `${key} ${row.seasonCode}`).toBeGreaterThanOrEqual(row.minGames);
+      });
+      const seasonCodes = body.bySeason.map((row) => row.seasonCode);
+      expect(seasonCodes, key).toEqual([...new Set(seasonCodes)].sort());
+      body.progression.slice(1).forEach((row, index) => expect(row.numericValue, key).toBeGreaterThan(body.progression[index].numericValue));
+      expect(body.progression.at(-1).numericValue, key).toBe(body.records[0].numericValue);
+    }
+  });
+}
+
+test("per=total is the default, and per game answers 400 where it does not apply", async ({ request }) => {
+  const totals = await (await records(request, "player-seasons", "assists")).json();
+  const explicit = await (await request.get(`${API}/seasons/${SEASON}/records/player-seasons?metric=assists&per=total`)).json();
+  expect(totals.per).toBe("total");
+  expect(explicit).toEqual(totals);
+  const perGame = await (await request.get(`${API}/seasons/${SEASON}/records/player-seasons?metric=pointsScored&per=game`)).json();
+  expect(perGame.bySeason[0].seasonCode).toBe("E2000");
+  expect(perGame.records.some((row) => !Number.isInteger(row.numericValue))).toBe(true);
+
+  const bogus = await request.get(`${API}/seasons/${SEASON}/records/player-seasons?metric=assists&per=bogus`);
+  expect(bogus.status()).toBe(400);
+  expect((await bogus.json()).error.code).toBe("INVALID_RECORD_PER");
+  for (const path of ["single-games?metric=pointsScored", "team-games?metric=pointsScored", "player-seasons?metric=per", "team-seasons?metric=netRating"]) {
+    const response = await request.get(`${API}/seasons/${SEASON}/records/${path}&per=game`);
+    expect(response.status(), path).toBe(400);
+    expect((await response.json()).error.code, path).toBe("RECORD_PER_NOT_AVAILABLE");
+  }
+});
+
 test("the best of each season and the progression reach the seasons the best 50 leave out", async ({ request }) => {
   const body = await (await records(request, "player-seasons", "pointsScored")).json();
   expect(body.records.every((row) => row.seasonCode >= "E2016")).toBe(true);

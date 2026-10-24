@@ -100,7 +100,7 @@ export function SeasonList({ seasons, overallKey }) {
           <div className="flex flex-none flex-wrap items-center justify-end gap-x-2 gap-y-1 max-sm:order-2 sm:flex-col sm:items-end sm:gap-1">
             <span className="text-lg font-bold tabular-nums">{record.valueText}</span>
             {setRecord ? (
-              <span className={`text-xs font-semibold ${gain === null ? "muted" : "text-success"}`}>{gain === null ? "First record" : `New record +${record.format(gain)}`}</span>
+              <span className={`text-xs font-semibold ${gain === null ? "muted" : "text-success"}`}>{gain === null ? "First record" : `New record ${record.change(gain)}`}</span>
             ) : null}
             {record.key === overallKey ? <span className="badge badge-primary badge-sm">Record</span> : null}
           </div>
@@ -110,17 +110,18 @@ export function SeasonList({ seasons, overallKey }) {
   );
 }
 
-// The value of a row with a bar sized against the best.
-function Share({ value, best }) {
+// The value of a row with a bar sized against the best: value / best, or best / value when lower is better, so the best is always full.
+function Share({ value, best, lowerIsBetter }) {
+  const share = lowerIsBetter ? (value > 0 ? best / value : 0) : best > 0 ? value / best : 0;
   return (
     <span aria-hidden="true" className="block h-1.5 overflow-hidden rounded-full bg-base-300">
-      <span className="block h-full rounded-full bg-primary/70" style={{ width: `${best > 0 ? (value / best) * 100 : 0}%` }} />
+      <span className="block h-full rounded-full bg-primary/70" style={{ width: `${Math.min(Math.max(share, 0), 1) * 100}%` }} />
     </span>
   );
 }
 
 // Below sm the Top 50 is a list: the rank, the holder and the value, then the season (and the game) and the bar.
-function BoardList({ metricKey, label, records, best }) {
+function BoardList({ metricKey, label, records, best, lowerIsBetter }) {
   return (
     <>
       <p className="muted mt-3 text-sm">Ranked by {metricKey === "pir" && PIR_TIP ? <HeaderTip tip={PIR_TIP}>{label}</HeaderTip> : label}</p>
@@ -143,7 +144,7 @@ function BoardList({ metricKey, label, records, best }) {
               ) : null}
             </div>
             <div className="mt-1.5 ml-10">
-              <Share value={record.value} best={best} />
+              <Share value={record.value} best={best} lowerIsBetter={lowerIsBetter} />
             </div>
           </motion.li>
         ))}
@@ -153,9 +154,9 @@ function BoardList({ metricKey, label, records, best }) {
 }
 
 // The Top 50: rank, holder, season (and the game), and the value with a bar sized against the best (the bar from lg).
-export function Board({ family, metricKey, label, records }) {
+export function Board({ family, metricKey, label, records, lowerIsBetter = false }) {
   const isTable = useMediaQuery("(min-width: 40rem)");
-  const best = Math.max(...records.map((record) => record.value));
+  const best = (lowerIsBetter ? Math.min : Math.max)(...records.map((record) => record.value));
   const isClub = family === "team" || family === "teamgame";
   const hasGames = family === "game" || family === "teamgame";
   return (
@@ -195,7 +196,7 @@ export function Board({ family, metricKey, label, records }) {
                   <td>
                     <div className="flex items-center justify-end gap-3">
                       <span className="hidden w-24 flex-none lg:block">
-                        <Share value={record.value} best={best} />
+                        <Share value={record.value} best={best} lowerIsBetter={lowerIsBetter} />
                       </span>
                       <span className="w-16 text-right font-semibold tabular-nums">{record.valueText}</span>
                     </div>
@@ -206,7 +207,7 @@ export function Board({ family, metricKey, label, records }) {
           </table>
         </div>
       ) : (
-        <BoardList metricKey={metricKey} label={label} records={records} best={best} />
+        <BoardList metricKey={metricKey} label={label} records={records} best={best} lowerIsBetter={lowerIsBetter} />
       )}
     </Panel>
   );

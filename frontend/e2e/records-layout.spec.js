@@ -152,7 +152,7 @@ async function mockRecords(page, { rows, delay, fail = false }) {
     if (!/\/records\//.test(pathname)) return route.fulfill({ status: 404, json: {} });
     if (delay) await delay;
     if (fail) return route.fulfill({ status: 500, json: {} });
-    return route.fulfill({ json: { label: "Points", metric: "pointsScored", group: "traditional", minGames: 20, records: rows, bySeason: rows.length ? longSeasons : [], progression: rows.length ? longSeasons : [] } });
+    return route.fulfill({ json: { label: "Points", metric: "pointsScored", group: "traditional", minGames: 20, format: "count", lowerIsBetter: false, records: rows, bySeason: rows.length ? longSeasons : [], progression: rows.length ? longSeasons : [] } });
   });
 }
 

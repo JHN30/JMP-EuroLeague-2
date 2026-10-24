@@ -18,18 +18,38 @@ const TRADITIONAL = [
   ["freeThrowsMade", "Free throws made"],
   ["pir", "PIR"],
 ];
-// A third entry is the minimum number of games a season rating needs (the server leaves out players and clubs with fewer).
+// An advanced entry is key, label, format, whether lower is better, and the minimum number of games a season rating needs (the server
+// leaves out players and clubs with fewer).
 const MIN_SEASON_GAMES = 20;
-const RATINGS = [
-  ["offensiveRating", "Offensive rating"],
-  ["netRating", "Net rating"],
-];
-const SEASON_RATINGS = RATINGS.map(([key, label]) => [key, label, MIN_SEASON_GAMES]);
+const ORTG = ["offensiveRating", "Offensive rating", "decimal"];
+const DRTG = ["defensiveRating", "Defensive rating", "decimal", true];
+const NET = ["netRating", "Net rating", "signed"];
+const PACE = ["pace", "Pace", "decimal"];
+const EFG = ["effectiveFieldGoalPct", "Effective FG%", "percent"];
+const TS = ["trueShootingPct", "True shooting %", "percent"];
+const TEAM_SEASON = [
+  ORTG,
+  DRTG,
+  NET,
+  ["adjustedOffensiveRating", "Adjusted offensive rating", "decimal"],
+  ["adjustedDefensiveRating", "Adjusted defensive rating", "decimal", true],
+  ["adjustedNetRating", "Adjusted net rating", "signed"],
+  ["marginOfVictory", "Margin of victory", "signed"],
+  ["srs", "Simple rating (SRS)", "signed"],
+  PACE,
+  EFG,
+  ["opponentEffectiveFieldGoalPct", "Opponents' eFG%", "percent", true],
+  TS,
+  ["turnoverPct", "Turnover %", "percent", true],
+  ["offensiveReboundPct", "Offensive rebound %", "percent"],
+  ["defensiveReboundPct", "Defensive rebound %", "percent"],
+  ["assistRatio", "Assist ratio", "percent"],
+].map(([key, label, format, lower]) => [key, label, format, lower, MIN_SEASON_GAMES]);
 const KINDS = {
-  "player-seasons": { advanced: [["per", "PER", MIN_SEASON_GAMES], ["winShares", "Win Shares"]], players: true },
-  "single-games": { advanced: [["gameScore", "Game Score"]], players: true },
-  "team-seasons": { advanced: SEASON_RATINGS, players: false },
-  "team-games": { advanced: RATINGS, players: false },
+  "player-seasons": { advanced: [["per", "PER", "decimal", false, MIN_SEASON_GAMES], ["winShares", "Win Shares", "decimal"]], players: true },
+  "single-games": { advanced: [["gameScore", "Game Score", "decimal"]], players: true },
+  "team-seasons": { advanced: TEAM_SEASON, players: false },
+  "team-games": { advanced: [ORTG, DRTG, NET, PACE, EFG, TS], players: false },
 };
 
 const records = (request, kind, metric) => request.get(`${API}/seasons/${SEASON}/records/${kind}${metric === undefined ? "" : `?metric=${metric}`}`);
@@ -41,22 +61,29 @@ test("the backend reads the local database", async ({ request }) => {
 });
 
 for (const [kind, info] of Object.entries(KINDS)) {
-  const metrics = [...TRADITIONAL.map(([key, label]) => ({ key, label, group: "traditional" })), ...info.advanced.map(([key, label, minGames]) => ({ key, label, group: "advanced", minGames }))];
+  const metrics = [
+    ...TRADITIONAL.map(([key, label]) => ({ key, label, group: "traditional", format: "count", lowerIsBetter: false })),
+    ...info.advanced.map(([key, label, format, lower, minGames]) => ({ key, label, group: "advanced", format, lowerIsBetter: lower ?? false, minGames })),
+  ];
   for (const metric of metrics) {
-    test(`${kind}: ${metric.key} is the best 50, highest first, with its label, group and pictures`, async ({ request }) => {
+    test(`${kind}: ${metric.key} is the best 50, best first, with its label, group, format, direction and pictures`, async ({ request }) => {
       const response = await records(request, kind, metric.key);
       expect(response.status()).toBe(200);
       const body = await response.json();
       expect(body.metric).toBe(metric.key);
       expect(body.label).toBe(metric.label);
       expect(body.group).toBe(metric.group);
+      expect(body.format).toBe(metric.format);
+      expect(body.lowerIsBetter).toBe(metric.lowerIsBetter);
+      // Every comparison below runs in the metric's direction: `better(a, b)` is how far a is ahead of b.
+      const better = (a, b) => (metric.lowerIsBetter ? b - a : a - b);
       // The minimum number of games of a 34-game regular season: said by the answer. Each row of a metric that has one says its
       // season's share of it and keeps it.
       expect(body.minGames).toBe(metric.minGames ?? null);
       expect(body.records.length).toBeGreaterThan(0);
       expect(body.records.length).toBeLessThanOrEqual(50);
 
-      let previous = Infinity;
+      let previous = null;
       for (const row of body.records) {
         expect(typeof row.seasonCode).toBe("string");
         expect(typeof row.value).toBe("string");
@@ -66,7 +93,7 @@ for (const [kind, info] of Object.entries(KINDS)) {
           expect(Number.isInteger(row.minGames) && row.minGames > 0, `${metric.key} ${row.seasonCode} minGames`).toBe(true);
           expect(row.gamesPlayed, `${metric.key} ${row.seasonCode}`).toBeGreaterThanOrEqual(row.minGames);
         }
-        expect(row.numericValue).toBeLessThanOrEqual(previous);
+        if (previous !== null) expect(better(previous, row.numericValue)).toBeGreaterThanOrEqual(0);
         previous = row.numericValue;
         // A picture is a URL or null, never an empty string, and every row says which.
         expect("clubImageUrl" in row && isPicture(row.clubImageUrl), "clubImageUrl").toBe(true);
@@ -82,13 +109,13 @@ for (const [kind, info] of Object.entries(KINDS)) {
         }
       }
 
-      // The best of each season: one per season, oldest first, at least as high as any of the best 50 from its season.
+      // The best of each season: one per season, oldest first, at least as good as any of the best 50 from its season.
       const seasonCodes = body.bySeason.map((row) => row.seasonCode);
       expect(seasonCodes).toEqual([...new Set(seasonCodes)].sort());
-      for (const row of body.records) expect(body.bySeason.find((best) => best.seasonCode === row.seasonCode).numericValue).toBeGreaterThanOrEqual(row.numericValue);
-      // The progression: opens with the first season's best, every step higher than the one before, and ends at the record that stands.
+      for (const row of body.records) expect(better(body.bySeason.find((best) => best.seasonCode === row.seasonCode).numericValue, row.numericValue)).toBeGreaterThanOrEqual(0);
+      // The progression: opens with the first season's best, every step better than the one before, and ends at the record that stands.
       expect(body.progression[0]).toEqual(body.bySeason[0]);
-      body.progression.slice(1).forEach((row, index) => expect(row.numericValue).toBeGreaterThan(body.progression[index].numericValue));
+      body.progression.slice(1).forEach((row, index) => expect(better(row.numericValue, body.progression[index].numericValue)).toBeGreaterThan(0));
       expect(body.progression.at(-1).numericValue).toBe(body.records[0].numericValue);
     });
   }

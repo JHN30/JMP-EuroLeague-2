@@ -13,18 +13,18 @@ import { timelineSeasons } from "./recordData";
 function seasonLines(slot, label) {
   const { record } = slot;
   const lines = [record.name, record.line, `${record.valueText} ${label}`, record.date].filter(Boolean);
-  if (slot.setRecord) lines.push(slot.gain === null ? "First record" : `New record +${record.format(slot.gain)}`);
+  if (slot.setRecord) lines.push(slot.gain === null ? "First record" : `New record ${record.change(slot.gain)}`);
   return lines;
 }
 
-function summaryText(progression) {
+function summaryText(progression, lowerIsBetter) {
   const record = progression.at(-1);
   const times = progression.length === 1 ? `Set in ${progression[0].season}.` : `Set ${progression.length} times since ${progression[0].season}.`;
-  return `Record: ${record.valueText}, ${record.name}, ${record.season}. ${times}`;
+  return `Record: ${record.valueText}, ${record.name}, ${record.season}. ${times}${lowerIsBetter ? " Lower is better." : ""}`;
 }
 
 // The best of each season as bars, the record as it stood after each season as a step line, and every season as a list under a disclosure.
-export default function RecordTimeline({ bySeason, progression, overallKey, label }) {
+export default function RecordTimeline({ bySeason, progression, overallKey, label, lowerIsBetter = false, percent = false }) {
   const canvasRef = useRef(null);
   const navigate = useNavigate();
   const theme = useActiveTheme();
@@ -81,7 +81,8 @@ export default function RecordTimeline({ bySeason, progression, overallKey, labe
         interaction: { mode: "index", intersect: false },
         scales: {
           x: { ticks: { color: text, autoSkip: true, maxRotation: 0 }, grid: { display: false } },
-          y: { beginAtZero: true, ticks: { color: text }, grid: { color: grid } },
+          // A percentage is stored as a fraction; the axis reads it as the values do.
+          y: { beginAtZero: true, ticks: { color: text, ...(percent ? { callback: (value) => `${Math.round(value * 100)}%` } : {}) }, grid: { color: grid } },
         },
         plugins: {
           legend: { display: false },
@@ -107,12 +108,12 @@ export default function RecordTimeline({ bySeason, progression, overallKey, labe
       },
     });
     return () => chart.destroy();
-  }, [slots, label, theme, reducedMotion, canFollow, navigate]);
+  }, [slots, label, percent, theme, reducedMotion, canFollow, navigate]);
 
   return (
     <Panel as="section" className="p-5">
       <PanelHeader kicker="TIMELINE" title="Best of each season" />
-      <p className="muted mt-1 text-sm">{summaryText(progression)}</p>
+      <p className="muted mt-1 text-sm">{summaryText(progression, lowerIsBetter)}</p>
       <div className="relative mt-4 h-56 w-full sm:h-72">
         <canvas
           ref={canvasRef}

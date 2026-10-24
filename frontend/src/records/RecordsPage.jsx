@@ -30,7 +30,7 @@ async function fetchRecords(seasonCode, family, metric, per) {
 // each season and the progression), so a season that never reaches the best 50 still shows in it.
 function RecordsContent({ data }) {
   const [records, bySeason, progression] = useMemo(() => {
-    const describe = (rows) => (rows ?? []).map((row) => describeRecord(data.family, data.group, row, data.per));
+    const describe = (rows) => (rows ?? []).map((row) => describeRecord(data.family, data.format, row));
     return [describe(data.records), describe(data.bySeason), describe(data.progression)];
   }, [data]);
   if (records.length === 0) {
@@ -44,17 +44,18 @@ function RecordsContent({ data }) {
   return (
     <motion.div key={`${data.family}-${data.metricKey}-${data.per}`} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3, ease: EASE_OUT }}>
       {/* The minimum is for a 34-game regular season; each season keeps the same share of its own (22 of 38, 6 of 10). */}
-      {data.minGames ? (
+      {data.minGames || data.lowerIsBetter ? (
         <p className="muted mb-4 text-sm">
-          Counts {holders} with at least {data.minGames} games of a 34-game regular season, or the same share of a shorter or longer one.
+          {data.lowerIsBetter ? <span>Lower is better. </span> : null}
+          {data.minGames ? `Counts ${holders} with at least ${data.minGames} games of a 34-game regular season, or the same share of a shorter or longer one.` : null}
         </p>
       ) : null}
       <Podium records={records} label={data.label} />
       <div className="mt-6">
-        <RecordTimeline bySeason={bySeason} progression={progression} overallKey={records[0].key} label={data.label} />
+        <RecordTimeline bySeason={bySeason} progression={progression} overallKey={records[0].key} label={data.label} lowerIsBetter={data.lowerIsBetter} percent={data.format === "percent"} />
       </div>
       <div className="mt-6">
-        <Board family={data.family} metricKey={data.metricKey} label={data.label} records={records} />
+        <Board family={data.family} metricKey={data.metricKey} label={data.label} records={records} lowerIsBetter={data.lowerIsBetter} />
       </div>
     </motion.div>
   );

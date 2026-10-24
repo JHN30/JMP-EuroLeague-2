@@ -67,7 +67,7 @@ import {
   getWinShareLeaders,
 } from "../db/season-advanced";
 import { getPlayerForm } from "../db/season-form";
-import { DEFAULT_METRIC, findRecordMetric, getRecordRows, MIN_SEASON_GAMES as RECORD_MIN_GAMES, perGameAvailable, RECORD_KINDS, RECORD_PERS } from "../db/season-records";
+import { DEFAULT_METRIC, findRecordMetric, getRecordRows, MIN_SEASON_GAMES as RECORD_MIN_GAMES, perGameAvailable, RECORD_KINDS, RECORD_PERS, recordFormat } from "../db/season-records";
 import { getSeasonStats, SORTABLE_STATS_FIELDS, type SortableStatsField, type StatsFilters } from "../db/season-stats";
 
 export const seasonRouter = Router();
@@ -588,7 +588,8 @@ for (const kind of RECORD_KINDS) {
     // Per game, players and clubs need 20 games of a 34-game season (each season's share is on its rows), as for the ratings.
     const minGames = per === "game" ? RECORD_MIN_GAMES : (metric.minGames ?? null);
     const label = per === "game" ? `${metric.label} per game` : metric.label;
-    res.json({ metric: requested, label, group: metric.group, minGames, per, ...(await getRecordRows(kind, metric, per)) });
+    const lowerIsBetter = metric.lowerIsBetter ?? false;
+    res.json({ metric: requested, label, group: metric.group, minGames, per, lowerIsBetter, format: recordFormat(metric, per), ...(await getRecordRows(kind, metric, per)) });
   });
 }
 

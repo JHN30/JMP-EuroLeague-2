@@ -16,7 +16,10 @@ export type RecordGroup = "traditional" | "advanced";
 // `minGames`: a record of a season's rating counts only players or clubs with at least that many games, so a season still being played does not
 // put a club at the top after a few games. It is the minimum of a 34-game regular season; each season scales it to its own length
 // (seasonMinGames), and every row says the minimum of its season.
-export type RecordMetricDef = { key: string; label: string; group: RecordGroup; minGames?: number };
+// `lowerIsBetter` ranks from the lowest (the best defense allows the fewest points). `format` says how the page writes the value: whole
+// numbers for totals, one decimal for rates, a sign for margins, and a stored fraction as a percentage.
+export type RecordFormat = "count" | "decimal" | "signed" | "percent";
+export type RecordMetricDef = { key: string; label: string; group: RecordGroup; minGames?: number; lowerIsBetter?: boolean; format?: RecordFormat };
 // A season record as the season's total or as its per-game average.
 export const RECORD_PERS = ["total", "game"] as const;
 export type RecordPer = (typeof RECORD_PERS)[number];
@@ -48,8 +51,44 @@ const TRADITIONAL: RecordMetricDef[] = [
   { key: "pir", label: "PIR", group: "traditional" },
 ];
 
-const OFFENSIVE_RATING: RecordMetricDef = { key: "offensiveRating", label: "Offensive rating", group: "advanced" };
-const NET_RATING: RecordMetricDef = { key: "netRating", label: "Net rating", group: "advanced" };
+const advanced = (key: string, label: string, extra: Partial<RecordMetricDef> = {}): RecordMetricDef => ({ key, label, group: "advanced", ...extra });
+const OFFENSIVE_RATING = advanced("offensiveRating", "Offensive rating");
+const DEFENSIVE_RATING = advanced("defensiveRating", "Defensive rating", { lowerIsBetter: true });
+const NET_RATING = advanced("netRating", "Net rating", { format: "signed" });
+const PACE = advanced("pace", "Pace");
+const EFG = advanced("effectiveFieldGoalPct", "Effective FG%", { format: "percent" });
+const TRUE_SHOOTING = advanced("trueShootingPct", "True shooting %", { format: "percent" });
+
+// The season metrics of the advanced standings, in the order the page lists them, each with its column.
+const TEAM_SEASON_ADVANCED: Array<[RecordMetricDef, PgColumn]> = [
+  [OFFENSIVE_RATING, standingsStats.offensiveRating],
+  [DEFENSIVE_RATING, standingsStats.defensiveRating],
+  [NET_RATING, standingsStats.netRating],
+  [advanced("adjustedOffensiveRating", "Adjusted offensive rating"), standingsStats.adjOffensiveRating],
+  [advanced("adjustedDefensiveRating", "Adjusted defensive rating", { lowerIsBetter: true }), standingsStats.adjDefensiveRating],
+  [advanced("adjustedNetRating", "Adjusted net rating", { format: "signed" }), standingsStats.adjNetRating],
+  [advanced("marginOfVictory", "Margin of victory", { format: "signed" }), standingsStats.mov],
+  [advanced("srs", "Simple rating (SRS)", { format: "signed" }), standingsStats.srs],
+  [PACE, standingsStats.pace],
+  [EFG, standingsStats.efgPct],
+  [advanced("opponentEffectiveFieldGoalPct", "Opponents' eFG%", { format: "percent", lowerIsBetter: true }), standingsStats.oppEfgPct],
+  [TRUE_SHOOTING, standingsStats.trueShootingPct],
+  [advanced("turnoverPct", "Turnover %", { format: "percent", lowerIsBetter: true }), standingsStats.tovPct],
+  [advanced("offensiveReboundPct", "Offensive rebound %", { format: "percent" }), standingsStats.orbPct],
+  [advanced("defensiveReboundPct", "Defensive rebound %", { format: "percent" }), standingsStats.drbPct],
+  [advanced("assistRatio", "Assist ratio", { format: "percent" }), standingsStats.assistRatio],
+];
+
+// The same for a club's single game.
+const TEAM_GAME_ADVANCED: Array<[RecordMetricDef, PgColumn]> = [
+  [OFFENSIVE_RATING, gameTeamAdvanced.offensiveRating],
+  [DEFENSIVE_RATING, gameTeamAdvanced.defensiveRating],
+  [NET_RATING, gameTeamAdvanced.netRating],
+  [PACE, gameTeamAdvanced.pace],
+  [EFG, gameTeamAdvanced.efgPct],
+  [TRUE_SHOOTING, gameTeamAdvanced.trueShootingPct],
+];
+const columnOf = (catalogue: Array<[RecordMetricDef, PgColumn]>, key: string) => catalogue.find(([metric]) => metric.key === key)![1];
 
 const ADVANCED: Record<RecordKind, RecordMetricDef[]> = {
   "player-seasons": [
@@ -57,11 +96,8 @@ const ADVANCED: Record<RecordKind, RecordMetricDef[]> = {
     { key: "winShares", label: "Win Shares", group: "advanced" },
   ],
   "single-games": [{ key: "gameScore", label: "Game Score", group: "advanced" }],
-  "team-seasons": [
-    { ...OFFENSIVE_RATING, minGames: MIN_SEASON_GAMES },
-    { ...NET_RATING, minGames: MIN_SEASON_GAMES },
-  ],
-  "team-games": [OFFENSIVE_RATING, NET_RATING],
+  "team-seasons": TEAM_SEASON_ADVANCED.map(([metric]) => ({ ...metric, minGames: MIN_SEASON_GAMES })),
+  "team-games": TEAM_GAME_ADVANCED.map(([metric]) => metric),
 };
 
 // The names the single-game and team-season routes answered to before the metrics shared one vocabulary; they keep working.
@@ -79,6 +115,12 @@ export const DEFAULT_METRIC: Record<RecordKind, string> = {
 // Per game is a season reading of a counted total: a single game is already one game, and the advanced metrics are already rates.
 export function perGameAvailable(kind: RecordKind, metric: RecordMetricDef): boolean {
   return (kind === "player-seasons" || kind === "team-seasons") && metric.group === "traditional";
+}
+
+// How the page writes a metric's values; a per-game average always has one decimal.
+export function recordFormat(metric: RecordMetricDef, per: RecordPer): RecordFormat {
+  if (per === "game") return "decimal";
+  return metric.format ?? (metric.group === "traditional" ? "count" : "decimal");
 }
 
 // The catalogue entry a request asks for (by its own key or one of the old names), or null when the kind has no such metric.
@@ -106,24 +148,26 @@ function oldestFirst(a: Ranked<Scored>, b: Ranked<Scored>) {
 }
 
 // The first season's best opens the progression; after it, every row that beat the standing record, oldest first. Only the first season's
-// best counts from that season, so the chain does not open with the first nights of the archive.
-function progressionOf<Row extends Scored>(ranked: Ranked<Row>[], first: Ranked<Row> | undefined): Ranked<Row>[] {
+// best counts from that season, so the chain does not open with the first nights of the archive. `sign` is 1 when higher is better and -1
+// when lower is.
+function progressionOf<Row extends Scored>(ranked: Ranked<Row>[], first: Ranked<Row> | undefined, sign: number): Ranked<Row>[] {
   if (!first) return [];
   const later = ranked.filter((row) => row.seasonCode !== first.seasonCode).sort(oldestFirst);
-  return later.reduce((steps, row) => (row.numericValue > steps[steps.length - 1].numericValue ? [...steps, row] : steps), [first]);
+  return later.reduce((steps, row) => (sign * (row.numericValue - steps[steps.length - 1].numericValue) > 0 ? [...steps, row] : steps), [first]);
 }
 
-// Drops rows with no usable value, orders the rest highest first (ties broken by `tie`), and answers the best 50, the best of each season and
-// the progression. `value` always leaves as a string, as the routes have always sent it.
-function best<Row extends Scored>(rows: Row[], tie: (a: Row, b: Row) => number) {
+// Drops rows with no usable value, orders the rest best first (highest, or lowest when lower is better; ties broken by `tie`), and answers the
+// best 50, the best of each season and the progression. `value` always leaves as a string, as the routes have always sent it.
+function best<Row extends Scored>(rows: Row[], tie: (a: Row, b: Row) => number, lowerIsBetter = false) {
+  const sign = lowerIsBetter ? -1 : 1;
   const ranked: Ranked<Row>[] = rows
     .filter((row) => row.value !== null && row.value !== undefined && Number.isFinite(Number(row.value)))
-    .sort((a, b) => Number(b.value) - Number(a.value) || a.seasonCode.localeCompare(b.seasonCode) || tie(a, b))
+    .sort((a, b) => sign * (Number(b.value) - Number(a.value)) || a.seasonCode.localeCompare(b.seasonCode) || tie(a, b))
     .map((row) => ({ ...row, value: String(row.value), numericValue: Number(row.value) }));
   const seasonBest = new Map<string, Ranked<Row>>();
   for (const row of ranked) if (!seasonBest.has(row.seasonCode)) seasonBest.set(row.seasonCode, row);
   const bySeason = [...seasonBest.values()].sort((a, b) => a.seasonCode.localeCompare(b.seasonCode));
-  return { records: ranked.slice(0, LIMIT), bySeason, progression: progressionOf(ranked, bySeason[0]) };
+  return { records: ranked.slice(0, LIMIT), bySeason, progression: progressionOf(ranked, bySeason[0], sign) };
 }
 
 // The box-score column of a game table (player or team) behind a traditional metric.
@@ -279,7 +323,7 @@ async function teamSeasonRecords(metric: RecordMetricDef, per: RecordPer) {
     // A club's rating after the season's latest round (scope `all`), as the standings read it.
     const perSeason = await Promise.all(
       SUPPORTED_SEASONS.map(async (seasonCode) => {
-        const column = metric.key === "netRating" ? standingsStats.netRating : standingsStats.offensiveRating;
+        const column = columnOf(TEAM_SEASON_ADVANCED, metric.key);
         const inSeason = and(eq(standingsStats.competitionCode, COMPETITION_CODE), eq(standingsStats.seasonCode, seasonCode), eq(standingsStats.scope, "all"));
         const [latest] = await catalogRead(() => db.select({ round: sql<number | null>`max(${standingsStats.roundNumber})` }).from(standingsStats).where(inSeason));
         if (latest?.round === null || latest?.round === undefined) return [];
@@ -290,7 +334,7 @@ async function teamSeasonRecords(metric: RecordMetricDef, per: RecordPer) {
             db.select({ clubCode: standingsStats.clubCode, clubName: standingsStats.clubName, gamesPlayed: standingsStats.gamesPlayed, value: column })
               .from(standingsStats)
               .where(and(inSeason, eq(standingsStats.roundNumber, round), isNotNull(column), minGames === undefined ? undefined : gte(standingsStats.gamesPlayed, minGames)))
-              .orderBy(desc(column), asc(standingsStats.clubCode))
+              .orderBy(metric.lowerIsBetter ? asc(column) : desc(column), asc(standingsStats.clubCode))
               .limit(LIMIT),
           ),
           clubLooks(seasonCode),
@@ -298,7 +342,7 @@ async function teamSeasonRecords(metric: RecordMetricDef, per: RecordPer) {
         return rows.map((row) => ({ seasonCode, ...row, ...(minGames !== undefined ? { minGames } : {}), clubTvCode: looks.tvCodeOf(row.clubCode), clubImageUrl: looks.crestOf(row.clubCode) }));
       }),
     );
-    return best(perSeason.flat(), (a, b) => a.clubCode.localeCompare(b.clubCode));
+    return best(perSeason.flat(), (a, b) => a.clubCode.localeCompare(b.clubCode), metric.lowerIsBetter);
   }
 
   // The season's sum of the club's game totals, over the games played; per game, that sum over those games.
@@ -384,7 +428,7 @@ async function teamGameRecords(metric: RecordMetricDef) {
                 .limit(LIMIT);
             })
           : catalogRead(() => {
-              const column = metric.key === "netRating" ? gameTeamAdvanced.netRating : gameTeamAdvanced.offensiveRating;
+              const column = columnOf(TEAM_GAME_ADVANCED, metric.key);
               return db.select({
                 gameCode: gameTeamAdvanced.gameCode,
                 clubCode: ownCode(gameTeamAdvanced),
@@ -401,7 +445,7 @@ async function teamGameRecords(metric: RecordMetricDef) {
                   eq(games.gameCode, gameTeamAdvanced.gameCode),
                 ))
                 .where(and(eq(gameTeamAdvanced.competitionCode, COMPETITION_CODE), eq(gameTeamAdvanced.seasonCode, seasonCode), eq(games.played, true), isNotNull(column)))
-                .orderBy(desc(column))
+                .orderBy(metric.lowerIsBetter ? asc(column) : desc(column))
                 .limit(LIMIT);
             })) as Promise<TeamGameRow[]>,
         clubLooks(seasonCode),
@@ -413,7 +457,7 @@ async function teamGameRecords(metric: RecordMetricDef) {
       );
     }),
   );
-  return best(perSeason.flat(), (a, b) => a.gameCode - b.gameCode || a.clubCode.localeCompare(b.clubCode));
+  return best(perSeason.flat(), (a, b) => a.gameCode - b.gameCode || a.clubCode.localeCompare(b.clubCode), metric.lowerIsBetter);
 }
 
 // The best 50 rows of one record kind and metric over the loaded seasons (highest first), the best of each season and the progression.

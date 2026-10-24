@@ -1,4 +1,4 @@
-import { formatCount, formatDate, formatDecimal, formatSeasonLabel } from "../lib/format";
+import { formatCount, formatDate, formatDecimal, formatSeasonLabel, formatSignedDecimal } from "../lib/format";
 import { displayName } from "../lib/playerName";
 import { seasonSlug } from "../lib/seasonSlug";
 
@@ -31,19 +31,53 @@ const TRADITIONAL = [
   { key: "freeThrowsMade", label: "Free throws made" },
   { key: "pir", label: "PIR" },
 ];
-const RATINGS = [
-  { key: "offensiveRating", label: "Offensive rating" },
-  { key: "netRating", label: "Net rating" },
-];
+const ORTG = { key: "offensiveRating", label: "Offensive rating" };
+const DRTG = { key: "defensiveRating", label: "Defensive rating" };
+const NET = { key: "netRating", label: "Net rating" };
+const PACE = { key: "pace", label: "Pace" };
+const EFG = { key: "effectiveFieldGoalPct", label: "Effective FG%" };
+const TS = { key: "trueShootingPct", label: "True shooting %" };
 const ADVANCED = {
   player: [
     { key: "per", label: "PER" },
     { key: "winShares", label: "Win Shares" },
   ],
   game: [{ key: "gameScore", label: "Game Score" }],
-  team: RATINGS,
-  teamgame: RATINGS,
+  team: [
+    ORTG,
+    DRTG,
+    NET,
+    { key: "adjustedOffensiveRating", label: "Adjusted offensive rating" },
+    { key: "adjustedDefensiveRating", label: "Adjusted defensive rating" },
+    { key: "adjustedNetRating", label: "Adjusted net rating" },
+    { key: "marginOfVictory", label: "Margin of victory" },
+    { key: "srs", label: "Simple rating (SRS)" },
+    PACE,
+    EFG,
+    { key: "opponentEffectiveFieldGoalPct", label: "Opponents' eFG%" },
+    TS,
+    { key: "turnoverPct", label: "Turnover %" },
+    { key: "offensiveReboundPct", label: "Offensive rebound %" },
+    { key: "defensiveReboundPct", label: "Defensive rebound %" },
+    { key: "assistRatio", label: "Assist ratio" },
+  ],
+  teamgame: [ORTG, DRTG, NET, PACE, EFG, TS],
 };
+
+// How a value reads, by the reply's `format`: a total as a whole number, a rate with one decimal, a margin with its sign, a stored fraction
+// as a percentage.
+const VALUE_FORMATS = {
+  count: formatCount,
+  decimal: (value) => formatDecimal(value, 1),
+  signed: (value) => formatSignedDecimal(value, 1),
+  percent: (value) => `${formatDecimal(value * 100, 1)}%`,
+};
+
+// A change in a record, with its sign ("+43", "-2.1", "+1.2%"); a margin's own sign would double it, so it reads as a plain decimal here.
+function changeFormat(format) {
+  const size = format === "signed" ? VALUE_FORMATS.decimal : VALUE_FORMATS[format];
+  return (delta) => `${delta > 0 ? "+" : delta < 0 ? "-" : ""}${size(Math.abs(delta))}`;
+}
 
 export const DEFAULT_FAMILY = "player";
 export const DEFAULT_METRIC = "pointsScored";
@@ -66,15 +100,15 @@ export function pickKey(entries, value, fallback) {
 
 // One record row as the page shows it. The picture of a player is the headshot (`portraitUrl`), of a club its crest (`crestUrl`); the second line is
 // a player's club (with its crest beside it) or the opponent of a team game. A part the row does not have is null. `shortName` and
-// `shortLine` are the same two with the club's TV code, for the places with little room (below sm). `per` is the reply's "total" or "game".
-export function describeRecord(family, group, row, per = "total") {
+// `shortLine` are the same two with the club's TV code, for the places with little room (below sm). `format` is the reply's: how the values
+// read, and `change` writes a difference between two of them.
+export function describeRecord(family, format, row) {
   const slug = seasonSlug(row.seasonCode);
   const isClub = FAMILIES.find((entry) => entry.key === family)?.club ?? false;
   const clubName = row.clubName ?? null;
   const clubCode = row.clubTvCodes ?? row.clubTvCode ?? null;
   const opponent = row.opponentName ?? row.opponentTvCode ?? null;
-  // A rating, a Game Score or a per-game average has decimals; a total is a whole number.
-  const format = (value) => (group === "advanced" || per === "game" ? formatDecimal(value, 1) : formatCount(value));
+  const write = VALUE_FORMATS[format];
   return {
     key: `${row.seasonCode}-${row.personKey ?? row.clubCode}-${row.gameCode ?? "season"}`,
     name: isClub ? (clubName ?? row.clubCode ?? "-") : displayName(row.playerName),
@@ -92,8 +126,9 @@ export function describeRecord(family, group, row, per = "total") {
     gameCode: row.gameCode ?? null,
     gameTo: row.gameCode ? `/${slug}/games/${row.gameCode}` : null,
     value: row.numericValue,
-    valueText: format(row.numericValue),
-    format,
+    valueText: write(row.numericValue),
+    format: write,
+    change: changeFormat(format),
   };
 }
 

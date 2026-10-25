@@ -288,24 +288,6 @@ export const teamPbpStats = pgTable(
   (table) => [primaryKey({ columns: [table.competitionCode, table.seasonCode, table.scope, table.clubCode] })],
 );
 
-// Zones are the feed's letters A-J; a club has a row only for zones it shot from.
-export const teamShotZoneStats = pgTable(
-  "app_team_shot_zone_stats",
-  {
-    competitionCode: text("competition_code").notNull(),
-    seasonCode: text("season_code").notNull(),
-    scope: text("scope").notNull(),
-    clubCode: text("club_code").notNull(),
-    zone: text("zone").notNull(),
-    attempts: integer("attempts"),
-    made: integer("made"),
-    points: integer("points"),
-    fgPct: measure("fg_pct"),
-    attemptShare: measure("attempt_share"),
-  },
-  (table) => [primaryKey({ columns: [table.competitionCode, table.seasonCode, table.scope, table.clubCode, table.zone] })],
-);
-
 // One row per club, so a traded player has one row for each club.
 export const playerOnOff = pgTable(
   "app_player_on_off",

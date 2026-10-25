@@ -1,7 +1,4 @@
 import { Router, type NextFunction, type Request, type Response } from "express";
-import { and, desc, eq, inArray, sql } from "drizzle-orm";
-import { db } from "../db/client";
-import { catalogRead } from "../db/season-catalog";
 import {
   CatalogDatabaseError,
   getPhases,
@@ -12,7 +9,6 @@ import {
   type Season,
 } from "../db/season-catalog";
 import {
-  getClubTvCodes,
   getPlayer,
   getPlayerRegistrations,
   getPlayerImages,
@@ -24,7 +20,6 @@ import {
   getTeams,
 } from "../db/season-identities";
 import { getBoxScore, getGame, getGames, getLeagueTeamStats, getPhaseResults, getPlayByPlay, getPlayerGameLog, getPlayerShots, getPostseasonSeries, getShots, getTeamGames, getTeamStatsSummary } from "../db/season-games";
-import { getCoverage } from "../db/season-coverage";
 import { getSeasonFormat } from "../db/season-format";
 import { seasonScopes, seasonStageCodes } from "../db/season-format-registry";
 import { getLatestStandingsRound, getStandings } from "../db/season-standings";
@@ -61,7 +56,6 @@ import {
   getTeamRoundSplits,
   getTeamRoundStats,
   teamRoundOwnRatings,
-  getTeamShotZoneStats,
   getTeamsSeasonToDate,
   getTeamStatsScopes,
   getWinShareLeaders,
@@ -745,7 +739,7 @@ seasonRouter.get("/:seasonCode/teams/:clubCode/players-advanced", async (req, re
   res.json({ scope, round: round ?? null, earlySeason: rounds.length < EARLY_SEASON_ROUNDS, players });
 });
 
-// Trend, splits, play-by-play and shot zones for one club in one scope. The trend is one point per round of
+// Trend, splits and play-by-play for one club in one scope. The trend is one point per round of
 // cumulative values (never summed), each with the round's own ratings beside it (`round...` fields: what the club did in that round
 // alone, from the difference of the cumulative points and possessions); the splits are the state after the club's latest round in the scope.
 seasonRouter.get("/:seasonCode/teams/:clubCode/advanced", async (req, res) => {
@@ -767,16 +761,15 @@ seasonRouter.get("/:seasonCode/teams/:clubCode/advanced", async (req, res) => {
   const scopes = seasonScopes(season.seasonCode).filter((code) => available.has(code));
   const scope = scopeValue ?? scopes[0];
   if (scope === undefined || !available.has(scope)) {
-    res.json({ scope: scope ?? null, scopes, trend: [], splits: null, pbp: null, zones: [] });
+    res.json({ scope: scope ?? null, scopes, trend: [], splits: null, pbp: null });
     return;
   }
 
-  const [stats, ratings, splits, pbp, zones] = await Promise.all([
+  const [stats, ratings, splits, pbp] = await Promise.all([
     getTeamRoundStats(season.seasonCode, scope, clubCode),
     getTeamRoundRatings(season.seasonCode, scope, clubCode),
     getTeamRoundSplits(season.seasonCode, scope, clubCode),
     getTeamPbpStats(season.seasonCode, scope, clubCode),
-    getTeamShotZoneStats(season.seasonCode, scope, clubCode),
   ]);
   const ratingsByRound = new Map(ratings.map((row) => [row.roundNumber, row]));
   const roundOwn = teamRoundOwnRatings(stats);
@@ -799,7 +792,6 @@ seasonRouter.get("/:seasonCode/teams/:clubCode/advanced", async (req, res) => {
     }),
     splits: splits[splits.length - 1] ?? null,
     pbp,
-    zones,
   });
 });
 
@@ -1332,27 +1324,6 @@ seasonRouter.get("/:seasonCode/postseason-series", async (req, res) => {
   const season = await requestedSeason(req, res);
   if (!season) return;
   res.json(await getPostseasonSeries(season.seasonCode));
-});
-
-seasonRouter.get("/:seasonCode/coverage", async (req, res) => {
-  const season = await requestedSeason(req, res);
-  if (!season) return;
-  const gameCodeValue = req.query.gameCode;
-  if (gameCodeValue === undefined) {
-    res.json(await getCoverage(season.seasonCode));
-    return;
-  }
-  if (typeof gameCodeValue !== "string") {
-    sendError(res, 400, "INVALID_GAME_CODE", "Invalid game code");
-    return;
-  }
-  const gameCode = requestedGameCode(gameCodeValue, res);
-  if (gameCode === null) return;
-  if (!await getGame(season.seasonCode, gameCode)) {
-    sendError(res, 404, "GAME_NOT_FOUND", "Game not found");
-    return;
-  }
-  res.json(await getCoverage(season.seasonCode, gameCode));
 });
 
 seasonRouter.use((_req, res) => {

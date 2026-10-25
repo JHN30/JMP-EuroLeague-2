@@ -320,27 +320,6 @@ export const postseasonSeries = pgTable(
   ],
 );
 
-export const coverageSeasons = pgTable(
-  "app_coverage_seasons",
-  {
-    competitionCode: text("competition_code").notNull(),
-    seasonCode: text("season_code").notNull(),
-    items: jsonb("items").notNull(),
-  },
-  (table) => [primaryKey({ columns: [table.competitionCode, table.seasonCode] })],
-);
-
-export const coverageGames = pgTable(
-  "app_coverage_games",
-  {
-    competitionCode: text("competition_code").notNull(),
-    seasonCode: text("season_code").notNull(),
-    gameCode: integer("game_code").notNull(),
-    items: jsonb("items").notNull(),
-  },
-  (table) => [primaryKey({ columns: [table.competitionCode, table.seasonCode, table.gameCode] })],
-);
-
 export const standings = pgTable(
   "app_standings",
   {

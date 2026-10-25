@@ -113,11 +113,7 @@ for (const { season, clubs, rsGames } of DIRECT_EIGHT_SEASONS) {
   });
 }
 
-test("E2018 game 21 preserves its box score while event and shot data remain unavailable", async ({ page, request }) => {
-  const coverage = await get(request, "2018", "/coverage?gameCode=21");
-  for (const key of ["playByPlay", "shotLocations"]) {
-    expect(coverage.items.find((item) => item.key === key)).toMatchObject({ status: "unavailable", availableCount: 0 });
-  }
+test("E2018 game 21 preserves its box score while event and shot data remain unavailable", async ({ page }) => {
   await page.goto("/2018/games/21");
   await page.getByRole("tab", { name: "Box score", exact: true }).click();
   await expect(page.locator("main table").first()).toBeVisible();

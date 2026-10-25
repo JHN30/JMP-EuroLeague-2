@@ -21,7 +21,6 @@ import {
   teamRoundRatings,
   teamRoundSplits,
   teamRoundStats,
-  teamShotZoneStats,
 } from "./season-advanced-schema";
 
 // Read-only access to the advanced tables. They are filled for every supported season (E2018 onward); callers pass a supported season.
@@ -37,7 +36,6 @@ export type PlayerRoundStatsRow = typeof playerRoundStats.$inferSelect;
 export type PlayerRoundRatingsRow = typeof playerRoundRatings.$inferSelect;
 export type PlayerRoundWinSharesRow = typeof playerRoundWinShares.$inferSelect;
 export type TeamPbpStatsRow = typeof teamPbpStats.$inferSelect;
-export type TeamShotZoneStatsRow = typeof teamShotZoneStats.$inferSelect;
 export type PlayerOnOffRow = typeof playerOnOff.$inferSelect;
 export type LineupRatingsRow = typeof lineupRatings.$inferSelect;
 export type PlayerRapmRow = typeof playerRapm.$inferSelect;
@@ -474,15 +472,6 @@ export async function getGameFlow(seasonCode: string, scope: string): Promise<Ga
       .from(teamPbpStats)
       .where(and(...inScope(teamPbpStats, seasonCode, scope)))
       .orderBy(asc(teamPbpStats.clubCode)),
-  );
-}
-
-export async function getTeamShotZoneStats(seasonCode: string, scope: string, clubCode: string): Promise<TeamShotZoneStatsRow[]> {
-  return catalogRead(() =>
-    db.select()
-      .from(teamShotZoneStats)
-      .where(and(...inScope(teamShotZoneStats, seasonCode, scope), eq(teamShotZoneStats.clubCode, clubCode)))
-      .orderBy(asc(teamShotZoneStats.zone)),
   );
 }
 

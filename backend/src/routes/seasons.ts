@@ -52,10 +52,9 @@ import {
   getStatsRounds,
   getStatsScopes,
   getTeamPbpStats,
-  getTeamRoundRatings,
-  getTeamRoundSplits,
-  getTeamRoundStats,
+  getTeamRounds,
   teamRoundOwnRatings,
+  teamSplits,
   getTeamsSeasonToDate,
   getTeamStatsScopes,
   getWinShareLeaders,
@@ -765,32 +764,24 @@ seasonRouter.get("/:seasonCode/teams/:clubCode/advanced", async (req, res) => {
     return;
   }
 
-  const [stats, ratings, splits, pbp] = await Promise.all([
-    getTeamRoundStats(season.seasonCode, scope, clubCode),
-    getTeamRoundRatings(season.seasonCode, scope, clubCode),
-    getTeamRoundSplits(season.seasonCode, scope, clubCode),
-    getTeamPbpStats(season.seasonCode, scope, clubCode),
-  ]);
-  const ratingsByRound = new Map(ratings.map((row) => [row.roundNumber, row]));
-  const roundOwn = teamRoundOwnRatings(stats);
+  const [rounds, pbp] = await Promise.all([getTeamRounds(season.seasonCode, scope, clubCode), getTeamPbpStats(season.seasonCode, scope, clubCode)]);
+  const roundOwn = teamRoundOwnRatings(rounds);
+  const latest = rounds[rounds.length - 1];
   res.json({
     scope,
     scopes,
-    trend: stats.map((row, index) => {
-      const rating = ratingsByRound.get(row.roundNumber);
-      return {
-        round: row.roundNumber,
-        gamesPlayed: row.gamesPlayed,
-        ...roundOwn[index],
-        offensiveRating: row.offensiveRating,
-        defensiveRating: row.defensiveRating,
-        netRating: row.netRating,
-        pace: row.pace,
-        srs: rating?.srs ?? null,
-        adjNetRating: rating?.adjNetRating ?? null,
-      };
-    }),
-    splits: splits[splits.length - 1] ?? null,
+    trend: rounds.map((row, index) => ({
+      round: row.roundNumber,
+      gamesPlayed: row.gamesPlayed,
+      ...roundOwn[index],
+      offensiveRating: row.offensiveRating,
+      defensiveRating: row.defensiveRating,
+      netRating: row.netRating,
+      pace: row.pace,
+      srs: row.srs ?? null,
+      adjNetRating: row.adjNetRating ?? null,
+    })),
+    splits: latest ? teamSplits(latest) : null,
     pbp,
   });
 });

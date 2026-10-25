@@ -114,6 +114,9 @@ function teamSplitColumns() {
   };
 }
 
+// The names of a club's home, away, last-5 and last-10 split fields, in column order.
+export const TEAM_SPLIT_FIELDS = Object.keys(teamSplitColumns()) as (keyof ReturnType<typeof teamSplitColumns>)[];
+
 type RoundKeyColumns = { competitionCode: AnyPgColumn; seasonCode: AnyPgColumn; scope: AnyPgColumn; roundNumber: AnyPgColumn };
 
 const teamRoundPrimaryKey = (table: RoundKeyColumns & { clubCode: AnyPgColumn }) =>
@@ -122,7 +125,7 @@ const teamRoundPrimaryKey = (table: RoundKeyColumns & { clubCode: AnyPgColumn })
 const playerRoundPrimaryKey = (table: RoundKeyColumns & { personKey: AnyPgColumn }) =>
   [primaryKey({ columns: [table.competitionCode, table.seasonCode, table.scope, table.roundNumber, table.personKey] })];
 
-// One wide row per club, scope and round: the three team round tables joined.
+// One wide row per club, scope and round: the club's record, performance, ratings and splits.
 export const standingsStats = pgTable(
   "app_standings_stats",
   {
@@ -132,48 +135,6 @@ export const standingsStats = pgTable(
     ...teamRatingColumns(),
     ...teamSplitColumns(),
   },
-  teamRoundPrimaryKey,
-);
-
-export const teamRoundStats = pgTable(
-  "app_team_round_stats",
-  {
-    ...teamRoundKey(),
-    ...teamRecordColumns(),
-    ownFieldGoalsMade: measure("own_field_goals_made"),
-    ownFieldGoalsAttempted: measure("own_field_goals_attempted"),
-    ownThreePointersMade: measure("own_three_pointers_made"),
-    ownFreeThrowsMade: measure("own_free_throws_made"),
-    ownFreeThrowsAttempted: measure("own_free_throws_attempted"),
-    ownOffensiveRebounds: measure("own_offensive_rebounds"),
-    ownDefensiveRebounds: measure("own_defensive_rebounds"),
-    ownTurnovers: measure("own_turnovers"),
-    ownAssists: measure("own_assists"),
-    oppFieldGoalsMade: measure("opp_field_goals_made"),
-    oppFieldGoalsAttempted: measure("opp_field_goals_attempted"),
-    oppThreePointersMade: measure("opp_three_pointers_made"),
-    oppFreeThrowsMade: measure("opp_free_throws_made"),
-    oppFreeThrowsAttempted: measure("opp_free_throws_attempted"),
-    oppOffensiveRebounds: measure("opp_offensive_rebounds"),
-    oppDefensiveRebounds: measure("opp_defensive_rebounds"),
-    oppTurnovers: measure("opp_turnovers"),
-    oppAssists: measure("opp_assists"),
-    gameMinutes: measure("game_minutes"),
-    pythagoreanExponent: measure("pythagorean_exponent"),
-    ...teamPerformanceColumns(),
-  },
-  teamRoundPrimaryKey,
-);
-
-export const teamRoundRatings = pgTable(
-  "app_team_round_ratings",
-  { ...teamRoundKey(), ...teamRatingColumns() },
-  teamRoundPrimaryKey,
-);
-
-export const teamRoundSplits = pgTable(
-  "app_team_round_splits",
-  { ...teamRoundKey(), ...teamSplitColumns() },
   teamRoundPrimaryKey,
 );
 

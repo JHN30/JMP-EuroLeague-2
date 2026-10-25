@@ -18,9 +18,7 @@ import {
   playerRoundWinShares,
   standingsStats,
   teamPbpStats,
-  teamRoundRatings,
-  teamRoundSplits,
-  teamRoundStats,
+  TEAM_SPLIT_FIELDS,
 } from "./season-advanced-schema";
 
 // Read-only access to the advanced tables. They are filled for every supported season (E2018 onward); callers pass a supported season.
@@ -29,9 +27,6 @@ const COMPETITION_CODE = "E";
 const RAPM_SCOPE = "all";
 
 export type StandingsStatsRow = typeof standingsStats.$inferSelect;
-export type TeamRoundStatsRow = typeof teamRoundStats.$inferSelect;
-export type TeamRoundRatingsRow = typeof teamRoundRatings.$inferSelect;
-export type TeamRoundSplitsRow = typeof teamRoundSplits.$inferSelect;
 export type PlayerRoundStatsRow = typeof playerRoundStats.$inferSelect;
 export type PlayerRoundRatingsRow = typeof playerRoundRatings.$inferSelect;
 export type PlayerRoundWinSharesRow = typeof playerRoundWinShares.$inferSelect;
@@ -67,12 +62,12 @@ export async function getStatsScopes(seasonCode: string): Promise<string[]> {
 
 export async function getTeamStatsScopes(seasonCode: string, clubCode: string): Promise<string[]> {
   const rows = await catalogRead(() =>
-    db.selectDistinct({ scope: teamRoundStats.scope })
-      .from(teamRoundStats)
+    db.selectDistinct({ scope: standingsStats.scope })
+      .from(standingsStats)
       .where(and(
-        eq(teamRoundStats.competitionCode, COMPETITION_CODE),
-        eq(teamRoundStats.seasonCode, seasonCode),
-        eq(teamRoundStats.clubCode, clubCode),
+        eq(standingsStats.competitionCode, COMPETITION_CODE),
+        eq(standingsStats.seasonCode, seasonCode),
+        eq(standingsStats.clubCode, clubCode),
       )),
   );
   return rows.map((row) => row.scope);
@@ -110,17 +105,24 @@ export async function getStandingsStats(seasonCode: string, scope: string, round
   );
 }
 
-// The team and player round readers return one entity across every round of a scope, oldest first, for trends.
-export async function getTeamRoundStats(seasonCode: string, scope: string, clubCode: string): Promise<TeamRoundStatsRow[]> {
+// The team and player round readers return one entity across every round of a scope, oldest first, for trends. A club's rows come
+// from app_standings_stats, which holds its record, ratings and splits after each round.
+export async function getTeamRounds(seasonCode: string, scope: string, clubCode: string): Promise<StandingsStatsRow[]> {
   return catalogRead(() =>
     db.select()
-      .from(teamRoundStats)
-      .where(and(...inScope(teamRoundStats, seasonCode, scope), eq(teamRoundStats.clubCode, clubCode)))
-      .orderBy(asc(teamRoundStats.roundNumber)),
+      .from(standingsStats)
+      .where(and(...inScope(standingsStats, seasonCode, scope), eq(standingsStats.clubCode, clubCode)))
+      .orderBy(asc(standingsStats.roundNumber)),
   );
 }
 
-// What a club did in one round alone, from the cumulative rows of `app_team_round_stats`: each row holds the points and possessions of
+// A club's home, away, last-5 and last-10 splits after one round: the row's key fields and split fields only.
+export function teamSplits(row: StandingsStatsRow) {
+  const { competitionCode, seasonCode, scope, roundNumber, clubCode } = row;
+  return { competitionCode, seasonCode, scope, roundNumber, clubCode, ...Object.fromEntries(TEAM_SPLIT_FIELDS.map((field) => [field, row[field]])) };
+}
+
+// What a club did in one round alone, from its cumulative rows: each row holds the points and possessions of
 // every game up to its round, so a round's own numbers are the difference from the row before (the first round's row stands alone).
 // A round with no new possessions (the club did not play it) has no ratings, and `roundGames` is 0.
 export type TeamRoundOwnRatings = {
@@ -131,7 +133,7 @@ export type TeamRoundOwnRatings = {
   roundNetRating: number | null;
 };
 
-type CumulativeRound = Pick<TeamRoundStatsRow, "gamesPlayed" | "pointsFor" | "pointsAgainst" | "possessions">;
+type CumulativeRound = Pick<StandingsStatsRow, "gamesPlayed" | "pointsFor" | "pointsAgainst" | "possessions">;
 
 export function teamRoundOwnRatings(rows: CumulativeRound[]): TeamRoundOwnRatings[] {
   const present = (value: number | null | undefined): value is number => value !== null && value !== undefined && Number.isFinite(value);
@@ -153,24 +155,6 @@ export function teamRoundOwnRatings(rows: CumulativeRound[]): TeamRoundOwnRating
       roundNetRating: round2(offensive - defensive),
     };
   });
-}
-
-export async function getTeamRoundRatings(seasonCode: string, scope: string, clubCode: string): Promise<TeamRoundRatingsRow[]> {
-  return catalogRead(() =>
-    db.select()
-      .from(teamRoundRatings)
-      .where(and(...inScope(teamRoundRatings, seasonCode, scope), eq(teamRoundRatings.clubCode, clubCode)))
-      .orderBy(asc(teamRoundRatings.roundNumber)),
-  );
-}
-
-export async function getTeamRoundSplits(seasonCode: string, scope: string, clubCode: string): Promise<TeamRoundSplitsRow[]> {
-  return catalogRead(() =>
-    db.select()
-      .from(teamRoundSplits)
-      .where(and(...inScope(teamRoundSplits, seasonCode, scope), eq(teamRoundSplits.clubCode, clubCode)))
-      .orderBy(asc(teamRoundSplits.roundNumber)),
-  );
 }
 
 export async function getPlayerRoundStats(seasonCode: string, scope: string, personKey: string): Promise<PlayerRoundStatsRow[]> {

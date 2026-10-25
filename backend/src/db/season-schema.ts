@@ -69,8 +69,23 @@ export const clubs = pgTable(
     abbreviatedName: text("abbreviated_name"),
     countryCode: text("country_code"),
     crestUrl: text("crest_url"),
+    city: text("city"),
+    website: text("website"),
   },
   (table) => [primaryKey({ columns: [table.competitionCode, table.seasonCode, table.clubCode] })],
+);
+
+// Each club's whole EuroLeague history in the data: its first and last season and how many it played.
+export const clubIdentities = pgTable(
+  "app_club_identities",
+  {
+    competitionCode: text("competition_code").notNull(),
+    clubCode: text("club_code").notNull(),
+    firstSeasonCode: text("first_season_code"),
+    lastSeasonCode: text("last_season_code"),
+    seasonsPlayed: integer("seasons_played"),
+  },
+  (table) => [primaryKey({ columns: [table.competitionCode, table.clubCode] })],
 );
 
 export const people = pgTable(

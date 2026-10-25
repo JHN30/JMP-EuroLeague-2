@@ -9,6 +9,7 @@ import {
   type Season,
 } from "../db/season-catalog";
 import {
+  getClubDetails,
   getPlayer,
   getPlayerRegistrations,
   getPlayerImages,
@@ -605,12 +606,12 @@ seasonRouter.get("/:seasonCode/teams/:clubCode", async (req, res) => {
     sendError(res, 400, "INVALID_TEAM_CODE", "Invalid team code");
     return;
   }
-  const team = await getTeamRef(season.seasonCode, clubCode);
+  const [team, club] = await Promise.all([getTeamRef(season.seasonCode, clubCode), getClubDetails(season.seasonCode, clubCode)]);
   if (!team) {
     sendError(res, 404, "TEAM_NOT_FOUND", "Team not found");
     return;
   }
-  res.json({ team });
+  res.json({ team, club });
 });
 
 seasonRouter.get("/:seasonCode/teams/:clubCode/roster", async (req, res) => {

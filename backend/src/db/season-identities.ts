@@ -1,7 +1,7 @@
 import { and, asc, desc, eq, exists, ilike, inArray, isNull, or, sql } from "drizzle-orm";
 import { db } from "./client";
 import { catalogRead } from "./season-catalog";
-import { clubs, people, registrations, seasonStatsTraditional, standings } from "./season-schema";
+import { clubIdentities, clubs, games, people, registrations, seasonStatsTraditional, standings } from "./season-schema";
 
 const COMPETITION_CODE = "E";
 const PLAYER_ROLE_CODE = "J";
@@ -174,6 +174,61 @@ export async function getTeam(seasonCode: string, clubCode: string): Promise<Tea
 export async function getTeamRef(seasonCode: string, clubCode: string): Promise<TeamRef | null> {
   const team = await getTeam(seasonCode, clubCode);
   return team ? withTvCode(team, await getClubTvCodes(seasonCode)) : null;
+}
+
+export type ClubDetails = {
+  city: string | null;
+  website: string | null;
+  arena: string | null;
+  firstSeasonCode: string | null;
+  lastSeasonCode: string | null;
+  seasonsPlayed: number | null;
+};
+
+// Where a club plays and how long it has been in the EuroLeague. The arena is the one most of its home games that season are in
+// (scheduled ones too): the club row's venue code does not always match the games' codes. The history covers every season.
+export async function getClubDetails(seasonCode: string, clubCode: string): Promise<ClubDetails> {
+  const homeGames = sql<number>`count(*)`;
+  const [clubRows, identityRows, arenaRows] = await Promise.all([
+    catalogRead(() =>
+      db.select({ city: clubs.city, website: clubs.website })
+        .from(clubs)
+        .where(and(eq(clubs.competitionCode, COMPETITION_CODE), eq(clubs.seasonCode, seasonCode), eq(clubs.clubCode, clubCode)))
+        .limit(1),
+    ),
+    catalogRead(() =>
+      db.select({
+        firstSeasonCode: clubIdentities.firstSeasonCode,
+        lastSeasonCode: clubIdentities.lastSeasonCode,
+        seasonsPlayed: clubIdentities.seasonsPlayed,
+      })
+        .from(clubIdentities)
+        .where(and(eq(clubIdentities.competitionCode, COMPETITION_CODE), eq(clubIdentities.clubCode, clubCode)))
+        .limit(1),
+    ),
+    catalogRead(() =>
+      db.select({ name: games.venueName })
+        .from(games)
+        .where(and(
+          eq(games.competitionCode, COMPETITION_CODE),
+          eq(games.seasonCode, seasonCode),
+          eq(games.localClubCode, clubCode),
+          sql`coalesce(${games.venueName}, '') <> ''`,
+        ))
+        .groupBy(games.venueName)
+        .orderBy(desc(homeGames), asc(games.venueName))
+        .limit(1),
+    ),
+  ]);
+  const identity = identityRows[0];
+  return {
+    city: clubRows[0]?.city || null,
+    website: clubRows[0]?.website || null,
+    arena: arenaRows[0]?.name ?? null,
+    firstSeasonCode: identity?.firstSeasonCode || null,
+    lastSeasonCode: identity?.lastSeasonCode || null,
+    seasonsPlayed: identity?.seasonsPlayed ?? null,
+  };
 }
 
 export async function getPlayers(

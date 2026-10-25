@@ -22,7 +22,7 @@ import HomeAwayIcon from "../lib/HomeAwayIcon";
 import { barFill, cardHover, listContainer, listItem } from "../lib/motion";
 import Panel from "../lib/Panel";
 import PageHeader from "../lib/PageHeader";
-import { withoutComma } from "../lib/playerName";
+import { titleCase, withoutComma } from "../lib/playerName";
 import PanelHeader from "../lib/PanelHeader";
 import RevealImage from "../lib/RevealImage";
 import ShortLabel from "../lib/ShortLabel";
@@ -66,6 +66,53 @@ function statNumber(raw) {
   if (raw === null || raw === undefined) return null;
   const num = Number(raw);
   return Number.isNaN(num) ? null : num;
+}
+
+// The feed writes some names in capitals ("ATHENS") and some as they read ("Madrid"): only the capitals are recased.
+function readableName(name) {
+  return /[a-z]/.test(name) ? name : titleCase(name);
+}
+
+// A website the header can link to: only an http or https address, shown by its host without "www.".
+function websiteHost(website) {
+  try {
+    const url = new URL(website);
+    return url.protocol === "http:" || url.protocol === "https:" ? url.hostname.replace(/^www\./, "") : null;
+  } catch {
+    return null;
+  }
+}
+
+// Where the club plays and how long it has been in the EuroLeague, in one muted line under the codes. A fact the feed leaves
+// empty is left out, and with none there is no line.
+function ClubFacts({ club }) {
+  const host = club?.website ? websiteHost(club.website) : null;
+  const history = club?.seasonsPlayed && club.firstSeasonCode
+    ? club.seasonsPlayed === 1
+      ? `1 EuroLeague season (${formatSeasonLabel(club.firstSeasonCode)})`
+      : `${club.seasonsPlayed} EuroLeague seasons since ${formatSeasonLabel(club.firstSeasonCode)}`
+    : null;
+  const facts = [
+    club?.city ? readableName(club.city) : null,
+    club?.arena ? readableName(club.arena) : null,
+    host ? (
+      <a href={club.website} target="_blank" rel="noopener noreferrer" className="link link-hover">
+        {host}
+      </a>
+    ) : null,
+    history,
+  ].filter(Boolean);
+  if (facts.length === 0) return null;
+  return (
+    <p className="muted mt-1 text-sm wrap-break-word">
+      {facts.map((fact, index) => (
+        <span key={index}>
+          {index > 0 ? " · " : null}
+          {fact}
+        </span>
+      ))}
+    </p>
+  );
 }
 
 function NextGameChip({ nextGame, clubCode }) {
@@ -560,9 +607,12 @@ export default function TeamPage() {
         title={team.name ?? team.abbreviatedName ?? team.clubCode}
         media={team.crestUrl ? <RevealImage src={team.crestUrl} className="h-16 w-16 flex-none object-contain max-sm:h-24 max-sm:w-24" /> : null}
         description={
-          <p className="muted">
-            {team.abbreviatedName ?? team.clubCode} · {team.countryCode ?? "-"}
-          </p>
+          <>
+            <p className="muted">
+              {team.abbreviatedName ?? team.clubCode} · {team.countryCode ?? "-"}
+            </p>
+            <ClubFacts club={teamQuery.data?.club} />
+          </>
         }
       >
         {gamesQuery.isSuccess ? <NextGameChip nextGame={nextGame} clubCode={clubCode} /> : null}

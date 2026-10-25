@@ -3,13 +3,13 @@ import { motion } from "motion/react";
 import { Link } from "react-router";
 import AsyncState from "../lib/AsyncState";
 import EmptyText from "../lib/EmptyText";
-import LabelledSelect from "../lib/LabelledSelect";
 import { EASE_OUT, listContainer, listItem } from "../lib/motion";
 import Panel from "../lib/Panel";
 import { Silhouette } from "../lib/PlayerPortrait";
 import RevealImage from "../lib/RevealImage";
 import ShortLabel from "../lib/ShortLabel";
-import { TabStrip } from "../lib/TabStrip";
+import ToggleButtons from "../lib/ToggleButtons";
+import ViewSelect from "../lib/ViewSelect";
 
 // ---- Small pieces shared by the three leaderboards ----
 
@@ -149,27 +149,26 @@ export function CardGrid({ children }) {
 
 // ---- Controls shared by the full boards ----
 
-// Per game or season totals: a strip from sm up, a dropdown on a phone. Place ModeTabs where the strip belongs and ModeSelect among
-// the phone's other selects; each hides itself at the other size.
+// The choices under the scope tabs, as one row at every width (it wraps on a phone): the stage, a board's statistic, and per game or
+// totals. Each control has its label above it, so the row lines up on the controls.
+export function LeadersToolbar({ children }) {
+  return <div className="flex flex-wrap items-end gap-3">{children}</div>;
+}
+
+// The stage the numbers cover; nothing to choose, and nothing shown, when the season has one.
+export function StageSelect({ stages, value, onChange }) {
+  if (stages.length < 2) return null;
+  return <ViewSelect className="w-full sm:w-56" label="Stage" value={value} options={stages} onChange={onChange} />;
+}
+
+// Per game or season totals, as two buttons.
 const MODES = [
   { key: "perGame", label: "Per game" },
   { key: "accumulated", label: "Totals" },
 ];
 
-export function ModeTabs({ ariaLabel, mode, onChange, panelId }) {
-  return <TabStrip scrolling ariaLabel={ariaLabel} level={2} panelId={panelId} activeKey={mode} onChange={onChange} className="w-fit max-sm:hidden" tabs={MODES} />;
-}
-
-export function ModeSelect({ label, ariaLabel, mode, onChange }) {
-  return (
-    <LabelledSelect label={label} ariaLabel={ariaLabel} labelClassName="sm:hidden" value={mode} onChange={(event) => onChange(event.target.value)}>
-      {MODES.map((option) => (
-        <option key={option.key} value={option.key}>
-          {option.label}
-        </option>
-      ))}
-    </LabelledSelect>
-  );
+export function ModeToggle({ ariaLabel, mode, onChange }) {
+  return <ToggleButtons label="Show" ariaLabel={ariaLabel} choices={MODES} value={mode} onChange={onChange} panelId="leaders-panel" />;
 }
 
 // The line above a board: what the board shows. The way back to the cards is the page's back link (LeadersPage).
@@ -177,36 +176,13 @@ export function BoardTopLine({ children }) {
   return <div className="flex flex-wrap items-center gap-x-4 gap-y-1">{children}</div>;
 }
 
-// The statistics of one family as large, tappable chips; the chosen one is filled.
-export function StatChips({ id, items, activeKey, onChoose }) {
-  return (
-    <div id={id} role="group" aria-label="Metric category" className="flex flex-wrap gap-2.5">
-      {items.map((item) => (
-        <button key={item.key} type="button" aria-pressed={item.key === activeKey} className="stat-chip" onClick={() => onChoose(item.key)} title={item.tip}>
-          {item.label}
-        </button>
-      ))}
-    </div>
-  );
-}
-
-// Below sm the family tabs and the chips give way to this one select, grouped by family, so the board starts on the first screen.
+// A board's statistic: one select at every width, its statistics in a section per family.
 export function StatSelect({ families, stats, activeKey, onChoose }) {
-  return (
-    <LabelledSelect label="Statistic" labelClassName="sm:hidden" className="w-full" value={activeKey} onChange={(event) => onChoose(event.target.value)}>
-      {families.map((family) => (
-        <optgroup key={family} label={family}>
-          {stats
-            .filter((entry) => entry.family === family)
-            .map((entry) => (
-              <option key={entry.key} value={entry.key}>
-                {entry.label}
-              </option>
-            ))}
-        </optgroup>
-      ))}
-    </LabelledSelect>
-  );
+  const groups = families.map((family) => ({
+    label: family,
+    options: stats.filter((entry) => entry.family === family).map((entry) => ({ key: entry.key, label: entry.label })),
+  }));
+  return <ViewSelect className="w-full sm:w-72" label="Statistic" value={activeKey} groups={groups} onChange={onChoose} />;
 }
 
 // ---- A full-board row ----

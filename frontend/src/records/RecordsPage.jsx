@@ -9,6 +9,7 @@ import { EASE_OUT } from "../lib/motion";
 import PageHeader from "../lib/PageHeader";
 import Panel from "../lib/Panel";
 import { TabStrip } from "../lib/TabStrip";
+import ToggleButtons from "../lib/ToggleButtons";
 import ViewSelect from "../lib/ViewSelect";
 import { useDocumentTitle } from "../lib/useDocumentTitle";
 import RecordBook from "./RecordBook";
@@ -22,32 +23,6 @@ const PER_CHOICES = [
   { key: "total", label: "Totals" },
   { key: "game", label: "Per game" },
 ];
-
-// Totals or per game as two buttons, the chosen one filled; with only two choices the whole choice stays in view. As tall as the select
-// beside it, and touch-sized below sm.
-function PerToggle({ per, onChange }) {
-  return (
-    <div className="flex flex-col gap-1 text-xs text-base-content/70">
-      <span className="ms-2" aria-hidden="true">
-        Show
-      </span>
-      <div role="group" aria-label="Totals or per game" className="flex gap-2">
-        {PER_CHOICES.map((choice) => (
-          <button
-            key={choice.key}
-            type="button"
-            aria-pressed={choice.key === per}
-            aria-controls={PANEL_ID}
-            className={`btn max-sm:h-11 ${choice.key === per ? "btn-primary" : "btn-outline"}`}
-            onClick={() => onChange(choice.key)}
-          >
-            {choice.label}
-          </button>
-        ))}
-      </div>
-    </div>
-  );
-}
 
 const FETCHERS = { player: getPlayerSeasonRecords, game: getSingleGameRecords, team: getTeamSeasonRecords, teamgame: getTeamGameRecords };
 
@@ -148,7 +123,7 @@ function RecordsDetail({ seasonCode, params, setParams }) {
           of the traditional metrics only, totals or per game. Below sm the toggle wraps under the select. */}
       <div className="mb-6 flex flex-wrap items-end gap-3">
         <ViewSelect className="w-full sm:w-72" label="Metric" value={metric} groups={metricGroups} onChange={chooseMetric} />
-        {hasPer ? <PerToggle per={per} onChange={choosePer} /> : null}
+        {hasPer ? <ToggleButtons label="Show" ariaLabel="Totals or per game" choices={PER_CHOICES} value={per} onChange={choosePer} panelId={PANEL_ID} /> : null}
       </div>
 
       <div id={PANEL_ID} aria-busy={query.isPlaceholderData} className={query.isPlaceholderData ? "opacity-60 transition-opacity" : "transition-opacity"}>

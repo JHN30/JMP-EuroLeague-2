@@ -170,7 +170,7 @@ test("the board's error and empty states fit at 320px", async ({ page }) => {
   await expectNoSidewaysScroll(page);
 });
 
-test("on a phone a board picks its statistic from one select and keeps its filters behind a button", async ({ page }) => {
+test("a board picks its statistic from one select at every width, and on a phone keeps its filters behind a button", async ({ page }) => {
   test.setTimeout(90_000);
   await page.setViewportSize({ width: 320, height: HEIGHT });
   const slug = await seasonSlug(page);
@@ -180,7 +180,7 @@ test("on a phone a board picks its statistic from one select and keeps its filte
   const statistic = page.getByLabel("Statistic", { exact: true });
   const filters = page.getByRole("button", { name: /^Filters/ });
   await expect(statistic).toBeVisible();
-  await expect(page.getByRole("group", { name: "Metric category" })).toBeHidden();
+  await expect(page.getByRole("group", { name: "Metric category" })).toHaveCount(0);
   await expect(page.getByLabel("Team", { exact: true })).toBeHidden();
   // The first row of the board is on the first screen.
   expect((await rows(page).first().boundingBox()).y).toBeLessThan(HEIGHT);
@@ -194,10 +194,12 @@ test("on a phone a board picks its statistic from one select and keeps its filte
   await filters.click();
   await expect(page.getByRole("searchbox", { name: "Search players by name" })).toBeHidden();
 
-  // From 640px the tabs, chips and filters are back and the select and button are gone.
+  // From 640px the filters are out of the button; the statistic is still the one select, with no family tabs or chips.
   await page.setViewportSize({ width: 640, height: HEIGHT });
-  await expect(statistic).toBeHidden();
+  await expect(statistic).toBeVisible();
   await expect(filters).toBeHidden();
-  await expect(page.getByRole("group", { name: "Metric category" })).toBeVisible();
+  await expect(page.getByRole("tablist", { name: "Statistic family" })).toHaveCount(0);
   await expect(page.getByRole("searchbox", { name: "Search players by name" })).toBeVisible();
+  await statistic.selectOption("totalRebounds");
+  await expect(page).toHaveURL(/metric=totalRebounds/);
 });

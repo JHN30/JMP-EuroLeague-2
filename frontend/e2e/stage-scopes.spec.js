@@ -38,16 +38,18 @@ test("the 2012 team page reads the Top 16 ratings on its Top 16 tab", async ({ p
   expect(await requested).toBe("TS");
 });
 
-test("the 2012 advanced leaders have a Top 16 tab, and 2025 has none", async ({ page }) => {
+test("the 2012 advanced leaders have a Top 16 stage, and 2025 has none", async ({ page }) => {
   await page.goto("/2012/leaders?scope=advanced");
-  const top16 = page.getByRole("tab", { name: "Top 16", exact: true });
-  await expect(top16).toBeVisible({ timeout: 30_000 });
+  const stage = page.getByLabel("Stage", { exact: true });
+  await expect(stage.locator("option", { hasText: "Top 16" })).toHaveCount(1, { timeout: 30_000 });
   const requested = page.waitForRequest((request) => /\/advanced\/leaders/.test(request.url()) && new URL(request.url()).searchParams.get("scope") === "TS");
-  await top16.click();
+  await stage.selectOption({ label: "Top 16" });
   await requested;
   await expect(page).toHaveURL(/ascope=TS/);
 
   await page.goto("/2025/leaders?scope=advanced");
-  await expect(page.getByRole("tab", { name: "Regular season", exact: true })).toBeVisible({ timeout: 30_000 });
-  await expect(page.getByRole("tab", { name: "Top 16", exact: true })).toHaveCount(0);
+  await expect(stage.locator("option", { hasText: "Regular season" })).toHaveCount(1, { timeout: 30_000 });
+  await expect(stage.locator("option", { hasText: "Top 16" })).toHaveCount(0);
+  // No scope strip: the stages are only in the select.
+  await expect(page.getByRole("tablist", { name: "Advanced leaders scope" })).toHaveCount(0);
 });

@@ -15,19 +15,20 @@ test("uses compact native selects for statistics and comparison filters", async 
   await sections.getByRole("link", { name: "Leaders", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Leaders" })).toBeVisible();
 
-  const statisticsPhase = page.getByRole("tablist", { name: "Statistics phase" });
-  await statisticsPhase.getByRole("tab").first().click();
+  // The stage is a select in the row under the scope tabs (none at all in a season with one stage).
+  const stage = page.getByLabel("Stage", { exact: true });
+  if (await stage.count()) await stage.selectOption({ index: 0 });
   const playersScope = page.getByRole("tablist", { name: "Leaderboard scope" }).getByRole("tab", { name: "Players", exact: true });
   await playersScope.click();
   await expect(playersScope).toHaveAttribute("aria-selected", "true");
 
   // The landing shows category cards; the filters live on a full leaderboard.
   await page.getByRole("button", { name: "See the full leaderboard" }).first().click();
-  await expect(page.getByRole("tablist", { name: "Statistic family" })).toBeVisible();
-  // The mode is a strip on a desktop window (and a select on a phone).
-  const playerMode = page.getByRole("tablist", { name: "Player statistics mode" });
-  await playerMode.getByRole("tab", { name: "Totals" }).click();
-  await expect(playerMode.getByRole("tab", { name: "Totals" })).toHaveAttribute("aria-selected", "true");
+  await expect(page.getByLabel("Statistic", { exact: true })).toBeVisible();
+  // The mode is two buttons in the same row, at every width.
+  const playerMode = page.getByRole("group", { name: "Player statistics mode" });
+  await playerMode.getByRole("button", { name: "Totals" }).click();
+  await expect(playerMode.getByRole("button", { name: "Totals" })).toHaveAttribute("aria-pressed", "true");
 
   const playerDirection = page.getByLabel("Player sort direction");
   await playerDirection.selectOption("asc");

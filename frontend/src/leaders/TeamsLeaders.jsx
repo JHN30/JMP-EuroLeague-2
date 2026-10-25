@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { motion } from "motion/react";
 import AsyncState from "../lib/AsyncState";
 import EmptyText from "../lib/EmptyText";
@@ -8,8 +7,7 @@ import { listContainer } from "../lib/motion";
 import Panel from "../lib/Panel";
 import PanelHeader from "../lib/PanelHeader";
 import SearchField from "../lib/SearchField";
-import { TabStrip } from "../lib/TabStrip";
-import { Avatar, BoardHeader, BoardRow, BoardTopLine, CardGrid, CategoryCard, ModeSelect, ModeTabs, StatChips, StatSelect } from "./LeaderParts";
+import { Avatar, BoardHeader, BoardRow, BoardTopLine, CardGrid, CategoryCard, LeadersToolbar, ModeToggle, StatSelect } from "./LeaderParts";
 import { advancedScopeForPhase } from "../teams/teamLeague";
 import { barShare, rankRows } from "./leaderData";
 import ForfeitStatsNote from "../lib/ForfeitStatsNote";
@@ -52,12 +50,11 @@ function TeamCard({ stat, seasonCode, rows, mode, onOpen, isLoading, isError, on
 
 const PAGE_SIZE = 25;
 
-function TeamsBoard({ seasonCode, phaseCode, metric, source, params, setParams }) {
+function TeamsBoard({ seasonCode, phaseCode, stage, metric, source, params, setParams }) {
   const stat = leaderStatByKey(metric) ?? LEADER_STATS[0];
   const mode = params.get("mode") === "accumulated" ? "accumulated" : "perGame";
   const direction = params.get("direction") ?? (stat.lowerIsBetter ? "asc" : "desc");
   const search = params.get("search") ?? "";
-  const [family, setFamily] = useState(stat.family);
   const sign = direction === "asc" ? 1 : -1;
 
   const valued = source.rows.map((row) => ({ row, value: stat.get(row, mode) })).filter((entry) => entry.value !== null && !Number.isNaN(entry.value));
@@ -82,41 +79,22 @@ function TeamsBoard({ seasonCode, phaseCode, metric, source, params, setParams }
   }
 
   const families = TEAM_SECTION_NAMES.filter((entry) => LEADER_STATS.some((candidate) => candidate.family === entry && usable(candidate, source)));
-  const chooseStat = (key) => {
-    setFamily(leaderStatByKey(key)?.family ?? family);
-    update({ metric: key, direction: undefined, offset: undefined });
-  };
+  const chooseStat = (key) => update({ metric: key, direction: undefined, offset: undefined });
+  const setMode = (key) => update({ mode: key === "perGame" ? undefined : key });
 
   return (
     <div className="flex flex-col gap-4">
+      <LeadersToolbar>
+        {stage}
+        <StatSelect families={families} stats={LEADER_STATS.filter((entry) => usable(entry, source))} activeKey={stat.key} onChoose={chooseStat} />
+        {hasMode ? <ModeToggle ariaLabel="Team statistics mode" mode={mode} onChange={setMode} /> : null}
+      </LeadersToolbar>
       <BoardTopLine>
         <p className="muted text-sm">{hasMode ? (mode === "perGame" ? "Per game" : "Season totals") : "Whole phase"} · overtime counted</p>
       </BoardTopLine>
       {source.unadjusted ? <p className="muted text-sm">{UNADJUSTED_NOTE}</p> : null}
       <ForfeitStatsNote seasonCode={seasonCode} phaseCode={phaseCode} />
-      {hasMode ? <ModeTabs ariaLabel="Team statistics mode" mode={mode} onChange={(key) => update({ mode: key === "perGame" ? undefined : key })} /> : null}
-      <StatSelect families={families} stats={LEADER_STATS.filter((entry) => usable(entry, source))} activeKey={stat.key} onChoose={chooseStat} />
-      <div className="max-sm:hidden">
-        <TabStrip
-          scrolling
-          ariaLabel="Team statistic family"
-          panelId="leaders-team-stats"
-          activeKey={family}
-          onChange={setFamily}
-          className="mb-3 w-fit"
-          tabs={families.map((entry) => ({ key: entry, label: entry }))}
-        />
-        <StatChips
-          id="leaders-team-stats"
-          items={LEADER_STATS.filter((entry) => entry.family === family && usable(entry, source))}
-          activeKey={stat.key}
-          onChoose={chooseStat}
-        />
-      </div>
       <div className="grid grid-cols-2 items-end gap-3 max-sm:[&_select]:w-full sm:flex sm:flex-wrap">
-        {hasMode ? (
-          <ModeSelect label="Team statistics" ariaLabel="Team statistics mode" mode={mode} onChange={(key) => update({ mode: key === "perGame" ? undefined : key })} />
-        ) : null}
         <LabelledSelect label="Order" ariaLabel="Team sort direction" value={direction} onChange={(event) => update({ direction: event.target.value })}>
           <option value="desc">Highest first</option>
           <option value="asc">Lowest first</option>
@@ -157,7 +135,7 @@ function TeamsBoard({ seasonCode, phaseCode, metric, source, params, setParams }
   );
 }
 
-export default function TeamsLeaders({ seasonCode, phaseCode, params, setParams }) {
+export default function TeamsLeaders({ seasonCode, phaseCode, stage, params, setParams }) {
   const metric = params.get("metric");
   const mode = params.get("mode") === "accumulated" ? "accumulated" : "perGame";
   const setMode = (key) =>
@@ -179,19 +157,19 @@ export default function TeamsLeaders({ seasonCode, phaseCode, params, setParams 
     });
   };
 
-  if (metric) return <TeamsBoard seasonCode={seasonCode} phaseCode={phaseCode} metric={metric} source={source} params={params} setParams={setParams} />;
+  if (metric) return <TeamsBoard seasonCode={seasonCode} phaseCode={phaseCode} stage={stage} metric={metric} source={source} params={params} setParams={setParams} />;
   if (source.isError) return <AsyncState status="error" message="Could not load the team leaderboard." onRetry={source.refetch} />;
   return (
     <div className="flex flex-col gap-8">
+      <LeadersToolbar>
+        {stage}
+        <ModeToggle ariaLabel="Team statistics mode" mode={mode} onChange={setMode} />
+      </LeadersToolbar>
       {source.unadjusted ? <p className="muted text-sm">{UNADJUSTED_NOTE}</p> : null}
       <ForfeitStatsNote seasonCode={seasonCode} phaseCode={phaseCode} />
       {advancedScopeForPhase(phaseCode) === "PS" ? (
         <p className="muted text-sm">Ratings for the play-in, playoffs and Final Four cover the whole postseason together.</p>
       ) : null}
-      <div>
-        <ModeTabs ariaLabel="Team statistics mode" mode={mode} onChange={setMode} />
-        <ModeSelect label="Team statistics" ariaLabel="Team statistics mode" mode={mode} onChange={setMode} />
-      </div>
       {TEAM_SECTION_NAMES.map((family) => {
         const stats = (mode === "accumulated" ? TEAM_TOTAL_CARDS : TEAM_CARDS).map((key) => leaderStatByKey(key)).filter((stat) => stat.family === family && usable(stat, source));
         if (stats.length === 0) return null;

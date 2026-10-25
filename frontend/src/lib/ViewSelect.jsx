@@ -12,7 +12,7 @@ export default function ViewSelect({ label, value, options, groups, onChange, cl
   return (
     <label className={`flex min-w-0 flex-col gap-1 text-xs text-base-content/70 ${className}`}>
       <span className="ms-2">{label}</span>
-      <select className="select select-bordered w-full text-sm text-base-content" value={value} onChange={(event) => onChange(event.target.value)}>
+      <select aria-label={label} className="select select-bordered w-full text-sm text-base-content" value={value} onChange={(event) => onChange(event.target.value)}>
         {groups
           ? groups.map((group) => (
               <optgroup key={group.label} label={group.label}>

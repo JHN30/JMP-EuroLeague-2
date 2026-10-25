@@ -14,7 +14,7 @@ import PanelHeader from "../lib/PanelHeader";
 import { nameParts, titleCase } from "../lib/playerName";
 import SearchField from "../lib/SearchField";
 import { TabStrip } from "../lib/TabStrip";
-import { Avatar, BoardHeader, BoardRow, BoardTopLine, CardGrid, CategoryCard, ModeSelect, ModeTabs, RankBadge, StatChips, StatSelect, TeamTag } from "./LeaderParts";
+import { Avatar, BoardHeader, BoardRow, BoardTopLine, CardGrid, CategoryCard, LeadersToolbar, ModeToggle, RankBadge, StatSelect, TeamTag } from "./LeaderParts";
 import { barShare, fetchFullPlayerBoard, formatPlayerValue, hasVolume, playerValue, rankRows, statNumber } from "./leaderData";
 import { FORM_STATS, PLAYER_CARDS, PLAYER_FAMILIES, PLAYER_STATS, PLAYER_TOTAL_CARDS } from "./leaderDefs";
 
@@ -191,7 +191,7 @@ function FormSection({ seasonCode, phaseCode, openMetric }) {
   );
 }
 
-function PlayersLanding({ seasonCode, phaseCode, params, setParams, openMetric }) {
+function PlayersLanding({ seasonCode, phaseCode, stage, params, setParams, openMetric }) {
   const mode = params.get("mode") === "accumulated" ? "accumulated" : "perGame";
   const setMode = (key) =>
     setParams((current) => {
@@ -202,10 +202,10 @@ function PlayersLanding({ seasonCode, phaseCode, params, setParams, openMetric }
     });
   return (
     <div className="flex flex-col gap-8">
-      <div>
-        <ModeTabs ariaLabel="Player statistics mode" mode={mode} onChange={setMode} />
-        <ModeSelect label="Player statistics" ariaLabel="Player statistics mode" mode={mode} onChange={setMode} />
-      </div>
+      <LeadersToolbar>
+        {stage}
+        <ModeToggle ariaLabel="Player statistics mode" mode={mode} onChange={setMode} />
+      </LeadersToolbar>
       {PLAYER_FAMILIES.map((family) => {
         const keys = (mode === "accumulated" ? PLAYER_TOTAL_CARDS : PLAYER_CARDS).filter((key) => statByKey(key).family === family);
         if (keys.length === 0) return null;
@@ -229,7 +229,7 @@ function PlayersLanding({ seasonCode, phaseCode, params, setParams, openMetric }
 
 const MIN_GAMES_OPTIONS = [1, 5, 10, 15];
 
-function PlayersBoard({ seasonCode, phaseCode, metric, params, setParams }) {
+function PlayersBoard({ seasonCode, phaseCode, stage, metric, params, setParams }) {
   const stat = statByKey(metric) ?? PLAYER_STATS[0];
   const mode = params.get("mode") === "accumulated" ? "accumulated" : "perGame";
   const direction = params.get("direction") ?? (stat.lowerIsBetter ? "asc" : "desc");
@@ -238,7 +238,6 @@ function PlayersBoard({ seasonCode, phaseCode, metric, params, setParams }) {
   const position = params.get("position") ?? "";
   const search = params.get("search") ?? "";
   const offset = Number(params.get("offset")) || 0;
-  const [family, setFamily] = useState(stat.family);
 
   const boardQuery = useQuery({
     queryKey: ["leaders-board", seasonCode, phaseCode, mode, stat.key, direction],
@@ -294,10 +293,6 @@ function PlayersBoard({ seasonCode, phaseCode, metric, params, setParams }) {
   }
   const setMode = (key) => update({ mode: key === "perGame" ? undefined : key, offset: undefined });
   const chooseStat = (key) => update({ metric: key, direction: undefined, offset: undefined, mode: stat.kind === "games" ? mode : params.get("mode") });
-  const pickStat = (key) => {
-    setFamily(statByKey(key)?.family ?? family);
-    chooseStat(key);
-  };
   const activeFilters = [minGames > 0, team, position, search].filter(Boolean).length;
   // The page buttons are under the list, so a new page brings the top of the list back into view.
   const listRef = useRef(null);
@@ -308,29 +303,18 @@ function PlayersBoard({ seasonCode, phaseCode, metric, params, setParams }) {
 
   return (
     <div className="flex flex-col gap-4">
+      <LeadersToolbar>
+        {stage}
+        <StatSelect families={PLAYER_FAMILIES} stats={PLAYER_STATS} activeKey={stat.key} onChoose={chooseStat} />
+        <ModeToggle ariaLabel="Player statistics mode" mode={mode} onChange={setMode} />
+      </LeadersToolbar>
       <BoardTopLine>
         <p className="muted text-sm">
           {mode === "perGame" ? "Per game" : "Season totals"} · {phaseMinGames && minGames === 0 ? `qualified players (${phaseMinGames}+ games)` : minGames > 1 ? `${minGames}+ games` : "all players"}
         </p>
       </BoardTopLine>
 
-      <ModeTabs ariaLabel="Player statistics mode" mode={mode} onChange={setMode} />
-      <StatSelect families={PLAYER_FAMILIES} stats={PLAYER_STATS} activeKey={stat.key} onChoose={pickStat} />
-      <div className="max-sm:hidden">
-        <TabStrip
-          scrolling
-          ariaLabel="Statistic family"
-          panelId="leaders-player-stats"
-          activeKey={family}
-          onChange={setFamily}
-          className="mb-3 w-fit"
-          tabs={PLAYER_FAMILIES.map((entry) => ({ key: entry, label: entry }))}
-        />
-        <StatChips id="leaders-player-stats" items={PLAYER_STATS.filter((entry) => entry.family === family)} activeKey={stat.key} onChoose={chooseStat} />
-      </div>
-
       <div className="grid grid-cols-2 items-end gap-3 max-sm:[&_select]:w-full sm:flex sm:flex-wrap">
-        <ModeSelect label="Player statistics" ariaLabel="Player statistics mode" mode={mode} onChange={setMode} />
         <LabelledSelect label="Order" ariaLabel="Player sort direction" value={direction} onChange={(event) => update({ direction: event.target.value, offset: undefined })}>
           <option value="desc">Highest first</option>
           <option value="asc">Lowest first</option>
@@ -418,7 +402,7 @@ function PlayersBoard({ seasonCode, phaseCode, metric, params, setParams }) {
   );
 }
 
-export default function PlayersLeaders({ seasonCode, phaseCode, params, setParams }) {
+export default function PlayersLeaders({ seasonCode, phaseCode, stage, params, setParams }) {
   const metric = params.get("metric");
   // Opening a category swaps the page's view on one path (only `?metric=` changes), so ScrollToTop does not run: the page goes to the top
   // by itself. Going back to the categories does the same, from the page's back link (LeadersPage).
@@ -434,8 +418,8 @@ export default function PlayersLeaders({ seasonCode, phaseCode, params, setParam
   };
 
   return metric ? (
-    <PlayersBoard seasonCode={seasonCode} phaseCode={phaseCode} metric={metric} params={params} setParams={setParams} />
+    <PlayersBoard seasonCode={seasonCode} phaseCode={phaseCode} stage={stage} metric={metric} params={params} setParams={setParams} />
   ) : (
-    <PlayersLanding seasonCode={seasonCode} phaseCode={phaseCode} params={params} setParams={setParams} openMetric={openMetric} />
+    <PlayersLanding seasonCode={seasonCode} phaseCode={phaseCode} stage={stage} params={params} setParams={setParams} openMetric={openMetric} />
   );
 }

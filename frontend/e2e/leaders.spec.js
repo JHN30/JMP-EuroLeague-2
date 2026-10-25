@@ -32,3 +32,41 @@ test("Leaders opens on category cards, opens a full leaderboard and goes back", 
 
   expect(errors).toEqual([]);
 });
+
+test("one row of choices under the scope tabs: the stage, a board's statistic and per game or totals, all in the address", async ({ page }) => {
+  await page.goto("/2025/leaders");
+  await expect(page.getByRole("heading", { name: "Points", exact: true })).toBeVisible({ timeout: 30_000 });
+  // No strips under the scope tabs any more.
+  for (const name of ["Statistics phase", "Player statistics mode", "Statistic family", "Advanced leaders scope"]) {
+    await expect(page.getByRole("tablist", { name })).toHaveCount(0);
+  }
+  const stage = page.getByLabel("Stage", { exact: true });
+  const mode = page.getByRole("group", { name: "Player statistics mode" });
+  await expect(mode.getByRole("button", { name: "Per game" })).toHaveAttribute("aria-pressed", "true");
+  // The stage and the mode share one row.
+  const stageBox = await stage.boundingBox();
+  const modeBox = await mode.boundingBox();
+  expect(Math.abs(stageBox.y + stageBox.height - (modeBox.y + modeBox.height))).toBeLessThanOrEqual(2);
+
+  // Totals on the cards is in the address, and so is a stage.
+  await mode.getByRole("button", { name: "Totals" }).click();
+  await expect(page).toHaveURL(/[?&]mode=accumulated/);
+  await expect(mode.getByRole("button", { name: "Totals" })).toHaveAttribute("aria-pressed", "true");
+  await stage.selectOption({ label: "Playoffs" });
+  await expect(page).toHaveURL(/[?&]phase=PO/);
+  await expect(page).toHaveURL(/[?&]mode=accumulated/);
+
+  // A board adds its statistic to the row; another statistic opens its board.
+  await page.getByRole("button", { name: "See the full leaderboard" }).first().click();
+  const statistic = page.getByLabel("Statistic", { exact: true });
+  await expect(statistic).toBeVisible();
+  await statistic.selectOption("assists");
+  await expect(page).toHaveURL(/metric=assists/);
+  await expect(page).toHaveURL(/[?&]phase=PO/);
+
+  // A season with one stage has nothing to choose, so no Stage select.
+  await page.goto("/2026/leaders");
+  await expect(page.getByRole("heading", { name: "Points", exact: true })).toBeVisible({ timeout: 30_000 });
+  await expect(page.getByLabel("Stage", { exact: true })).toHaveCount(0);
+  await expect(page.getByRole("group", { name: "Player statistics mode" })).toBeVisible();
+});

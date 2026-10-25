@@ -8,6 +8,7 @@ import PageHeader from "../lib/PageHeader";
 import { TabStrip } from "../lib/TabStrip";
 import { useDocumentTitle } from "../lib/useDocumentTitle";
 import { usePhaseParam } from "../lib/usePhaseParam";
+import { StageSelect } from "./LeaderParts";
 import AdvancedLeaders from "./AdvancedLeaders";
 import PlayersLeaders from "./PlayersLeaders";
 import TeamsLeaders from "./TeamsLeaders";
@@ -33,9 +34,7 @@ export default function LeadersPage() {
 
   const phasesQuery = useQuery({ queryKey: ["phases", seasonCode], queryFn: () => getPhases(seasonCode) });
   const phases = phasesQuery.data?.phases ?? [];
-  const [phaseCode, setPhaseCode] = usePhaseParam(phases);
-
-  const showPhase = scope !== "advanced" && phases.length > 0;
+  const [phaseCode] = usePhaseParam(phases);
 
   // An open board has `?metric=`; its way back is the shared back link (above the header from sm, in the sticky bar below). Going back swaps
   // the view on one path, so ScrollToTop does not run and the page goes to the top by itself.
@@ -61,39 +60,32 @@ export default function LeadersPage() {
     });
   }
 
+  // One address change: the stage, and the board filters that belong to the old one cleared. (Two updates in a row would each start from
+  // the same old address, and the second would undo the first.)
   function choosePhase(code) {
-    setPhaseCode(code);
     setParams((current) => {
       const next = new URLSearchParams(current);
+      next.set("phase", code);
       for (const name of ["offset", "team", "position", "search", "minGames"]) next.delete(name);
       return next;
     });
   }
+
+  // The stage choice, for the players' and the teams' toolbars (the advanced scope has its own stages).
+  const stage = <StageSelect stages={phases.map((phase) => ({ key: phase.code, label: phase.name ?? phase.code }))} value={phaseCode} onChange={choosePhase} />;
 
   return (
     <div>
       {params.get("metric") ? <BackLink to={`/${seasonCode}/leaders${cardsQuery ? `?${cardsQuery}` : ""}`} label="Categories" onBack={backToCards} /> : null}
       <PageHeader kicker="LEADERBOARDS" title="Leaders" />
 
-      <TabStrip scrolling ariaLabel="Leaderboard scope" level={1} panelId="leaders-panel" activeKey={scope} onChange={chooseScope} className={`w-fit ${showPhase ? "mb-4" : "mb-6"}`} tabs={SCOPES} />
-      {showPhase ? (
-        <TabStrip
-          scrolling
-          ariaLabel="Statistics phase"
-          level={2}
-          panelId="leaders-panel"
-          activeKey={phaseCode}
-          onChange={choosePhase}
-          className="mb-6 w-fit"
-          tabs={phases.map((phase) => ({ key: phase.code, label: phase.name ?? phase.code }))}
-        />
-      ) : null}
+      <TabStrip scrolling ariaLabel="Leaderboard scope" level={1} panelId="leaders-panel" activeKey={scope} onChange={chooseScope} className="mb-6 w-fit" tabs={SCOPES} />
 
       <motion.div id="leaders-panel" key={scope} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3, ease: EASE_OUT }}>
         {scope === "players" ? (
-          <PlayersLeaders seasonCode={seasonCode} phaseCode={phaseCode} params={params} setParams={setParams} />
+          <PlayersLeaders seasonCode={seasonCode} phaseCode={phaseCode} stage={stage} params={params} setParams={setParams} />
         ) : scope === "teams" ? (
-          <TeamsLeaders seasonCode={seasonCode} phaseCode={phaseCode} params={params} setParams={setParams} />
+          <TeamsLeaders seasonCode={seasonCode} phaseCode={phaseCode} stage={stage} params={params} setParams={setParams} />
         ) : (
           <AdvancedLeaders seasonCode={seasonCode} params={params} setParams={setParams} />
         )}

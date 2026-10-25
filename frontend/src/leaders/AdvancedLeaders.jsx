@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { motion } from "motion/react";
 import { getAdvancedLeaders } from "../lib/api";
@@ -10,8 +10,7 @@ import { listContainer } from "../lib/motion";
 import Panel from "../lib/Panel";
 import PanelHeader from "../lib/PanelHeader";
 import { nameParts, titleCase } from "../lib/playerName";
-import { TabStrip } from "../lib/TabStrip";
-import { Avatar, BoardHeader, BoardRow, BoardTopLine, CardGrid, CategoryCard, StatChips, StatSelect, TeamTag } from "./LeaderParts";
+import { Avatar, BoardHeader, BoardRow, BoardTopLine, CardGrid, CategoryCard, LeadersToolbar, StageSelect, StatSelect, TeamTag } from "./LeaderParts";
 import { barShare, formatAdvancedValue } from "./leaderData";
 import { ADVANCED_FAMILIES, ADVANCED_SCOPES, ADVANCED_STATS } from "./leaderDefs";
 
@@ -63,12 +62,11 @@ function AdvancedCard({ stat, seasonCode, scope, onOpen }) {
 
 // ---- The full board ----
 
-function AdvancedBoard({ seasonCode, scope, metric, params, setParams }) {
+function AdvancedBoard({ seasonCode, scope, stage, metric, params, setParams }) {
   const stat = statByKey(metric) ?? ADVANCED_STATS[0];
   const offset = Number(params.get("offset")) || 0;
   const minutesParam = params.get("minMinutes");
   const direction = params.get("direction") ?? order(stat);
-  const [family, setFamily] = useState(stat.family);
 
   const pageQuery = useQuery({
     queryKey: ["leaders-advanced-board", seasonCode, scope, stat.key, direction, minutesParam, offset],
@@ -113,35 +111,18 @@ function AdvancedBoard({ seasonCode, scope, metric, params, setParams }) {
     listRef.current?.scrollIntoView({ block: "start" });
   }, [offset, pageQuery.isLoading]);
 
-  const chooseStat = (key) => {
-    setFamily(statByKey(key)?.family ?? family);
-    update({ metric: key, direction: undefined, offset: undefined });
-  };
+  const chooseStat = (key) => update({ metric: key, direction: undefined, offset: undefined });
 
   return (
     <div className="flex flex-col gap-4">
+      <LeadersToolbar>
+        {stage}
+        <StatSelect families={ADVANCED_FAMILIES} stats={ADVANCED_STATS} activeKey={stat.key} onChoose={chooseStat} />
+      </LeadersToolbar>
       <BoardTopLine>
         <p className="muted text-sm">{stat.tip ?? stat.label}</p>
         {pageQuery.data?.earlySeason ? <span className="badge badge-warning badge-outline">Early season: small samples</span> : null}
       </BoardTopLine>
-      <StatSelect families={ADVANCED_FAMILIES} stats={ADVANCED_STATS} activeKey={stat.key} onChoose={chooseStat} />
-      <div className="max-sm:hidden">
-        <TabStrip
-          scrolling
-          ariaLabel="Advanced statistic family"
-          panelId="leaders-advanced-stats"
-          activeKey={family}
-          onChange={setFamily}
-          className="mb-3 w-fit"
-          tabs={ADVANCED_FAMILIES.map((entry) => ({ key: entry, label: entry }))}
-        />
-        <StatChips
-          id="leaders-advanced-stats"
-          items={ADVANCED_STATS.filter((entry) => entry.family === family)}
-          activeKey={stat.key}
-          onChoose={chooseStat}
-        />
-      </div>
       <div className="grid grid-cols-2 items-end gap-3 max-sm:[&_select]:w-full sm:flex sm:flex-wrap">
         <LabelledSelect label="Order" ariaLabel="Advanced sort direction" value={direction} onChange={(event) => update({ direction: event.target.value, offset: undefined })} disabled={["rapm", "onOff", "per", "winShares", "offWinShares", "defWinShares", "winSharesPer40"].includes(stat.key)}>
           <option value="desc">Highest first</option>
@@ -234,23 +215,17 @@ export default function AdvancedLeaders({ seasonCode, params, setParams }) {
   if (scopesQuery.isError) return <AsyncState status="error" message="Could not load advanced leaders." onRetry={() => scopesQuery.refetch()} />;
   if (!scope) return <EmptyText>Advanced statistics are not available for this season yet.</EmptyText>;
 
+  // The advanced scopes are this view's stages.
+  const stage = <StageSelect stages={scopes.map((entry) => ({ key: entry.key, label: entry.label }))} value={scope} onChange={(key) => set({ ascope: key, offset: undefined })} />;
+
   return (
     <div className="flex flex-col gap-4">
-      <TabStrip
-        scrolling
-        ariaLabel="Advanced leaders scope"
-        level={2}
-        panelId="leaders-advanced-panel"
-        activeKey={scope}
-        onChange={(key) => set({ ascope: key, offset: undefined })}
-        className="w-fit"
-        tabs={scopes.map((entry) => ({ key: entry.key, label: entry.label }))}
-      />
       <div id="leaders-advanced-panel">
         {metric ? (
-          <AdvancedBoard seasonCode={seasonCode} scope={scope} metric={metric} params={params} setParams={setParams} />
+          <AdvancedBoard seasonCode={seasonCode} scope={scope} stage={stage} metric={metric} params={params} setParams={setParams} />
         ) : (
           <div className="flex flex-col gap-8">
+            <LeadersToolbar>{stage}</LeadersToolbar>
             {ADVANCED_FAMILIES.map((family) => (
               <section key={family} className="flex flex-col gap-4" aria-label={family}>
                 <PanelHeader title={family} />

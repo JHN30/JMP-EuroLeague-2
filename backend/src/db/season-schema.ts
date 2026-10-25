@@ -51,6 +51,10 @@ export const games = pgTable(
     roadClubAbbreviatedName: text("road_club_abbreviated_name"),
     localScore: integer("local_score"),
     roadScore: integer("road_score"),
+    audience: integer("audience"),
+    venueName: text("venue_name"),
+    venueCapacity: integer("venue_capacity"),
+    isNeutralVenue: boolean("is_neutral_venue"),
   },
   (table) => [primaryKey({ columns: [table.competitionCode, table.seasonCode, table.gameCode] })],
 );

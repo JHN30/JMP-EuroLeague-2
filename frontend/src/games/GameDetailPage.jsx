@@ -1158,7 +1158,7 @@ export default function GameDetailPage() {
   return (
     <div>
       <BackLink to={`/${seasonCode}/games${listQuery}`} label="Games" />
-      <MatchupHeader game={game} officials={gameQuery.data?.officials} seasonCode={seasonCode} localWon={localWon} roadWon={roadWon} />
+      <MatchupHeader game={game} officials={gameQuery.data?.officials} venue={gameQuery.data?.venue} seasonCode={seasonCode} localWon={localWon} roadWon={roadWon} />
       <CompetitionContext seasonCode={seasonCode} gameCode={game.gameCode} game={game} />
 
       <TabStrip ariaLabel="Game detail" level={1} panelId="game-detail-panel" activeKey={tab} onChange={setTab} scrolling className="mb-4 lg:w-fit" tabs={game.played ? GAME_TABS : UNPLAYED_TABS} />

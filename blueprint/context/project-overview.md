@@ -1,6 +1,6 @@
 # JMP Euroleague - Project Overview
 
-<!-- blueprint:source-hash 2803a693892453c666aabdb41cbe39e615c56a176e387d693439cd021de19bd5 -->
+<!-- blueprint:source-hash 3efa0a8db00032c245ce689965860510d77c794cbc3562c74d1bb7043b0937d8 -->
 
 > A public, read-only EuroLeague explorer backed by curated PostgreSQL tables: `E2000` to `E2026` in production and locally; feature 34 adapted and validated every season locally first.
 

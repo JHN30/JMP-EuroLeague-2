@@ -294,7 +294,7 @@ const UNPLAYED_BOX_SCORE = { periodScores: [], teamStats: [], playerStats: [] };
 // `lineupsStatus` for its on-court intervals and five-man units (default: none available), and `shots` /
 // `shotsStatus` for the Shooting tab (an array of `shot(...)` rows, default: none).
 export async function mockGameApi(page, options = {}) {
-  const { requests = [], played = true, boxScore = BOX_SCORE, boxScoreStatus = 200, playByPlay = { events: [] }, playByPlayStatus = 200, advanced = NO_ADVANCED, advancedStatus = 200, teamFlow = NO_TEAM_FLOW, teamFlowStatus = 200, lineups = NO_LINEUPS, lineupsStatus = 200, shots = [], shotsStatus = 200, officials = [] } = options;
+  const { requests = [], played = true, boxScore = BOX_SCORE, boxScoreStatus = 200, playByPlay = { events: [] }, playByPlayStatus = 200, advanced = NO_ADVANCED, advancedStatus = 200, teamFlow = NO_TEAM_FLOW, teamFlowStatus = 200, lineups = NO_LINEUPS, lineupsStatus = 200, shots = [], shotsStatus = 200, officials = [], venue = null } = options;
   await page.route("**/api/**", async (route) => {
     const pathname = new URL(route.request().url()).pathname;
     requests.push(pathname);
@@ -316,6 +316,7 @@ export async function mockGameApi(page, options = {}) {
             roadScore: played ? 70 : null,
           },
           officials,
+          venue,
         },
       });
       return;

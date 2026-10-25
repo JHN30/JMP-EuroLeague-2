@@ -294,6 +294,31 @@ export async function getGame(seasonCode: string, gameCode: number): Promise<Gam
   return rows[0] ? toGame(rows[0], codes) : null;
 }
 
+export type GameVenue = { name: string | null; capacity: number | null; attendance: number | null; neutral: boolean };
+
+// One game's arena and crowd. A capacity or attendance of 0 means the feed has none; null when the game has neither venue nor crowd.
+export async function getGameVenue(seasonCode: string, gameCode: number): Promise<GameVenue | null> {
+  const rows = await catalogRead(() =>
+    db.select({
+      name: games.venueName,
+      capacity: games.venueCapacity,
+      attendance: games.audience,
+      neutral: games.isNeutralVenue,
+    })
+      .from(games)
+      .where(and(
+        eq(games.competitionCode, COMPETITION_CODE),
+        eq(games.seasonCode, seasonCode),
+        eq(games.gameCode, gameCode),
+      ))
+      .limit(1),
+  );
+  const row = rows[0];
+  if (!row) return null;
+  const venue = { name: row.name || null, capacity: row.capacity || null, attendance: row.attendance || null, neutral: row.neutral === true };
+  return venue.name === null && venue.capacity === null && venue.attendance === null ? null : venue;
+}
+
 export type GameOfficial = { number: number; code: string; name: string; countryCode: string | null; countryName: string | null };
 
 // One game's officials in the feed's order; an empty list when the game has none (not played, or not assigned yet).

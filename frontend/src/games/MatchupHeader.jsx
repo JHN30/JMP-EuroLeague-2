@@ -2,7 +2,8 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { getSeasonStandings } from "../lib/api";
 import Panel from "../lib/Panel";
-import { displayName } from "../lib/playerName";
+import { formatCount } from "../lib/format";
+import { displayName, titleCase } from "../lib/playerName";
 import { groupedStageCodes } from "../lib/seasonFormat";
 import { useSeasonFormat } from "../lib/useSeasonFormat";
 import { eliminationStageLabel } from "../postseason/eliminationBracket";
@@ -61,11 +62,24 @@ function MatchInfo({ items }) {
   );
 }
 
+// The arena as the Arena entry reads: the feed writes most names in capitals ("BELGRADE ARENA"), so those read in title case and a
+// name with its own lower-case letters is left as it is. Its capacity and the feed's neutral-venue flag go in small lines under it.
+function arenaValue(venue) {
+  if (!venue?.name) return null;
+  return (
+    <>
+      {/[a-z]/.test(venue.name) ? venue.name : titleCase(venue.name)}
+      {venue.capacity ? <span className="muted block text-xs font-normal">Capacity {formatCount(venue.capacity)}</span> : null}
+      {venue.neutral ? <span className="muted block text-xs font-normal">Neutral venue</span> : null}
+    </>
+  );
+}
+
 // The game page's header, laid out like EuroLeague's: each club's crest, TV code and current league position at its end of the
 // card, the score (or the tip-off time) in the middle and the round and date in one line under them. The position is the
 // club's place in the latest regular-season standings, shown for a regular-season game once those have loaded; without it
 // the brackets are left out, with no error and no placeholder.
-export default function MatchupHeader({ game, officials = [], seasonCode, localWon, roadWon }) {
+export default function MatchupHeader({ game, officials = [], venue = null, seasonCode, localWon, roadWon }) {
   const format = useSeasonFormat(seasonCode).data;
   const cancelled = format?.status === "cancelled";
   // In a grouped table stage the bracket is the club's place within its own group, from that stage's table.
@@ -112,7 +126,13 @@ export default function MatchupHeader({ game, officials = [], seasonCode, localW
       <p className="muted mt-3 text-center text-sm">
         {groupedStage && game.groupName ? `${game.groupName} · ` : ""}{round} · {cancelled && !game.played ? "Originally scheduled: " : ""}{formatGameDate(game.scheduledAt)}
       </p>
-      <MatchInfo items={[{ label: "Officials", value: officials.map((official) => displayName(official.name)).join(", ") }]} />
+      <MatchInfo
+        items={[
+          { label: "Arena", value: arenaValue(venue) },
+          { label: "Attendance", value: game.played && venue?.attendance ? formatCount(venue.attendance) : null },
+          { label: "Officials", value: officials.map((official) => displayName(official.name)).join(", ") },
+        ]}
+      />
     </Panel>
   );
 }

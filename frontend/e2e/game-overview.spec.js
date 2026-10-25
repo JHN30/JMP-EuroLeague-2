@@ -60,6 +60,47 @@ test("a played game names its officials in the header, as players are named, on 
   await expect(officialsInHeader(page)).toHaveText("Damir Javor, Jordi Aliaga, Guido Giovannetti");
 });
 
+// An entry in the game header's match information, by its label.
+const headerEntry = (page, label) => page.locator("dl > div", { has: page.locator("dt", { hasText: new RegExp(`^${label}$`) }) }).locator("dd");
+
+test("the game reply carries the arena and the crowd, with a missing figure as null", async ({ request }) => {
+  const health = await (await request.get("http://localhost:3000/api/health")).json();
+  expect(health.target).toBe("local");
+  const { venue } = await (await request.get("http://localhost:3000/api/seasons/2025/games/1")).json();
+  expect(venue).toEqual({ name: "MORACA", capacity: 5262, attendance: 2110, neutral: false });
+  // The feed reported 0 for this Final Four's crowd: the arena is there, the attendance is not.
+  const finalFour = await (await request.get("http://localhost:3000/api/seasons/2025/games/404")).json();
+  expect(finalFour.venue).toEqual({ name: "TELEKOM CENTER ATHENS", capacity: 18500, attendance: null, neutral: false });
+  // The E2024 Final Four semi-finals in Abu Dhabi are the games the feed flags as at a neutral venue.
+  const abuDhabi = await (await request.get("http://localhost:3000/api/seasons/2024/games/327")).json();
+  expect(abuDhabi.venue).toEqual({ name: "ETIHAD ARENA", capacity: 12000, attendance: 10218, neutral: true });
+});
+
+test("a played game shows its arena, capacity and attendance in the header, on every tab", async ({ page }) => {
+  await page.goto("/2025/games/1");
+  await expect(page.getByRole("heading", { name: "Score by period" })).toBeVisible({ timeout: 30_000 });
+  await expect(headerEntry(page, "Arena")).toHaveText("MoracaCapacity 5,262");
+  await expect(headerEntry(page, "Attendance")).toHaveText("2,110");
+  await expect(page.locator("main dl > div > dt")).toHaveText(["Arena", "Attendance", "Officials"]);
+  await page.getByRole("tab", { name: "Box score", exact: true }).click();
+  await expect(headerEntry(page, "Attendance")).toHaveText("2,110");
+});
+
+test("an unplayed game shows its arena and no attendance; a neutral venue without a capacity says so", async ({ page }) => {
+  await mockGameApi(page, { played: false, venue: { name: "BELGRADE ARENA", capacity: 21000, attendance: 15000, neutral: false } });
+  await page.goto(`/${SEASON}/games/1`);
+  await expect(page.getByRole("heading", { name: "This game hasn't been played yet" })).toBeVisible();
+  await expect(headerEntry(page, "Arena")).toHaveText("Belgrade ArenaCapacity 21,000");
+  await expect(page.locator("dt", { hasText: /^Attendance$/ })).toHaveCount(0);
+
+  await page.unrouteAll({ behavior: "ignoreErrors" });
+  await mockGameApi(page, { venue: { name: "WiZink Center", capacity: null, attendance: null, neutral: true } });
+  await page.goto(`/${SEASON}/games/1`);
+  await expect(page.getByRole("heading", { name: "Score by period" })).toBeVisible();
+  await expect(headerEntry(page, "Arena")).toHaveText("WiZink CenterNeutral venue");
+  await expect(page.locator("dt", { hasText: /^Attendance$/ })).toHaveCount(0);
+});
+
 test("a game without officials has no match information, and an unplayed game with them names them in the header", async ({ page }) => {
   await mockGameApi(page);
   await page.goto(`/${SEASON}/games/1`);

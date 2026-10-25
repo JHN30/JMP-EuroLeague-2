@@ -27,7 +27,7 @@ function boxScoreWith({ overtime = false } = {}) {
 }
 
 // The game route registered last wins over the one `mockGameApi` registers, so the page gets these teams and scores.
-async function openGame(page, { game = {}, mock = {}, overtime = false, officials = [] } = {}) {
+async function openGame(page, { game = {}, mock = {}, overtime = false, officials = [], venue = null } = {}) {
   await mockGameApi(page, { playByPlay: PLAY_BY_PLAY, boxScore: boxScoreWith({ overtime }), ...mock });
   await page.route(`**/api/seasons/${SEASON}/games/1`, (route) =>
     route.fulfill({
@@ -45,6 +45,7 @@ async function openGame(page, { game = {}, mock = {}, overtime = false, official
           ...game,
         },
         officials,
+        venue,
       },
     }),
   );
@@ -213,7 +214,7 @@ test("the Overview holds long names, a long player name and three-digit scores a
   });
 });
 
-test("the header's officials, four with long names, wrap inside the header under their label at every width", async ({ page }) => {
+test("the header's arena, attendance and officials, with long names, wrap inside the header under their labels at every width", async ({ page }) => {
   const long = (number, name, countryName) => ({ number, code: `O${number}`, name, countryCode: "XXX", countryName });
   await openGame(page, {
     officials: [
@@ -222,9 +223,11 @@ test("the header's officials, four with long names, wrap inside the header under
       long(3, "GIOVANNETTI, GUIDO", "Italy"),
       long(4, "JAVOR, DAMIR", "Slovenia"),
     ],
+    venue: { name: "PABELLON MUNICIPAL DE DEPORTES FUENTE DE SAN LUIS VALENCIA", capacity: 21000, attendance: 18342, neutral: true },
   });
   const header = page.locator("main section").first();
   const entry = header.locator("dl > div", { has: page.locator("dt", { hasText: /^Officials$/ }) });
+  await expect(header.locator("dl > div > dt")).toHaveText(["Arena", "Attendance", "Officials"]);
   await expect(entry.locator("dd")).toContainText("Maximilian-Alexander Van Der Berghe-Konstantinopoulos, Jordi Aliaga, Guido Giovannetti, Damir Javor");
   await atWidths(page, [320, 390, 640, 1024, 1280], async () => {
     // The strip and everything in it stay inside the header.
@@ -232,8 +235,10 @@ test("the header's officials, four with long names, wrap inside the header under
     expect(strip.x).toBeGreaterThanOrEqual(panel.x - 1);
     expect(strip.x + strip.width).toBeLessThanOrEqual(panel.x + panel.width + 1);
     expect(await holdsContent(header.locator("dl"))).toBe(true);
-    const [label, value] = await Promise.all([entry.locator("dt").boundingBox(), entry.locator("dd").boundingBox()]);
-    expect(value.y).toBeGreaterThanOrEqual(label.y + label.height - 1);
+    for (const each of await header.locator("dl > div").all()) {
+      const [label, value] = await Promise.all([each.locator("dt").boundingBox(), each.locator("dd").boundingBox()]);
+      expect(value.y).toBeGreaterThanOrEqual(label.y + label.height - 1);
+    }
     await expectNoPageOverflow(page);
   });
 });

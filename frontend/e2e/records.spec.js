@@ -63,6 +63,22 @@ const PLAYER_METRICS = {
   winSharesPer40: { label: "Win Shares / 40", format: "decimal3", lowerIsBetter: false, minGames: 20, volume: "10+ minutes a game", records: [player("2011", "p8", "KIRILENKO, ANDREI", 0.3506)] },
 };
 
+// The record book of the mocked rows: for every kind, the six headline metrics each with the kind's first two rows.
+const BOOK_METRICS = [
+  ["pointsScored", "Points"],
+  ["totalRebounds", "Rebounds"],
+  ["assists", "Assists"],
+  ["steals", "Steals"],
+  ["blocks", "Blocks"],
+  ["pir", "PIR"],
+];
+const recordBook = (data) => ({
+  sections: Object.entries(ROUTES).map(([kind, family]) => ({
+    kind,
+    cards: BOOK_METRICS.map(([metric, label]) => ({ metric, label, format: "count", lowerIsBetter: false, records: data[family].slice(0, 2) })),
+  })),
+});
+
 // Mocks the seasons and the four record routes. `rows` replaces a family's rows; `delay` holds back the answer for a metric for that many
 // milliseconds; `fail` makes the record routes answer 500. An answer says its group, and its minimum number of games for the ratings that have one.
 async function mockApi(page, { rows = {}, delay = {}, fail = false } = {}) {
@@ -71,6 +87,7 @@ async function mockApi(page, { rows = {}, delay = {}, fail = false } = {}) {
     const url = new URL(route.request().url());
     const match = /\/records\/([a-z-]+)$/.exec(url.pathname);
     if (url.pathname === "/api/seasons") return route.fulfill({ json: { seasons: [{ seasonCode: "2026", name: "2025-26" }] } });
+    if (match?.[1] === "book") return fail ? route.fulfill({ status: 500, json: {} }) : route.fulfill({ json: recordBook(data) });
     if (!match || !ROUTES[match[1]]) return route.fulfill({ status: 404, json: {} });
     if (fail) return route.fulfill({ status: 500, json: {} });
     const metric = url.searchParams.get("metric");
@@ -96,12 +113,14 @@ async function mockApi(page, { rows = {}, delay = {}, fail = false } = {}) {
   });
 }
 
+// The detail view of the default record; the bare records address is the record book.
+const DETAIL = "/2026/records?type=player&metric=pointsScored";
 const tab = (page, name) => page.getByRole("tab", { name, exact: true });
 const metricTabs = (page) => page.getByRole("tablist", { name: "Record metric" }).getByRole("tab");
 
 test("shows archive-to-date player-season records", async ({ page }) => {
   await mockApi(page);
-  await page.goto("/2026/records");
+  await page.goto(DETAIL);
   await expect(page.getByRole("heading", { name: "Records", exact: true })).toBeVisible();
   await expect(page.getByText("The highest season totals by one player.")).toBeVisible();
   await expect(page.getByRole("heading", { name: "Best of each season" })).toBeVisible();
@@ -110,7 +129,7 @@ test("shows archive-to-date player-season records", async ({ page }) => {
 
 test("shows linked player-game records", async ({ page }) => {
   await mockApi(page);
-  await page.goto("/2026/records");
+  await page.goto(DETAIL);
   await tab(page, "Player games").click();
   await expect(page.getByText("The best single games by one player.")).toBeVisible();
   await expect(page.getByRole("link", { name: "Game Player" }).first()).toHaveAttribute("href", "/2025/players/p2");
@@ -119,7 +138,7 @@ test("shows linked player-game records", async ({ page }) => {
 
 test("shows linked team-season records, with the club's crest from the row", async ({ page }) => {
   await mockApi(page);
-  await page.goto("/2026/records");
+  await page.goto(DETAIL);
   await tab(page, "Team seasons").click();
   await expect(page.getByText("The highest season totals by one club.")).toBeVisible();
   await expect(page.getByRole("link", { name: "Olympiacos" }).first()).toHaveAttribute("href", "/2025/teams/OLY");
@@ -145,7 +164,7 @@ test("shows team-game records: the club, its opponent, the date and the game", a
 
 test("the podium, the timeline and the Top 50 read from the rows, with the pictures the rows carry", async ({ page }) => {
   await mockApi(page);
-  await page.goto("/2026/records");
+  await page.goto(DETAIL);
 
   // The podium: the top three, the names written "First Last", the value, the season, a link to the player in that season's address, and the
   // headshot and the club's crest where the row has them.
@@ -198,7 +217,7 @@ test("the podium, the timeline and the Top 50 read from the rows, with the pictu
 
 test("the groups and metrics of each record type, and what a choice keeps", async ({ page }) => {
   await mockApi(page);
-  await page.goto("/2026/records");
+  await page.goto(DETAIL);
   // Player seasons: eleven traditional metrics, two advanced ones.
   await expect(tab(page, "Traditional")).toHaveAttribute("aria-selected", "true");
   await expect(metricTabs(page)).toHaveCount(11);
@@ -223,10 +242,10 @@ test("the groups and metrics of each record type, and what a choice keeps", asyn
   ]);
   await expect(tab(page, "PER")).toHaveAttribute("aria-selected", "true");
   await expect(page).toHaveURL(/metric=per/);
-  // Back to the traditional group opens its first metric, which is the default and so leaves the address.
+  // Back to the traditional group opens its first metric, and the address names it.
   await tab(page, "Traditional").click();
   await expect(tab(page, "Points")).toHaveAttribute("aria-selected", "true");
-  expect(new URL(page.url()).search).toBe("");
+  expect(new URL(page.url()).search).toBe("?type=player&metric=pointsScored");
 
   // Player games has Game Score; the clubs have the two ratings.
   await tab(page, "Player games").click();
@@ -265,19 +284,29 @@ test("the groups and metrics of each record type, and what a choice keeps", asyn
   await expect(tab(page, "PIR")).toHaveAttribute("aria-selected", "true");
 });
 
-test("the record type and the metric are in the address, the defaults are not, and Back steps through the choices", async ({ page }) => {
+test("the record type and the metric are always in the address, and Back steps through the choices", async ({ page }) => {
   await mockApi(page);
-  await page.goto("/2026/records");
+  await page.goto(DETAIL);
   await expect(tab(page, "Player seasons")).toHaveAttribute("aria-selected", "true");
-  expect(new URL(page.url()).search).toBe("");
 
   await tab(page, "Team games").click();
   await expect(page).toHaveURL(/[?&]type=teamgame(&|$)/);
   await tab(page, "Advanced").click();
   await expect(page).toHaveURL(/metric=offensiveRating/);
   await tab(page, "Player seasons").click();
-  await expect(page).not.toHaveURL(/type=/);
-  await expect(page).not.toHaveURL(/metric=/);
+  await expect(page).toHaveURL(/[?&]type=player(&|$)/);
+  await expect(page).toHaveURL(/[?&]metric=offensiveRating|[?&]metric=pointsScored/);
+  // An address naming only a metric opens its detail view with the default type.
+  await page.goto("/2026/records?metric=assists");
+  await expect(tab(page, "Player seasons")).toHaveAttribute("aria-selected", "true");
+  await expect(tab(page, "Assists")).toHaveAttribute("aria-selected", "true");
+  await tab(page, "Rebounds").click();
+  await expect(page).toHaveURL(/type=player/);
+  await expect(page).toHaveURL(/metric=totalRebounds/);
+  await page.goto(DETAIL);
+  await tab(page, "Team games").click();
+  await tab(page, "Advanced").click();
+  await tab(page, "Player seasons").click();
 
   await page.goBack();
   await expect(page).toHaveURL(/type=teamgame/);
@@ -303,7 +332,7 @@ test("totals or per game: offered for the season records of the traditional metr
     if (request.url().includes("/records/")) asked.push(new URL(request.url()).searchParams.get("per"));
   });
   await mockApi(page);
-  await page.goto("/2026/records");
+  await page.goto(DETAIL);
   const choice = page.getByRole("tablist", { name: "Totals or per game" });
   await expect(choice.getByRole("tab", { name: "Totals" })).toHaveAttribute("aria-selected", "true");
   expect(asked.at(-1)).toBeNull();
@@ -336,6 +365,41 @@ test("totals or per game: offered for the season records of the traditional metr
   await expect(page.getByRole("tablist", { name: "Totals or per game" }).getByRole("tab", { name: "Totals" })).toHaveAttribute("aria-selected", "true");
   await expect.poll(() => asked.length).toBeGreaterThan(0);
   expect(asked.every((value) => value === null)).toBe(true);
+});
+
+test("the record book: the headline records of every type, each opening its detail view, and the way back", async ({ page }) => {
+  await mockApi(page);
+  await page.goto("/2026/records");
+  await expect(page.getByText("The best of every loaded season. Open a record for its Top 50, its timeline and every season.")).toBeVisible();
+  for (const name of ["Player seasons", "Player games", "Team seasons", "Team games"]) await expect(page.getByRole("heading", { name, exact: true })).toBeVisible();
+  const cards = page.locator("main ol > li");
+  await expect(cards).toHaveCount(24);
+  // The first card: the record, its holder and season, and how far it leads the row behind it (820 against 780).
+  await expect(cards.first()).toContainText("820");
+  await expect(cards.first()).toContainText("Cal Three");
+  await expect(cards.first()).toContainText("2026-27");
+  await expect(cards.first()).toContainText("+40 over 2nd");
+  await expect(cards.first().getByRole("link", { name: "Cal Three" })).toHaveAttribute("href", "/2026/players/p3");
+  // A kind with one row has no margin to tell.
+  const teamSeasons = page.locator("section", { has: page.getByRole("heading", { name: "Team seasons", exact: true }) }).locator("ol > li");
+  await expect(teamSeasons.first()).toContainText("Olympiacos");
+  await expect(teamSeasons.first()).not.toContainText("over 2nd");
+  // No type strip on the book; a card opens its record's detail view, which names its type and metric, and the back link returns.
+  await expect(page.getByRole("tablist", { name: "Record type" })).toHaveCount(0);
+  await cards.nth(1).getByRole("link", { name: /^Rebounds/ }).click();
+  await expect(page).toHaveURL(/\/2026\/records\?type=player&metric=totalRebounds$/);
+  await expect(tab(page, "Rebounds")).toHaveAttribute("aria-selected", "true");
+  await page.getByRole("link", { name: /Record book/ }).first().click();
+  await expect(page).toHaveURL(/\/2026\/records$/);
+  await expect(cards).toHaveCount(24);
+});
+
+test("the record book says when it cannot load", async ({ page }) => {
+  await mockApi(page, { fail: true });
+  await page.goto("/2026/records");
+  // The query retries before it gives up, as every records query does.
+  await expect(page.getByText("Could not load the record book.")).toBeVisible({ timeout: 45_000 });
+  await expect(page.getByRole("button", { name: "Retry" })).toBeVisible();
 });
 
 test("a lower-is-better metric ranks from the lowest and says so; percentages and margins read in their own format", async ({ page }) => {
@@ -392,7 +456,7 @@ test("the records with a minimum number of games say so", async ({ page }) => {
 
 test("a change of metric keeps the header, the strips and the rows on screen while the next ones load", async ({ page }) => {
   await mockApi(page, { delay: { totalRebounds: 1200 } });
-  await page.goto("/2026/records");
+  await page.goto(DETAIL);
   await expect(page.getByText("Cal Three").first()).toBeVisible();
   await tab(page, "Rebounds").click();
   // Held back: the page is still there, marked busy, with no loading spinner replacing it.
@@ -413,7 +477,7 @@ test("the PIR column header carries the PIR tip", async ({ page }) => {
 
 test("an error shows Retry, and a metric without records says so", async ({ page }) => {
   await mockApi(page, { fail: true });
-  await page.goto("/2026/records");
+  await page.goto(DETAIL);
   await expect(page.getByText("Could not load archive records.")).toBeVisible({ timeout: 45_000 });
   await expect(page.getByRole("button", { name: "Retry" })).toBeVisible();
 
@@ -427,7 +491,7 @@ test("an error shows Retry, and a metric without records says so", async ({ page
 test("with reduced motion the cards and rows do not slide in", async ({ page }) => {
   await page.emulateMedia({ reducedMotion: "reduce" });
   await mockApi(page);
-  await page.goto("/2026/records");
+  await page.goto(DETAIL);
   const cards = page.locator("ol").first().locator("> li");
   await expect(cards).toHaveCount(3);
   // Read straight away: a slide would still have a transform on its first frames.

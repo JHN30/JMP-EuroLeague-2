@@ -8,6 +8,7 @@ import Panel from "../lib/Panel";
 import PanelHeader from "../lib/PanelHeader";
 import ShortLabel from "../lib/ShortLabel";
 import { useMediaQuery } from "../lib/useMediaQuery";
+import { whenText } from "./recordData";
 
 const PIR_TIP = PLAYER_STATS.find((stat) => stat.key === "pir")?.tip;
 
@@ -44,8 +45,6 @@ export function Holder({ record, size = "h-9 w-9", short = false }) {
   );
 }
 
-// When the record was set: the season, with the day for a game.
-const whenText = (record) => (record.date ? `${record.season} · ${record.date}` : record.season);
 
 function PodiumCard({ record, rank, label }) {
   return (

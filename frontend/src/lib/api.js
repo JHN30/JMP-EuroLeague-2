@@ -244,6 +244,12 @@ export async function getTeamSeasonRecords(seasonCode, metric, per) {
   return data;
 }
 
+// The record book: the headline records of every record type.
+export async function getRecordBook(seasonCode) {
+  const { data } = await api.get(`/seasons/${seasonCode}/records/book`);
+  return data;
+}
+
 export async function getTeamGameRecords(seasonCode, metric) {
   const { data } = await api.get(`/seasons/${seasonCode}/records/team-games`, { params: { metric } });
   return data;

@@ -4,6 +4,7 @@ import { useMemo } from "react";
 import { useParams, useSearchParams } from "react-router";
 import { getPlayerSeasonRecords, getSingleGameRecords, getTeamGameRecords, getTeamSeasonRecords } from "../lib/api";
 import AsyncState from "../lib/AsyncState";
+import BackLink from "../lib/BackLink";
 import { EASE_OUT } from "../lib/motion";
 import PageHeader from "../lib/PageHeader";
 import Panel from "../lib/Panel";
@@ -11,6 +12,7 @@ import { TabStrip } from "../lib/TabStrip";
 import ViewSelect from "../lib/ViewSelect";
 import { useDocumentTitle } from "../lib/useDocumentTitle";
 import { ModeSelect, ModeTabs } from "../leaders/LeaderParts";
+import RecordBook from "./RecordBook";
 import { Board, Podium } from "./RecordParts";
 import RecordTimeline from "./RecordTimeline";
 import { DEFAULT_FAMILY, DEFAULT_METRIC, FAMILIES, GROUPS, allMetrics, describeRecord, metricsOf, perGameAvailable, pickKey } from "./recordData";
@@ -63,12 +65,9 @@ function RecordsContent({ data }) {
   );
 }
 
-// The archive-to-date records over the loaded seasons: four kinds (player and team, season and single game), each with its traditional and advanced
-// metrics. The choices are in the address (`type`, `metric`; the defaults are left out) so a view can be linked and Back steps through them.
-export default function RecordsPage() {
-  useDocumentTitle("Records");
-  const { seasonCode } = useParams();
-  const [params, setParams] = useSearchParams();
+// One record type and metric: the podium, the timeline and the Top 50. The choices are in the address (`type` and `metric` always, `per=game`
+// when chosen) so a view can be linked and Back steps through them.
+function RecordsDetail({ seasonCode, params, setParams }) {
   const family = pickKey(FAMILIES, params.get("type"), DEFAULT_FAMILY);
   const familyInfo = FAMILIES.find((entry) => entry.key === family);
   const metrics = allMetrics(family);
@@ -90,17 +89,18 @@ export default function RecordsPage() {
   }
 
   // Changing the kind keeps the metric when the new kind has it, and otherwise opens the default; a group opens its first metric. Per game
-  // stays chosen while the new choice has it, and leaves the address when it does not.
+  // stays chosen while the new choice has it, and leaves the address when it does not. The type and metric are always written (a null
+  // fallback never matches), so an address without them stays the record book.
   const keepPer = (nextFamily, nextGroup) => [per === "game" && perGameAvailable(nextFamily, nextGroup) ? "game" : "total", "total"];
   const chooseFamily = (key) => {
     const nextMetric = allMetrics(key).some((entry) => entry.key === metric) ? metric : DEFAULT_METRIC;
     const nextGroup = allMetrics(key).find((entry) => entry.key === nextMetric).group;
-    setAddress({ type: [key, DEFAULT_FAMILY], metric: [nextMetric, DEFAULT_METRIC], per: keepPer(key, nextGroup) });
+    setAddress({ type: [key, null], metric: [nextMetric, null], per: keepPer(key, nextGroup) });
   };
-  const chooseGroup = (key) => setAddress({ metric: [metricsOf(family, key)[0].key, DEFAULT_METRIC], per: keepPer(family, key) });
-  const chooseMetric = (key) => setAddress({ metric: [key, DEFAULT_METRIC] });
+  const chooseGroup = (key) => setAddress({ type: [family, null], metric: [metricsOf(family, key)[0].key, null], per: keepPer(family, key) });
+  const chooseMetric = (key) => setAddress({ type: [family, null], metric: [key, null] });
   // ModeTabs and ModeSelect name the choices as Leaders does (perGame, accumulated).
-  const choosePer = (key) => setAddress({ per: [key === "perGame" ? "game" : "total", "total"] });
+  const choosePer = (key) => setAddress({ type: [family, null], metric: [metric, null], per: [key === "perGame" ? "game" : "total", "total"] });
   const perMode = per === "game" ? "perGame" : "accumulated";
 
   // The rows stay on screen while the next choice loads; the full loading state is only for the very first load.
@@ -112,6 +112,7 @@ export default function RecordsPage() {
 
   return (
     <div>
+      <BackLink to={`/${seasonCode}/records`} label="Record book" />
       <PageHeader kicker="ARCHIVE" title="Records" description={<p className="muted">{familyInfo.description}</p>} />
 
       <TabStrip scrolling ariaLabel="Record type" level={1} panelId={PANEL_ID} activeKey={family} onChange={chooseFamily} className="mb-4 w-fit" tabs={FAMILIES} />
@@ -136,6 +137,25 @@ export default function RecordsPage() {
           <RecordsContent data={query.data} />
         )}
       </div>
+    </div>
+  );
+}
+
+// The archive-to-date records over the loaded seasons. With no choice in the address the page is the record book (the headline records of
+// every type); any of `type`, `metric` or `per` opens that record's detail view.
+export default function RecordsPage() {
+  useDocumentTitle("Records");
+  const { seasonCode } = useParams();
+  const [params, setParams] = useSearchParams();
+  if (["type", "metric", "per"].some((name) => params.has(name))) return <RecordsDetail seasonCode={seasonCode} params={params} setParams={setParams} />;
+  return (
+    <div>
+      <PageHeader
+        kicker="ARCHIVE"
+        title="Records"
+        description={<p className="muted">The best of every loaded season. Open a record for its Top 50, its timeline and every season.</p>}
+      />
+      <RecordBook seasonCode={seasonCode} />
     </div>
   );
 }

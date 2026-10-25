@@ -1,6 +1,6 @@
-import { and, asc, eq, sql } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, isNotNull, sql } from "drizzle-orm";
 import { db } from "./client";
-import { catalogRead } from "./season-catalog";
+import { catalogRead, SUPPORTED_SEASONS } from "./season-catalog";
 import {
   seasonStatsAdvanced,
   seasonStatsMisc,
@@ -368,6 +368,34 @@ export async function getSeasonRecordRows(seasonCode: string, metric: RecordMetr
         perGame ? sql`${seasonStatsTraditional.gamesPlayed} >= ${perGameMinGames}` : undefined,
       ))
       .orderBy(sql`${column} DESC NULLS LAST`, asc(seasonStatsTraditional.entryOrdinal))
+      .limit(limit),
+  );
+}
+
+// The best players on one whole-season total over every loaded season at once, for the record book: the same fields and order as
+// getSeasonRecordRows (highest first, then the oldest season, then the season's own order).
+export async function getLoadedSeasonsRecordRows(metric: RecordMetric, limit: number) {
+  const column = SORTABLE_FIELDS[metric];
+  return catalogRead(() =>
+    db.select({
+      seasonCode: seasonStatsTraditional.seasonCode,
+      personKey: seasonStatsTraditional.personKey,
+      playerName: seasonStatsTraditional.playerName,
+      clubName: seasonStatsTraditional.clubName,
+      clubTvCodes: seasonStatsTraditional.clubTvCodes,
+      playerImageUrl: seasonStatsTraditional.playerImageUrl,
+      clubImageUrl: seasonStatsTraditional.clubImageUrl,
+      value: column,
+    })
+      .from(seasonStatsTraditional)
+      .where(and(
+        eq(seasonStatsTraditional.competitionCode, COMPETITION_CODE),
+        inArray(seasonStatsTraditional.seasonCode, [...SUPPORTED_SEASONS]),
+        eq(seasonStatsTraditional.phaseCode, "all"),
+        eq(seasonStatsTraditional.mode, "accumulated"),
+        isNotNull(column),
+      ))
+      .orderBy(desc(column), asc(seasonStatsTraditional.seasonCode), asc(seasonStatsTraditional.entryOrdinal))
       .limit(limit),
   );
 }

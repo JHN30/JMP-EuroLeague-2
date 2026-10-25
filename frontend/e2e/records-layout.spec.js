@@ -9,7 +9,7 @@ test.beforeEach(async ({ page }) => { await mockLayoutImages(page); });
 // strip from it, and every link to a player, club or game in a season's address (the year, not "E2025").
 const WIDTHS = [1280, 1024, 1023, 768, 640, 639, 390, 320];
 const CASES = [
-  { name: "player seasons", query: "", column: "Player", pictures: true },
+  { name: "player seasons", query: "?type=player&metric=pointsScored", column: "Player", pictures: true },
   { name: "player seasons, per game", query: "?per=game", column: "Player", pictures: true },
   { name: "player seasons, a rating", query: "?metric=per", column: "Player", pictures: true },
   { name: "player games", query: "?type=game&metric=pir", column: "Player", game: true, pictures: true },
@@ -114,7 +114,7 @@ test("the metric select on a phone lists the group's metrics and a choice loads 
   test.setTimeout(90_000);
   await page.setViewportSize({ width: 390, height: HEIGHT });
   const slug = await seasonSlug(page);
-  await page.goto(`/${slug}/records`);
+  await page.goto(`/${slug}/records?type=player&metric=pointsScored`);
   const select = page.getByRole("combobox", { name: "Metric" });
   await expect(select).toBeVisible({ timeout: 45_000 });
   await expect(select.locator("option")).toHaveCount(11);
@@ -158,12 +158,33 @@ async function mockRecords(page, { rows, delay, fail = false }) {
   });
 }
 
+test("the record book fits at every width: one column of cards below 640px, two from 640px, three from 1024px", async ({ page }) => {
+  test.setTimeout(120_000);
+  await page.setViewportSize({ width: 1280, height: HEIGHT });
+  const slug = await seasonSlug(page);
+  await page.goto(`/${slug}/records`);
+  const cards = page.locator("main ol > li");
+  await expect(cards).toHaveCount(24, { timeout: 45_000 });
+  for (const width of WIDTHS) {
+    await test.step(`${width}px`, async () => {
+      await page.setViewportSize({ width, height: HEIGHT });
+      await expectNoSidewaysScroll(page);
+      await expect.poll(() => outsidePanels(page), { timeout: 20_000 }).toEqual([]);
+      const columns = width >= 1024 ? 3 : width >= 640 ? 2 : 1;
+      // The first row of a section: the cards that share the first card's top.
+      await expect
+        .poll(() => cards.evaluateAll((items) => items.slice(0, 6).filter((item) => Math.abs(item.getBoundingClientRect().top - items[0].getBoundingClientRect().top) < 2).length))
+        .toBe(columns);
+    });
+  }
+});
+
 test("very long names wrap inside their panels at 320px, and the loading, error and empty states fit", async ({ page }) => {
   test.setTimeout(120_000);
   await page.setViewportSize({ width: 320, height: HEIGHT });
 
   await mockRecords(page, { rows: longRows(50) });
-  await page.goto("/2025/records");
+  await page.goto("/2025/records?type=player&metric=pointsScored");
   await expect(page.getByRole("heading", { name: "Top 50" })).toBeVisible({ timeout: 45_000 });
   await expect(page.getByText("Counts players with at least 20 games of a 34-game regular season, or the same share of a shorter or longer one.")).toBeVisible();
   await page.getByText("Show every season (27)").click();
@@ -175,7 +196,7 @@ test("very long names wrap inside their panels at 320px, and the loading, error 
   // Loading: the answer is held back.
   let release;
   await mockRecords(page, { rows: longRows(5), delay: new Promise((resolve) => (release = resolve)) });
-  await page.goto("/2025/records");
+  await page.goto("/2025/records?type=player&metric=pointsScored");
   await expect(page.getByRole("status", { name: "Loading archive records" })).toBeVisible({ timeout: 45_000 });
   await expectNoSidewaysScroll(page);
   release();
@@ -184,14 +205,14 @@ test("very long names wrap inside their panels at 320px, and the loading, error 
 
   // Empty.
   await mockRecords(page, { rows: [] });
-  await page.goto("/2025/records");
+  await page.goto("/2025/records?type=player&metric=pointsScored");
   await expect(page.getByText("No records are available for this metric.")).toBeVisible({ timeout: 45_000 });
   await expectNoSidewaysScroll(page);
   await page.unrouteAll({ behavior: "ignoreErrors" });
 
   // Error.
   await mockRecords(page, { rows: [], fail: true });
-  await page.goto("/2025/records");
+  await page.goto("/2025/records?type=player&metric=pointsScored");
   await expect(page.getByText("Could not load archive records.")).toBeVisible({ timeout: 45_000 });
   await expect(page.getByRole("button", { name: "Retry" })).toBeVisible();
   await expectNoSidewaysScroll(page);

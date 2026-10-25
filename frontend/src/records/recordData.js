@@ -109,6 +109,9 @@ export const allMetrics = (family) => [
 // Per game is offered for the season records of the traditional metrics: a single game is one game, and the advanced metrics are rates.
 export const perGameAvailable = (family, group) => (family === "player" || family === "team") && group === "traditional";
 
+// When the record was set: the season, with the day for a game.
+export const whenText = (record) => (record.date ? `${record.season} · ${record.date}` : record.season);
+
 // A value from the address, or the default when it is not one of the keys.
 export function pickKey(entries, value, fallback) {
   return entries.some((entry) => entry.key === value) ? value : fallback;

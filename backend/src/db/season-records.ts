@@ -6,7 +6,7 @@ import { catalogRead, SUPPORTED_SEASONS } from "./season-catalog";
 import { seasonFormat } from "./season-format-registry";
 import { getTeams } from "./season-identities";
 import { gamePlayerStats, gameTeamStats, games, seasonStatsTraditional } from "./season-schema";
-import { getSeasonRecordRows, type RecordMetric } from "./season-stats";
+import { getLoadedSeasonsRecordRows, getSeasonRecordRows, type RecordMetric } from "./season-stats";
 
 // The records the API serves: four kinds, each with the metrics it can rank. A metric is a key, a label and a group; the routes read this
 // list, so a new record is one entry here and one value source below.
@@ -500,4 +500,138 @@ export async function getRecordRows(kind: RecordKind, metric: RecordMetricDef, p
   if (kind === "single-games") return singleGameRecords(metric);
   if (kind === "team-seasons") return teamSeasonRecords(metric, per);
   return teamGameRecords(metric);
+}
+
+// ---- Record book ----
+
+// The headline records of the book, the same six for every kind, in the order the page shows them.
+const BOOK_METRICS = ["pointsScored", "totalRebounds", "assists", "steals", "blocks", "pir"] as const;
+// The record and the row behind it, for the margin.
+const BOOK_ROWS = 2;
+
+// Each season's crests and TV codes, read only for the seasons a few rows come from.
+async function looksFor(seasonCodes: string[]) {
+  return new Map(await Promise.all([...new Set(seasonCodes)].map(async (seasonCode) => [seasonCode, await clubLooks(seasonCode)] as const)));
+}
+
+async function bookPlayerSeasons(metric: RecordMetricDef) {
+  const rows = await getLoadedSeasonsRecordRows(metric.key as RecordMetric, BOOK_ROWS);
+  const shaped = rows.map((player) => ({ ...player, playerImageUrl: picture(player.playerImageUrl), clubImageUrl: picture(player.clubImageUrl) }));
+  return best(shaped, () => 0).records;
+}
+
+async function bookSingleGames(metric: RecordMetricDef) {
+  const column = boxColumn(gamePlayerStats, metric.key);
+  const rows = await catalogRead(() =>
+    db.select({
+      seasonCode: gamePlayerStats.seasonCode,
+      gameCode: gamePlayerStats.gameCode,
+      personKey: gamePlayerStats.personKey,
+      playerName: gamePlayerStats.personName,
+      clubName: gamePlayerStats.clubName,
+      clubCode: gamePlayerStats.clubCode,
+      playerImageUrl: gamePlayerStats.headshotUrl,
+      scheduledAt: games.scheduledAt,
+      value: column,
+    })
+      .from(gamePlayerStats)
+      .innerJoin(games, and(eq(games.competitionCode, gamePlayerStats.competitionCode), eq(games.seasonCode, gamePlayerStats.seasonCode), eq(games.gameCode, gamePlayerStats.gameCode)))
+      .where(and(eq(gamePlayerStats.competitionCode, COMPETITION_CODE), inArray(gamePlayerStats.seasonCode, [...SUPPORTED_SEASONS]), eq(games.played, true), isNotNull(column)))
+      .orderBy(desc(column), asc(gamePlayerStats.seasonCode), asc(gamePlayerStats.gameCode), asc(gamePlayerStats.personKey))
+      .limit(BOOK_ROWS),
+  );
+  const looks = await looksFor(rows.map((row) => row.seasonCode));
+  const shaped = rows.map(({ clubCode, playerImageUrl, ...row }) => ({
+    ...row,
+    playerImageUrl: picture(playerImageUrl),
+    clubImageUrl: looks.get(row.seasonCode)?.crestOf(clubCode) ?? null,
+    clubTvCode: clubCode === null ? null : (looks.get(row.seasonCode)?.tvCodeOf(clubCode) ?? clubCode),
+  }));
+  return best(shaped, (a, b) => a.gameCode - b.gameCode || a.personKey.localeCompare(b.personKey)).records;
+}
+
+// A team row's own club and its opponent, from the game it belongs to.
+const ownClubCode = sql<string | null>`case when ${gameTeamStats.side} = 'local' then ${games.localClubCode} else ${games.roadClubCode} end`;
+const ownClubName = sql<string | null>`case when ${gameTeamStats.side} = 'local' then ${games.localClubName} else ${games.roadClubName} end`;
+const otherClubCode = sql<string | null>`case when ${gameTeamStats.side} = 'local' then ${games.roadClubCode} else ${games.localClubCode} end`;
+const otherClubName = sql<string | null>`case when ${gameTeamStats.side} = 'local' then ${games.roadClubName} else ${games.localClubName} end`;
+const teamGameJoin = and(eq(games.competitionCode, gameTeamStats.competitionCode), eq(games.seasonCode, gameTeamStats.seasonCode), eq(games.gameCode, gameTeamStats.gameCode));
+const playedTeamTotals = and(
+  eq(gameTeamStats.competitionCode, COMPETITION_CODE),
+  inArray(gameTeamStats.seasonCode, [...SUPPORTED_SEASONS]),
+  eq(gameTeamStats.statsKind, "total"),
+  eq(games.played, true),
+  sql`${ownClubCode} is not null`,
+);
+
+async function bookTeamSeasons(metric: RecordMetricDef) {
+  const total = sql<string | null>`sum(${boxColumn(gameTeamStats, metric.key)})`;
+  const rows = await catalogRead(() =>
+    db.select({ seasonCode: gameTeamStats.seasonCode, clubCode: ownClubCode, clubName: ownClubName, value: total })
+      .from(gameTeamStats)
+      .innerJoin(games, teamGameJoin)
+      .where(playedTeamTotals)
+      .groupBy(gameTeamStats.seasonCode, ownClubCode, ownClubName)
+      .having(sql`${total} is not null`)
+      .orderBy(sql`${total} desc`, asc(gameTeamStats.seasonCode), sql`${ownClubCode} asc`)
+      .limit(BOOK_ROWS),
+  );
+  const looks = await looksFor(rows.map((row) => row.seasonCode));
+  const shaped = rows.map((row) => {
+    const clubCode = row.clubCode ?? "";
+    return { ...row, clubCode, clubTvCode: looks.get(row.seasonCode)?.tvCodeOf(clubCode) ?? clubCode, clubImageUrl: looks.get(row.seasonCode)?.crestOf(clubCode) ?? null };
+  });
+  return best(shaped, (a, b) => a.clubCode.localeCompare(b.clubCode)).records;
+}
+
+async function bookTeamGames(metric: RecordMetricDef) {
+  const column = boxColumn(gameTeamStats, metric.key);
+  const rows = await catalogRead(() =>
+    db.select({
+      seasonCode: gameTeamStats.seasonCode,
+      gameCode: gameTeamStats.gameCode,
+      clubCode: ownClubCode,
+      clubName: ownClubName,
+      opponentClubCode: otherClubCode,
+      opponentName: otherClubName,
+      scheduledAt: games.scheduledAt,
+      value: column,
+    })
+      .from(gameTeamStats)
+      .innerJoin(games, teamGameJoin)
+      .where(and(playedTeamTotals, isNotNull(column)))
+      .orderBy(desc(column), asc(gameTeamStats.seasonCode), asc(gameTeamStats.gameCode), sql`${ownClubCode} asc`)
+      .limit(BOOK_ROWS),
+  );
+  const looks = await looksFor(rows.map((row) => row.seasonCode));
+  const shaped = rows.map((row) => {
+    const clubCode = row.clubCode ?? "";
+    const seasonLooks = looks.get(row.seasonCode);
+    return { ...row, clubCode, clubTvCode: seasonLooks?.tvCodeOf(clubCode) ?? clubCode, clubImageUrl: seasonLooks?.crestOf(clubCode) ?? null, opponentTvCode: seasonLooks?.tvCodeOf(row.opponentClubCode) ?? null };
+  });
+  return best(shaped, (a, b) => a.gameCode - b.gameCode || a.clubCode.localeCompare(b.clubCode)).records;
+}
+
+const BOOK_ROWS_OF: Record<RecordKind, (metric: RecordMetricDef) => Promise<RecordRow[]>> = {
+  "player-seasons": bookPlayerSeasons,
+  "single-games": bookSingleGames,
+  "team-seasons": bookTeamSeasons,
+  "team-games": bookTeamGames,
+};
+
+// The record book: for every kind, the headline metrics with their record and the row behind it. One query per kind and metric reads
+// every loaded season in the order best() ranks them, so each first row is the record that kind's route shows.
+export async function getRecordBook() {
+  const sections = await Promise.all(
+    RECORD_KINDS.map(async (kind) => ({
+      kind,
+      cards: await Promise.all(
+        BOOK_METRICS.map(async (key) => {
+          const metric = findRecordMetric(kind, key)!;
+          return { metric: key, label: metric.label, format: recordFormat(metric, "total"), lowerIsBetter: metric.lowerIsBetter ?? false, records: await BOOK_ROWS_OF[kind](metric) };
+        }),
+      ),
+    })),
+  );
+  return { sections };
 }

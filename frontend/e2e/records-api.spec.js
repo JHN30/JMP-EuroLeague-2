@@ -269,3 +269,30 @@ test("PER and Win Shares records are qualified players only", async ({ request }
     }
   }
 });
+
+// The record book: for every kind, the six headline metrics with their record and the row behind it, each record the first row of its
+// kind's route.
+test("the record book holds the headline records of every kind, each the first row of its route", async ({ request }) => {
+  test.setTimeout(120_000);
+  const response = await request.get(`${API}/seasons/${SEASON}/records/book`);
+  expect(response.status()).toBe(200);
+  const { sections } = await response.json();
+  expect(sections.map((section) => section.kind)).toEqual(Object.keys(KINDS));
+  for (const section of sections) {
+    expect(section.cards.map((card) => card.metric), section.kind).toEqual(["pointsScored", "totalRebounds", "assists", "steals", "blocks", "pir"]);
+    for (const card of section.cards) {
+      const where = `${section.kind} ${card.metric}`;
+      expect(card.format, where).toBe("count");
+      expect(card.lowerIsBetter, where).toBe(false);
+      expect(card.records.length, where).toBe(2);
+      expect(card.records[1].numericValue, where).toBeLessThanOrEqual(card.records[0].numericValue);
+      const route = await (await records(request, section.kind, card.metric)).json();
+      expect(card.label, where).toBe(route.label);
+      for (const index of [0, 1]) {
+        const [mine, theirs] = [card.records[index], route.records[index]];
+        expect([mine.numericValue, mine.seasonCode, mine.personKey ?? mine.clubCode, mine.gameCode ?? null], where).toEqual([theirs.numericValue, theirs.seasonCode, theirs.personKey ?? theirs.clubCode, theirs.gameCode ?? null]);
+      }
+    }
+  }
+  expect((await request.get(`${API}/seasons/1999/records/book`)).status()).toBe(400);
+});

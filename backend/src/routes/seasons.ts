@@ -67,7 +67,7 @@ import {
   getWinShareLeaders,
 } from "../db/season-advanced";
 import { getPlayerForm } from "../db/season-form";
-import { DEFAULT_METRIC, findRecordMetric, getRecordRows, MIN_SEASON_GAMES as RECORD_MIN_GAMES, perGameAvailable, RECORD_KINDS, RECORD_PERS, recordFormat } from "../db/season-records";
+import { DEFAULT_METRIC, findRecordMetric, getRecordBook, getRecordRows, MIN_SEASON_GAMES as RECORD_MIN_GAMES, perGameAvailable, RECORD_KINDS, RECORD_PERS, recordFormat } from "../db/season-records";
 import { getSeasonStats, SORTABLE_STATS_FIELDS, type SortableStatsField, type StatsFilters } from "../db/season-stats";
 
 export const seasonRouter = Router();
@@ -593,6 +593,11 @@ for (const kind of RECORD_KINDS) {
     res.json({ metric: requested, label, group: metric.group, minGames, per, lowerIsBetter, format: recordFormat(metric, per), volume, ...(await getRecordRows(kind, metric, per)) });
   });
 }
+
+// The record book: the headline records of every kind, over the loaded seasons (see db/season-records.ts).
+seasonRouter.get("/:seasonCode/records/book", async (req, res) => {
+  if (await requestedSeason(req, res)) res.json(await getRecordBook());
+});
 
 seasonRouter.get("/:seasonCode/teams", async (req, res) => {
   const season = await requestedSeason(req, res);

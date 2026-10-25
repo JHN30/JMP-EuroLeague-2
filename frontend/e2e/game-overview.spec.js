@@ -23,6 +23,57 @@ test("the game page opens on the Overview tab with a line score and totals", asy
   await expect(page.locator("table tbody tr", { hasText: "Margin" }).locator("td")).toHaveText(["Margin", "+2", "+10", "-7", "+5", "+10"]);
 });
 
+const OFFICIALS = [
+  { number: 1, code: "O1", name: "JAVOR, DAMIR", countryCode: "SLO", countryName: "Slovenia" },
+  { number: 2, code: "O2", name: "ALIAGA, JORDI", countryCode: "ESP", countryName: "Spain" },
+  { number: 3, code: "O3", name: "GIOVANNETTI, GUIDO", countryCode: "ITA", countryName: "Italy" },
+];
+// The officials' entry in the game header's match information.
+const officialsInHeader = (page) => page.locator("dl > div", { has: page.locator("dt", { hasText: /^Officials$/ }) }).locator("dd");
+
+test("the game reply lists its officials in the feed's order, and an empty list for a game without them", async ({ request }) => {
+  const health = await (await request.get("http://localhost:3000/api/health")).json();
+  expect(health.target).toBe("local");
+  const { game, officials } = await (await request.get("http://localhost:3000/api/seasons/2025/games/1")).json();
+  expect(game.gameCode).toBe(1);
+  expect(officials.map((official) => official.number)).toEqual([1, 2, 3]);
+  for (const official of officials) {
+    expect(Object.keys(official).sort()).toEqual(["code", "countryCode", "countryName", "name", "number"]);
+    expect(official.name).toMatch(/^[^,]+, .+$/);
+  }
+  expect(officials[0]).toMatchObject({ name: "JAVOR, DAMIR", countryName: "Slovenia" });
+  // The furthest-off game still to come in the season in progress: officials are assigned only shortly before a game.
+  const { games } = await (await request.get("http://localhost:3000/api/seasons/2026/games?limit=100")).json();
+  const unplayed = games.filter((entry) => !entry.played).sort((a, b) => new Date(b.scheduledAt) - new Date(a.scheduledAt))[0];
+  const later = await (await request.get(`http://localhost:3000/api/seasons/2026/games/${unplayed.gameCode}`)).json();
+  expect(later.game.gameCode).toBe(unplayed.gameCode);
+  expect(later.officials).toEqual([]);
+});
+
+test("a played game names its officials in the header, as players are named, on every tab", async ({ page }) => {
+  await page.goto("/2025/games/1");
+  await expect(page.getByRole("heading", { name: "Score by period" })).toBeVisible({ timeout: 30_000 });
+  await expect(officialsInHeader(page)).toHaveText("Damir Javor, Jordi Aliaga, Guido Giovannetti");
+  // In the header, not in an Overview section of their own.
+  await expect(page.getByRole("heading", { name: "Game officials" })).toHaveCount(0);
+  await page.getByRole("tab", { name: "Box score", exact: true }).click();
+  await expect(officialsInHeader(page)).toHaveText("Damir Javor, Jordi Aliaga, Guido Giovannetti");
+});
+
+test("a game without officials has no match information, and an unplayed game with them names them in the header", async ({ page }) => {
+  await mockGameApi(page);
+  await page.goto(`/${SEASON}/games/1`);
+  await expect(page.getByRole("heading", { name: "Score by period" })).toBeVisible();
+  await expect(page.locator("dt", { hasText: /^Officials$/ })).toHaveCount(0);
+  await expect(page.locator("main dl")).toHaveCount(0);
+
+  await page.unrouteAll({ behavior: "ignoreErrors" });
+  await mockGameApi(page, { played: false, officials: OFFICIALS });
+  await page.goto(`/${SEASON}/games/1`);
+  await expect(page.getByRole("heading", { name: "This game hasn't been played yet" })).toBeVisible();
+  await expect(officialsInHeader(page)).toHaveText("Damir Javor, Jordi Aliaga, Guido Giovannetti");
+});
+
 test("an unplayed game shows only the Overview tab and does not request the box score", async ({ page }) => {
   const requests = [];
   await mockGameApi(page, { played: false, requests });

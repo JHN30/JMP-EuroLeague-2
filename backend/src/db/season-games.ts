@@ -4,7 +4,7 @@ import { db } from "./client";
 import { CatalogDatabaseError, catalogRead } from "./season-catalog";
 import { seasonFormat } from "./season-format-registry";
 import { type ClubTvCodes, getClubTvCodes, tvCodeOf } from "./season-identities";
-import { clubs, gamePeriodScores, gamePlayerStats, gameTeamStats, games, playByPlay, postseasonSeries, shots, teamSeasonStats } from "./season-schema";
+import { clubs, gameOfficials, gamePeriodScores, gamePlayerStats, gameTeamStats, games, playByPlay, postseasonSeries, shots, teamSeasonStats } from "./season-schema";
 
 const COMPETITION_CODE = "E";
 
@@ -292,6 +292,28 @@ export async function getGame(seasonCode: string, gameCode: number): Promise<Gam
       .limit(1),
   );
   return rows[0] ? toGame(rows[0], codes) : null;
+}
+
+export type GameOfficial = { number: number; code: string; name: string; countryCode: string | null; countryName: string | null };
+
+// One game's officials in the feed's order; an empty list when the game has none (not played, or not assigned yet).
+export async function getGameOfficials(seasonCode: string, gameCode: number): Promise<GameOfficial[]> {
+  return catalogRead(() =>
+    db.select({
+      number: gameOfficials.officialNumber,
+      code: gameOfficials.officialCode,
+      name: gameOfficials.name,
+      countryCode: gameOfficials.countryCode,
+      countryName: gameOfficials.countryName,
+    })
+      .from(gameOfficials)
+      .where(and(
+        eq(gameOfficials.competitionCode, COMPETITION_CODE),
+        eq(gameOfficials.seasonCode, seasonCode),
+        eq(gameOfficials.gameCode, gameCode),
+      ))
+      .orderBy(asc(gameOfficials.officialNumber)),
+  );
 }
 
 function measureFields(table: typeof gameTeamStats | typeof gamePlayerStats) {

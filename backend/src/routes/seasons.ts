@@ -19,7 +19,7 @@ import {
   getTeamRoster,
   getTeams,
 } from "../db/season-identities";
-import { getBoxScore, getGame, getGames, getLeagueTeamStats, getPhaseResults, getPlayByPlay, getPlayerGameLog, getPlayerShots, getPostseasonSeries, getShots, getTeamGames, getTeamStatsSummary } from "../db/season-games";
+import { getBoxScore, getGame, getGameOfficials, getGames, getLeagueTeamStats, getPhaseResults, getPlayByPlay, getPlayerGameLog, getPlayerShots, getPostseasonSeries, getShots, getTeamGames, getTeamStatsSummary } from "../db/season-games";
 import { getSeasonFormat } from "../db/season-format";
 import { seasonScopes, seasonStageCodes } from "../db/season-format-registry";
 import { getLatestStandingsRound, getStandings } from "../db/season-standings";
@@ -1147,12 +1147,12 @@ seasonRouter.get("/:seasonCode/games/:gameCode", async (req, res) => {
   if (!season) return;
   const gameCode = requestedGameCode(req.params.gameCode, res);
   if (gameCode === null) return;
-  const game = await getGame(season.seasonCode, gameCode);
+  const [game, officials] = await Promise.all([getGame(season.seasonCode, gameCode), getGameOfficials(season.seasonCode, gameCode)]);
   if (!game) {
     sendError(res, 404, "GAME_NOT_FOUND", "Game not found");
     return;
   }
-  res.json({ game });
+  res.json({ game, officials });
 });
 
 seasonRouter.get("/:seasonCode/games/:gameCode/box-score", async (req, res) => {

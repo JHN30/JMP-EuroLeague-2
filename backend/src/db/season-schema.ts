@@ -144,6 +144,22 @@ export const gamePeriodScores = pgTable(
   (table) => [primaryKey({ columns: [table.competitionCode, table.seasonCode, table.gameCode, table.side, table.periodNumber] })],
 );
 
+// The officials of one game, numbered as the feed lists them (usually three; a fourth in some early seasons).
+export const gameOfficials = pgTable(
+  "app_game_officials",
+  {
+    competitionCode: text("competition_code").notNull(),
+    seasonCode: text("season_code").notNull(),
+    gameCode: integer("game_code").notNull(),
+    officialNumber: integer("official_number").notNull(),
+    officialCode: text("official_code").notNull(),
+    name: text("name").notNull(),
+    countryCode: text("country_code"),
+    countryName: text("country_name"),
+  },
+  (table) => [primaryKey({ columns: [table.competitionCode, table.seasonCode, table.gameCode, table.officialNumber] })],
+);
+
 export const playByPlay = pgTable(
   "app_play_by_play",
   {

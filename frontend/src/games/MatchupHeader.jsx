@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { getSeasonStandings } from "../lib/api";
 import Panel from "../lib/Panel";
+import { displayName } from "../lib/playerName";
 import { groupedStageCodes } from "../lib/seasonFormat";
 import { useSeasonFormat } from "../lib/useSeasonFormat";
 import { eliminationStageLabel } from "../postseason/eliminationBracket";
@@ -43,11 +44,28 @@ function Side({ team, position, groupPlace, won }) {
   );
 }
 
+// The facts about the game itself, as EuroLeague's match information box gives them: a small label over each value, side by side from sm and
+// stacked below it. A fact the game does not have is left out, and with none there is no strip at all.
+function MatchInfo({ items }) {
+  const shown = items.filter((item) => item.value);
+  if (shown.length === 0) return null;
+  return (
+    <dl className="mt-4 grid grid-cols-[minmax(0,1fr)] gap-3 border-t border-base-300 pt-4 text-center sm:auto-cols-fr sm:grid-flow-col">
+      {shown.map((item) => (
+        <div key={item.label} className="min-w-0">
+          <dt className="muted text-xs font-semibold tracking-wide uppercase">{item.label}</dt>
+          <dd className="mt-0.5 font-semibold wrap-break-word">{item.value}</dd>
+        </div>
+      ))}
+    </dl>
+  );
+}
+
 // The game page's header, laid out like EuroLeague's: each club's crest, TV code and current league position at its end of the
 // card, the score (or the tip-off time) in the middle and the round and date in one line under them. The position is the
 // club's place in the latest regular-season standings, shown for a regular-season game once those have loaded; without it
 // the brackets are left out, with no error and no placeholder.
-export default function MatchupHeader({ game, seasonCode, localWon, roadWon }) {
+export default function MatchupHeader({ game, officials = [], seasonCode, localWon, roadWon }) {
   const format = useSeasonFormat(seasonCode).data;
   const cancelled = format?.status === "cancelled";
   // In a grouped table stage the bracket is the club's place within its own group, from that stage's table.
@@ -94,6 +112,7 @@ export default function MatchupHeader({ game, seasonCode, localWon, roadWon }) {
       <p className="muted mt-3 text-center text-sm">
         {groupedStage && game.groupName ? `${game.groupName} · ` : ""}{round} · {cancelled && !game.played ? "Originally scheduled: " : ""}{formatGameDate(game.scheduledAt)}
       </p>
+      <MatchInfo items={[{ label: "Officials", value: officials.map((official) => displayName(official.name)).join(", ") }]} />
     </Panel>
   );
 }

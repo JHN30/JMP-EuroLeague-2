@@ -11,13 +11,43 @@ import Panel from "../lib/Panel";
 import { TabStrip } from "../lib/TabStrip";
 import ViewSelect from "../lib/ViewSelect";
 import { useDocumentTitle } from "../lib/useDocumentTitle";
-import { ModeSelect, ModeTabs } from "../leaders/LeaderParts";
 import RecordBook from "./RecordBook";
 import { Board, Podium } from "./RecordParts";
 import RecordTimeline from "./RecordTimeline";
 import { DEFAULT_FAMILY, DEFAULT_METRIC, FAMILIES, GROUPS, allMetrics, describeRecord, metricsOf, perGameAvailable, pickKey } from "./recordData";
 
 const PANEL_ID = "records-panel";
+
+const PER_CHOICES = [
+  { key: "total", label: "Totals" },
+  { key: "game", label: "Per game" },
+];
+
+// Totals or per game as two buttons, the chosen one filled; with only two choices the whole choice stays in view. As tall as the select
+// beside it, and touch-sized below sm.
+function PerToggle({ per, onChange }) {
+  return (
+    <div className="flex flex-col gap-1 text-xs text-base-content/70">
+      <span className="ms-2" aria-hidden="true">
+        Show
+      </span>
+      <div role="group" aria-label="Totals or per game" className="flex gap-2">
+        {PER_CHOICES.map((choice) => (
+          <button
+            key={choice.key}
+            type="button"
+            aria-pressed={choice.key === per}
+            aria-controls={PANEL_ID}
+            className={`btn max-sm:h-11 ${choice.key === per ? "btn-primary" : "btn-outline"}`}
+            onClick={() => onChange(choice.key)}
+          >
+            {choice.label}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
 
 const FETCHERS = { player: getPlayerSeasonRecords, game: getSingleGameRecords, team: getTeamSeasonRecords, teamgame: getTeamGameRecords };
 
@@ -88,8 +118,8 @@ function RecordsDetail({ seasonCode, params, setParams }) {
     });
   }
 
-  // Changing the kind keeps the metric when the new kind has it, and otherwise opens the default; a group opens its first metric. Per game
-  // stays chosen while the new choice has it, and leaves the address when it does not. The type and metric are always written (a null
+  // Changing the kind keeps the metric when the new kind has it, and otherwise opens the default. Per game stays chosen while the new choice
+  // has it (a metric can be in the other group), and leaves the address when it does not. The type and metric are always written (a null
   // fallback never matches), so an address without them stays the record book.
   const keepPer = (nextFamily, nextGroup) => [per === "game" && perGameAvailable(nextFamily, nextGroup) ? "game" : "total", "total"];
   const chooseFamily = (key) => {
@@ -97,11 +127,9 @@ function RecordsDetail({ seasonCode, params, setParams }) {
     const nextGroup = allMetrics(key).find((entry) => entry.key === nextMetric).group;
     setAddress({ type: [key, null], metric: [nextMetric, null], per: keepPer(key, nextGroup) });
   };
-  const chooseGroup = (key) => setAddress({ type: [family, null], metric: [metricsOf(family, key)[0].key, null], per: keepPer(family, key) });
-  const chooseMetric = (key) => setAddress({ type: [family, null], metric: [key, null] });
-  // ModeTabs and ModeSelect name the choices as Leaders does (perGame, accumulated).
-  const choosePer = (key) => setAddress({ type: [family, null], metric: [metric, null], per: [key === "perGame" ? "game" : "total", "total"] });
-  const perMode = per === "game" ? "perGame" : "accumulated";
+  const chooseMetric = (key) => setAddress({ type: [family, null], metric: [key, null], per: keepPer(family, metrics.find((entry) => entry.key === key).group) });
+  const choosePer = (key) => setAddress({ type: [family, null], metric: [metric, null], per: [key, "total"] });
+  const metricGroups = GROUPS.map((entry) => ({ label: entry.label, options: metricsOf(family, entry.key) }));
 
   // The rows stay on screen while the next choice loads; the full loading state is only for the very first load.
   const query = useQuery({
@@ -116,17 +144,12 @@ function RecordsDetail({ seasonCode, params, setParams }) {
       <PageHeader kicker="ARCHIVE" title="Records" description={<p className="muted">{familyInfo.description}</p>} />
 
       <TabStrip scrolling ariaLabel="Record type" level={1} panelId={PANEL_ID} activeKey={family} onChange={chooseFamily} className="mb-4 w-fit" tabs={FAMILIES} />
-      <TabStrip scrolling ariaLabel="Metric group" level={2} panelId={PANEL_ID} activeKey={group} onChange={chooseGroup} className="mb-3 w-fit max-sm:[--tab-height:2.75rem]!" tabs={GROUPS} />
-      {/* The metrics of a group are one select below sm, where a strip of eleven tabs would be a long swipe, and the strip from sm. */}
-      <ViewSelect className={`sm:hidden ${hasPer ? "mb-3" : "mb-6"}`} label="Metric" value={metric} options={metricsOf(family, group)} onChange={chooseMetric} />
-      <TabStrip scrolling ariaLabel="Record metric" level={3} panelId={PANEL_ID} activeKey={metric} onChange={chooseMetric} className={`max-sm:hidden ${hasPer ? "mb-3" : "mb-6"}`} tabs={metricsOf(family, group)} />
-      {/* Totals or per game, for the season records of the traditional metrics only. */}
-      {hasPer ? (
-        <div className="mb-6">
-          <ModeTabs ariaLabel="Totals or per game" mode={perMode} onChange={choosePer} panelId={PANEL_ID} />
-          <ModeSelect label="Show" ariaLabel="Totals or per game" mode={perMode} onChange={choosePer} />
-        </div>
-      ) : null}
+      {/* One row of choices under the record type: the metric (its traditional and advanced ones in sections) and, for the season records
+          of the traditional metrics only, totals or per game. Below sm the toggle wraps under the select. */}
+      <div className="mb-6 flex flex-wrap items-end gap-3">
+        <ViewSelect className="w-full sm:w-72" label="Metric" value={metric} groups={metricGroups} onChange={chooseMetric} />
+        {hasPer ? <PerToggle per={per} onChange={choosePer} /> : null}
+      </div>
 
       <div id={PANEL_ID} aria-busy={query.isPlaceholderData} className={query.isPlaceholderData ? "opacity-60 transition-opacity" : "transition-opacity"}>
         {query.isError ? (

@@ -88,13 +88,25 @@ for (const family of CASES) {
           else expect(shown.length).toBeGreaterThan(4);
         }
 
-        // The metric: a select on a phone, the strip from 640px. The group strip's tabs are touch-sized on a phone, and no strip is wider than the window.
-        await expect(page.getByRole("combobox", { name: "Metric" })).toHaveCount(phone ? 1 : 0);
-        await expect(page.getByRole("tablist", { name: "Record metric" })).toHaveCount(phone ? 0 : 1);
+        // Under the record type, one row of choices at every width: the metric select and, where there is one, the totals or per game toggle.
+        // No group or metric strip; the select and the toggle fit the window, and below 640px the toggle wraps under the select.
+        const select = page.getByRole("combobox", { name: "Metric" });
+        await expect(select).toHaveCount(1);
+        await expect(page.getByRole("tablist", { name: "Metric group" })).toHaveCount(0);
+        await expect(page.getByRole("tablist", { name: "Record metric" })).toHaveCount(0);
+        const selectBox = await select.boundingBox();
+        expect(selectBox.x + selectBox.width).toBeLessThanOrEqual(width + 1);
+        const toggle = page.getByRole("group", { name: "Totals or per game" });
+        if (await toggle.count()) {
+          const toggleBox = await toggle.boundingBox();
+          expect(toggleBox.x + toggleBox.width).toBeLessThanOrEqual(width + 1);
+          if (phone) expect(toggleBox.y).toBeGreaterThan(selectBox.y + selectBox.height - 1);
+          else expect(Math.abs(toggleBox.y + toggleBox.height - (selectBox.y + selectBox.height))).toBeLessThanOrEqual(2);
+          for (const button of await toggle.getByRole("button").all()) expect((await button.boundingBox()).height).toBeGreaterThanOrEqual(phone ? 43.5 : 0);
+        }
         for (const strip of await page.getByRole("tablist").all()) {
           const box = await strip.boundingBox();
           expect(box.x + box.width, await strip.getAttribute("aria-label")).toBeLessThanOrEqual(width + 1);
-          if (phone) expect((await strip.getByRole("tab").first().boundingBox()).height, await strip.getAttribute("aria-label")).toBeGreaterThanOrEqual(43.5);
         }
       });
     }
@@ -110,22 +122,20 @@ for (const family of CASES) {
   });
 }
 
-test("the metric select on a phone lists the group's metrics and a choice loads that metric and changes the address", async ({ page }) => {
+test("the metric select on a phone lists every metric in two sections and a choice loads that metric and changes the address", async ({ page }) => {
   test.setTimeout(90_000);
   await page.setViewportSize({ width: 390, height: HEIGHT });
   const slug = await seasonSlug(page);
   await page.goto(`/${slug}/records?type=player&metric=pointsScored`);
   const select = page.getByRole("combobox", { name: "Metric" });
   await expect(select).toBeVisible({ timeout: 45_000 });
-  await expect(select.locator("option")).toHaveCount(11);
+  await expect(select.locator('optgroup[label="Traditional"] > option')).toHaveCount(11);
+  await expect(select.locator('optgroup[label="Advanced"] > option')).toHaveCount(14);
   await select.selectOption({ label: "Rebounds" });
   await expect(page).toHaveURL(/metric=totalRebounds/);
   await expect(page.getByText("Ranked by Rebounds")).toBeVisible({ timeout: 45_000 });
-  // The group strip changes the options and keeps a valid metric.
-  await page.getByRole("tab", { name: "Advanced", exact: true }).click();
-  await expect(select.locator("option")).toHaveCount(14);
-  await expect(select.locator("option").first()).toHaveText("PER");
-  await expect(select.locator("option").last()).toHaveText("PIE");
+  // An advanced metric is in the same select.
+  await select.selectOption({ label: "PER" });
   await expect(select).toHaveValue("per");
   await expect(page).toHaveURL(/metric=per/);
   await expectNoSidewaysScroll(page);

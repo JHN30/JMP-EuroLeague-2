@@ -116,7 +116,12 @@ async function mockApi(page, { rows = {}, delay = {}, fail = false } = {}) {
 // The detail view of the default record; the bare records address is the record book.
 const DETAIL = "/2026/records?type=player&metric=pointsScored";
 const tab = (page, name) => page.getByRole("tab", { name, exact: true });
-const metricTabs = (page) => page.getByRole("tablist", { name: "Record metric" }).getByRole("tab");
+// The metric is one select, its metrics in a Traditional and an Advanced section.
+const metricSelect = (page) => page.getByRole("combobox", { name: "Metric" });
+const chooseMetric = (page, label) => metricSelect(page).selectOption({ label });
+const expectMetric = (page, label) => expect(metricSelect(page).locator("option:checked")).toHaveText(label);
+const sectionOptions = (page, section) => metricSelect(page).locator(`optgroup[label="${section}"] > option`);
+const perChoice = (page) => page.getByRole("group", { name: "Totals or per game" });
 
 test("shows archive-to-date player-season records", async ({ page }) => {
   await mockApi(page);
@@ -215,16 +220,18 @@ test("the podium, the timeline and the Top 50 read from the rows, with the pictu
   await expect(rows.nth(3).locator("img")).toHaveCount(0);
 });
 
-test("the groups and metrics of each record type, and what a choice keeps", async ({ page }) => {
+test("the metrics of each record type in two sections of one select, and what a choice keeps", async ({ page }) => {
   await mockApi(page);
   await page.goto(DETAIL);
-  // Player seasons: eleven traditional metrics, two advanced ones.
-  await expect(tab(page, "Traditional")).toHaveAttribute("aria-selected", "true");
-  await expect(metricTabs(page)).toHaveCount(11);
-  await expect(metricTabs(page).first()).toHaveText("Points");
-  await expect(metricTabs(page).last()).toHaveText("PIR");
-  await tab(page, "Advanced").click();
-  await expect(metricTabs(page)).toHaveText([
+  // No group or metric strips: the select holds them all.
+  await expect(page.getByRole("tablist", { name: "Metric group" })).toHaveCount(0);
+  await expect(page.getByRole("tablist", { name: "Record metric" })).toHaveCount(0);
+  // Player seasons: eleven traditional metrics, fourteen advanced ones.
+  await expectMetric(page, "Points");
+  await expect(sectionOptions(page, "Traditional")).toHaveCount(11);
+  await expect(sectionOptions(page, "Traditional").first()).toHaveText("Points");
+  await expect(sectionOptions(page, "Traditional").last()).toHaveText("PIR");
+  await expect(sectionOptions(page, "Advanced")).toHaveText([
     "PER",
     "Win Shares",
     "Offensive Win Shares",
@@ -240,20 +247,19 @@ test("the groups and metrics of each record type, and what a choice keeps", asyn
     "Game Score average",
     "PIE",
   ]);
-  await expect(tab(page, "PER")).toHaveAttribute("aria-selected", "true");
+  // An advanced metric straight from the select, and back to a traditional one; the address names each.
+  await chooseMetric(page, "PER");
+  await expectMetric(page, "PER");
   await expect(page).toHaveURL(/metric=per/);
-  // Back to the traditional group opens its first metric, and the address names it.
-  await tab(page, "Traditional").click();
-  await expect(tab(page, "Points")).toHaveAttribute("aria-selected", "true");
+  await chooseMetric(page, "Points");
+  await expectMetric(page, "Points");
   expect(new URL(page.url()).search).toBe("?type=player&metric=pointsScored");
 
-  // Player games has Game Score; the clubs have the two ratings.
+  // Player games has Game Score; the clubs have the ratings.
   await tab(page, "Player games").click();
-  await tab(page, "Advanced").click();
-  await expect(metricTabs(page)).toHaveText(["Game Score", "Game PER"]);
+  await expect(sectionOptions(page, "Advanced")).toHaveText(["Game Score", "Game PER"]);
   await tab(page, "Team seasons").click();
-  await tab(page, "Advanced").click();
-  await expect(metricTabs(page)).toHaveText([
+  await expect(sectionOptions(page, "Advanced")).toHaveText([
     "Offensive rating",
     "Defensive rating",
     "Net rating",
@@ -271,17 +277,16 @@ test("the groups and metrics of each record type, and what a choice keeps", asyn
     "Defensive rebound %",
     "Assist ratio",
   ]);
-  await tab(page, "Net rating").click();
+  await chooseMetric(page, "Net rating");
   // Changing the type keeps a metric the new type has, and opens the default when it has not.
   await tab(page, "Team games").click();
-  await expect(metricTabs(page)).toHaveText(["Offensive rating", "Defensive rating", "Net rating", "Pace", "Effective FG%", "True shooting %"]);
-  await expect(tab(page, "Net rating")).toHaveAttribute("aria-selected", "true");
+  await expect(sectionOptions(page, "Advanced")).toHaveText(["Offensive rating", "Defensive rating", "Net rating", "Pace", "Effective FG%", "True shooting %"]);
+  await expectMetric(page, "Net rating");
   await tab(page, "Player seasons").click();
-  await expect(tab(page, "Advanced")).toHaveAttribute("aria-selected", "false");
-  await expect(tab(page, "Points")).toHaveAttribute("aria-selected", "true");
-  await tab(page, "PIR").click();
+  await expectMetric(page, "Points");
+  await chooseMetric(page, "PIR");
   await tab(page, "Team seasons").click();
-  await expect(tab(page, "PIR")).toHaveAttribute("aria-selected", "true");
+  await expectMetric(page, "PIR");
 });
 
 test("the record type and the metric are always in the address, and Back steps through the choices", async ({ page }) => {
@@ -291,7 +296,7 @@ test("the record type and the metric are always in the address, and Back steps t
 
   await tab(page, "Team games").click();
   await expect(page).toHaveURL(/[?&]type=teamgame(&|$)/);
-  await tab(page, "Advanced").click();
+  await chooseMetric(page, "Offensive rating");
   await expect(page).toHaveURL(/metric=offensiveRating/);
   await tab(page, "Player seasons").click();
   await expect(page).toHaveURL(/[?&]type=player(&|$)/);
@@ -299,31 +304,31 @@ test("the record type and the metric are always in the address, and Back steps t
   // An address naming only a metric opens its detail view with the default type.
   await page.goto("/2026/records?metric=assists");
   await expect(tab(page, "Player seasons")).toHaveAttribute("aria-selected", "true");
-  await expect(tab(page, "Assists")).toHaveAttribute("aria-selected", "true");
-  await tab(page, "Rebounds").click();
+  await expectMetric(page, "Assists");
+  await chooseMetric(page, "Rebounds");
   await expect(page).toHaveURL(/type=player/);
   await expect(page).toHaveURL(/metric=totalRebounds/);
   await page.goto(DETAIL);
   await tab(page, "Team games").click();
-  await tab(page, "Advanced").click();
+  await chooseMetric(page, "Offensive rating");
   await tab(page, "Player seasons").click();
 
   await page.goBack();
   await expect(page).toHaveURL(/type=teamgame/);
-  await expect(tab(page, "Offensive rating")).toHaveAttribute("aria-selected", "true");
+  await expectMetric(page, "Offensive rating");
 
   // A link opens straight on its choice; an unknown value falls back to the default, and so does a metric the type does not have.
   await page.goto("/2026/records?type=teamgame&metric=netRating");
   await expect(tab(page, "Team games")).toHaveAttribute("aria-selected", "true");
-  await expect(tab(page, "Net rating")).toHaveAttribute("aria-selected", "true");
+  await expectMetric(page, "Net rating");
   await page.goto("/2026/records?type=game&metric=totalRebounds");
   await expect(tab(page, "Player games")).toHaveAttribute("aria-selected", "true");
-  await expect(tab(page, "Rebounds")).toHaveAttribute("aria-selected", "true");
+  await expectMetric(page, "Rebounds");
   await page.goto("/2026/records?type=nonsense&metric=nonsense");
   await expect(tab(page, "Player seasons")).toHaveAttribute("aria-selected", "true");
-  await expect(tab(page, "Points")).toHaveAttribute("aria-selected", "true");
+  await expectMetric(page, "Points");
   await page.goto("/2026/records?type=team&metric=per");
-  await expect(tab(page, "Points")).toHaveAttribute("aria-selected", "true");
+  await expectMetric(page, "Points");
 });
 
 test("totals or per game: offered for the season records of the traditional metrics, kept in the address and asked of the API", async ({ page }) => {
@@ -333,12 +338,14 @@ test("totals or per game: offered for the season records of the traditional metr
   });
   await mockApi(page);
   await page.goto(DETAIL);
-  const choice = page.getByRole("tablist", { name: "Totals or per game" });
-  await expect(choice.getByRole("tab", { name: "Totals" })).toHaveAttribute("aria-selected", "true");
+  const choice = perChoice(page);
+  await expect(choice.getByRole("button", { name: "Totals" })).toHaveAttribute("aria-pressed", "true");
+  await expect(choice.getByRole("button", { name: "Per game" })).toHaveAttribute("aria-pressed", "false");
   expect(asked.at(-1)).toBeNull();
 
   // Per game: in the address and the request, with the per-game label, one decimal and the minimum-games note.
-  await choice.getByRole("tab", { name: "Per game" }).click();
+  await choice.getByRole("button", { name: "Per game" }).click();
+  await expect(choice.getByRole("button", { name: "Per game" })).toHaveAttribute("aria-pressed", "true");
   await expect(page).toHaveURL(/[?&]per=game\b/);
   await expect.poll(() => asked.at(-1)).toBe("game");
   await expect(page.locator("thead")).toContainText("Points per game");
@@ -353,16 +360,20 @@ test("totals or per game: offered for the season records of the traditional metr
   await expect(page).not.toHaveURL(/per=/);
   await expect(choice).toHaveCount(0);
 
-  // The Advanced group has none either.
-  await page.goto("/2026/records?per=game");
-  await tab(page, "Advanced").click();
+  // The advanced metrics have none either: choosing one from the select drops per game, and a traditional one does not bring it back.
+  await page.goto("/2026/records?type=player&metric=pointsScored&per=game");
+  await expect(choice.getByRole("button", { name: "Per game" })).toHaveAttribute("aria-pressed", "true");
+  await chooseMetric(page, "PER");
   await expect(page).not.toHaveURL(/per=/);
-  await expect(page.getByRole("tablist", { name: "Totals or per game" })).toHaveCount(0);
+  await expect(choice).toHaveCount(0);
+  await chooseMetric(page, "Assists");
+  await expect(choice.getByRole("button", { name: "Totals" })).toHaveAttribute("aria-pressed", "true");
+  await expect(page).not.toHaveURL(/per=/);
 
   // A value the page does not know reads as totals and is not sent.
   asked.length = 0;
   await page.goto("/2026/records?per=bogus");
-  await expect(page.getByRole("tablist", { name: "Totals or per game" }).getByRole("tab", { name: "Totals" })).toHaveAttribute("aria-selected", "true");
+  await expect(choice.getByRole("button", { name: "Totals" })).toHaveAttribute("aria-pressed", "true");
   await expect.poll(() => asked.length).toBeGreaterThan(0);
   expect(asked.every((value) => value === null)).toBe(true);
 });
@@ -388,7 +399,7 @@ test("the record book: the headline records of every type, each opening its deta
   await expect(page.getByRole("tablist", { name: "Record type" })).toHaveCount(0);
   await cards.nth(1).getByRole("link", { name: /^Rebounds/ }).click();
   await expect(page).toHaveURL(/\/2026\/records\?type=player&metric=totalRebounds$/);
-  await expect(tab(page, "Rebounds")).toHaveAttribute("aria-selected", "true");
+  await expectMetric(page, "Rebounds");
   await page.getByRole("link", { name: /Record book/ }).first().click();
   await expect(page).toHaveURL(/\/2026\/records$/);
   await expect(cards).toHaveCount(24);
@@ -454,15 +465,15 @@ test("the records with a minimum number of games say so", async ({ page }) => {
   await expect(page.getByText(/Counts (players|clubs)/)).toHaveCount(0);
 });
 
-test("a change of metric keeps the header, the strips and the rows on screen while the next ones load", async ({ page }) => {
+test("a change of metric keeps the header, the choices and the rows on screen while the next ones load", async ({ page }) => {
   await mockApi(page, { delay: { totalRebounds: 1200 } });
   await page.goto(DETAIL);
   await expect(page.getByText("Cal Three").first()).toBeVisible();
-  await tab(page, "Rebounds").click();
+  await chooseMetric(page, "Rebounds");
   // Held back: the page is still there, marked busy, with no loading spinner replacing it.
   await expect(page.locator("#records-panel")).toHaveAttribute("aria-busy", "true");
   await expect(page.getByRole("heading", { name: "Records", exact: true })).toBeVisible();
-  await expect(tab(page, "Rebounds")).toHaveAttribute("aria-selected", "true");
+  await expectMetric(page, "Rebounds");
   await expect(page.getByText("Cal Three").first()).toBeVisible();
   await expect(page.getByRole("status")).toHaveCount(0);
   await expect(page.locator("#records-panel")).toHaveAttribute("aria-busy", "false");

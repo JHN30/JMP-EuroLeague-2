@@ -20,7 +20,7 @@ const SIDE_TABS = (name) => [
 
 // The club's shots (or its opponents' shots against it) on a half court, with the zones and game situations they come
 // from. The player Shooting tab is the same layout over one player's shots.
-export default function TeamShootingSection({ seasonCode, phaseCode, team, games }) {
+export default function TeamShootingSection({ seasonCode, phaseCode, stageName, team, games }) {
   const [side, setSide] = useState("team");
   const [presentation, setPresentation] = useState("heatmap");
   const [gameSegment, setGameSegment] = useState("all");
@@ -33,7 +33,7 @@ export default function TeamShootingSection({ seasonCode, phaseCode, team, games
   const name = team.abbreviatedName ?? team.name ?? team.clubCode;
 
   if (playedGames.length === 0) {
-    return <EmptyText>No played games yet this phase to map shot locations from.</EmptyText>;
+    return <EmptyText>{`No played games yet in the ${stageName} to map shot locations from.`}</EmptyText>;
   }
   if (loading) {
     return <AsyncState status="loading" label={`Aggregating ${formatCount(playedGames.length)} shooting charts`} />;

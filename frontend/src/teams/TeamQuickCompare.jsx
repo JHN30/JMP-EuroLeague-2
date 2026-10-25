@@ -63,7 +63,7 @@ function compareTargets({ clubCode, nextOpponent, standings: tableStandings }) {
 
 // The club set against its next opponent or the league leader on the numbers that decide games. Both clubs' numbers come
 // from the league-wide advanced standings (`advancedQuery`).
-export default function TeamQuickCompare({ seasonCode, clubCode, team, nextOpponent, standingsQuery, advancedQuery }) {
+export default function TeamQuickCompare({ seasonCode, clubCode, team, nextOpponent, standingsQuery, advancedQuery, stageName }) {
   const [selectedKey, setSelectedKey] = useState("next");
 
   if (advancedQuery.isPending || standingsQuery.isPending) {
@@ -82,7 +82,7 @@ export default function TeamQuickCompare({ seasonCode, clubCode, team, nextOppon
     return (
       <Panel as="section" className="p-4">
         <PanelHeader kicker="COMPARE" title="Quick comparison" />
-        <EmptyText>No upcoming game or league leader to compare against in this phase.</EmptyText>
+        <EmptyText>{`No upcoming game or league leader to compare against in the ${stageName}.`}</EmptyText>
       </Panel>
     );
   }
@@ -145,7 +145,7 @@ export default function TeamQuickCompare({ seasonCode, clubCode, team, nextOppon
             </motion.p>
           </motion.div>
         ) : (
-          <EmptyText>Advanced numbers for this comparison aren&apos;t available yet in this phase.</EmptyText>
+          <EmptyText>{`Advanced numbers for this comparison aren't available yet for the ${stageName}.`}</EmptyText>
         )}
       </TabPanel>
     </Panel>

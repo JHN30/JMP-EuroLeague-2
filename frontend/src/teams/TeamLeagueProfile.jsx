@@ -34,7 +34,7 @@ function ProfileRow({ metric, own, standing }) {
 
 // Where a club sits among all clubs on ten offensive and defensive numbers, so the Overview says what the club is
 // good and bad at rather than only how it has been playing. `advancedQuery` is the league-wide advanced standings.
-export default function TeamLeagueProfile({ advancedQuery, clubCode, team }) {
+export default function TeamLeagueProfile({ advancedQuery, clubCode, team, stageName }) {
   const name = team.abbreviatedName ?? team.name ?? clubCode;
 
   if (advancedQuery.isPending) return <AsyncState status="loading" label="Loading the league profile" />;
@@ -48,7 +48,7 @@ export default function TeamLeagueProfile({ advancedQuery, clubCode, team }) {
     return (
       <Panel as="section" className="p-4">
         <PanelHeader kicker="PROFILE" title={`Where ${name} ranks in the league`} />
-        <EmptyText>No league rankings yet for this phase.</EmptyText>
+        <EmptyText>{`No league rankings yet for the ${stageName}.`}</EmptyText>
       </Panel>
     );
   }

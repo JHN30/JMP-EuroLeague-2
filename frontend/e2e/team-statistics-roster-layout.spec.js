@@ -91,7 +91,7 @@ test("the Statistics states fit a phone: failing, no games, and no league ranks"
   await page.unroute(SUMMARY);
   await page.route(SUMMARY, (route) => route.fulfill({ json: { phaseCode: "RS", gamesPlayed: 0, own: {}, opponent: {} } }));
   await openTab(page, slug, team.clubCode, "Statistics");
-  await expect(page.getByText("This club did not play any games in the selected phase.")).toBeVisible({ timeout: 30_000 });
+  await expect(page.getByText("No games played in the Regular Season yet.")).toBeVisible({ timeout: 30_000 });
   await expectNoSidewaysScroll(page);
 
   // The ranks failing to load leave the numbers, bars and a shorter footnote.
@@ -115,6 +115,8 @@ test("the roster facts are two columns, the cards narrower and the coaches compa
   await openTab(page, slug, team.clubCode, "Roster");
   const { facts, cards, coaches } = rosterParts(page);
   await expect(cards.first()).toBeVisible({ timeout: 30_000 });
+  // The roster is the season's squad: no stage to choose.
+  await expect(page.getByRole("tablist", { name: "Phase" })).toHaveCount(0);
   await expect(coaches.first()).toBeVisible({ timeout: 30_000 });
   await expect(page.locator("section[aria-label='Coaching staff'] .rounded-box")).not.toHaveCount(0);
 

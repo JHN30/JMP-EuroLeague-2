@@ -17,7 +17,7 @@ import AsyncState from "../lib/AsyncState";
 import BackLink from "../lib/BackLink";
 import EmptyText from "../lib/EmptyText";
 import CompetitionContext from "../lib/CompetitionContext";
-import { formatDateTime, formatPerGame } from "../lib/format";
+import { formatDateTime, formatPerGame, formatSeasonLabel } from "../lib/format";
 import HomeAwayIcon from "../lib/HomeAwayIcon";
 import { barFill, cardHover, listContainer, listItem } from "../lib/motion";
 import Panel from "../lib/Panel";
@@ -30,6 +30,7 @@ import { TabPanel, TabStrip } from "../lib/TabStrip";
 import { useDocumentTitle } from "../lib/useDocumentTitle";
 import { useMediaQuery } from "../lib/useMediaQuery";
 import { usePhaseParam } from "../lib/usePhaseParam";
+import { useSeasonFormat } from "../lib/useSeasonFormat";
 import TeamAdvancedSection from "./TeamAdvancedSection";
 import TeamGamesSection from "./TeamGamesSection";
 import TeamLeagueProfile from "./TeamLeagueProfile";
@@ -224,17 +225,17 @@ function SnapshotFact({ label, value, className = "" }) {
 
 // The phase at a glance in one panel: the record as a win/loss bar with the last results and streak, points for and
 // against as paired bars, and the remaining facts in a single row.
-function TeamSnapshot({ standingsQuery, teamStatsQuery, clubCode, phaseGames }) {
-  if (standingsQuery.isPending) return <AsyncState status="loading" label="Loading the phase record" />;
+function TeamSnapshot({ standingsQuery, teamStatsQuery, clubCode, phaseGames, stageName }) {
+  if (standingsQuery.isPending) return <AsyncState status="loading" label="Loading the record" />;
   if (standingsQuery.isError) {
-    return <AsyncState status="error" message="Could not load the phase record." onRetry={() => standingsQuery.refetch()} />;
+    return <AsyncState status="error" message="Could not load the record." onRetry={() => standingsQuery.refetch()} />;
   }
   const entry = standingsQuery.data.standings.find((row) => row.clubCode === clubCode);
   const basic = entry?.basic;
   // Grouped tables repeat positions, so the club's place is stated within its own group.
   const grouped = isGroupedTable(standingsQuery.data.standings);
   if (!basic || !basic.gamesPlayed) {
-    return <EmptyText>No record yet for this phase.</EmptyText>;
+    return <EmptyText>{`No record yet for the ${stageName}.`}</EmptyText>;
   }
 
   const gp = basic.gamesPlayed;
@@ -332,7 +333,7 @@ const LEADER_CATEGORIES = [
   { key: "pir", label: "PIR per game" },
 ];
 
-function TeamLeaders({ seasonCode, rosterStatsQuery }) {
+function TeamLeaders({ seasonCode, rosterStatsQuery, stageName }) {
   // Below sm the four cards are one swipe row, so the row is a stop for keyboard users like Home's leader row.
   const isSwipeRow = useMediaQuery("not (min-width: 40rem)");
   if (rosterStatsQuery.isPending) return <AsyncState status="loading" label="Loading team leaders" />;
@@ -342,7 +343,7 @@ function TeamLeaders({ seasonCode, rosterStatsQuery }) {
   // A team's leaders are among players who meet the league's minimum games, not someone with two big games.
   const players = [...(rosterStatsQuery.data?.values() ?? [])].filter((player) => player.qualified !== false);
   if (players.length === 0) {
-    return <EmptyText>No statistics recorded yet for this phase.</EmptyText>;
+    return <EmptyText>{`No statistics recorded yet for the ${stageName}.`}</EmptyText>;
   }
 
   return (
@@ -394,7 +395,7 @@ function TeamLeaders({ seasonCode, rosterStatsQuery }) {
   );
 }
 
-function OverviewSection({ seasonCode, clubCode, team, phaseCode, standingsQuery, teamStatsQuery, rosterStatsQuery, games }) {
+function OverviewSection({ seasonCode, clubCode, team, phaseCode, stageName, standingsQuery, teamStatsQuery, rosterStatsQuery, games }) {
   const nextGame = games.find((game) => !game.played) ?? null;
   const nextOpponent = nextGame ? opponent(nextGame, clubCode).team : null;
   const phaseGames = games.filter((game) => game.phaseCode === phaseCode);
@@ -409,10 +410,10 @@ function OverviewSection({ seasonCode, clubCode, team, phaseCode, standingsQuery
 
   return (
     <div className="flex flex-col gap-6">
-      <TeamSnapshot standingsQuery={standingsQuery} teamStatsQuery={teamStatsQuery} clubCode={clubCode} phaseGames={phaseGames} />
+      <TeamSnapshot standingsQuery={standingsQuery} teamStatsQuery={teamStatsQuery} clubCode={clubCode} phaseGames={phaseGames} stageName={stageName} />
       <ForfeitStatsNote seasonCode={seasonCode} phaseCode={phaseCode} clubCodes={[clubCode]} />
-      <TeamLeaders seasonCode={seasonCode} rosterStatsQuery={rosterStatsQuery} />
-      <TeamLeagueProfile advancedQuery={advancedQuery} clubCode={clubCode} team={team} />
+      <TeamLeaders seasonCode={seasonCode} rosterStatsQuery={rosterStatsQuery} stageName={stageName} />
+      <TeamLeagueProfile advancedQuery={advancedQuery} clubCode={clubCode} team={team} stageName={stageName} />
       <div className="grid grid-cols-[minmax(0,1fr)] gap-6 lg:grid-cols-2">
         {/* The last panel here grows to the comparison's height, so the two columns end together. */}
         <div className="flex flex-col gap-6 *:last:flex-1">
@@ -426,6 +427,7 @@ function OverviewSection({ seasonCode, clubCode, team, phaseCode, standingsQuery
           nextOpponent={nextOpponent}
           standingsQuery={standingsQuery}
           advancedQuery={advancedQuery}
+          stageName={stageName}
         />
       </div>
     </div>
@@ -437,6 +439,22 @@ function gameResult(game, clubCode) {
   const { home } = opponent(game, clubCode);
   return (home ? game.localScore > game.roadScore : game.roadScore > game.localScore) ? "win" : "loss";
 }
+
+// Why the club has no games in the chosen stage. Every club plays the season's first stage; a later one is reached only by
+// qualifying, so the sentence says whether the club went past it, missed it in a finished season, or may still reach it.
+function absentFromStageText({ clubName, phases, phaseCode, games, seasonCode, status }) {
+  const order = phases.map((phase) => phase.code);
+  const stage = phases.find((phase) => phase.code === phaseCode)?.name ?? phaseCode;
+  const season = formatSeasonLabel(seasonCode);
+  if (order.indexOf(phaseCode) === 0) return `${clubName} has no ${stage} games yet.`;
+  const laterStage = games.some((game) => order.indexOf(game.phaseCode) > order.indexOf(phaseCode));
+  if (laterStage) return `${clubName} didn't play in the ${stage} in ${season}.`;
+  if (status === "completed") return `${clubName} didn't qualify for the ${stage} in ${season}.`;
+  return `${clubName} hasn't played in the ${stage} yet. Only the clubs that qualify play in it.`;
+}
+
+// The tabs without a stage choice: the roster is the season's squad, and the advanced tab has its own scopes.
+const SEASON_WIDE_SECTIONS = ["roster", "advanced"];
 
 const SECTIONS = [
   { key: "overview", label: "Overview" },
@@ -485,9 +503,11 @@ export default function TeamPage() {
     enabled: teamQuery.isSuccess && section === "roster",
   });
 
+  // The Roster tab's numbers are the whole season's; the Overview's team leaders are the chosen stage's.
+  const rosterStatsPhase = section === "roster" ? "all" : phaseCode;
   const rosterStatsQuery = useQuery({
-    queryKey: ["team-roster-stats", seasonCode, phaseCode, clubCode],
-    queryFn: () => fetchTeamRosterStats(seasonCode, phaseCode, clubCode),
+    queryKey: ["team-roster-stats", seasonCode, rosterStatsPhase, clubCode],
+    queryFn: () => fetchTeamRosterStats(seasonCode, rosterStatsPhase, clubCode),
     enabled: teamQuery.isSuccess && Boolean(phaseCode) && (section === "roster" || section === "overview"),
   });
 
@@ -502,6 +522,8 @@ export default function TeamPage() {
     queryFn: () => getTeamStatsSummary(seasonCode, clubCode, phaseCode),
     enabled: teamQuery.isSuccess && Boolean(phaseCode) && (section === "statistics" || section === "overview"),
   });
+
+  const formatQuery = useSeasonFormat(seasonCode);
 
   if (teamQuery.isLoading) return <AsyncState status="loading" label="Loading the team" />;
 
@@ -521,6 +543,13 @@ export default function TeamPage() {
 
   const games = gamesQuery.data?.games ?? [];
   const nextGame = games.find((game) => !game.played) ?? null;
+  const clubName = team.abbreviatedName ?? team.name ?? team.clubCode;
+  const stageName = phases.find((phase) => phase.code === phaseCode)?.name ?? phaseCode;
+  // A stage the club has no games in: every stage-driven tab says so in one sentence instead of showing empty panels.
+  const absentText =
+    gamesQuery.isSuccess && phaseCode && games.length > 0 && !games.some((game) => game.phaseCode === phaseCode)
+      ? absentFromStageText({ clubName, phases, phaseCode, games, seasonCode, status: formatQuery.data?.status })
+      : null;
 
   return (
     <div>
@@ -547,10 +576,10 @@ export default function TeamPage() {
         panelId="team-panel"
         activeKey={section}
         onChange={setSection}
-        className={`w-fit ${section === "advanced" ? "mb-6" : "mb-4"}`}
+        className={`w-fit ${SEASON_WIDE_SECTIONS.includes(section) ? "mb-6" : "mb-4"}`}
         tabs={SECTIONS}
       />
-      {section === "advanced" ? null : (
+      {SEASON_WIDE_SECTIONS.includes(section) ? null : (
         <TabStrip
           ariaLabel="Phase"
           level={2}
@@ -564,7 +593,9 @@ export default function TeamPage() {
       )}
 
       <TabPanel id="team-panel" focusKey={`${phaseCode}-${section}`} scroll={false}>
-        {section === "overview" ? (
+        {absentText && !SEASON_WIDE_SECTIONS.includes(section) ? (
+          <EmptyText>{absentText}</EmptyText>
+        ) : section === "overview" ? (
           gamesQuery.isPending ? (
             <AsyncState status="loading" label="Loading this team's games" />
           ) : gamesQuery.isError ? (
@@ -575,6 +606,7 @@ export default function TeamPage() {
               clubCode={clubCode}
               team={team}
               phaseCode={phaseCode}
+              stageName={stageName}
               standingsQuery={standingsQuery}
               teamStatsQuery={teamStatsSummaryQuery}
               rosterStatsQuery={rosterStatsQuery}
@@ -585,6 +617,7 @@ export default function TeamPage() {
           <TeamStatisticsSection
             seasonCode={seasonCode}
             phaseCode={phaseCode}
+            stageName={stageName}
             clubCode={clubCode}
             team={team}
             teamStatsSummaryQuery={teamStatsSummaryQuery}
@@ -594,6 +627,7 @@ export default function TeamPage() {
             key={`${seasonCode}-${clubCode}-${phaseCode}`}
             seasonCode={seasonCode}
             phaseCode={phaseCode}
+            stageName={stageName}
             team={team}
             games={games}
           />
@@ -611,7 +645,13 @@ export default function TeamPage() {
             seasonCode={seasonCode}
           />
         ) : (
-          <TeamGamesSection gamesQuery={gamesQuery} seasonCode={seasonCode} clubCode={clubCode} />
+          <TeamGamesSection
+            key={`${seasonCode}-${clubCode}-${phaseCode}`}
+            gamesQuery={gamesQuery}
+            seasonCode={seasonCode}
+            clubCode={clubCode}
+            phaseCode={phaseCode}
+          />
         )}
       </TabPanel>
     </div>

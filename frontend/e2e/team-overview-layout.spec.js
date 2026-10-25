@@ -306,7 +306,7 @@ test("the Overview's states fit a phone: no games, a missing record, no leaders,
   await page.route("**/api/seasons/*/advanced/standings**", (route) => route.fulfill({ status: 500, json: { error: "Mocked failure" } }));
   await page.route("**/api/seasons/*/season-stats**", (route) => route.fulfill({ status: 500, json: { error: "Mocked failure" } }));
   await page.reload();
-  for (const message of ["Could not load the phase record.", "Could not load team leaders.", "Could not load the league profile.", "Could not load the comparison."]) {
+  for (const message of ["Could not load the record.", "Could not load team leaders.", "Could not load the league profile.", "Could not load the comparison."]) {
     await expect(page.getByText(message)).toBeVisible({ timeout: 30_000 });
   }
   await expectNoSidewaysScroll(page);
@@ -316,7 +316,7 @@ test("the Overview's states fit a phone: no games, a missing record, no leaders,
   await page.route("**/api/seasons/*/advanced/standings**", (route) => route.fulfill({ json: { standings: [] } }));
   await page.route("**/api/seasons/*/season-stats**", (route) => route.fulfill({ json: { players: [], pagination: { hasMore: false } } }));
   await page.reload();
-  for (const message of ["No record yet for this phase.", "No statistics recorded yet for this phase.", "No league rankings yet for this phase."]) {
+  for (const message of ["No record yet for the Regular Season.", "No statistics recorded yet for the Regular Season.", "No league rankings yet for the Regular Season."]) {
     await expect(page.getByText(message)).toBeVisible({ timeout: 30_000 });
   }
   await expectNoSidewaysScroll(page);

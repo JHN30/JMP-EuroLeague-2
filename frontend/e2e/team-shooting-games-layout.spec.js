@@ -177,6 +177,82 @@ test("the Games tab states fit a phone: few games, none played, none to come, no
   await expectNoSidewaysScroll(page);
 });
 
+// Stages for the stage tests, whatever the live season has, and the live season format with its status replaced.
+const PHASES_URL = (url) => /\/api\/seasons\/[^/]+\/phases$/.test(url.pathname);
+const FORMAT_URL = (url) => /\/api\/seasons\/[^/]+\/format$/.test(url.pathname);
+const mockPhases = (page, phases) => page.route(PHASES_URL, (route) => route.fulfill({ json: { phases } }));
+async function mockStatus(page, code, status) {
+  const { format } = await (await page.request.get(`${API}/${code}/format`)).json();
+  await page.route(FORMAT_URL, (route) => route.fulfill({ json: { format: { ...format, status } } }));
+}
+const stageTab = (page, name) => page.getByRole("tablist", { name: "Phase" }).getByRole("tab", { name, exact: true });
+const seasonLabel = (code) => {
+  const year = Number(code.slice(-4));
+  return `${year}-${String((year + 1) % 100).padStart(2, "0")}`;
+};
+
+test("the Games tab follows the stage tabs, and every stage tab says so when the club never reached the stage", async ({ page }) => {
+  const { slug, code, team, rival } = await liveTeam(page);
+  await page.setViewportSize({ width: 320, height: HEIGHT });
+  // The club plays the first two stages and has not reached the Final Four in a season still going.
+  await mockPhases(page, [{ code: "RS", name: "Regular Season" }, { code: "PO", name: "Playoffs" }, { code: "FF", name: "Final Four" }]);
+  await mockStatus(page, code, "inProgress");
+  // Five played (the last two in the playoffs: -21 and +7) and two regular-season games to come.
+  const payload = gamesFor(team, rival, { played: 5, upcoming: 2 });
+  for (const game of payload.games.slice(3, 5)) Object.assign(game, { phaseCode: "PO", phaseName: "Playoffs" });
+  await mockGames(page, payload);
+  await openTab(page, slug, team.clubCode, "Games");
+
+  const strip = page.locator("section", { has: page.getByRole("heading", { name: "How the games went" }) });
+  const chip = page.locator(".next-chip");
+  await expect(strip.locator("ul > li")).toHaveCount(3, { timeout: 30_000 });
+  await expect(strip.locator(".stat-badge:visible").first()).toHaveText("2-1");
+  await expect(page.getByRole("heading", { name: "Next games" })).toBeVisible();
+  const chipText = await chip.textContent();
+
+  await stageTab(page, "Playoffs").click();
+  await expect(strip.locator("ul > li")).toHaveCount(2);
+  await expect(strip.locator(".stat-badge:visible").first()).toHaveText("1-1");
+  await expect(page.getByText("No games left to play.")).toBeVisible();
+  await expectNoSidewaysScroll(page);
+
+  await stageTab(page, "Final Four").click();
+  const club = team.abbreviatedName ?? team.name ?? team.clubCode;
+  const notYet = `${club} hasn't played in the Final Four yet. Only the clubs that qualify play in it.`;
+  await expect(page.getByText(notYet)).toBeVisible();
+  await expect(page.getByRole("heading", { name: "How the games went" })).toHaveCount(0);
+  await expect(page.getByRole("heading", { name: "Latest results" })).toHaveCount(0);
+  // The header's next game is the season's, whatever stage is chosen.
+  await expect(chip).toHaveText(chipText);
+  await expectNoSidewaysScroll(page);
+
+  // The same sentence on every tab with the stage strip; the stage stays chosen in the address.
+  for (const tab of ["Overview", "Statistics", "Shooting"]) {
+    await page.getByRole("tab", { name: tab, exact: true }).click();
+    await expect(page.getByText(notYet)).toBeVisible();
+    await expectNoSidewaysScroll(page);
+  }
+});
+
+test("a stage the club went past or missed in a finished season says which", async ({ page }) => {
+  const { slug, code, team, rival } = await liveTeam(page);
+  await page.setViewportSize({ width: 320, height: HEIGHT });
+  await mockPhases(page, [{ code: "RS", name: "Regular Season" }, { code: "PI", name: "Play-In" }, { code: "PO", name: "Playoffs" }, { code: "FF", name: "Final Four" }]);
+  await mockStatus(page, code, "completed");
+  // Straight from the regular season to the playoffs, and out before the Final Four.
+  const payload = gamesFor(team, rival, { played: 5, upcoming: 0 });
+  for (const game of payload.games.slice(3, 5)) Object.assign(game, { phaseCode: "PO", phaseName: "Playoffs" });
+  await mockGames(page, payload);
+  await openTab(page, slug, team.clubCode, "Games");
+  const club = team.abbreviatedName ?? team.name ?? team.clubCode;
+
+  await stageTab(page, "Play-In").click();
+  await expect(page.getByText(`${club} didn't play in the Play-In in ${seasonLabel(code)}.`)).toBeVisible({ timeout: 30_000 });
+  await stageTab(page, "Final Four").click();
+  await expect(page.getByText(`${club} didn't qualify for the Final Four in ${seasonLabel(code)}.`)).toBeVisible();
+  await expectNoSidewaysScroll(page);
+});
+
 // ---- The Shooting tab ----
 
 const SHOTS_URL = (url) => /\/api\/seasons\/[^/]+\/games\/\d+\/shots$/.test(url.pathname);
@@ -326,7 +402,7 @@ test("the Shooting states fit a phone: no games, loading failing, no attempts, n
 
   await mockGames(page, gamesFor(team, rival, { played: 0, upcoming: 3 }));
   await openTab(page, slug, team.clubCode, "Shooting");
-  await expect(page.getByText("No played games yet this phase to map shot locations from.")).toBeVisible({ timeout: 30_000 });
+  await expect(page.getByText("No played games yet in the Regular Season to map shot locations from.")).toBeVisible({ timeout: 30_000 });
   await expectNoSidewaysScroll(page);
 
   await page.unroute(GAMES_URL);
@@ -358,7 +434,8 @@ test("long club and round names are truncated inside their rows and never widen 
   const { slug, team, rival } = await liveTeam(page);
   const longRival = { ...rival, abbreviatedName: "Meridianbet Crvena Zvezda Belgrade Basketball Club", name: "Meridianbet Crvena Zvezda Belgrade Basketball Club", tvCode: null };
   const payload = gamesFor(team, longRival, { played: 4, upcoming: 4 });
-  for (const game of payload.games) Object.assign(game, { roundName: "Quarterfinals · Game five of the series", phaseCode: "PO", phaseName: "Play-offs" });
+  // The page opens on the regular season, so the games are in it; the long round name is what stretches the rows.
+  for (const game of payload.games) Object.assign(game, { roundName: "Quarterfinals · Game five of the series" });
   await mockGames(page, payload);
   await openTab(page, slug, team.clubCode, "Games");
   await expect(page.getByRole("heading", { name: "Next games" })).toBeVisible({ timeout: 30_000 });

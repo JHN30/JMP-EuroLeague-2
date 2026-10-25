@@ -91,7 +91,7 @@ function StatGroup({ group, teamName, teamTag, own, opponent, gamesPlayed, leagu
 
 // Per-game averages with the club on the left and what its opponents did against it on the right, plus the club's own
 // rank among all clubs on each stat. Ranks load separately: without them the numbers and bars still show.
-export default function TeamStatisticsSection({ seasonCode, phaseCode, clubCode, team, teamStatsSummaryQuery }) {
+export default function TeamStatisticsSection({ seasonCode, phaseCode, stageName, clubCode, team, teamStatsSummaryQuery }) {
   const leagueQuery = useQuery({
     queryKey: ["league-team-stats", seasonCode, phaseCode],
     queryFn: () => getLeagueTeamStats(seasonCode, phaseCode),
@@ -110,7 +110,7 @@ export default function TeamStatisticsSection({ seasonCode, phaseCode, clubCode,
   }
   const { gamesPlayed, own, opponent } = teamStatsSummaryQuery.data;
   if (!gamesPlayed) {
-    return <EmptyText>This club did not play any games in the selected phase.</EmptyText>;
+    return <EmptyText>{`No games played in the ${stageName} yet.`}</EmptyText>;
   }
 
   const teamName = team.abbreviatedName ?? team.name ?? clubCode;

@@ -288,19 +288,21 @@ function GameColumn({ kicker, title, games, seasonCode, clubCode, markFirst = fa
   );
 }
 
-// The Games tab: how the played games went as a strip, then what is coming (left, the next game first) beside what has
-// happened (right, the latest game first), with the opponent's crest on every row.
-export default function TeamGamesSection({ gamesQuery, seasonCode, clubCode }) {
+// The Games tab for the chosen phase: how the played games went as a strip, then what is coming (left, the next game
+// first) beside what has happened (right, the latest game first), with the opponent's crest on every row.
+export default function TeamGamesSection({ gamesQuery, seasonCode, clubCode, phaseCode }) {
   const [resultFilter, setResultFilter] = useState("all");
 
   if (gamesQuery.isPending) return <AsyncState status="loading" label="Loading the games" />;
   if (gamesQuery.isError) {
     return <AsyncState status="error" message="Could not load the games." onRetry={() => gamesQuery.refetch()} />;
   }
-  const allGames = gamesQuery.data.games ?? [];
-  if (allGames.length === 0) {
+  const seasonGames = gamesQuery.data.games ?? [];
+  if (seasonGames.length === 0) {
     return <EmptyText>No games scheduled yet.</EmptyText>;
   }
+  // The team page says so itself when the club has no games in the stage at all.
+  const allGames = seasonGames.filter((game) => game.phaseCode === phaseCode);
 
   const played = allGames.filter((game) => game.played).sort(byDate);
   const upcoming = allGames.filter((game) => !game.played).sort(byDate);

@@ -84,26 +84,42 @@ const STAT_TIPS = {
   PIR: "Performance Index Rating: the EuroLeague efficiency score. Points, rebounds, assists, steals, blocks and fouls drawn, minus misses, turnovers, blocks against and fouls committed",
 };
 
-// `highKey` marks the columns where the game's highest value is bolded.
+// `highKey` marks the columns where the game's highest value is bolded; `teamKey` the counts the Team line can carry.
 const BOX_SCORE_COLUMNS = [
   { label: "MIN", render: (row) => formatMinutes(row.timePlayed) },
   { label: "PTS", render: (row) => formatCount(row.points), highKey: "points" },
   { label: "2PT", render: (row) => madeAttempted(row.fieldGoalsMade2, row.fieldGoalsAttempted2) },
   { label: "3PT", render: (row) => madeAttempted(row.fieldGoalsMade3, row.fieldGoalsAttempted3) },
   { label: "FT", render: (row) => madeAttempted(row.freeThrowsMade, row.freeThrowsAttempted) },
-  { label: "REB", render: (row) => formatCount(row.totalRebounds), highKey: "totalRebounds" },
-  { label: "OREB", render: (row) => formatCount(row.offensiveRebounds), highKey: "offensiveRebounds" },
-  { label: "DREB", render: (row) => formatCount(row.defensiveRebounds), highKey: "defensiveRebounds" },
-  { label: "AST", render: (row) => formatCount(row.assistances), highKey: "assistances" },
-  { label: "STL", render: (row) => formatCount(row.steals), highKey: "steals" },
-  { label: "TO", render: (row) => formatCount(row.turnovers) },
-  { label: "BLK", render: (row) => formatCount(row.blocksFavour), highKey: "blocksFavour" },
-  { label: "BLKA", render: (row) => formatCount(row.blocksAgainst) },
-  { label: "FC", render: (row) => formatCount(row.foulsCommited) },
-  { label: "FD", render: (row) => formatCount(row.foulsReceived), highKey: "foulsReceived" },
+  { label: "REB", render: (row) => formatCount(row.totalRebounds), highKey: "totalRebounds", teamKey: "totalRebounds" },
+  { label: "OREB", render: (row) => formatCount(row.offensiveRebounds), highKey: "offensiveRebounds", teamKey: "offensiveRebounds" },
+  { label: "DREB", render: (row) => formatCount(row.defensiveRebounds), highKey: "defensiveRebounds", teamKey: "defensiveRebounds" },
+  { label: "AST", render: (row) => formatCount(row.assistances), highKey: "assistances", teamKey: "assistances" },
+  { label: "STL", render: (row) => formatCount(row.steals), highKey: "steals", teamKey: "steals" },
+  { label: "TO", render: (row) => formatCount(row.turnovers), teamKey: "turnovers" },
+  { label: "BLK", render: (row) => formatCount(row.blocksFavour), highKey: "blocksFavour", teamKey: "blocksFavour" },
+  { label: "BLKA", render: (row) => formatCount(row.blocksAgainst), teamKey: "blocksAgainst" },
+  { label: "FC", render: (row) => formatCount(row.foulsCommited), teamKey: "foulsCommited" },
+  { label: "FD", render: (row) => formatCount(row.foulsReceived), highKey: "foulsReceived", teamKey: "foulsReceived" },
   { label: "+/-", render: (row) => formatSignedDiff(row.plusMinus), highKey: "plusMinus" },
-  { label: "PIR", render: (row) => formatCount(row.valuation), highKey: "valuation" },
+  { label: "PIR", render: (row) => formatCount(row.valuation), highKey: "valuation", teamKey: "valuation" },
 ];
+
+const TEAM_LINE_TIP = "Team: rebounds, turnovers and other stats credited to the team rather than a player, such as a shot-clock violation";
+
+// A Team line value, or null for a column the team row does not carry or a zero (left blank).
+function teamLineValue(column, teamRow) {
+  const value = column.teamKey ? teamRow?.[column.teamKey] : null;
+  return Number.isFinite(value) && value !== 0 ? value : null;
+}
+
+// The feed's total +/- is the sum of the players' (five times the margin, or missing in early seasons): the margin
+// itself is the side's total points minus the opponent's.
+function withMargin(total, opponentTotal) {
+  if (!total) return total;
+  const margin = Number.isFinite(total.points) && Number.isFinite(opponentTotal?.points) ? total.points - opponentTotal.points : null;
+  return { ...total, plusMinus: margin };
+}
 
 // Starters first, then the bench, each by minutes. Players with no minutes are listed apart, unless nobody on the team
 // has minutes (a box score without them), in which case everyone is shown by name.
@@ -178,10 +194,11 @@ function BoxScorePlayer({ player, seasonCode }) {
   );
 }
 
-function BoxScoreTable({ players, teamTotal, team, won, seasonCode, gameHighs, columns, groups }) {
+function BoxScoreTable({ players, teamTotal, teamRow, team, won, seasonCode, gameHighs, columns, groups }) {
   const rows = players.filter((row) => row.side === teamTotal?.side);
   const { played, didNotPlay } = orderRoster(rows);
   const name = teamName(team);
+  const showTeamLine = columns.some((column) => teamLineValue(column, teamRow) !== null);
 
   return (
     <motion.div variants={sectionItem}>
@@ -249,6 +266,23 @@ function BoxScoreTable({ players, teamTotal, team, won, seasonCode, gameHighs, c
                 ))}
               </AnimatedBody>
               <tfoot>
+                {showTeamLine ? (
+                  <tr className="text-base-content/70">
+                    <td>
+                      <HeaderTip tip={TEAM_LINE_TIP}>
+                        <span className="box-score-fade">Team</span>
+                      </HeaderTip>
+                    </td>
+                    {columns.map((column) => {
+                      const value = teamLineValue(column, teamRow);
+                      return (
+                        <td key={column.key ?? column.label} className={`num text-center tabular-nums${groupDivider(column)}`}>
+                          {value === null ? null : formatCount(value)}
+                        </td>
+                      );
+                    })}
+                  </tr>
+                ) : null}
                 <tr className="font-bold">
                   <td>
                     <span className="box-score-fade">Total</span>
@@ -295,7 +329,8 @@ function BoxScoreTab({ boxScore, game, seasonCode, localWon, roadWon, advancedQu
   const shown = showAdvanced ? attachAdvanced(boxScore, advanced) : boxScore;
   const columns = advancedView?.columns ?? BOX_SCORE_COLUMNS;
   const gameHighs = computeGameHighs(shown.playerStats, columns);
-  const totalFor = (side) => shown.teamStats.find((row) => row.side === side && row.statsKind === "total");
+  const statsFor = (side, kind) => shown.teamStats.find((row) => row.side === side && row.statsKind === kind);
+  const otherSide = (side) => (side === "local" ? "road" : "local");
 
   return (
     <motion.div className="flex flex-col gap-6" variants={sectionContainer} initial="hidden" animate="show">
@@ -312,7 +347,8 @@ function BoxScoreTab({ boxScore, game, seasonCode, localWon, roadWon, advancedQu
             <BoxScoreTable
               key={side}
               players={shown.playerStats}
-              teamTotal={totalFor(side)}
+              teamTotal={withMargin(statsFor(side, "total"), statsFor(otherSide(side), "total"))}
+              teamRow={statsFor(side, "team")}
               team={side === "local" ? game.localTeam : game.roadTeam}
               won={side === "local" ? localWon : roadWon}
               seasonCode={seasonCode}

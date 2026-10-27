@@ -325,7 +325,7 @@ function OnOffCard({ row, rank, isMain }) {
           label="Offensive rating"
           tip="Points the team scores per 100 possessions"
           direction="higher"
-          compact
+          inline
           animated
           rawA={row.onOrtg}
           rawB={row.offOrtg}
@@ -336,7 +336,7 @@ function OnOffCard({ row, rank, isMain }) {
           label="Defensive rating"
           tip="Points the team allows per 100 possessions"
           direction="lower"
-          compact
+          inline
           animated
           rawA={row.onDrtg}
           rawB={row.offDrtg}

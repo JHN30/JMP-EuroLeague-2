@@ -91,7 +91,7 @@ function KeyStatsCard({ game, localTotal, roadTotal, flowRows }) {
         <TeamLabel team={game.roadTeam} />
       </div>
       {[...keyStatRows(localTotal, roadTotal), ...flowRows].map(({ key, ...row }) => (
-        <ComparisonRow key={key} {...row} bars={false} />
+        <ComparisonRow key={key} {...row} inline bars={false} />
       ))}
     </Panel>
   );

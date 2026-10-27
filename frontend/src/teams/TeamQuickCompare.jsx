@@ -118,10 +118,11 @@ export default function TeamQuickCompare({ seasonCode, clubCode, team, nextOppon
       ) : (
         <p className="eyebrow mb-3">{active.tabLabel}</p>
       )}
-      <TabPanel id="team-compare-panel" focusKey={active.key} scroll={false}>
+      <TabPanel id="team-compare-panel" focusKey={active.key} scroll={false} className="flex flex-1 flex-col">
         {own && other ? (
-          // Keyed by the chosen opponent, so each switch replays the entrance instead of swapping numbers in place.
-          <motion.div key={active.key} variants={listContainer} initial="hidden" animate="show">
+          // Keyed by the chosen opponent, so each switch replays the entrance instead of swapping numbers in place. The rows
+          // grow to fill the panel, so it ends level with the form and fixtures column beside it.
+          <motion.div key={active.key} className="flex flex-1 flex-col" variants={listContainer} initial="hidden" animate="show">
             <motion.div variants={listItem} className="mb-1 grid grid-cols-2 gap-4">
               <div className="flex justify-end">
                 <ClubLabel club={self} />
@@ -133,7 +134,7 @@ export default function TeamQuickCompare({ seasonCode, clubCode, team, nextOppon
                 key={row.label}
                 {...row}
                 animated
-                compact
+                inline
                 rawA={own[field]}
                 rawB={other[field]}
                 displayA={format(own[field])}

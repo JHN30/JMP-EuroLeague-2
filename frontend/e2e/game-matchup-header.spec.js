@@ -113,6 +113,27 @@ test("the header fits a phone with a high round, a long date and a three-digit s
   });
 });
 
+test("each club's crest and name open its team page, and a side to be set is not a link", async ({ page }) => {
+  const header = await openGame(page);
+  const links = header.getByRole("link");
+  await expect(links).toHaveCount(2);
+  await expect(links.nth(0)).toHaveAttribute("href", `/${SEASON}/teams/${PAN.clubCode}`);
+  await expect(links.nth(0)).toContainText("PAO");
+  await expect(links.nth(0).locator("img")).toHaveCount(1);
+  await expect(links.nth(1)).toContainText("FBT");
+  await links.nth(1).click();
+  await expect(page).toHaveURL(new RegExp(`/${SEASON}/teams/`));
+
+  await page.unroute(`**/api/seasons/${SEASON}/games/1`);
+  await page.route(`**/api/seasons/${SEASON}/games/1`, (route) =>
+    route.fulfill({ json: { game: { gameCode: 1, played: false, phaseCode: "RS", phaseName: "Regular season", roundNumber: 5, scheduledAt: null, localTeam: PAN, roadTeam: null, localScore: null, roadScore: null } } }),
+  );
+  await page.goto(`/${SEASON}/games/1`);
+  const pending = page.locator("main h1").locator("xpath=ancestor::section[1]");
+  await expect(pending.locator("p.font-bold").nth(1)).toHaveText("TBD");
+  await expect(pending.getByRole("link")).toHaveCount(1);
+});
+
 test("a club without a TV code shows its abbreviated name then its club code, and a side to be set shows TBD", async ({ page }) => {
   let header = await openGame(page, {
     game: { localTeam: { ...PAN, tvCode: undefined }, roadTeam: { name: null, abbreviatedName: null, clubCode: "ZZZ", crestUrl: null } },

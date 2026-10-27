@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { Link } from "react-router";
 import { getSeasonStandings } from "../lib/api";
 import Panel from "../lib/Panel";
 import { formatCount } from "../lib/format";
@@ -28,11 +29,17 @@ function Crest({ team }) {
   return <img src={team.crestUrl} alt="" className={`${slot} object-contain`} onError={() => setFailed(true)} />;
 }
 
-function Side({ team, position, groupPlace, won }) {
+// A known club's crest and name open its team page; a side still to be set (TBD) is plain.
+function Side({ team, seasonCode, position, groupPlace, won }) {
+  const linked = Boolean(team?.clubCode && seasonCode);
+  const Root = linked ? Link : "div";
   return (
-    <div className="flex min-w-0 flex-col items-center gap-1 text-center sm:gap-2">
+    <Root
+      {...(linked ? { to: `/${seasonCode}/teams/${team.clubCode}` } : {})}
+      className={`flex min-w-0 flex-col items-center gap-1 text-center sm:gap-2${linked ? " group rounded-field" : ""}`}
+    >
       <Crest team={team} />
-      <p className={`text-lg leading-tight font-bold sm:text-2xl ${won ? "text-primary" : ""}`} title={team ? teamName(team) : undefined}>
+      <p className={`text-lg leading-tight font-bold sm:text-2xl ${won ? "text-primary" : ""}${linked ? " group-hover:underline" : ""}`} title={team ? teamName(team) : undefined}>
         {teamCode(team)}
         {position != null ? (
           <span className="muted ms-1 inline-block font-normal">
@@ -41,7 +48,7 @@ function Side({ team, position, groupPlace, won }) {
           </span>
         ) : null}
       </p>
-    </div>
+    </Root>
   );
 }
 
@@ -101,7 +108,7 @@ export default function MatchupHeader({ game, officials = [], venue = null, seas
         {teamName(game.localTeam)} vs {teamName(game.roadTeam)}
       </h1>
       <div className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2 sm:gap-6">
-        <Side team={game.localTeam} position={positionOf(game.localTeam)} groupPlace={groupPlaceOf(game.localTeam)} won={localWon} />
+        <Side team={game.localTeam} seasonCode={seasonCode} position={positionOf(game.localTeam)} groupPlace={groupPlaceOf(game.localTeam)} won={localWon} />
         <div className="flex flex-col items-center gap-1 text-center">
           {game.played ? (
             <>
@@ -121,7 +128,7 @@ export default function MatchupHeader({ game, officials = [], venue = null, seas
             </>
           )}
         </div>
-        <Side team={game.roadTeam} position={positionOf(game.roadTeam)} groupPlace={groupPlaceOf(game.roadTeam)} won={roadWon} />
+        <Side team={game.roadTeam} seasonCode={seasonCode} position={positionOf(game.roadTeam)} groupPlace={groupPlaceOf(game.roadTeam)} won={roadWon} />
       </div>
       <p className="muted mt-3 text-center text-sm">
         {groupedStage && game.groupName ? `${game.groupName} · ` : ""}{round} · {cancelled && !game.played ? "Originally scheduled: " : ""}{formatGameDate(game.scheduledAt)}

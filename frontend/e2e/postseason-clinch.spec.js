@@ -64,3 +64,30 @@ test("reaching three wins puts the club in the Final Four", async ({ page }) => 
   await page.getByRole("button", { name: `${topName}, 1 v 8` }).click();
   await expect(page.getByText(`${topName} won the series 3-0`)).toBeVisible();
 });
+
+test("in a series panel a played game opens its page and a game still to come opens Compare", async ({ page }) => {
+  // The top seed's series after two games, with game 3 scheduled but not played.
+  const upcoming = (entry, top) => {
+    const played = cutSeries(2, 2)(entry, top);
+    const third = entry.games[2];
+    return { ...played, games: [...played.games, { ...third, localScore: null, roadScore: null }] };
+  };
+  let third = null;
+  const { topName } = await serveLivePlayoffs(page, (entry, top) => {
+    third = entry.games[2];
+    return upcoming(entry, top);
+  });
+  await page.goto(`/${SEASON}/postseason`);
+  await page.getByRole("button", { name: `${topName}, 1 v 8` }).click({ timeout: 30_000 });
+
+  const rows = page.getByRole("listitem").getByRole("link").filter({ hasText: /^Game \d/ });
+  await expect(rows).toHaveCount(3);
+  await expect(rows.nth(0)).toHaveAttribute("href", new RegExp(`^/${SEASON}/games/\\d+$`));
+  await expect(rows.nth(2)).toHaveAttribute(
+    "href",
+    `/${SEASON}/compare?view=teams&teamA=${encodeURIComponent(third.localClubCode)}&teamB=${encodeURIComponent(third.roadClubCode)}&game=${third.gameCode}`,
+  );
+  await rows.nth(2).click();
+  await expect(page).toHaveURL(new RegExp(`/${SEASON}/compare\\?`));
+});
+

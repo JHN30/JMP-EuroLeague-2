@@ -142,8 +142,8 @@ export default function CompareFixtures({ seasonCode, onPick }) {
 }
 
 // What an opened comparison is about, for the page header: when it was opened from a game, which one (round, date and host), with the
-// ways on to that game and, for two clubs, to their all-time record.
-export function ComparisonContext({ seasonCode, gameCode, headToHeadTo }) {
+// ways on to that game and, for two clubs, to their all-time record. `centred` centres it, under the two clubs of the team header.
+export function ComparisonContext({ seasonCode, gameCode, headToHeadTo, centred = false }) {
   const gameQuery = useQuery({
     queryKey: ["game", seasonCode, gameCode],
     queryFn: () => getGame(seasonCode, gameCode),
@@ -153,7 +153,7 @@ export function ComparisonContext({ seasonCode, gameCode, headToHeadTo }) {
   const game = gameQuery.data?.game;
   if (!game && !headToHeadTo) return null;
   return (
-    <div className="mt-2">
+    <div className={centred ? "mt-4 border-t border-base-300 pt-3 text-center" : "mt-2"}>
       {game ? (
         <>
           <p className="muted text-sm">
@@ -162,7 +162,7 @@ export function ComparisonContext({ seasonCode, gameCode, headToHeadTo }) {
           <p className="muted text-sm">Hosted by {game.localTeam?.abbreviatedName ?? game.localTeam?.name}</p>
         </>
       ) : null}
-      <div className="mt-3 flex flex-wrap gap-2">
+      <div className={`mt-3 flex flex-wrap gap-2${centred ? " justify-center" : ""}`}>
         {game ? (
           <Link to={`/${seasonCode}/games/${gameCode}`} className="btn btn-outline btn-sm">
             {game.played ? "Game overview" : "Game preview"}

@@ -18,6 +18,7 @@ import { PLAYER_STAT_TIPS } from "./statTips";
 import CompareFixtures, { ComparisonContext } from "./CompareFixtures";
 import PickerPanel, { PickerImage, PickerOption } from "./PickerPanel";
 import PlayerPairHeader from "./PlayerPairHeader";
+import TeamPairHeader from "./TeamPairHeader";
 import { STAT_GROUPS as PLAYER_STAT_GROUPS } from "../players/playerStatDefs";
 import CompareRosters from "./CompareRosters";
 import ComparePlayerAdvanced from "./ComparePlayerAdvanced";
@@ -615,6 +616,16 @@ function ComparisonsBody({
     );
   }
 
+  // The two clubs' season rows for the header over every team section; none until both are known.
+  const pairTeams =
+    view === "teams"
+      ? [effectiveEntityA, effectiveEntityB].map((entity) => allTeams.find((team) => team.clubCode === entity?.id) ?? null)
+      : null;
+  const headerTeams = pairTeams?.every(Boolean) ? pairTeams : null;
+  const headToHeadTo =
+    view === "teams"
+      ? `/${seasonCode}/compare/head-to-head?teamA=${encodeURIComponent(effectiveEntityA.id)}&teamB=${encodeURIComponent(effectiveEntityB.id)}`
+      : null;
   const cameFromGame = fromGame != null && view === "teams" && String(gameCode) === String(fromGame);
 
   // A comparison is open: only what it needs, the way back, the sections and the statistics phase.
@@ -639,21 +650,17 @@ function ComparisonsBody({
       ) : (
         <BackLink to={`/${seasonCode}/compare?view=${view}`} label={view === "teams" ? "Games" : "Players"} onBack={handleBack} />
       )}
-      <PageHeader
-        kicker="HEAD-TO-HEAD"
-        title="Compare"
-        description={
-          <ComparisonContext
-            seasonCode={seasonCode}
-            gameCode={gameCode}
-            headToHeadTo={
-              view === "teams"
-                ? `/${seasonCode}/compare/head-to-head?teamA=${encodeURIComponent(effectiveEntityA.id)}&teamB=${encodeURIComponent(effectiveEntityB.id)}`
-                : null
-            }
-          />
-        }
-      />
+      {headerTeams ? (
+        <TeamPairHeader seasonCode={seasonCode} kicker="HEAD-TO-HEAD" teamA={headerTeams[0]} teamB={headerTeams[1]}>
+          <ComparisonContext seasonCode={seasonCode} gameCode={gameCode} headToHeadTo={headToHeadTo} centred />
+        </TeamPairHeader>
+      ) : (
+        <PageHeader
+          kicker="HEAD-TO-HEAD"
+          title="Compare"
+          description={<ComparisonContext seasonCode={seasonCode} gameCode={gameCode} headToHeadTo={headToHeadTo} />}
+        />
+      )}
 
       <div className="mb-6 flex flex-wrap items-end justify-between gap-x-6 gap-y-3">
         <TabStrip

@@ -123,3 +123,33 @@ test("the team and player pickers work from the keyboard", async ({ page }) => {
   await page.keyboard.press("Escape");
   await expect(page.getByText("No players match.")).toBeHidden();
 });
+
+test("a team comparison names both clubs in a header over every section, each opening its team page", async ({ page }) => {
+  await page.goto("/2025/compare?view=teams&teamA=OLY&teamB=PAN");
+  const header = page.getByRole("region", { name: "Clubs compared" });
+  await expect(header).toBeVisible({ timeout: 30_000 });
+  // The two clubs, then the way on to their all-time record.
+  const links = header.getByRole("link");
+  await expect(links).toHaveCount(3);
+  await expect(links.nth(2)).toHaveText("All-time head-to-head");
+  await expect(links.nth(0)).toHaveAttribute("href", "/2025/teams/OLY");
+  await expect(links.nth(1)).toHaveAttribute("href", "/2025/teams/PAN");
+  // One header: the page's heading names both clubs, and there is no second header panel above it.
+  await expect(page.getByRole("heading", { level: 1 })).toHaveCount(1);
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText(/^Compare .+ and .+$/);
+  await expect(header.getByText("HEAD-TO-HEAD", { exact: true })).toBeVisible();
+
+  for (const section of ["Statistics", "Rosters", "Trends", "Overview"]) {
+    await page.getByRole("tab", { name: section, exact: true }).click();
+    await expect(header).toBeVisible();
+  }
+  await links.nth(1).click();
+  await expect(page).toHaveURL(/\/2025\/teams\/PAN$/);
+});
+
+test("a player comparison has no club header", async ({ page }) => {
+  await page.goto("/2025/compare?view=players");
+  await expect(page.getByRole("heading", { name: "Compare" })).toBeVisible({ timeout: 30_000 });
+  await expect(page.getByRole("region", { name: "Clubs compared" })).toHaveCount(0);
+});
+

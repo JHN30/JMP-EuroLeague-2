@@ -353,3 +353,15 @@ test("a club without a crest or a TV code, with a long name, keeps its header ti
     await expectNoSidewaysScroll(page);
   });
 });
+
+test("in the quick comparison only the other club's label opens its team page", async ({ page }) => {
+  const { slug, team, rival } = await liveTeam(page);
+  await mockGames(page, gamesFor(team, rival));
+  await page.goto(`/${slug}/teams/${team.clubCode}`);
+  const compare = page.locator("section", { has: page.getByRole("heading", { name: "Quick comparison" }) });
+  await expect(compare.locator("img").first()).toBeVisible({ timeout: 30_000 });
+  const panel = compare.locator("#team-compare-panel");
+  const links = panel.getByRole("link");
+  await expect(links).toHaveCount(1);
+  await expect(links.first()).toHaveAttribute("href", new RegExp(`/${slug}/teams/(?!${team.clubCode}$)[^/]+$`));
+});

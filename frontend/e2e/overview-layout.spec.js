@@ -217,3 +217,14 @@ test("2004: a leaders card without a photo shows a silhouette in its place", asy
   await expect(row.locator("img.kpi-chip-image, [data-testid=leader-photo-placeholder]")).toHaveCount(6);
   await expect(row.locator("[data-testid=leader-photo-placeholder]").first()).toBeVisible();
 });
+
+test("both hero cards open the leading team's page", async ({ page }) => {
+  await openOverview(page);
+  const hero = page.getByTestId("season-hero-kpis");
+  test.skip((await hero.count()) === 0, "the default season is finished, so there are no hero cards");
+  const chips = hero.locator(".kpi-chip");
+  await expect(chips).toHaveCount(2);
+  const hrefs = await chips.evaluateAll((els) => els.map((el) => el.getAttribute("href")));
+  expect(hrefs[0]).toMatch(/\/teams\/[^/]+$/);
+  expect(hrefs[1]).toBe(hrefs[0]);
+});

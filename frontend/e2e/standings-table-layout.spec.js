@@ -243,3 +243,14 @@ test("the table still shows full names, and no error, when the teams list cannot
     await expect(page.getByRole("alert")).toHaveCount(0);
   });
 });
+
+test("every team chip in the standings KPI strip opens that team's page", async ({ page }) => {
+  await openStandings(page);
+  const cards = page.getByTestId("standings-kpi-strip").locator(".kpi-chip");
+  await expect(cards.first()).toBeVisible();
+  for (const card of await cards.all()) {
+    if (await card.locator(".name").count()) await expect(card).toHaveAttribute("href", /\/teams\/[^/]+$/);
+  }
+  await cards.first().click();
+  await expect(page).toHaveURL(/\/teams\/[^/]+$/);
+});

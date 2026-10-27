@@ -60,6 +60,8 @@ export default function KpiStrip() {
     }
   }
 
+  const teamPage = (entry) => (entry?.clubCode ? `/${seasonCode}/teams/${entry.clubCode}` : undefined);
+
   return (
     <HeaderStats className="kpi-strip-4" data-testid="home-kpi-strip">
       <CompactMetric
@@ -69,6 +71,7 @@ export default function KpiStrip() {
         label={grouped ? "Most wins · any group" : "Leader in wins"}
         name={leader ? `${leader.clubName ?? leader.clubCode}${mostWins?.tied ? ` +${mostWins.tied} level` : ""}` : undefined}
         imageUrl={leader?.crestUrl}
+        to={teamPage(leader)}
       />
       <CompactMetric
         isLoading={standingsQuery.isLoading}
@@ -77,6 +80,7 @@ export default function KpiStrip() {
         label="In-form team · Last 10"
         name={inForm?.entry.clubName ?? inForm?.entry.clubCode}
         imageUrl={inForm?.entry.crestUrl}
+        to={teamPage(inForm?.entry)}
       />
       <CompactMetric
         isLoading={standingsQuery.isLoading || teamStatsQuery.isLoading}
@@ -85,6 +89,7 @@ export default function KpiStrip() {
         label="Best offense"
         name={bestOffense?.entry.clubName ?? bestOffense?.entry.clubCode}
         imageUrl={bestOffense?.entry.crestUrl}
+        to={teamPage(bestOffense?.entry)}
       />
       <CompactMetric
         isLoading={standingsQuery.isLoading || teamStatsQuery.isLoading}
@@ -93,6 +98,7 @@ export default function KpiStrip() {
         label="Best defense"
         name={bestDefense?.entry.clubName ?? bestDefense?.entry.clubCode}
         imageUrl={bestDefense?.entry.crestUrl}
+        to={teamPage(bestDefense?.entry)}
       />
     </HeaderStats>
   );

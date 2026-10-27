@@ -68,9 +68,13 @@ export default function MatchupDetail({ slot, seasonCode }) {
             const local = byCode.get(game.localClubCode);
             const road = byCode.get(game.roadClubCode);
             const played = game.localScore != null && game.roadScore != null;
+            // A played game opens its page; one still to come opens Compare for its two clubs, the home club as Team A.
+            const to = played
+              ? "/" + seasonCode + "/games/" + game.gameCode
+              : "/" + seasonCode + "/compare?view=teams&teamA=" + encodeURIComponent(game.localClubCode) + "&teamB=" + encodeURIComponent(game.roadClubCode) + "&game=" + game.gameCode;
             return (
               <li key={game.gameCode} className="border-b border-base-300 last:border-0">
-                <Link to={"/" + seasonCode + "/games/" + game.gameCode} className="grid grid-cols-[4.5rem_minmax(0,1fr)_auto] items-center gap-3 rounded-field px-1 py-2 hover:bg-base-200">
+                <Link to={to} className="grid grid-cols-[4.5rem_minmax(0,1fr)_auto] items-center gap-3 rounded-field px-1 py-2 hover:bg-base-200">
                   <span className="muted text-xs">
                     Game {index + 1}
                     <br />

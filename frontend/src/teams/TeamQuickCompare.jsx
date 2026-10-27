@@ -12,9 +12,11 @@ import { TabPanel, TabStrip } from "../lib/TabStrip";
 import { isGroupedTable } from "../standings/standingsGroups";
 import { COMPARE_ROWS } from "./teamLeague";
 
-function ClubLabel({ club }) {
+// `to` makes the label a link to the club's page: the opponent's label only, since the page is already the own club's.
+function ClubLabel({ club, to }) {
+  const Root = to ? Link : "div";
   return (
-    <div className="flex min-w-0 items-center gap-2">
+    <Root {...(to ? { to } : {})} className={`flex min-w-0 items-center gap-2${to ? " hover:text-primary" : ""}`}>
       {club.crestUrl ? (
         <img
           src={club.crestUrl}
@@ -28,7 +30,7 @@ function ClubLabel({ club }) {
       <span className="truncate font-semibold" title={club.name}>
         {club.tvCode && club.tvCode !== club.name ? <ShortLabel short={club.tvCode} full={club.name} /> : club.name}
       </span>
-    </div>
+    </Root>
   );
 }
 
@@ -127,7 +129,7 @@ export default function TeamQuickCompare({ seasonCode, clubCode, team, nextOppon
               <div className="flex justify-end">
                 <ClubLabel club={self} />
               </div>
-              <ClubLabel club={active.club} />
+              <ClubLabel club={active.club} to={`/${seasonCode}/teams/${active.club.clubCode}`} />
             </motion.div>
             {COMPARE_ROWS.map(({ field, format, ...row }) => (
               <ComparisonRow

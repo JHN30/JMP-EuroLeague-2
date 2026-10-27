@@ -49,6 +49,8 @@ export default function StandingsKpiStrip({ seasonCode, phaseCode, round, previo
     if (row.netRating !== null && (bestNet === null || row.netRating > bestNet.netRating)) bestNet = row;
   }
 
+  const teamPage = (entry) => (entry?.clubCode ? `/${seasonCode}/teams/${entry.clubCode}` : undefined);
+
   return (
     <HeaderStats className="kpi-strip-5" data-testid="standings-kpi-strip">
       <CompactMetric
@@ -56,6 +58,7 @@ export default function StandingsKpiStrip({ seasonCode, phaseCode, round, previo
         label="Leader"
         name={leader ? clubLabel(leader) : undefined}
         imageUrl={leader?.crestUrl}
+        to={teamPage(leader)}
       />
       {cutoff ? (
         <CompactMetric
@@ -63,6 +66,7 @@ export default function StandingsKpiStrip({ seasonCode, phaseCode, round, previo
           label={cutoffLabel}
           name={clubLabel(cutoff)}
           imageUrl={cutoff.crestUrl}
+          to={teamPage(cutoff)}
         />
       ) : null}
       {previousRound !== null ? (
@@ -73,6 +77,7 @@ export default function StandingsKpiStrip({ seasonCode, phaseCode, round, previo
           label="Biggest riser"
           name={biggestRiser ? clubLabel(biggestRiser.entry) : undefined}
           imageUrl={biggestRiser?.entry.crestUrl}
+          to={teamPage(biggestRiser?.entry)}
           tone={biggestRiser ? "positive" : undefined}
         />
       ) : null}
@@ -84,6 +89,7 @@ export default function StandingsKpiStrip({ seasonCode, phaseCode, round, previo
           label="Biggest faller"
           name={biggestFaller ? clubLabel(biggestFaller.entry) : undefined}
           imageUrl={biggestFaller?.entry.crestUrl}
+          to={teamPage(biggestFaller?.entry)}
           tone={biggestFaller ? "negative" : undefined}
         />
       ) : null}
@@ -94,6 +100,7 @@ export default function StandingsKpiStrip({ seasonCode, phaseCode, round, previo
         label="Best net rating"
         name={bestNet ? clubLabel(bestNet) : undefined}
         imageUrl={bestNet?.crestUrl}
+        to={teamPage(bestNet)}
       />
     </HeaderStats>
   );

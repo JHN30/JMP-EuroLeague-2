@@ -70,7 +70,7 @@ async function fetchAllPlayedGames(seasonCode) {
   return all;
 }
 
-function SeasonHero({ leader, pointsPerGame, format, grouped = false }) {
+function SeasonHero({ seasonCode, leader, pointsPerGame, format, grouped = false }) {
   const status = format?.status ?? null;
   if (!status) return <Panel className="p-4"><p className="muted">Season status is unavailable.</p></Panel>;
   if (status === "cancelled") {
@@ -105,10 +105,13 @@ function SeasonHero({ leader, pointsPerGame, format, grouped = false }) {
   }
 
   const ppg = pointsPerGame;
+  // Both chips name the leading club, so both open its page, as the player-leader chips open theirs.
+  const ChipRoot = leader.clubCode ? Link : "div";
+  const chipProps = leader.clubCode ? { to: `/${seasonCode}/teams/${leader.clubCode}`, className: "kpi-chip kpi-chip-link" } : { className: "kpi-chip" };
 
   return (
     <div className="season-hero-kpis grid grid-cols-2 gap-3 sm:gap-4" data-testid="season-hero-kpis">
-      <div className="kpi-chip">
+      <ChipRoot {...chipProps}>
         <div className="kpi-chip-body">
           <span className="label">{grouped ? "Most wins · any group" : "League leader"}</span>
           <span className="name">{leader.clubName ?? leader.clubCode}</span>
@@ -126,8 +129,8 @@ function SeasonHero({ leader, pointsPerGame, format, grouped = false }) {
             }}
           />
         ) : null}
-      </div>
-      <div className="kpi-chip">
+      </ChipRoot>
+      <ChipRoot {...chipProps}>
         <div className="kpi-chip-body">
           <span className="label">Points per game</span>
           <span className="name">{leader.clubName ?? leader.clubCode}</span>
@@ -143,7 +146,7 @@ function SeasonHero({ leader, pointsPerGame, format, grouped = false }) {
             }}
           />
         ) : null}
-      </div>
+      </ChipRoot>
     </div>
   );
 }
@@ -881,7 +884,7 @@ export default function SeasonOverviewPage() {
       ) : (
         <>
           <motion.div variants={sectionItem}>
-            <SeasonHero leader={leader} pointsPerGame={leaderPointsPerGame} format={format} grouped={groupedTable} />
+            <SeasonHero seasonCode={seasonCode} leader={leader} pointsPerGame={leaderPointsPerGame} format={format} grouped={groupedTable} />
             {hasLoadingIssues(format) ? <p className="muted mt-2 text-sm">{LOADING_ISSUES_NOTE}</p> : null}
           </motion.div>
           <motion.div variants={sectionItem}>

@@ -129,7 +129,7 @@ test("standings show suspension positions with no qualification badges or live c
   for (const breakdown of ["streaks", "margins", "aheadBehind"]) {
     await page.getByRole("combobox", { name: "Breakdown", exact: true }).selectOption(breakdown);
     await expect(page.locator("main table").first()).toBeVisible();
-    await expect(page.locator("main .loading")).toHaveCount(0);
+    await expect(page.locator("main .loading, main [aria-busy=\"true\"]")).toHaveCount(0);
     await expect(page.locator('[title="Qualified"]')).toHaveCount(0);
   }
   await page.getByRole("tab", { name: "Race", exact: true }).click();
@@ -200,7 +200,7 @@ test("all existing archive pages keep real data, RS scopes and loaded-season his
   page.on("pageerror", (error) => errors.push(error.message));
   const visit = async (path) => {
     await page.goto(`/2019/${path}`);
-    await expect(page.locator("main .loading")).toHaveCount(0, { timeout: 30_000 });
+    await expect(page.locator("main .loading, main [aria-busy=\"true\"]")).toHaveCount(0, { timeout: 30_000 });
     await expect(page.locator("main")).not.toContainText(/Could not load|Something went wrong/);
     await expect(page.getByRole("tab", { name: /^(Play-In|Playoffs|Final Four|Top 16)$/ })).toHaveCount(0);
   };

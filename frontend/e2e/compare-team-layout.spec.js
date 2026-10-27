@@ -75,7 +75,7 @@ test("the Overview fits, with TV codes for the opponents below 640px and the clu
   }
   await openTab(page, slug, teams, "Overview");
   await expect(page.getByRole("heading", { name: "Recent results and venue" })).toBeVisible({ timeout: 30_000 });
-  await expect(page.locator(".loading")).toHaveCount(0, { timeout: 30_000 });
+  await expect(page.locator(".loading, [aria-busy=\"true\"]")).toHaveCount(0, { timeout: 30_000 });
 
   await atWidths(page, WIDTHS, async (width) => {
     expect(await cutTexts(page)).toEqual([]);
@@ -185,7 +185,7 @@ test.describe("states and long names at 320px", () => {
     });
     for (const tab of ["Overview", "Statistics", "Rosters", "Trends"]) {
       await openTab(page, slug, teams, tab);
-      await expect(page.locator(".loading")).toHaveCount(0, { timeout: 30_000 });
+      await expect(page.locator(".loading, [aria-busy=\"true\"]")).toHaveCount(0, { timeout: 30_000 });
       expect(await cutTexts(page)).toEqual([]);
       await expect.poll(() => outsidePanels(page), { timeout: 20_000 }).toEqual([]);
       await expectNoSidewaysScroll(page);

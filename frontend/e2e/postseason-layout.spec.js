@@ -34,7 +34,7 @@ for (const season of SEASONS) {
     await page.setViewportSize({ width: 1280, height: HEIGHT });
     await page.goto(`/${season}/postseason`);
     await expect(page.getByRole("heading", { name: "Playoffs", exact: true })).toBeVisible({ timeout: 45_000 });
-    await expect(page.locator(".loading")).toHaveCount(0, { timeout: 30_000 });
+    await expect(page.locator(".loading, [aria-busy=\"true\"]")).toHaveCount(0, { timeout: 30_000 });
 
     // Open a matchup, so its detail is on the page too.
     await page.locator(".bk-grid [role=group] button").first().click();

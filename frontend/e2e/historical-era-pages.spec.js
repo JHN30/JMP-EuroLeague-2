@@ -32,7 +32,7 @@ for (const { season, clubs, rsGames } of DIRECT_EIGHT_SEASONS) {
     const visit = async (path) => {
       await page.goto(`/${season}/${path}`);
       await expect(page.locator("main")).toBeVisible();
-      await expect(page.locator("main .loading")).toHaveCount(0, { timeout: 30_000 });
+      await expect(page.locator("main .loading, main [aria-busy=\"true\"]")).toHaveCount(0, { timeout: 30_000 });
       await expect(page.locator("main")).not.toContainText(/Could not load|Something went wrong/);
       await expect(page.getByRole("tab", { name: "Play-In", exact: true })).toHaveCount(0);
       await expect(page.getByRole("tab", { name: "Top 16", exact: true })).toHaveCount(0);
@@ -55,10 +55,10 @@ for (const { season, clubs, rsGames } of DIRECT_EIGHT_SEASONS) {
       for (const breakdown of ["streaks", "margins", "aheadBehind"]) {
         await page.getByRole("combobox", { name: "Breakdown", exact: true }).selectOption(breakdown);
         await expect(page.locator(".breakdown-vis")).toBeVisible();
-        await expect(page.locator("main .loading")).toHaveCount(0, { timeout: 30_000 });
+        await expect(page.locator("main .loading, main [aria-busy=\"true\"]")).toHaveCount(0, { timeout: 30_000 });
       }
       await page.getByRole("tab", { name: "Race", exact: true }).click();
-      await expect(page.locator("main .loading")).toHaveCount(0, { timeout: 30_000 });
+      await expect(page.locator("main .loading, main [aria-busy=\"true\"]")).toHaveCount(0, { timeout: 30_000 });
       const round = page.getByRole("slider", { name: "Round shown in the race" });
       await expect(round).toHaveAttribute("max", String(rsGames));
       await round.press("Home");

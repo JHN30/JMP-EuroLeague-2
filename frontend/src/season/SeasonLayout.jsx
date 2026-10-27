@@ -4,6 +4,15 @@ import { Link, Navigate, Outlet, useLocation, useParams } from "react-router";
 import { getSeasons } from "../lib/api";
 import { isLegacySeasonCode, seasonSlug } from "../lib/seasonSlug";
 import AsyncState from "../lib/AsyncState";
+import HomeSkeleton from "../dashboard/HomeSkeleton";
+import { SkeletonPage } from "../lib/Skeleton";
+
+// The skeleton of the page being opened, while its code loads: a page with a skeleton of its own gets it, every other page the
+// generic one. `/:season` and `/:season/home` are Home.
+function pageSkeleton(pathname) {
+  const page = pathname.split("/")[2] ?? "";
+  return page === "" || page === "home" ? <HomeSkeleton /> : <SkeletonPage />;
+}
 import { BackTargetContext } from "../lib/backTarget";
 import { isPlainClick, useBackLinkClick } from "../lib/historyTrail";
 import RouteErrorBoundary from "../ErrorBoundary";
@@ -164,7 +173,7 @@ export default function SeasonLayout({ themePreference }) {
             </aside>
           )}
           <RouteErrorBoundary>
-            <Suspense fallback={<AsyncState status="loading" label="Loading page" />}>
+            <Suspense fallback={<AsyncState status="loading" label="Loading page" skeleton={pageSkeleton(location.pathname)} />}>
               {/* Keyed by season so each page's local view-level filters reset
                   when the archive-level season selection changes. */}
               <Outlet key={seasonCode} />

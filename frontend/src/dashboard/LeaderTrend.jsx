@@ -8,6 +8,7 @@ import { isForfeit } from "../lib/forfeit";
 import { useSummaryTableStage } from "../lib/useSummaryTableStage";
 import { isGroupedTable, mostWinsEntry } from "../standings/standingsGroups";
 import { WidgetPanel } from "./Dashboard";
+import { TrendSkeleton } from "./HomeSkeleton";
 
 const WIDTH = 320;
 const HEIGHT = 90;
@@ -110,6 +111,7 @@ export default function LeaderTrend() {
       onRetry={() => gamesQuery.refetch()}
       isEmpty={gamesQuery.isSuccess && !trend}
       emptyMessage="Not enough played games yet for a trend."
+      skeleton={<TrendSkeleton />}
     >
       {trend ? (
         <div className="leader-trend">

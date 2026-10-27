@@ -82,7 +82,7 @@ for (const season of SEASONS) {
       }
       for (const breakdown of ["streaks", "margins", "aheadBehind"]) {
         await page.getByRole("combobox", { name: "Breakdown", exact: true }).selectOption(breakdown);
-        await expect(selected.locator(".loading")).toHaveCount(0);
+        await expect(selected.locator(".loading, [aria-busy=\"true\"]")).toHaveCount(0);
         const shown = await clubLinks(selected).evaluateAll((links) => links.map((link) => link.getAttribute("href").split("/").at(-1)));
         expect([...new Set(shown)].sort()).toEqual([...expected].sort());
       }
@@ -229,7 +229,7 @@ for (const theme of ["light-euroleague", "dark-euroleague"]) {
         await expect(page.getByRole("region", { name: /^Group / })).toHaveCount(selected ? 1 : phase === "RS" ? 4 : 2);
         for (const mode of ["Table", "Race"]) {
           await page.getByRole("tab", { name: mode, exact: true }).click();
-          await expect(page.locator("main .loading")).toHaveCount(0, { timeout: 30_000 });
+          await expect(page.locator("main .loading, main [aria-busy=\"true\"]")).toHaveCount(0, { timeout: 30_000 });
           for (const width of WIDTHS) {
             await page.setViewportSize({ width, height: 900 });
             await expect.poll(async () => {

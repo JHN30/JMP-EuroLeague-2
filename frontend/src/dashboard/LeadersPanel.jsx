@@ -11,6 +11,7 @@ import Panel from "../lib/Panel";
 import PanelHeader from "../lib/PanelHeader";
 import { withoutComma } from "../lib/playerName";
 import LeaderPhoto from "../lib/LeaderPhoto";
+import { SkeletonChip } from "../lib/Skeleton";
 
 const MotionLink = motion.create(Link);
 
@@ -30,6 +31,18 @@ function StatLeaderCard({ seasonCode, category, phaseCode }) {
   const leader = query.data?.players[0] ?? null;
 
   const status = query.isLoading ? "loading" : query.isError ? "error" : !leader ? "empty" : "ready";
+
+  if (status === "loading") {
+    return (
+      <SkeletonChip
+        label={category.label}
+        image="person"
+        role="status"
+        aria-label={`Loading the ${category.label.toLowerCase()} leader`}
+        aria-busy="true"
+      />
+    );
+  }
 
   if (status !== "ready") {
     return (

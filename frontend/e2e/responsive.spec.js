@@ -80,7 +80,7 @@ test.describe("the page header", () => {
         await page.goto(await route(page, season));
         // Pages that load their data first show only a loading state, with no heading, until it arrives.
         await expect(page.getByRole("heading", { level: 1 })).toBeVisible({ timeout: 30_000 });
-        await expect(page.locator(".loading")).toHaveCount(0, { timeout: 30_000 });
+        await expect(page.locator(".loading, [aria-busy=\"true\"]")).toHaveCount(0, { timeout: 30_000 });
         await expect
           .poll(() =>
             page.evaluate(() => {
@@ -128,7 +128,7 @@ for (const width of WIDTHS) {
         await page.goto(await route(page, season));
         // Pages that load their data first show only a loading state, with no heading, until it arrives.
         await expect(page.getByRole("heading", { level: 1 })).toBeVisible({ timeout: 30_000 });
-        await expect(page.locator(".loading")).toHaveCount(0, { timeout: 30_000 });
+        await expect(page.locator(".loading, [aria-busy=\"true\"]")).toHaveCount(0, { timeout: 30_000 });
         const overflow = await findPageOverflow(page);
         expect(overflow.scrollWidth, `wider than the screen: ${overflow.offenders.join("; ")}`).toBeLessThanOrEqual(
           overflow.clientWidth,

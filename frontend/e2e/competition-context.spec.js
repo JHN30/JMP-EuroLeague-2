@@ -59,7 +59,7 @@ test("the Home summary and PAN team explain standings credit while other clubs a
   }
   for (const path of ["/2022/teams/MAD", "/2020/teams/PAN", "/2020/standings", "/2022/games/309"]) {
     await page.goto(path);
-    await expect(page.locator("main .loading")).toHaveCount(0);
+    await expect(page.locator("main .loading, main [aria-busy=\"true\"]")).toHaveCount(0);
     await expect(page.getByText("Loading competition context.")).toHaveCount(0);
     await expect(context(page)).toHaveCount(0);
   }

@@ -8,6 +8,7 @@ import { useSeasonFormat } from "../lib/useSeasonFormat";
 import { useMediaQuery } from "../lib/useMediaQuery";
 import { MatchCard } from "./RecentResults";
 import { WidgetPanel } from "./Dashboard";
+import { UpcomingGamesSkeleton } from "./HomeSkeleton";
 
 export default function UpcomingGames() {
   const { seasonCode } = useParams();
@@ -45,6 +46,7 @@ export default function UpcomingGames() {
       onRetry={() => { gamesQuery.refetch(); formatQuery.refetch(); }}
       isEmpty={gamesQuery.isSuccess && games.length === 0}
       emptyMessage={emptyMessage}
+      skeleton={<UpcomingGamesSkeleton />}
     >
       <motion.div
         className="games-row"

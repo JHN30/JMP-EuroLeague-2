@@ -6,7 +6,7 @@ async function openHome(page, width) {
   const season = await seasonSlug(page);
   await page.goto(`/${season}/home`);
   await expect(page.getByRole("heading", { name: "Upcoming games" })).toBeVisible();
-  await expect(page.locator(".loading")).toHaveCount(0, { timeout: 15_000 });
+  await expect(page.locator(".loading, [aria-busy=\"true\"]")).toHaveCount(0, { timeout: 15_000 });
 }
 
 const panel = (page, title) => page.locator("section", { has: page.getByRole("heading", { name: title }) });

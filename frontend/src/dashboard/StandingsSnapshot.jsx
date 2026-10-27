@@ -10,6 +10,7 @@ import { useSeasonFormat } from "../lib/useSeasonFormat";
 import { useSummaryTableStage } from "../lib/useSummaryTableStage";
 import { groupLabel, groupStandings, isGroupedTable } from "../standings/standingsGroups";
 import { WidgetPanel } from "./Dashboard";
+import { LeagueTableSkeleton } from "./HomeSkeleton";
 
 const MotionLink = motion.create(Link);
 
@@ -65,6 +66,7 @@ export default function StandingsSnapshot({ height }) {
       onRetry={() => query.refetch()}
       isEmpty={query.isSuccess && standings.length === 0}
       emptyMessage="Standings not available yet."
+      skeleton={<LeagueTableSkeleton />}
       className="lg:h-(--results-height)"
       style={height != null ? { "--results-height": `${height}px` } : undefined}
     >

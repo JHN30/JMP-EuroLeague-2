@@ -16,7 +16,7 @@ async function openBreakdown(page, season, label) {
   const live = await seasonSlug(page);
   await page.goto(`/${season ?? live}/standings`);
   await expect(page.locator("main table tbody tr").first()).toBeVisible({ timeout: 30_000 });
-  await expect(page.locator(".loading")).toHaveCount(0, { timeout: 15_000 });
+  await expect(page.locator(".loading, [aria-busy=\"true\"]")).toHaveCount(0, { timeout: 15_000 });
   await page.getByRole("combobox", { name: "Breakdown" }).selectOption({ label });
   await expect(page.locator("main table.breakdown-table").first()).toBeVisible({ timeout: 30_000 });
 }

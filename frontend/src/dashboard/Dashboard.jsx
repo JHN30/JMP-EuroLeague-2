@@ -20,7 +20,8 @@ import StandingsSnapshot from "./StandingsSnapshot";
 import { roundStatus } from "./roundStatus";
 import UpcomingGames from "./UpcomingGames";
 
-export function WidgetPanel({ kicker, title, isLoading, isError, onRetry, isEmpty, emptyMessage, className = "", style, children }) {
+// `skeleton` stands in for the content while it loads (see `AsyncState`).
+export function WidgetPanel({ kicker, title, isLoading, isError, onRetry, isEmpty, emptyMessage, skeleton = null, className = "", style, children }) {
   const status = isLoading ? "loading" : isError ? "error" : isEmpty ? "empty" : "ready";
   return (
     <Panel as="section" className={`flex flex-col p-4 sm:p-5 lg:p-6 ${className}`} style={style}>
@@ -40,6 +41,7 @@ export function WidgetPanel({ kicker, title, isLoading, isError, onRetry, isEmpt
             onRetry={onRetry}
             errorClassName=""
             compact
+            skeleton={skeleton}
           >
             {children}
           </AsyncState>

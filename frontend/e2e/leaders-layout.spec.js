@@ -70,7 +70,7 @@ for (const view of VIEWS) {
     const slug = await seasonSlug(page);
     await page.goto(`/${slug}/${view.cards}`);
     await expect(openCard(page).first()).toBeVisible({ timeout: 30_000 });
-    await expect(page.locator("#leaders-panel .loading")).toHaveCount(0, { timeout: 30_000 });
+    await expect(page.locator("#leaders-panel .loading, #leaders-panel [aria-busy=\"true\"]")).toHaveCount(0, { timeout: 30_000 });
 
     await atWidths(page, WIDTHS, async (width) => {
       expect(await columns(openCard(page))).toBe(cardsPerRowAt(width));

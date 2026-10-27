@@ -10,6 +10,7 @@ export default function AsyncState({
   fullScreen = false,
   compact = false,
   errorClassName = "",
+  skeleton = null,
   children,
 }) {
   if (status === "ready") return children;
@@ -22,6 +23,15 @@ export default function AsyncState({
       return <span role="alert" className="muted text-sm">{message}</span>;
     }
     return <span role="status" className="muted text-sm">{message}</span>;
+  }
+
+  // An opt-in placeholder shaped like the content, instead of the spinner. `aria-busy` marks it as still loading.
+  if (status === "loading" && skeleton) {
+    return (
+      <div role="status" aria-label={label} aria-busy="true">
+        {skeleton}
+      </div>
+    );
   }
 
   if (status === "loading") {

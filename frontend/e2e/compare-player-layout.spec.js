@@ -68,7 +68,7 @@ test("the Overview fits, with club and opponent codes below 640px and the radar 
   const { slug, a, b } = await livePlayers(page);
   await openTab(page, slug, a, b, "Overview");
   await expect(page.getByRole("heading", { name: "Recent form" })).toBeVisible({ timeout: 30_000 });
-  await expect(page.locator(".loading")).toHaveCount(0, { timeout: 30_000 });
+  await expect(page.locator(".loading, [aria-busy=\"true\"]")).toHaveCount(0, { timeout: 30_000 });
   const lastNames = [a, b].map((player) => player.playerName.split(",")[0].trim().toLowerCase());
 
   await atWidths(page, WIDTHS, async (width) => {
@@ -98,7 +98,7 @@ test("the Statistics and Advanced rows fit, and the Statistics header reads Firs
   const { slug, a, b } = await livePlayers(page);
   await openTab(page, slug, a, b, "Statistics");
   await expect(page.locator("main .panel h3").first()).toBeVisible({ timeout: 30_000 });
-  await expect(page.locator(".loading")).toHaveCount(0, { timeout: 30_000 });
+  await expect(page.locator(".loading, [aria-busy=\"true\"]")).toHaveCount(0, { timeout: 30_000 });
   const header = await page.locator("main .panel .grid-cols-2").first().innerText();
   expect(header).not.toContain(",");
   await atWidths(page, WIDTHS, async () => {
@@ -159,7 +159,7 @@ test.describe("states and long names at 320px", () => {
     });
     for (const tab of ["Overview", "Statistics", "Advanced", "Trends"]) {
       await openTab(page, slug, a, b, tab);
-      await expect(page.locator(".loading")).toHaveCount(0, { timeout: 30_000 });
+      await expect(page.locator(".loading, [aria-busy=\"true\"]")).toHaveCount(0, { timeout: 30_000 });
       await expect.poll(() => outsidePanels(page), { timeout: 20_000 }).toEqual([]);
       await expectNoSidewaysScroll(page);
     }

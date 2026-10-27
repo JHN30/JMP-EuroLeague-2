@@ -16,7 +16,7 @@ async function openOverview(page, season, { summary = true } = {}) {
   // loads on its own, so the tests that only look at it do not wait for the summary.
   if (summary) {
     await expect(page.getByRole("heading", { name: "Defining games" })).toBeVisible({ timeout: 30_000 });
-    await expect(page.locator(".loading")).toHaveCount(0, { timeout: 15_000 });
+    await expect(page.locator(".loading, [aria-busy=\"true\"]")).toHaveCount(0, { timeout: 15_000 });
   } else {
     await expect(page.getByRole("group", { name: /leaders$/ }).first().getByRole("link")).toHaveCount(6, { timeout: 15_000 });
   }

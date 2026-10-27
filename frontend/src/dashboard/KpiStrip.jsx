@@ -65,6 +65,7 @@ export default function KpiStrip() {
   return (
     <HeaderStats className="kpi-strip-4" data-testid="home-kpi-strip">
       <CompactMetric
+        skeleton
         isLoading={standingsQuery.isLoading}
         isError={standingsQuery.isError}
         value={leader ? `${leader.basic.gamesWon}-${leader.basic.gamesLost}` : "–"}
@@ -74,6 +75,7 @@ export default function KpiStrip() {
         to={teamPage(leader)}
       />
       <CompactMetric
+        skeleton
         isLoading={standingsQuery.isLoading}
         isError={standingsQuery.isError}
         value={inForm ? inForm.entry.basic.lastTenRecord : "–"}
@@ -83,6 +85,7 @@ export default function KpiStrip() {
         to={teamPage(inForm?.entry)}
       />
       <CompactMetric
+        skeleton
         isLoading={standingsQuery.isLoading || teamStatsQuery.isLoading}
         isError={standingsQuery.isError || teamStatsQuery.isError}
         value={bestOffense ? formatPerGame(bestOffense.ppg) : "–"}
@@ -92,6 +95,7 @@ export default function KpiStrip() {
         to={teamPage(bestOffense?.entry)}
       />
       <CompactMetric
+        skeleton
         isLoading={standingsQuery.isLoading || teamStatsQuery.isLoading}
         isError={standingsQuery.isError || teamStatsQuery.isError}
         value={bestDefense ? formatPerGame(bestDefense.papg) : "–"}

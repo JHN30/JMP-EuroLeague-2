@@ -9,7 +9,7 @@ async function openStandings(page, season) {
   const live = await seasonSlug(page);
   await page.goto(`/${season ?? live}/standings`);
   await expect(page.locator("main table tbody tr").first()).toBeVisible({ timeout: 30_000 });
-  await expect(page.locator(".loading")).toHaveCount(0, { timeout: 15_000 });
+  await expect(page.locator(".loading, [aria-busy=\"true\"]")).toHaveCount(0, { timeout: 15_000 });
 }
 
 async function atWidths(page, widths, check) {

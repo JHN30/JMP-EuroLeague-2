@@ -11,6 +11,7 @@ import { eliminationStageLabel } from "../postseason/eliminationBracket";
 import ShortLabel from "../lib/ShortLabel";
 import { shortTeamName, teamCode } from "../games/gameUtils";
 import { WidgetPanel } from "./Dashboard";
+import { LatestScoresSkeleton, VISIBLE_ON_MOBILE } from "./HomeSkeleton";
 
 const MotionLink = motion.create(Link);
 
@@ -23,7 +24,6 @@ function roundLabel(game, format) {
   return game.roundName ?? (game.roundNumber ? `Round ${game.roundNumber}` : game.phaseName);
 }
 
-const VISIBLE_ON_MOBILE = 5;
 const LIST_ID = "latest-scores-list";
 
 export function MatchCard({ game, standingByClubCode, seasonCode, showScore, className = "" }) {
@@ -115,6 +115,7 @@ export default function RecentResults() {
       onRetry={() => query.refetch()}
       isEmpty={query.isSuccess && games.length === 0}
       emptyMessage="No results yet."
+      skeleton={<LatestScoresSkeleton />}
     >
       <div className="games-list-box">
         <motion.div id={LIST_ID} className="games-list" variants={listContainer} initial="hidden" animate="show">

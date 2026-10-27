@@ -11,7 +11,7 @@ async function openStandings(page, season, { view } = {}) {
   const live = await seasonSlug(page);
   await page.goto(`/${season ?? live}/standings`);
   await expect(page.locator("main table tbody tr").first()).toBeVisible({ timeout: 30_000 });
-  await expect(page.locator(".loading")).toHaveCount(0, { timeout: 15_000 });
+  await expect(page.locator(".loading, [aria-busy=\"true\"]")).toHaveCount(0, { timeout: 15_000 });
   if (view) await page.getByRole("tablist", { name: "Standings view" }).getByRole("tab", { name: view }).click();
 }
 

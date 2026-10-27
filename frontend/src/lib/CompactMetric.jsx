@@ -1,6 +1,10 @@
+import { motion } from "motion/react";
 import { Link } from "react-router";
+import { cardHover } from "./motion";
 
-// `to` makes the whole chip a link (a team's or player's page), styled like the other linked chips.
+const MotionLink = motion.create(Link);
+
+// `to` makes the whole chip a link (a team's or player's page), styled and lifting on hover like the other linked chips.
 // `tone` colours the value ("positive" green, "negative" red) for good or bad news; pair it with an arrow or sign
 // in the value so the meaning never depends on colour alone.
 export default function CompactMetric({ value, label, name, isLoading = false, isError = false, imageUrl, imageAlt = "", tone, to }) {
@@ -8,10 +12,10 @@ export default function CompactMetric({ value, label, name, isLoading = false, i
   const valueClass = tone && !isLoading && !isError ? `value tone-${tone}` : "value";
   const valueTitle = isError ? "Could not load this value." : undefined;
 
-  const Root = to ? Link : "div";
+  const Root = to ? MotionLink : "div";
 
   return (
-    <Root {...(to ? { to } : {})} className={to ? "kpi-chip kpi-chip-link" : "kpi-chip"}>
+    <Root {...(to ? { to, ...cardHover } : {})} className={to ? "kpi-chip kpi-chip-link" : "kpi-chip"}>
       <div className="kpi-chip-body">
         {name ? (
           <>

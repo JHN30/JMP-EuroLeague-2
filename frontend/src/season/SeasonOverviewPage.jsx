@@ -106,8 +106,10 @@ function SeasonHero({ seasonCode, leader, pointsPerGame, format, grouped = false
 
   const ppg = pointsPerGame;
   // Both chips name the leading club, so both open its page, as the player-leader chips open theirs.
-  const ChipRoot = leader.clubCode ? Link : "div";
-  const chipProps = leader.clubCode ? { to: `/${seasonCode}/teams/${leader.clubCode}`, className: "kpi-chip kpi-chip-link" } : { className: "kpi-chip" };
+  const ChipRoot = leader.clubCode ? MotionLink : "div";
+  const chipProps = leader.clubCode
+    ? { to: `/${seasonCode}/teams/${leader.clubCode}`, className: "kpi-chip kpi-chip-link", ...cardHover }
+    : { className: "kpi-chip" };
 
   return (
     <div className="season-hero-kpis grid grid-cols-2 gap-3 sm:gap-4" data-testid="season-hero-kpis">

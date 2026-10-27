@@ -649,7 +649,7 @@ export async function getPlayersSeasonToDate(
 export type TeamSeasonToDate = Pick<
   StandingsStatsRow,
   | "clubCode" | "gamesPlayed" | "pace" | "offensiveRating" | "defensiveRating" | "netRating" | "efgPct" | "tovPct"
-  | "orbPct" | "drbPct" | "ftRate" | "oppEfgPct" | "oppTovPct" | "oppFtRate"
+  | "orbPct" | "drbPct" | "ftRate" | "oppEfgPct" | "oppTovPct" | "oppFtRate" | "trueShootingPct" | "assistRatio"
 >;
 
 // Season-to-date team values for some clubs: their cumulative row at one round of the `all` scope. A club with no
@@ -676,6 +676,8 @@ export async function getTeamsSeasonToDate(
       oppEfgPct: standingsStats.oppEfgPct,
       oppTovPct: standingsStats.oppTovPct,
       oppFtRate: standingsStats.oppFtRate,
+      trueShootingPct: standingsStats.trueShootingPct,
+      assistRatio: standingsStats.assistRatio,
     })
       .from(standingsStats)
       .where(and(

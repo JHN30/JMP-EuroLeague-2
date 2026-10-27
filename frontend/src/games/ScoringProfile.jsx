@@ -33,7 +33,7 @@ export default function ScoringProfile({ teamFlowQuery, localTeam, roadTeam }) {
         <TeamHeader localTeam={localTeam} roadTeam={roadTeam} />
         <TeamHeader localTeam={localTeam} roadTeam={roadTeam} className="hidden lg:grid" />
         {rows.map(({ key, ...row }) => (
-          <ComparisonRow key={key} {...row} compact bars={false} />
+          <ComparisonRow key={key} {...row} inline bars={false} />
         ))}
       </div>
     </Panel>

@@ -30,7 +30,7 @@ import { sectionContainer, sectionItem } from "../lib/motion";
 import { usePrefersReducedMotion } from "../lib/usePrefersReducedMotion";
 import { AnimatedBody, AnimatedRow } from "../standings/motionTable";
 import ScrollingTable from "../standings/ScrollingTable";
-import { compareByName, hasMinutes, isStarter, teamName } from "./gameUtils";
+import { benchPoints, compareByName, hasMinutes, isStarter, paintPoints, teamName } from "./gameUtils";
 import { PeriodTable, ScoreFlowChart } from "./gameFlow";
 import { computeGameFlow, momentLabel, withRunningScore } from "./gameFlowData";
 import { advancedColumns, attachAdvanced } from "./AdvancedBoxScore";
@@ -1042,11 +1042,58 @@ const COMPARISON_ROWS = [
   { label: "PIR", render: (row) => formatCount(row.valuation), value: (row) => Number(row.valuation) },
 ];
 
-// The previous table's rows as mirrored bars: the printed text is the old cell text, the bar is sized by `value`.
-function TeamComparisonRows({ localTotal, roadTotal, localTeam, roadTeam }) {
+// The Head to head rows in groups, by label. The rows are basic counts, so they carry no tips.
+const COMPARISON_GROUPS = [
+  { title: "Scoring", labels: ["Points", "Bench points", "Points in the paint"] },
+  { title: "Shooting", labels: ["2PT", "3PT", "FT"] },
+  { title: "Rebounds", labels: ["Rebounds", "Offensive rebounds", "Defensive rebounds"] },
+  { title: "Ball and defense", labels: ["Assists", "Turnovers", "Steals", "Blocks", "Blocks against"] },
+  { title: "Fouls and PIR", labels: ["Fouls committed", "Fouls drawn", "PIR"] },
+];
+
+const LOADING_MARK = (
+  <span className="muted">
+    <span aria-hidden="true">…</span>
+    <span className="sr-only">Loading</span>
+  </span>
+);
+
+// Each team's box-score totals on one line per stat, in groups. Bench points come from the players' starter flags and
+// points in the paint from the shots, which load separately: their trouble only touches that row. A side with no value
+// prints a dash and leaves both sides unhighlighted: it is not a 0 to beat.
+function TeamComparisonRows({ localTotal, roadTotal, localTeam, roadTeam, playerStats, shotsQuery }) {
   if (!localTotal || !roadTotal) {
     return <EmptyText>Team comparison isn't available until this game is played.</EmptyText>;
   }
+  const paintFor = (team) => (shotsQuery.isSuccess ? paintPoints(shotsQuery.data.shots, team?.clubCode) : null);
+  const counted = (label, valueA, valueB) => ({
+    label,
+    direction: valueA === null || valueB === null ? "neutral" : "higher",
+    rawA: valueA,
+    rawB: valueB,
+    displayA: formatCount(valueA),
+    displayB: formatCount(valueB),
+  });
+  const rows = new Map(
+    [
+      ...COMPARISON_ROWS.map((row) => {
+        const [rawA, rawB] = [row.value(localTotal), row.value(roadTotal)];
+        return {
+          label: row.label,
+          direction: rawA === null || rawB === null ? "neutral" : row.lowerIsBetter ? "lower" : "higher",
+          rawA,
+          rawB,
+          displayA: row.render(localTotal),
+          displayB: row.render(roadTotal),
+        };
+      }),
+      counted("Bench points", benchPoints(playerStats, "local"), benchPoints(playerStats, "road")),
+      {
+        ...counted("Points in the paint", paintFor(localTeam), paintFor(roadTeam)),
+        ...(shotsQuery.isLoading ? { missingText: LOADING_MARK } : {}),
+      },
+    ].map((row) => [row.label, row]),
+  );
 
   return (
     <Panel className="flex flex-1 flex-col p-4 max-sm:p-3">
@@ -1056,20 +1103,23 @@ function TeamComparisonRows({ localTotal, roadTotal, localTeam, roadTeam }) {
         </div>
         <TeamLabel team={roadTeam} />
       </div>
-      {COMPARISON_ROWS.map((row) => (
-        <ComparisonRow
-          key={row.label}
-          label={row.label}
-          tip={STAT_TIPS[row.label]}
-          compact
-          bars={false}
-          direction={row.lowerIsBetter ? "lower" : "higher"}
-          rawA={row.value(localTotal)}
-          rawB={row.value(roadTotal)}
-          displayA={row.render(localTotal)}
-          displayB={row.render(roadTotal)}
-        />
+      {COMPARISON_GROUPS.map((group) => (
+        // Each group grows by its number of rows, so the rows spread evenly when the panel is stretched.
+        <section key={group.title} aria-label={group.title} className="mt-3 flex flex-col first-of-type:mt-0" style={{ flexGrow: group.labels.length }}>
+          <h4 className="muted mb-0.5 text-center text-xs font-bold tracking-wide uppercase">{group.title}</h4>
+          {group.labels.map((label) => (
+            <ComparisonRow key={label} {...rows.get(label)} inline bars={false} />
+          ))}
+        </section>
       ))}
+      {shotsQuery.isError ? (
+        <p className="muted mt-3 flex flex-wrap items-center gap-2 text-sm">
+          Points in the paint couldn't be loaded.
+          <button type="button" className="btn btn-sm" onClick={() => shotsQuery.refetch()}>
+            Retry
+          </button>
+        </p>
+      ) : null}
     </Panel>
   );
 }
@@ -1077,7 +1127,7 @@ function TeamComparisonRows({ localTotal, roadTotal, localTeam, roadTeam }) {
 // The box-score rows (left) and the Four Factors (right) sit side by side on wide screens and stack on narrow ones. The
 // two panels are equally tall: the shorter one spreads its rows out evenly instead of leaving empty space at the bottom.
 // They load separately, so trouble with one never hides the other.
-function TeamComparisonTab({ game, boxScoreQuery, advancedQuery, teamFlowQuery }) {
+function TeamComparisonTab({ game, boxScoreQuery, advancedQuery, teamFlowQuery, shotsQuery }) {
   if (!game.played) {
     return <EmptyText>Team comparison isn't available until this game is played.</EmptyText>;
   }
@@ -1092,7 +1142,14 @@ function TeamComparisonTab({ game, boxScoreQuery, advancedQuery, teamFlowQuery }
         ) : boxScoreQuery.isError ? (
           <AsyncState status="error" message="Could not load team comparison." onRetry={() => boxScoreQuery.refetch()} />
         ) : (
-          <TeamComparisonRows localTotal={totalFor("local")} roadTotal={totalFor("road")} localTeam={game.localTeam} roadTeam={game.roadTeam} />
+          <TeamComparisonRows
+            localTotal={totalFor("local")}
+            roadTotal={totalFor("road")}
+            localTeam={game.localTeam}
+            roadTeam={game.roadTeam}
+            playerStats={boxScoreQuery.data.playerStats}
+            shotsQuery={shotsQuery}
+          />
         )}
       </section>
       <section className="flex flex-col">
@@ -1161,7 +1218,7 @@ export default function GameDetailPage() {
   const shotsQuery = useQuery({
     queryKey: ["shots", seasonCode, gameCode],
     queryFn: () => getShots(seasonCode, gameCode),
-    enabled: gameQuery.isSuccess && game?.played === true && tab === "shooting",
+    enabled: gameQuery.isSuccess && game?.played === true && (tab === "shooting" || tab === "comparison"),
   });
 
   if (gameQuery.isLoading) return <AsyncState status="loading" label="Loading the game" />;
@@ -1247,7 +1304,7 @@ export default function GameDetailPage() {
             />
           )
         ) : null}
-        {tab === "comparison" ? <TeamComparisonTab game={game} boxScoreQuery={boxScoreQuery} advancedQuery={advancedQuery} teamFlowQuery={teamFlowQuery} /> : null}
+        {tab === "comparison" ? <TeamComparisonTab game={game} boxScoreQuery={boxScoreQuery} advancedQuery={advancedQuery} teamFlowQuery={teamFlowQuery} shotsQuery={shotsQuery} /> : null}
 
         {tab === "shooting" ? (
           !game.played ? (

@@ -1,3 +1,5 @@
+import { hasLocation, shotZone } from "../lib/shotZones";
+
 export function teamName(team) {
   return team?.name ?? team?.abbreviatedName ?? "TBD";
 }
@@ -16,6 +18,23 @@ export function shortTeamName(team) {
 export const hasMinutes = (row) => row.timePlayed > 0;
 
 export const isStarter = (row) => Boolean(row.started ?? row.startedAlt);
+
+// Points by one side's players who did not start, or null when the feed marks no starter on that side.
+export function benchPoints(playerStats, side) {
+  const rows = playerStats.filter((row) => row.side === side);
+  if (!rows.some(isStarter)) return null;
+  return rows.filter((row) => !isStarter(row)).reduce((sum, row) => sum + Number(row.points ?? 0), 0);
+}
+
+const PAINT_ZONES = new Set(["Restricted area", "In the paint"]);
+
+// Points from one club's made shots in the restricted area and the paint, over its shots with a location, or null
+// when it has none. Field goals only: an and-one free throw is not counted.
+export function paintPoints(shots, clubCode) {
+  const located = shots.filter((shot) => shot.clubCode === clubCode && hasLocation(shot));
+  if (located.length === 0) return null;
+  return 2 * located.filter((shot) => shot.actionCode.endsWith("M") && PAINT_ZONES.has(shotZone(shot))).length;
+}
 
 export function compareByName(left, right) {
   return (left.personName ?? "").localeCompare(right.personName ?? "") || left.personKey.localeCompare(right.personKey);

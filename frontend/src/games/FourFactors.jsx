@@ -39,6 +39,13 @@ const BLOCKS = [
       { label: "Net rating", tip: "Offensive rating minus defensive rating", direction: "higher", field: "netRating", format: (value) => formatSignedDecimal(value) },
     ],
   },
+  {
+    title: "Shooting and passing",
+    rows: [
+      { label: "TS%", tip: "True shooting: points per shooting possession, counting free throws and threes", direction: "higher", field: "trueShootingPct", format: pct },
+      { label: "Assist ratio", tip: "Assist ratio: the share of made field goals that were assisted", direction: "higher", field: "assistRatio", format: pct },
+    ],
+  },
 ];
 
 // The team's season average for a field, or null while the season block is missing or hidden.
@@ -46,6 +53,9 @@ function seasonValue(team, field) {
   const value = team?.season?.[field];
   return value === null || value === undefined ? null : value;
 }
+
+// A side with no value prints a dash, so neither side is highlighted: a missing value is not a 0 to beat.
+const missing = (value) => value === null || value === undefined;
 
 function averageText(value, format) {
   return value === null ? null : `Season avg ${format(value)}`;
@@ -77,14 +87,15 @@ export default function FourFactors({ advancedQuery, localTeam, roadTeam }) {
       {BLOCKS.map((block) => (
         <section key={block.title} aria-label={block.title} className="mt-4 flex flex-1 flex-col first:mt-0">
           <h4 className="muted mb-1 text-center text-xs font-bold tracking-wide uppercase">{block.title}</h4>
-          {block.rows.map(({ field, format, ...row }) => {
+          {block.rows.map(({ field, format, direction, ...row }) => {
             const markerA = seasonValue(local, field);
             const markerB = seasonValue(road, field);
             return (
               <ComparisonRow
                 key={row.label}
                 {...row}
-                compact
+                direction={missing(local[field]) || missing(road[field]) ? "neutral" : direction}
+                inline
                 rawA={local[field]}
                 rawB={road[field]}
                 displayA={format(local[field])}

@@ -1229,6 +1229,8 @@ seasonRouter.get("/:seasonCode/games/:gameCode/advanced", async (req, res) => {
               oppEfgPct: hidden ? null : cumulative.oppEfgPct,
               oppTovPct: hidden ? null : cumulative.oppTovPct,
               oppFtRate: hidden ? null : cumulative.oppFtRate,
+              trueShootingPct: hidden ? null : cumulative.trueShootingPct,
+              assistRatio: hidden ? null : cumulative.assistRatio,
             }
           : null,
       };

@@ -47,13 +47,17 @@ test("the Scoring profile shows how each team scored and how the game was led", 
   await expect(profileRow(page, "Possessions counted")).toContainText("72");
   await expect(profileRow(page, "Average possession")).toContainText("17.1 s");
   await expect(profileRow(page, "Average possession")).toContainText("16.0 s");
+  await expect(profileRow(page, "Time of possession")).toContainText("20:49");
+  await expect(profileRow(page, "Time of possession")).toContainText("19:11");
+  // Fourteen rows, so the two columns are even on a wide screen.
+  await expect(page.getByTestId("scoring-profile-grid").locator("div.border-b")).toHaveCount(14);
 });
 
 test("neutral rows highlight neither side, and clutch is a real result when there was clutch time", async ({ page }) => {
   await page.setViewportSize({ width: 1400, height: 1200 });
   await openComparison(page);
 
-  for (const label of ["Lead changes", "Ties", "Possessions counted", "Average possession"]) {
+  for (const label of ["Lead changes", "Ties", "Possessions counted", "Time of possession", "Average possession"]) {
     await expect(profileRow(page, label).locator(".text-primary")).toHaveCount(0);
     await expect(profileRow(page, label)).not.toContainText("Lower is better");
   }

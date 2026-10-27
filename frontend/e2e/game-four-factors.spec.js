@@ -1,5 +1,5 @@
 import { test, expect } from "@playwright/test";
-import { ADVANCED, SEASON, mockGameApi } from "./support/game-fixtures";
+import { ADVANCED, BOX_SCORE, SEASON, mockGameApi, shot } from "./support/game-fixtures";
 
 const DEFENSE = "Defense (what each team held its opponent to)";
 
@@ -22,6 +22,9 @@ function factorRow(page, block, label) {
 function boxScoreRow(page, label) {
   return page.locator("div.border-b", { has: page.getByText(label, { exact: true }) });
 }
+
+
+const SHOOTING = "Shooting and passing";
 
 test("the Four Factors panel shows offense, defense and pace and ratings for both teams", async ({ page }) => {
   await openComparison(page);
@@ -82,7 +85,7 @@ test("with both averages available the panel explains the tick instead", async (
   await expect(page.getByText("Season averages need at least 3 games")).toHaveCount(0);
 });
 
-test("the box-score rows are mirrored rows (no bars) with the old values and the same tooltips", async ({ page }) => {
+test("the box-score rows are mirrored rows (no bars) with the old values", async ({ page }) => {
   await openComparison(page);
 
   await expect(page.locator("table")).toHaveCount(0);
@@ -95,8 +98,23 @@ test("the box-score rows are mirrored rows (no bars) with the old values and the
   await expect(turnovers).toContainText("Lower is better");
   await expect(turnovers.locator(".text-primary")).toContainText("10");
 
-  await page.locator(".header-tip-label", { hasText: "2PT" }).hover();
-  await expect(page.getByRole("tooltip").filter({ hasText: "Two-pointers: made-attempted" })).toBeVisible();
+  // Basic counts: no Head to head row carries a tip.
+  await expect(page.locator(".panel", { has: page.getByRole("region", { name: "Scoring" }) }).locator(".header-tip-label")).toHaveCount(0);
+});
+
+test("the Head to head rows are grouped, one line per stat", async ({ page }) => {
+  await openComparison(page);
+
+  for (const group of ["Scoring", "Shooting", "Rebounds", "Ball and defense", "Fouls and PIR"]) {
+    await expect(page.getByRole("region", { name: group, exact: true })).toBeVisible();
+  }
+  await expect(page.getByRole("region", { name: "Scoring" }).locator("div.border-b")).toHaveCount(3);
+  // The label sits between the two values, on their line.
+  const points = boxScoreRow(page, "Points");
+  const label = await points.getByText("Points", { exact: true }).boundingBox();
+  const value = await points.getByText("80", { exact: true }).boundingBox();
+  expect(Math.abs(label.y + label.height / 2 - (value.y + value.height / 2))).toBeLessThan(6);
+  expect(value.x).toBeLessThan(label.x);
 });
 
 test("the standard rows sit on the left and the Four Factors on the right on a wide screen, stacked on a narrow one", async ({ page }) => {
@@ -156,4 +174,93 @@ test("an unplayed game has no comparison tab and does not request advanced stats
   await expect(page.getByRole("tab", { name: "Team comparison", exact: true })).toHaveCount(0);
   await expect(page.getByText("Four Factors")).toHaveCount(0);
   expect(requests.some((pathname) => pathname.endsWith("/advanced"))).toBe(false);
+  expect(requests.some((pathname) => pathname.endsWith("/shots"))).toBe(false);
+});
+
+test("true shooting and assist ratio sit in their own block with the season average", async ({ page }) => {
+  await openComparison(page);
+
+  const ts = factorRow(page, SHOOTING, "TS%");
+  await expect(ts).toContainText("62.0%");
+  await expect(ts).toContainText("55.0%");
+  await expect(ts.locator(".text-primary")).toContainText("62.0%");
+  await expect(ts.getByText("Season avg 58.0%")).toBeVisible();
+  await expect(ts.locator("span[title='Season avg 58.0%']")).toHaveCount(1);
+  const assists = factorRow(page, SHOOTING, "Assist ratio");
+  await expect(assists).toContainText("50.0%");
+  await expect(assists.getByText("Season avg 55.0%")).toBeVisible();
+  // Team B's season block is hidden, so it has no average on either row.
+  await expect(assists.getByText(/Season avg/)).toHaveCount(1);
+});
+
+test("a game value the pipeline left empty prints a dash, not 0", async ({ page }) => {
+  const advanced = { ...ADVANCED, teams: [{ ...ADVANCED.teams[0], trueShootingPct: null, assistRatio: null }, ADVANCED.teams[1]] };
+  await openComparison(page, { advanced });
+
+  const ts = factorRow(page, SHOOTING, "TS%");
+  await expect(ts).toContainText("—");
+  await expect(ts).not.toContainText("0.0%");
+  // A dash is not a 0 to beat: neither side is highlighted.
+  await expect(ts.locator(".text-primary")).toHaveCount(0);
+  await expect(factorRow(page, SHOOTING, "Assist ratio")).toContainText("—");
+});
+
+test("bench points add up the players who did not start, right after Points", async ({ page }) => {
+  await openComparison(page);
+
+  const bench = boxScoreRow(page, "Bench points");
+  await expect(bench).toContainText("12");
+  await expect(bench).toContainText("8");
+  await expect(bench.locator(".text-primary")).toContainText("12");
+  const points = await boxScoreRow(page, "Points").boundingBox();
+  const benchBox = await bench.boundingBox();
+  const twoPoint = await boxScoreRow(page, "2PT").boundingBox();
+  expect(benchBox.y).toBeGreaterThan(points.y);
+  expect(benchBox.y).toBeLessThan(twoPoint.y);
+});
+
+test("bench points are a dash when the feed marks no starter", async ({ page }) => {
+  const boxScore = { ...BOX_SCORE, playerStats: BOX_SCORE.playerStats.map((row) => ({ ...row, started: null, startedAlt: null })) };
+  await openComparison(page, { boxScore });
+
+  const bench = boxScoreRow(page, "Bench points");
+  await expect(bench).toContainText("—");
+  await expect(bench).not.toContainText("0");
+});
+
+test("points in the paint count made restricted-area and paint shots with a location", async ({ page }) => {
+  const shots = [
+    shot(1, "A", "2FGM", 0, 50),
+    shot(2, "A", "2FGM", 0, 290),
+    shot(3, "A", "2FGA", 0, 290),
+    shot(4, "A", "3FGM", 700, -100),
+    shot(5, "A", "2FGM", -1, -1),
+    shot(6, "B", "2FGA", 0, 50),
+  ];
+  await openComparison(page, { shots });
+
+  const paint = boxScoreRow(page, "Points in the paint");
+  await expect(paint.locator(".text-primary")).toContainText("4");
+  // Team B took a located shot and made none in the paint: a real 0.
+  await expect(paint).toContainText("0");
+  await expect(paint).not.toContainText("—");
+});
+
+test("a game without shots shows dashes for points in the paint", async ({ page }) => {
+  await openComparison(page, { shots: [] });
+
+  const paint = boxScoreRow(page, "Points in the paint");
+  await expect(paint.getByText("—")).toHaveCount(2);
+  await expect(page.getByText("Points in the paint couldn't be loaded.")).toHaveCount(0);
+});
+
+test("a failed shots request shows dashes and a retry, and keeps the other rows", async ({ page }) => {
+  await openComparison(page, { shotsStatus: 500 });
+
+  await expect(page.getByText("Points in the paint couldn't be loaded.")).toBeVisible({ timeout: 20_000 });
+  await expect(page.locator("p", { hasText: "Points in the paint couldn't be loaded." }).getByRole("button", { name: "Retry" })).toBeVisible();
+  await expect(boxScoreRow(page, "Points in the paint").getByText("—")).toHaveCount(2);
+  await expect(boxScoreRow(page, "Points")).toContainText("80");
+  await expect(boxScoreRow(page, "Bench points")).toContainText("12");
+  await expect(factorRow(page, "Offense", "eFG%")).toContainText("59.0%");
 });

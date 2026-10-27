@@ -260,6 +260,7 @@ export const ADVANCED = {
       season: {
         gamesPlayed: 10, hidden: false, pace: 71.2, offensiveRating: 110, defensiveRating: 105, netRating: 5, efgPct: 0.55,
         tovPct: 0.14, orbPct: 0.3, drbPct: 0.7, ftRate: 0.18, oppEfgPct: 0.52, oppTovPct: 0.15, oppFtRate: 0.2,
+        trueShootingPct: 0.58, assistRatio: 0.55,
       },
     },
     {
@@ -269,6 +270,7 @@ export const ADVANCED = {
       season: {
         gamesPlayed: 2, hidden: true, pace: null, offensiveRating: null, defensiveRating: null, netRating: null, efgPct: null,
         tovPct: null, orbPct: null, drbPct: null, ftRate: null, oppEfgPct: null, oppTovPct: null, oppFtRate: null,
+        trueShootingPct: null, assistRatio: null,
       },
     },
   ],

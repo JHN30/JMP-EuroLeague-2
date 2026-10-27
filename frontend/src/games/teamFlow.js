@@ -116,6 +116,14 @@ const ROWS = [
     display: (team) => formatCount(team.possessions?.countedPossessions),
   },
   {
+    key: "timeOfPossession",
+    label: "Time of possession",
+    tip: "Game time the team had the ball, summed over its counted possessions",
+    direction: "neutral",
+    value: (team) => number(team.possessions?.possessionSeconds),
+    display: (team) => formatMinutes(team.possessions?.possessionSeconds),
+  },
+  {
     key: "avgPossession",
     label: "Average possession",
     tip: "Average length of a possession, in seconds",

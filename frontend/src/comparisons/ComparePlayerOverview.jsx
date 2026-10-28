@@ -5,6 +5,7 @@ import { Link } from "react-router";
 import { shortTeamName, teamCode } from "../games/gameUtils";
 import { getPlayerGames } from "../lib/api";
 import AsyncState from "../lib/AsyncState";
+import { PlayerFormBodySkeleton, PlayerOverviewSkeleton } from "./CompareSkeleton";
 import ComparisonRow from "../lib/ComparisonRow";
 import { formatPerGame } from "../lib/format";
 import { sectionContainer, sectionItem } from "../lib/motion";
@@ -202,7 +203,7 @@ function FormPanel({ seasonCode, entityA, entityB, playerA, playerB }) {
   const gamesB = useQuery({ queryKey: ["player-games", seasonCode, entityB.id], queryFn: () => getPlayerGames(seasonCode, entityB.id, { limit: 100 }) });
   let body;
   if (gamesA.isPending || gamesB.isPending) {
-    body = <AsyncState status="loading" label="Loading recent games" inline />;
+    body = <AsyncState status="loading" label="Loading recent games" skeleton={<PlayerFormBodySkeleton />} />;
   } else if (gamesA.isError || gamesB.isError) {
     body = (
       <AsyncState
@@ -239,7 +240,7 @@ export default function ComparePlayerOverview({ seasonCode, phaseCode, entityA, 
     queryFn: () => fetchLeagueLeaderboard(seasonCode, phaseCode),
     enabled: Boolean(phaseCode),
   });
-  if (leaderboard.isPending) return <AsyncState status="loading" label="Loading the players" />;
+  if (leaderboard.isPending) return <AsyncState status="loading" label="Loading the players" skeleton={<PlayerOverviewSkeleton />} />;
   if (leaderboard.isError) return <AsyncState status="error" message="Could not load the players." onRetry={() => leaderboard.refetch()} />;
   const pool = leaderboard.data;
   const playerA = pool.find((player) => player.personKey === entityA.id) ?? null;

@@ -294,15 +294,96 @@ test.describe("Compare", () => {
     await expectLoaded(page);
   });
 
-  test("the players view shows the pickers' skeleton without the games, and an opened comparison the generic one", async ({ page }) => {
+  test("the players view shows the pickers' skeleton without the games, and an opened comparison its own shape", async ({ page }) => {
     const release = await hold(page, /\/api\/seasons\/[^/]+\/phases$/);
     await page.goto("/2026/compare?view=players");
     await expectSkeleton(page, "Loading phases");
     await expect(page.getByRole("status", { name: "Loading phases" }).locator("li")).toHaveCount(0);
     await page.goto("/2026/compare?teamA=PAN&teamB=OLY");
     await expectSkeleton(page, "Loading phases");
-    await expect(page.getByRole("status", { name: "Loading phases" }).locator("li")).toHaveCount(0);
+    const status = page.getByRole("status", { name: "Loading phases" });
+    await expect(status.locator("li")).toHaveCount(0);
+    // The opened comparison's Overview: the matchup's two blocks, not the landing's games.
+    await expect(status.locator(OPENED_MATCHUP)).toHaveCount(2);
     await release();
+  });
+});
+
+// A part only an opened team comparison's skeleton has: the matchup panel's two blocks.
+const OPENED_MATCHUP = ".skeleton.h-44.rounded-box";
+
+test.describe("Compare sections", () => {
+  // Every season API request except the phases, the club list and the players' own records, which the page needs before it
+  // shows a comparison.
+  const SECTION_DATA = /\/api\/seasons\/[^/]+\/(?!phases(\?|$)|teams(\?|$)|players\/\d+(\?|$))/;
+  const TEAMS = "/2026/compare?teamA=PAN&teamB=OLY";
+  let PLAYERS;
+
+  // Two players with games this season: the first two on a club's roster.
+  test.beforeAll(async ({ browser }) => {
+    const page = await browser.newPage();
+    await page.goto("/2026/teams/PAN");
+    await page.getByRole("tab", { name: "Roster", exact: true }).click();
+    const links = page.locator("main a[href*='/players/']");
+    await expect(links.first()).toBeVisible({ timeout: 30_000 });
+    const keys = (await links.evaluateAll((els) => els.map((el) => el.getAttribute("href").split("/").pop()))).slice(0, 2);
+    PLAYERS = `/2026/compare?view=players&playerA=${keys[0]}&playerB=${keys[1]}`;
+    await page.close();
+  });
+
+  for (const { view, tab, labels } of [
+    { view: "teams", tab: "Overview", labels: ["Loading the matchup", "Loading recent form", "Loading the players"] },
+    { view: "teams", tab: "Statistics", labels: ["Loading the comparison"] },
+    { view: "teams", tab: "Rosters", labels: ["Loading the rosters"] },
+    { view: "teams", tab: "Trends", labels: ["Loading the trends"] },
+    { view: "players", tab: "Overview", labels: ["Loading the players"] },
+    { view: "players", tab: "Statistics", labels: ["Loading the comparison"] },
+    { view: "players", tab: "Advanced", labels: ["Loading the advanced numbers"] },
+    { view: "players", tab: "Trends", labels: ["Loading the trends"] },
+  ]) {
+    test(`the ${view}' ${tab} section shows its skeletons while it loads, then its content`, async ({ page }) => {
+      const release = await hold(page, SECTION_DATA);
+      await page.goto(view === "teams" ? TEAMS : PLAYERS);
+      await expect(page.getByRole("tablist", { name: "Comparison section" })).toBeVisible({ timeout: 30_000 });
+      if (tab !== "Overview") await page.getByRole("tab", { name: tab, exact: true }).click();
+      for (const label of labels) await expectSkeleton(page, label);
+      await release();
+      await expectLoaded(page);
+    });
+  }
+
+  test("the players' recent games and the clubs' impactful players show rows while they load", async ({ page }) => {
+    await page.goto(PLAYERS);
+    await expectLoaded(page);
+    // The form panel's games come in after the rankings: hold them alone on a fresh load.
+    const releaseGames = await hold(page, /\/api\/seasons\/[^/]+\/players\/[^/]+\/games/);
+    await page.reload();
+    await expectSkeleton(page, "Loading recent games");
+    await releaseGames();
+    await expectLoaded(page);
+
+    await page.goto(TEAMS);
+    await expectLoaded(page);
+    const releaseImpact = await hold(page, /\/api\/seasons\/[^/]+\/teams\/[^/]+\/players-advanced/);
+    await page.getByRole("tab", { name: "Rosters", exact: true }).click();
+    await expectSkeleton(page, "Loading the advanced numbers");
+    await releaseImpact();
+    await expectLoaded(page);
+  });
+});
+
+test.describe("Head-to-head", () => {
+  const H2H = "/2026/compare/head-to-head?teamA=PAN&teamB=OLY";
+
+  test("the whole page shows its skeleton while the clubs load, then the history its own", async ({ page }) => {
+    const releaseClubs = await hold(page, /\/api\/seasons\/[^/]+\/teams(\?|$)/);
+    await page.goto(H2H);
+    await expectSkeleton(page, "Loading seasons");
+    const releaseHistory = await hold(page, /\/api\/seasons\/[^/]+\/teams\/[^/]+\/games/);
+    await releaseClubs();
+    await expectSkeleton(page, "Loading head-to-head history");
+    await releaseHistory();
+    await expectLoaded(page);
   });
 });
 
@@ -382,7 +463,7 @@ test("a game page shows its own page skeleton while its code loads", async ({ pa
   await expect(fallback).toHaveCount(0, { timeout: 30_000 });
 });
 
-test("Head-to-head keeps the generic page skeleton while its code loads", async ({ page }) => {
+test("Head-to-head shows its own page skeleton while its code loads", async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 900 });
   await page.goto("/2026/compare?teamA=PAN&teamB=OLY");
   const link = page.getByRole("link", { name: "All-time head-to-head" });
@@ -391,7 +472,9 @@ test("Head-to-head keeps the generic page skeleton while its code loads", async 
   await link.click();
   const fallback = page.getByRole("status", { name: "Loading page" });
   await expect(fallback).toBeVisible();
-  await expect(fallback.locator(`${PLAYER_HERO}, ${GAME_KEY_STATS}, .team-leaders-grid, li.rounded-field`)).toHaveCount(0);
+  // Laid out as Head-to-head: the meetings' rows, and none of the other pages' parts.
+  await expect(fallback.locator("[class*='h-[2.85rem]']").first()).toBeVisible();
+  await expect(fallback.locator(`${PLAYER_HERO}, ${GAME_KEY_STATS}, ${OPENED_MATCHUP}, li.rounded-field`)).toHaveCount(0);
   await release();
   await expect(fallback).toHaveCount(0, { timeout: 30_000 });
 });

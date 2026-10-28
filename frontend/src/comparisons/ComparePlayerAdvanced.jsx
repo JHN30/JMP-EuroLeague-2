@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { motion } from "motion/react";
 import { getPlayerAdvanced } from "../lib/api";
 import AsyncState from "../lib/AsyncState";
+import { PlayerAdvancedSkeleton } from "./CompareSkeleton";
 import ComparisonRow from "../lib/ComparisonRow";
 import EmptyText from "../lib/EmptyText";
 import { denseListContainer, listItem } from "../lib/motion";
@@ -88,7 +89,7 @@ export default function ComparePlayerAdvanced({ seasonCode, phaseCode, entityA, 
   const [rowA, rowB] = usePlayerRows(seasonCode, phaseCode, entityA, entityB);
   const queryA = useQuery(queryFor(entityA));
   const queryB = useQuery(queryFor(entityB));
-  if (queryA.isPending || queryB.isPending) return <AsyncState status="loading" label="Loading the advanced numbers" />;
+  if (queryA.isPending || queryB.isPending) return <AsyncState status="loading" label="Loading the advanced numbers" skeleton={<PlayerAdvancedSkeleton />} />;
   if (queryA.isError || queryB.isError) {
     return (
       <AsyncState

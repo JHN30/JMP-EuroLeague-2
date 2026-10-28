@@ -1,5 +1,6 @@
 import { motion } from "motion/react";
 import AsyncState from "../lib/AsyncState";
+import { TeamStatsSkeleton } from "./CompareSkeleton";
 import ComparisonRow from "../lib/ComparisonRow";
 import EmptyText from "../lib/EmptyText";
 import { denseListContainer, listItem } from "../lib/motion";
@@ -31,7 +32,7 @@ function ClubHead({ row, label, groupRows }) {
 export default function CompareTeamStats({ seasonCode, phaseCode, entityA: pickedA, entityB: pickedB }) {
   const [entityA, entityB] = useClubEntities(seasonCode, pickedA, pickedB);
   const source = useTeamRows(seasonCode, phaseCode);
-  if (source.isLoading) return <AsyncState status="loading" label="Loading the comparison" />;
+  if (source.isLoading) return <AsyncState status="loading" label="Loading the comparison" skeleton={<TeamStatsSkeleton />} />;
   if (source.isError) return <AsyncState status="error" message="Could not load the comparison." onRetry={source.refetch} />;
 
   const rowA = source.rows.find((row) => row.clubCode === entityA.id);

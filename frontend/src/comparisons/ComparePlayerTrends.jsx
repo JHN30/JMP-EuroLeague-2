@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { motion } from "motion/react";
 import { getPlayerAdvanced, getPlayerGames } from "../lib/api";
 import AsyncState from "../lib/AsyncState";
+import { TrendsSkeleton } from "./CompareSkeleton";
 import EmptyText from "../lib/EmptyText";
 import { sectionContainer, sectionItem } from "../lib/motion";
 import { playedLog, viewGame } from "../players/gameLog";
@@ -76,7 +77,7 @@ export default function ComparePlayerTrends({ seasonCode, phaseCode, entityA, en
   const per = useMemo(() => byRound(advancedA.data, advancedB.data, "per"), [advancedA.data, advancedB.data]);
   const shares = useMemo(() => byRound(advancedA.data, advancedB.data, "winShares"), [advancedA.data, advancedB.data]);
 
-  if (gamesA.isPending || gamesB.isPending) return <AsyncState status="loading" label="Loading the trends" />;
+  if (gamesA.isPending || gamesB.isPending) return <AsyncState status="loading" label="Loading the trends" skeleton={<TrendsSkeleton />} />;
   if (gamesA.isError || gamesB.isError) {
     return (
       <AsyncState

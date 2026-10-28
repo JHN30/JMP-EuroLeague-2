@@ -4,6 +4,7 @@ import { Link } from "react-router";
 import { shortTeamName, teamCode } from "../games/gameUtils";
 import { getTeamGames } from "../lib/api";
 import AsyncState from "../lib/AsyncState";
+import { TeamFormBodySkeleton, TeamMatchupSkeleton, TeamWatchBodySkeleton } from "./CompareSkeleton";
 import ComparisonRow from "../lib/ComparisonRow";
 import { formatShortDate } from "../lib/format";
 import { sectionContainer, sectionItem } from "../lib/motion";
@@ -187,7 +188,7 @@ function SideTag({ club }) {
 function FormPanel({ seasonCode, phaseCode, entityA, entityB, hosted }) {
   const gamesA = useQuery({ queryKey: ["team-games", seasonCode, entityA.id], queryFn: () => getTeamGames(seasonCode, entityA.id, { limit: GAMES_LIMIT, order: "asc" }) });
   const gamesB = useQuery({ queryKey: ["team-games", seasonCode, entityB.id], queryFn: () => getTeamGames(seasonCode, entityB.id, { limit: GAMES_LIMIT, order: "asc" }) });
-  if (gamesA.isPending || gamesB.isPending) return <Panel className="p-4"><AsyncState status="loading" label="Loading recent form" inline /></Panel>;
+  if (gamesA.isPending || gamesB.isPending) return <Panel className="p-4"><AsyncState status="loading" label="Loading recent form" skeleton={<TeamFormBodySkeleton />} /></Panel>;
   if (gamesA.isError || gamesB.isError) {
     return (
       <Panel className="p-4">
@@ -268,7 +269,7 @@ function ScorerList({ players, seasonCode, club }) {
 function WatchPanel({ seasonCode, phaseCode, entityA, entityB }) {
   const statsA = useQuery({ queryKey: ["team-roster-stats", seasonCode, phaseCode, entityA.id], queryFn: () => fetchTeamRosterStats(seasonCode, phaseCode, entityA.id), enabled: Boolean(phaseCode) });
   const statsB = useQuery({ queryKey: ["team-roster-stats", seasonCode, phaseCode, entityB.id], queryFn: () => fetchTeamRosterStats(seasonCode, phaseCode, entityB.id), enabled: Boolean(phaseCode) });
-  if (statsA.isPending || statsB.isPending) return <Panel className="p-4"><AsyncState status="loading" label="Loading the players" inline /></Panel>;
+  if (statsA.isPending || statsB.isPending) return <Panel className="p-4"><AsyncState status="loading" label="Loading the players" skeleton={<TeamWatchBodySkeleton />} /></Panel>;
   if (statsA.isError || statsB.isError) {
     return (
       <Panel className="p-4">
@@ -342,7 +343,7 @@ export default function CompareTeamOverview({ seasonCode, phaseCode, entityA: pi
   return (
     <motion.div className="flex flex-col gap-6" variants={sectionContainer} initial="hidden" animate="show">
       {source.isLoading ? (
-        <AsyncState status="loading" label="Loading the matchup" />
+        <AsyncState status="loading" label="Loading the matchup" skeleton={<TeamMatchupSkeleton />} />
       ) : source.isError ? (
         <AsyncState status="error" message="Could not load the matchup." onRetry={source.refetch} />
       ) : (

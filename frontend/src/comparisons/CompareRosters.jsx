@@ -3,6 +3,7 @@ import { motion } from "motion/react";
 import { Link } from "react-router";
 import { getSeasonTeams, getTeamPlayersAdvanced, getTeamRoster } from "../lib/api";
 import AsyncState from "../lib/AsyncState";
+import { ImpactRowsSkeleton, RostersSkeleton } from "./CompareSkeleton";
 import ComparisonRow from "../lib/ComparisonRow";
 import EmptyText from "../lib/EmptyText";
 import { formatDecimal, formatPerGame } from "../lib/format";
@@ -275,7 +276,7 @@ export default function CompareRosters({ seasonCode, phaseCode, entityA: pickedA
   const impactB = useQuery({ queryKey: ["team-players-advanced", seasonCode, entityB.id, scope], queryFn: () => getTeamPlayersAdvanced(seasonCode, entityB.id, { scope }), enabled: Boolean(phaseCode) && scope !== null });
 
   const queries = [rosterA, rosterB, statsA, statsB];
-  if (queries.some((query) => query.isPending)) return <AsyncState status="loading" label="Loading the rosters" />;
+  if (queries.some((query) => query.isPending)) return <AsyncState status="loading" label="Loading the rosters" skeleton={<RostersSkeleton />} />;
   if (queries.some((query) => query.isError)) {
     return <AsyncState status="error" message="Could not load the rosters." onRetry={() => queries.forEach((query) => query.isError && query.refetch())} />;
   }
@@ -302,7 +303,7 @@ export default function CompareRosters({ seasonCode, phaseCode, entityA: pickedA
           <p className="muted mt-1 text-sm">Running values after the latest round. Hover or tap a column for what it means.</p>
         </div>
         {impactA.isPending || impactB.isPending ? (
-          <AsyncState status="loading" label="Loading the advanced numbers" inline />
+          <AsyncState status="loading" label="Loading the advanced numbers" skeleton={<ImpactRowsSkeleton />} />
         ) : impactA.isError || impactB.isError ? (
           <AsyncState
             status="error"

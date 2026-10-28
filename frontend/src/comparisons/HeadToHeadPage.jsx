@@ -5,6 +5,7 @@ import { Link, useParams, useSearchParams } from "react-router";
 import { shortTeamName, teamCode } from "../games/gameUtils";
 import { getSeasonTeams, getSeasons, getTeamGames } from "../lib/api";
 import AsyncState from "../lib/AsyncState";
+import HeadToHeadSkeleton, { HeadToHeadHistorySkeleton } from "./HeadToHeadSkeleton";
 import { isForfeit } from "../lib/forfeit";
 import BackLink from "../lib/BackLink";
 import CompactFilterSelect from "../lib/CompactFilterSelect";
@@ -355,7 +356,7 @@ function HeadToHeadBody({ seasonCode, seasons, allTeams }) {
       {!teamA || !teamB ? (
         <EmptyText>Select two teams to see their head-to-head history.</EmptyText>
       ) : matchupsQuery.isPending ? (
-        <AsyncState status="loading" label="Loading head-to-head history" />
+        <AsyncState status="loading" label="Loading head-to-head history" skeleton={<HeadToHeadHistorySkeleton />} />
       ) : matchupsQuery.isError ? (
         <AsyncState status="error" message="Could not load head-to-head history." onRetry={() => matchupsQuery.refetch()} />
       ) : matchupsQuery.data.length === 0 ? (
@@ -443,7 +444,7 @@ export default function HeadToHeadPage() {
     enabled: sortedSeasons.length > 0,
   });
 
-  if (seasonsQuery.isLoading || teamsQuery.isLoading) return <AsyncState status="loading" label="Loading seasons" />;
+  if (seasonsQuery.isLoading || teamsQuery.isLoading) return <AsyncState status="loading" label="Loading seasons" skeleton={<HeadToHeadSkeleton />} />;
   if (seasonsQuery.isError) {
     return <AsyncState status="error" message="Could not load seasons." onRetry={() => seasonsQuery.refetch()} />;
   }

@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { motion } from "motion/react";
 import { getSeasonTeams, getTeamGames } from "../lib/api";
 import AsyncState from "../lib/AsyncState";
+import { TrendsSkeleton } from "./CompareSkeleton";
 import EmptyText from "../lib/EmptyText";
 import { formatPerGame } from "../lib/format";
 import { isForfeit } from "../lib/forfeit";
@@ -123,7 +124,7 @@ export default function CompareTeamTrends({ seasonCode, phaseCode, entityA: pick
     };
   }, [realA, realB, length, entityA.label, entityB.label]);
 
-  if (queryA.isPending || queryB.isPending) return <AsyncState status="loading" label="Loading the trends" />;
+  if (queryA.isPending || queryB.isPending) return <AsyncState status="loading" label="Loading the trends" skeleton={<TrendsSkeleton />} />;
   if (queryA.isError || queryB.isError) {
     return (
       <AsyncState

@@ -16,7 +16,7 @@ import { TabPanel, TabStrip } from "../lib/TabStrip";
 import BackLink from "../lib/BackLink";
 import { PLAYER_STAT_TIPS } from "./statTips";
 import CompareFixtures, { ComparisonContext } from "./CompareFixtures";
-import CompareSkeleton from "./CompareSkeleton";
+import CompareSkeleton, { PlayerStatsSkeleton } from "./CompareSkeleton";
 import PickerPanel, { PickerImage, PickerOption } from "./PickerPanel";
 import PlayerPairHeader from "./PlayerPairHeader";
 import TeamPairHeader from "./TeamPairHeader";
@@ -365,7 +365,7 @@ function PlayerComparisonTable({ seasonCode, phaseCode, mode, entityA, entityB }
   });
 
   if (!entityA || !entityB) return <p className="muted">Select two players to compare.</p>;
-  if (statsAQuery.isPending || statsBQuery.isPending) return <AsyncState status="loading" label="Loading the comparison" />;
+  if (statsAQuery.isPending || statsBQuery.isPending) return <AsyncState status="loading" label="Loading the comparison" skeleton={<PlayerStatsSkeleton />} />;
   if (statsAQuery.isError || statsBQuery.isError) {
     return (
       <AsyncState status="error"

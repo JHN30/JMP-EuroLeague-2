@@ -85,7 +85,8 @@ export function RankBadge({ rank }) {
 // ---- A landing card: the top five for one category ----
 
 // `entries`: { key, rank, name, imageUrl, crest, team: { code, name, crestUrl }, valueText, share, to } in rank order; `to` opens the person's or club's page.
-export function CategoryCard({ kicker, title, tip, entries, isLoading, isError, onRetry, onOpen, footnote }) {
+// `emptyText` replaces "No one yet." when the card is empty for a known reason.
+export function CategoryCard({ kicker, title, tip, entries, isLoading, isError, onRetry, onOpen, footnote, emptyText = "No one yet." }) {
   return (
     <Panel className="flex flex-col p-4">
       <div className="mb-3 flex items-start justify-between gap-2">
@@ -101,7 +102,7 @@ export function CategoryCard({ kicker, title, tip, entries, isLoading, isError, 
       ) : isError ? (
         <AsyncState status="error" message="Could not load this category." onRetry={onRetry} inline />
       ) : entries.length === 0 ? (
-        <EmptyText>No one yet.</EmptyText>
+        <EmptyText>{emptyText}</EmptyText>
       ) : (
         <motion.ol className="flex flex-1 flex-col" variants={listContainer} initial="hidden" animate="show">
           {entries.map((entry) => {

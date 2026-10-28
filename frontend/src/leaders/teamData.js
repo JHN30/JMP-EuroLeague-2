@@ -153,6 +153,12 @@ export function useTeamRows(seasonCode, phaseCode) {
 
 export const UNADJUSTED_NOTE = "Clubs in this phase played in separate groups and did not face the same schedule, so opponent-adjusted ratings (such as SRS) are unavailable. The numbers shown are raw.";
 
+// SRS rates every club through a chain of shared opponents. Groups that never met leave no such chain, so the source has no SRS
+// for the phase: its card and board say why instead of looking empty.
+export const SRS_UNAVAILABLE = "Not available for this phase: the clubs played in separate groups that never met, so they can't be rated against one another.";
+
+export const isUnratedSrs = (stat, source) => stat.key === "srs" && source.unadjusted;
+
 export function usable(stat, source) {
   return !(stat.needs === "standings" && !source.hasStandings) && !(stat.needs === "advanced" && !source.hasAdvanced);
 }

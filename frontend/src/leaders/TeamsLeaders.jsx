@@ -12,11 +12,11 @@ import { Avatar, BoardHeader, BoardRow, BoardTopLine, CardGrid, CategoryCard, Le
 import { advancedScopeForPhase } from "../teams/teamLeague";
 import { barShare, rankRows } from "./leaderData";
 import ForfeitStatsNote from "../lib/ForfeitStatsNote";
-import { LEADER_STATS, TEAM_CARDS, TEAM_SECTION_NAMES, TEAM_TOTAL_CARDS, formatTeamValue, leaderStatByKey, useTeamRows, usable, UNADJUSTED_NOTE } from "./teamData";
+import { LEADER_STATS, TEAM_CARDS, TEAM_SECTION_NAMES, TEAM_TOTAL_CARDS, formatTeamValue, leaderStatByKey, useTeamRows, usable, isUnratedSrs, SRS_UNAVAILABLE, UNADJUSTED_NOTE } from "./teamData";
 
 // ---- Landing ----
 
-function TeamCard({ stat, seasonCode, rows, mode, onOpen, isLoading, isError, onRetry }) {
+function TeamCard({ stat, seasonCode, rows, mode, onOpen, isLoading, isError, onRetry, emptyText }) {
   const direction = stat.lowerIsBetter ? 1 : -1;
   const valued = rows.map((row) => ({ row, value: stat.get(row, mode) })).filter((entry) => entry.value !== null && !Number.isNaN(entry.value));
   valued.sort((a, b) => direction * (a.value - b.value));
@@ -32,6 +32,7 @@ function TeamCard({ stat, seasonCode, rows, mode, onOpen, isLoading, isError, on
       isError={isError}
       onRetry={onRetry}
       onOpen={onOpen}
+      emptyText={emptyText}
       entries={ranked.map(({ row: { row }, rank, value }) => ({
         key: row.clubCode,
         rank,
@@ -108,6 +109,8 @@ function TeamsBoard({ seasonCode, phaseCode, stage, metric, source, params, setP
         <AsyncState status="loading" label="Loading the team leaderboard" skeleton={<BoardSkeleton />} />
       ) : source.isError ? (
         <AsyncState status="error" message="Could not load the team leaderboard." onRetry={source.refetch} />
+      ) : isUnratedSrs(stat, source) ? (
+        <EmptyText>{SRS_UNAVAILABLE}</EmptyText>
       ) : shown.length === 0 ? (
         <EmptyText>No teams match.</EmptyText>
       ) : (
@@ -179,7 +182,7 @@ export default function TeamsLeaders({ seasonCode, phaseCode, stage, params, set
             <PanelHeader title={family} />
             <CardGrid>
               {stats.map((stat) => (
-                <TeamCard key={stat.key} stat={stat} seasonCode={seasonCode} rows={source.rows} mode={mode} isLoading={source.isLoading} isError={false} onOpen={() => openMetric(stat.key)} />
+                <TeamCard key={stat.key} stat={stat} seasonCode={seasonCode} rows={source.rows} mode={mode} isLoading={source.isLoading} isError={false} onOpen={() => openMetric(stat.key)} emptyText={isUnratedSrs(stat, source) ? SRS_UNAVAILABLE : undefined} />
               ))}
             </CardGrid>
           </section>

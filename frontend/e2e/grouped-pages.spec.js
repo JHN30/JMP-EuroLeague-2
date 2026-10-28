@@ -133,8 +133,15 @@ for (const season of SEASONS) {
       const adjusted = await get(request, season, "/advanced/standings?scope=RS");
       expect(adjusted.standings.every((row) => row.connected === false && row.srs === null)).toBe(true);
       await page.goto(`/${season}/leaders?scope=teams&phase=RS`);
-      await expect(page.getByText(/played in separate groups/)).toBeVisible({ timeout: 30_000 });
-      await expect(page.getByText(/Simple rating/)).toHaveCount(0);
+      await expect(page.getByText(/played in separate groups and did not face/)).toBeVisible({ timeout: 30_000 });
+      // The SRS card stays and says why it is empty, and so does its full leaderboard.
+      const unrated = /groups that never met, so they can't be rated against one another/;
+      const srsCard = page.locator(".panel", { has: page.getByRole("heading", { name: "Simple rating (SRS)", exact: true }) });
+      await expect(srsCard.getByText(unrated)).toBeVisible();
+      await expect(srsCard).not.toContainText("No one yet.");
+      await srsCard.getByRole("button", { name: "See the full leaderboard" }).click();
+      await expect(page.locator("main").getByText(unrated)).toBeVisible();
+      await expect(page.getByText("No teams match.")).toHaveCount(0);
 
       const { standings } = await get(request, season, "/phases/RS/standings");
       const a = standings.find((row) => row.groupName === "A" && row.basic.position === 1);

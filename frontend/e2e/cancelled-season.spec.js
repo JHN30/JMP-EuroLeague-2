@@ -180,11 +180,10 @@ test("abandoned fixtures remain archived without tipoff previews or fabricated b
   await page.goto("/2019/games/253");
   await expect(page.getByText("Not played", { exact: true })).toBeVisible();
   await expect(page.locator("main")).toContainText("Originally scheduled:");
-  await page.getByRole("tab", { name: "Box score", exact: true }).click();
+  // A cancelled fixture has only its Overview tab, which says why there is nothing else.
+  await expect(page.getByRole("tablist", { name: "Game detail" }).getByRole("tab")).toHaveText(["Overview"]);
   await expect(page.locator("main")).toContainText("No result or performance statistics were recorded.");
   await expect(page.locator("main")).not.toContainText("until this game is played");
-  await page.getByRole("tab", { name: "Game flow", exact: true }).click();
-  await expect(page.locator("main")).toContainText("No result or performance statistics were recorded.");
   await expect(page.locator("main table")).toHaveCount(0);
   await page.goto("/2019/games/1");
   await expect(context(page)).toContainText("Played performances remain");

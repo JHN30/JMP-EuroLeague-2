@@ -76,9 +76,9 @@ test("the strips, the chips and the stat rows fit at every width", async ({ page
     // The Phase strip scrolls on its own below 1024px when its tabs are wider than the screen.
     if (width <= 390) expect(await phase.evaluate((el) => el.scrollWidth > el.clientWidth)).toBe(true);
 
-    // The top-ranks chips take at most two lines on a phone.
+    // The top-ranks chips take at most three lines on a phone: up to five chips, some with long labels ("2nd Assist to turnover").
     const chipRows = await page.locator("#player-stats-panel span.badge-success").evaluateAll((chips) => new Set(chips.map((chip) => Math.round(chip.getBoundingClientRect().top))).size);
-    if (width < 640) expect(chipRows).toBeLessThanOrEqual(2);
+    if (width < 640) expect(chipRows).toBeLessThanOrEqual(3);
 
     // Every stat row: the label whole, and the bar and rank on a second line below 640px, on the same line from 640px.
     const rows = page.locator("#player-stats-panel li");

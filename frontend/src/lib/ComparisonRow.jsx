@@ -85,7 +85,7 @@ export default function ComparisonRow({
     };
     return (
       <Root
-        className="grid flex-1 grid-cols-[1fr_9rem_1fr] items-center gap-2 border-b border-base-300 py-1.5 last:border-0 max-sm:grid-cols-[1fr_6.5rem_1fr] max-sm:gap-1.5 max-sm:text-sm"
+        className="grid flex-1 grid-cols-[1fr_9rem_1fr] items-center gap-2 border-b border-base-300 py-1.5 last:border-0 max-sm:grid-cols-[1fr_7rem_1fr] max-sm:gap-1.5 max-sm:text-sm"
         {...(animated ? { variants: listItem } : {})}
       >
         {side("a", aMissing, displayA, widthA, markerA, avgA, "start")}

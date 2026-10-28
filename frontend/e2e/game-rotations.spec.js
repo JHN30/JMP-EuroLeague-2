@@ -20,14 +20,14 @@ test("the Rotations tab comes after Game flow and does not scroll the page", asy
   expect(await page.evaluate(() => window.scrollY)).toBe(0);
 });
 
-test("an unplayed game's Rotations tab says it is not available yet", async ({ page }) => {
+// An unplayed game shows only its Overview tab, so there is no Rotations tab and no lineups request.
+test("an unplayed game has no Rotations tab and does not request the lineups", async ({ page }) => {
   const requests = [];
   await mockGameApi(page, { played: false, requests });
   await page.goto(`/${SEASON}/games/1`);
-  await openRotations(page);
 
-  await expect(page.getByText("Rotations aren't available until this game is played.")).toBeVisible();
-  await expect(page.getByRole("alert")).toHaveCount(0);
+  await expect(page.getByRole("tablist", { name: "Game detail" }).getByRole("tab")).toHaveText(["Overview"]);
+  await expect(page.getByRole("tab", { name: "Rotations", exact: true })).toHaveCount(0);
   expect(requests.filter((path) => path.endsWith("/lineups"))).toEqual([]);
 });
 

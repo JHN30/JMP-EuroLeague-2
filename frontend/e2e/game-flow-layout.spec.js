@@ -195,7 +195,8 @@ test("the Team comparison tab is compact below 640px and every value and average
     expect(await insideScreen(tab.locator(".panel"), width)).toBe(true);
     expect(await holdsContent(halves)).toBe(true);
     expect(await splitWords(tab.locator(".text-xs.font-bold, h4, .muted"))).toEqual([]);
-    expect(await rowPadding()).toBe("8px");
+    // The Head to head, Four Factors and Scoring profile rows are inline rows: 6px top and bottom at every width.
+    expect(await rowPadding()).toBe("6px");
     expect(await tab.locator(".panel").first().evaluate((el) => getComputedStyle(el).paddingTop)).toBe("12px");
     // The assisted-baskets line and the season-average lines, the "Lower is better" marker and the hidden-average note are in view.
     await expect(tab.getByText("19 of 30 (63.3%)")).toBeVisible();
@@ -212,7 +213,7 @@ test("the Team comparison tab is compact below 640px and every value and average
 
   await atWidths(page, [640, 768, 1024], async () => {
     await expectNoPageOverflow(page);
-    expect(await rowPadding()).toBe("12px");
+    expect(await rowPadding()).toBe("6px");
     expect(await tab.locator(".panel").first().evaluate((el) => getComputedStyle(el).paddingTop)).toBe("16px");
   });
   // The three sections stack below lg and the first two sit side by side from it, as before.

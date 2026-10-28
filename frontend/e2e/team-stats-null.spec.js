@@ -76,5 +76,5 @@ test("keeps missing team-stat measures distinct from valid zeroes", async ({ pag
 
   // The Shooting tab maps real shots from played games; this club has no games, so it says so.
   await page.getByRole("tab", { name: "Shooting", exact: true }).click();
-  await expect(page.getByText("No played games yet this phase to map shot locations from.")).toBeVisible();
+  await expect(page.getByText("No played games yet in the Regular season to map shot locations from.")).toBeVisible();
 });

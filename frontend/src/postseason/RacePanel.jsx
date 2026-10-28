@@ -24,7 +24,7 @@ function Margin({ wins, inHand }) {
           <span className="sr-only">{Math.abs(wins) === 1 ? " win" : " wins"}</span>
         </>
       )}
-      {inHand > 0 ? <span className="muted block text-xs font-normal">{games(inHand) + " in hand"}</span> : null}
+      {inHand > 0 ? <span className="muted block text-xs font-normal whitespace-normal">{games(inHand) + " in hand"}</span> : null}
     </>
   );
 }

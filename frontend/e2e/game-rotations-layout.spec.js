@@ -234,15 +234,3 @@ test("the select, badges, notes and a team without on-court rows hold their cont
     }
   });
 });
-
-test("the Rotations note for a game that is not played stays inside the panel at 320px", async ({ page }) => {
-  await openRotations(page, { game: { played: false, localScore: null, roadScore: null }, mock: { played: false } });
-  await atWidths(page, [320], async (width) => {
-    const note = page.getByText("Rotations aren't available until this game is played.");
-    await expect(note).toBeVisible();
-    const rect = await note.boundingBox();
-    expect(rect.x).toBeGreaterThanOrEqual(0);
-    expect(rect.x + rect.width).toBeLessThanOrEqual(width);
-    await expectNoPageOverflow(page);
-  });
-});

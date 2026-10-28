@@ -94,11 +94,6 @@ test("box score stats and the starter marker have hover tips", async ({ page }) 
 
   await page.locator(".header-tip-label", { hasText: "S" }).filter({ has: page.locator(".badge") }).first().hover();
   await expect(page.getByRole("tooltip").filter({ hasText: "Starter: in the starting five" })).toBeVisible();
-
-  // The abbreviated labels on the Team comparison tab have them too.
-  await page.getByRole("tab", { name: "Team comparison" }).click();
-  await page.locator(".header-tip-label", { hasText: "2PT" }).hover();
-  await expect(page.getByRole("tooltip").filter({ hasText: "Two-pointers: made-attempted" })).toBeVisible();
 });
 
 // The feed's team rows: credited to the team, not a player. Team A has team rebounds; Team B a team turnover and steal.

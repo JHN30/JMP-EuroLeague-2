@@ -1,4 +1,5 @@
 import AsyncState from "../lib/AsyncState";
+import { PanelBlockSkeleton } from "./GamePageSkeleton";
 import ComparisonRow from "../lib/ComparisonRow";
 import EmptyText from "../lib/EmptyText";
 import Panel from "../lib/Panel";
@@ -20,7 +21,7 @@ function TeamHeader({ localTeam, roadTeam, className = "" }) {
 // How each team scored and how the game was led, from the pipeline's per-game team tables. Its own loading, error and
 // unavailable states, so trouble here never hides the rest of the Team comparison tab.
 export default function ScoringProfile({ teamFlowQuery, localTeam, roadTeam }) {
-  if (teamFlowQuery.isLoading) return <AsyncState status="loading" label="Loading the scoring profile" compact />;
+  if (teamFlowQuery.isLoading) return <AsyncState status="loading" label="Loading the scoring profile" skeleton={<PanelBlockSkeleton className="h-96 max-lg:h-[36rem]" />} />;
   if (teamFlowQuery.isError) {
     return <AsyncState status="error" message="Could not load the scoring profile." onRetry={() => teamFlowQuery.refetch()} />;
   }

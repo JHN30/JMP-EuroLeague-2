@@ -258,6 +258,8 @@ Scaffolding, shared layout, design tokens, database connection setup, and deploy
   - [x] 39c. **Team page** - Every team tab (Overview, Roster, Statistics, Games, Shooting, Advanced) and its panels.
   - [x] 39d. **Player page** - Every player tab (Overview, Season by season, Statistics, Advanced, Shooting, Games).
   - [ ] 39e. **Game page and Compare** - Every game tab, the Compare sections and the Head-to-head page.
+    - [x] 39e-i. **Game page** - Every game tab and its panels, and the game page's own route-fallback skeleton.
+    - [ ] 39e-ii. **Compare sections and Head-to-head** - Every section of an opened team or player comparison, and the Head-to-head page.
 
 ## Deferred beyond Phase 1
 

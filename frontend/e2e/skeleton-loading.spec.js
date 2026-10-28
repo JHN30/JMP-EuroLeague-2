@@ -365,7 +365,10 @@ test("a player page shows its own page skeleton while its code loads", async ({ 
   await expect(fallback).toHaveCount(0, { timeout: 30_000 });
 });
 
-test("a game page keeps the generic page skeleton while its code loads", async ({ page }) => {
+// A part only the game page's skeleton has: the Overview's key stats block.
+const GAME_KEY_STATS = "[class*='h-[33rem]']";
+
+test("a game page shows its own page skeleton while its code loads", async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 900 });
   await page.goto("/2026/games");
   await expect(page.locator("main a[href*='/games/']").first()).toBeVisible({ timeout: 30_000 });
@@ -373,9 +376,83 @@ test("a game page keeps the generic page skeleton while its code loads", async (
   await page.locator("main a[href*='/games/']").first().click();
   const fallback = page.getByRole("status", { name: "Loading page" });
   await expect(fallback).toBeVisible();
-  await expect(fallback.locator(`${PLAYER_HERO}, .team-leaders-grid, .fixture-grid`)).toHaveCount(0);
+  await expect(fallback.locator(GAME_KEY_STATS)).toHaveCount(1);
+  await expect(fallback.locator(".fixture-grid")).toHaveCount(0);
   await release();
   await expect(fallback).toHaveCount(0, { timeout: 30_000 });
+});
+
+test("Head-to-head keeps the generic page skeleton while its code loads", async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await page.goto("/2026/compare?teamA=PAN&teamB=OLY");
+  const link = page.getByRole("link", { name: "All-time head-to-head" });
+  await expect(link).toBeVisible({ timeout: 30_000 });
+  const release = await hold(page, /\/src\/comparisons\/HeadToHeadPage\.jsx/);
+  await link.click();
+  const fallback = page.getByRole("status", { name: "Loading page" });
+  await expect(fallback).toBeVisible();
+  await expect(fallback.locator(`${PLAYER_HERO}, ${GAME_KEY_STATS}, .team-leaders-grid, li.rounded-field`)).toHaveCount(0);
+  await release();
+  await expect(fallback).toHaveCount(0, { timeout: 30_000 });
+});
+
+test.describe("Game page", () => {
+  const GAME = "/2026/games/2";
+  const api = (rest) => new RegExp(`/api/seasons/[^/]+/games/2${rest}`);
+
+  test("the whole page shows its skeleton while the game loads, then the page", async ({ page }) => {
+    const release = await hold(page, api("(\\?|$)"));
+    await page.goto(GAME);
+    await expectSkeleton(page, "Loading the game");
+    await expect(page.getByRole("status", { name: "Loading the game" }).locator(GAME_KEY_STATS)).toHaveCount(1);
+    await release();
+    await expect(page.getByRole("tab", { name: "Overview", exact: true })).toBeVisible({ timeout: 30_000 });
+    await expectLoaded(page);
+  });
+
+  test("the Overview shows its skeleton while the box score loads, and its panels their blocks", async ({ page }) => {
+    const releaseBox = await hold(page, api("/box-score"));
+    const releasePanels = await hold(page, api("/(advanced|play-by-play)"));
+    await page.goto(GAME);
+    await expectSkeleton(page, "Loading the overview");
+    await releaseBox();
+    await expectSkeleton(page, "Loading the best players");
+    await expectSkeleton(page, "Loading the score flow");
+    await releasePanels();
+    await expectLoaded(page);
+  });
+
+  for (const { tab, pattern, labels, early = false } of [
+    { tab: "Box score", pattern: "/box-score", labels: ["Loading the box score"], early: true },
+    { tab: "Game flow", pattern: "/play-by-play", labels: ["Loading game flow"], early: true },
+    { tab: "Rotations", pattern: "/(lineups|play-by-play)", labels: ["Loading rotations", "Loading assist connections", "Loading lineups"], early: true },
+    { tab: "Team comparison", pattern: "/(box-score|advanced|team-flow)", labels: ["Loading team comparison", "Loading the Four Factors", "Loading the scoring profile"], early: true },
+    { tab: "Shooting", pattern: "/shots", labels: ["Loading shot chart"] },
+    { tab: "Play-by-play", pattern: "/play-by-play", labels: ["Loading play-by-play"], early: true },
+  ]) {
+    test(`the ${tab} tab shows its skeletons while it loads, then its content`, async ({ page }) => {
+      let release = early ? await hold(page, api(pattern)) : null;
+      await page.goto(GAME);
+      if (!early) {
+        await expectLoaded(page);
+        release = await hold(page, api(pattern));
+      }
+      await page.getByRole("tab", { name: tab, exact: true }).click();
+      for (const label of labels) await expectSkeleton(page, label);
+      await release();
+      await expectLoaded(page);
+    });
+  }
+
+  test("the box score's Advanced view shows the tables' skeleton while its numbers load", async ({ page }) => {
+    const release = await hold(page, api("/advanced"));
+    await page.goto(GAME);
+    await page.getByRole("tab", { name: "Box score", exact: true }).click();
+    await page.getByRole("tab", { name: "Advanced", exact: true }).click();
+    await expectSkeleton(page, "Loading advanced stats");
+    await release();
+    await expectLoaded(page);
+  });
 });
 
 test.describe("Player page", () => {

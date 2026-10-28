@@ -4,6 +4,7 @@ import { motion } from "motion/react";
 import { useParams } from "react-router";
 import { getBoxScore, getGame, getGameAdvanced, getGameLineups, getGameTeamFlow, getPlayByPlay, getShots } from "../lib/api";
 import AsyncState from "../lib/AsyncState";
+import GamePageSkeleton, { BoxScoreSkeleton, BoxScoreTablesSkeleton, ComparisonRowsSkeleton, GameFlowSkeleton, GameShootingSkeleton, PlayByPlaySkeleton } from "./GamePageSkeleton";
 import CompetitionContext from "../lib/CompetitionContext";
 import { useSeasonFormat } from "../lib/useSeasonFormat";
 import BackLink from "../lib/BackLink";
@@ -337,7 +338,7 @@ function BoxScoreTab({ boxScore, game, seasonCode, localWon, roadWon, advancedQu
       <TabStrip ariaLabel="Box score view" panelId="box-score-tables" activeKey={view} onChange={setView} className="w-fit" tabs={BOX_SCORE_VIEWS} />
       <div id="box-score-tables" className="flex flex-col gap-6">
         {view === "advanced" && advancedQuery.isLoading ? (
-          <AsyncState status="loading" label="Loading advanced stats" />
+          <AsyncState status="loading" label="Loading advanced stats" skeleton={<BoxScoreTablesSkeleton />} />
         ) : view === "advanced" && advancedQuery.isError ? (
           <AsyncState status="error" message="Could not load advanced stats." onRetry={() => advancedQuery.refetch()} />
         ) : view === "advanced" && !showAdvanced ? (
@@ -1138,7 +1139,7 @@ function TeamComparisonTab({ game, boxScoreQuery, advancedQuery, teamFlowQuery, 
       <section className="flex flex-col">
         <PanelHeader kicker="BOX SCORE" title="Head to head" />
         {boxScoreQuery.isLoading ? (
-          <AsyncState status="loading" label="Loading team comparison" />
+          <AsyncState status="loading" label="Loading team comparison" skeleton={<ComparisonRowsSkeleton />} />
         ) : boxScoreQuery.isError ? (
           <AsyncState status="error" message="Could not load team comparison." onRetry={() => boxScoreQuery.refetch()} />
         ) : (
@@ -1221,7 +1222,7 @@ export default function GameDetailPage() {
     enabled: gameQuery.isSuccess && game?.played === true && (tab === "shooting" || tab === "comparison"),
   });
 
-  if (gameQuery.isLoading) return <AsyncState status="loading" label="Loading the game" />;
+  if (gameQuery.isLoading) return <AsyncState status="loading" label="Loading the game" skeleton={<GamePageSkeleton />} />;
 
   if (gameQuery.isError) {
     const notFound = gameQuery.error?.response?.status === 404;
@@ -1263,7 +1264,7 @@ export default function GameDetailPage() {
 
         {tab === "box-score" ? (
           boxScoreQuery.isLoading ? (
-            <AsyncState status="loading" label="Loading the box score" />
+            <AsyncState status="loading" label="Loading the box score" skeleton={<BoxScoreSkeleton />} />
           ) : boxScoreQuery.isError ? (
             <AsyncState status="error" message="Could not load box score." onRetry={() => boxScoreQuery.refetch()} />
           ) : (
@@ -1284,7 +1285,7 @@ export default function GameDetailPage() {
           !game.played ? (
             <EmptyText>Game flow isn't available until this game is played.</EmptyText>
           ) : boxScoreQuery.isLoading || playByPlayQuery.isLoading ? (
-            <AsyncState status="loading" label="Loading game flow" />
+            <AsyncState status="loading" label="Loading game flow" skeleton={<GameFlowSkeleton />} />
           ) : boxScoreQuery.isError || playByPlayQuery.isError ? (
             <AsyncState
               status="error"
@@ -1310,7 +1311,7 @@ export default function GameDetailPage() {
           !game.played ? (
             <EmptyText>Shot data isn't available until this game is played.</EmptyText>
           ) : boxScoreQuery.isLoading || shotsQuery.isLoading ? (
-            <AsyncState status="loading" label="Loading shot chart" />
+            <AsyncState status="loading" label="Loading shot chart" skeleton={<GameShootingSkeleton />} />
           ) : boxScoreQuery.isError || shotsQuery.isError ? (
             <AsyncState
               status="error"
@@ -1333,7 +1334,7 @@ export default function GameDetailPage() {
           !game.played ? (
             <PlayByPlaySection played={false} events={[]} localTeam={game.localTeam} roadTeam={game.roadTeam} />
           ) : playByPlayQuery.isLoading ? (
-            <AsyncState status="loading" label="Loading play-by-play" />
+            <AsyncState status="loading" label="Loading play-by-play" skeleton={<PlayByPlaySkeleton />} />
           ) : playByPlayQuery.isError ? (
             <AsyncState status="error" message="Could not load play-by-play." onRetry={() => playByPlayQuery.refetch()} />
           ) : (

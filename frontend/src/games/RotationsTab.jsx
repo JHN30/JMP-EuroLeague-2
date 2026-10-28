@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import { motion } from "motion/react";
 import AsyncState from "../lib/AsyncState";
+import { RotationsSkeleton, TwoBlocksSkeleton } from "./GamePageSkeleton";
 import EmptyText from "../lib/EmptyText";
 import { formatMinutes } from "../lib/format";
 import { sectionContainer, sectionItem } from "../lib/motion";
@@ -96,7 +97,7 @@ function TimelineSection({ game, seasonCode, boxScoreQuery, lineupsQuery }) {
   if (boxScoreQuery.isError) {
     return <AsyncState status="error" message="Could not load the box score for rotations." onRetry={() => boxScoreQuery.refetch()} />;
   }
-  if (!rotations) return <AsyncState status="loading" label="Loading rotations" compact />;
+  if (!rotations) return <AsyncState status="loading" label="Loading rotations" skeleton={<RotationsSkeleton />} />;
   if (rotations.status === "empty") return <EmptyText>Rotations aren't available for this game yet.</EmptyText>;
 
   return (
@@ -164,7 +165,7 @@ function ConnectionsSection({ game, seasonCode, playByPlayQuery }) {
   if (playByPlayQuery.isError) {
     return <AsyncState status="error" message="Could not load assist connections." onRetry={() => playByPlayQuery.refetch()} />;
   }
-  if (!connections) return <AsyncState status="loading" label="Loading assist connections" compact />;
+  if (!connections) return <AsyncState status="loading" label="Loading assist connections" skeleton={<TwoBlocksSkeleton className="h-64 max-sm:h-[34rem]" breakpoint="lg" />} />;
   return (
     <div className="grid gap-4 lg:grid-cols-2">
       <TeamConnections team={game.localTeam} connections={connections.local} seasonCode={seasonCode} />

@@ -2,6 +2,7 @@ import { useMemo } from "react";
 import { motion } from "motion/react";
 import { Link } from "react-router";
 import AsyncState from "../lib/AsyncState";
+import { GameOverviewSkeleton, PanelBlockSkeleton, TwoBlocksSkeleton } from "./GamePageSkeleton";
 import ComparisonRow from "../lib/ComparisonRow";
 import EmptyText from "../lib/EmptyText";
 import { formatCount, formatDecimal, formatMissing } from "../lib/format";
@@ -108,7 +109,7 @@ function FlowSection({ game, playByPlayQuery }) {
   if (playByPlayQuery.isError) {
     return <AsyncState status="error" message="Could not load the score flow." onRetry={() => playByPlayQuery.refetch()} />;
   }
-  if (!flow) return <AsyncState status="loading" label="Loading the score flow" compact />;
+  if (!flow) return <AsyncState status="loading" label="Loading the score flow" skeleton={<PanelBlockSkeleton className="h-64" />} />;
   return <ScoreFlowChart flow={flow} localTeam={game.localTeam} roadTeam={game.roadTeam} compact />;
 }
 
@@ -142,7 +143,7 @@ export default function OverviewTab({ game, seasonCode, boxScoreQuery, playByPla
   if (!game.played) {
     return <GamePreview game={game} seasonCode={seasonCode} />;
   }
-  if (boxScoreQuery.isLoading) return <AsyncState status="loading" label="Loading the overview" />;
+  if (boxScoreQuery.isLoading) return <AsyncState status="loading" label="Loading the overview" skeleton={<GameOverviewSkeleton />} />;
   if (boxScoreQuery.isError) {
     return <AsyncState status="error" message="Could not load the overview." onRetry={() => boxScoreQuery.refetch()} />;
   }
@@ -170,7 +171,7 @@ export default function OverviewTab({ game, seasonCode, boxScoreQuery, playByPla
       <motion.section variants={sectionItem}>
         <PanelHeader kicker="STANDOUTS" title="Best player on each team" />
         {advancedQuery.isLoading ? (
-          <AsyncState status="loading" label="Loading the best players" compact />
+          <AsyncState status="loading" label="Loading the best players" skeleton={<TwoBlocksSkeleton />} />
         ) : hasPlayers ? (
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <StandoutCard team={game.localTeam} player={pickBestPlayer(localRows, metric)} metric={metric} seasonCode={seasonCode} />

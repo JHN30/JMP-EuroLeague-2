@@ -1,4 +1,5 @@
 import AsyncState from "../lib/AsyncState";
+import { PanelBlockSkeleton } from "./GamePageSkeleton";
 import ComparisonRow from "../lib/ComparisonRow";
 import EmptyText from "../lib/EmptyText";
 import { formatDecimal, formatFractionPercent, formatSignedDecimal } from "../lib/format";
@@ -64,7 +65,7 @@ function averageText(value, format) {
 // The pipeline's per-game team stats against each team's season average through the game's round. Its own loading,
 // error and unavailable states, so trouble here never hides the rest of the Team comparison tab.
 export default function FourFactors({ advancedQuery, localTeam, roadTeam }) {
-  if (advancedQuery.isLoading) return <AsyncState status="loading" label="Loading the Four Factors" compact />;
+  if (advancedQuery.isLoading) return <AsyncState status="loading" label="Loading the Four Factors" skeleton={<PanelBlockSkeleton className="h-[67rem] max-sm:h-[57rem]" />} />;
   if (advancedQuery.isError) {
     return <AsyncState status="error" message="Could not load the Four Factors." onRetry={() => advancedQuery.refetch()} />;
   }

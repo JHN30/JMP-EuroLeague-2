@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import AsyncState from "../lib/AsyncState";
+import { PanelBlockSkeleton } from "./GamePageSkeleton";
 import EmptyText from "../lib/EmptyText";
 import { formatMinutes, formatSignedDecimal, formatSignedDiff } from "../lib/format";
 import LabelledSelect from "../lib/LabelledSelect";
@@ -90,7 +91,7 @@ export default function LineupsSection({ game, seasonCode, boxScoreQuery, lineup
   if (lineupsQuery.isError) {
     return <AsyncState status="error" message="Could not load lineups." onRetry={() => lineupsQuery.refetch()} />;
   }
-  if (lineupsQuery.isLoading || boxScoreQuery.isLoading) return <AsyncState status="loading" label="Loading lineups" compact />;
+  if (lineupsQuery.isLoading || boxScoreQuery.isLoading) return <AsyncState status="loading" label="Loading lineups" skeleton={<div className="flex flex-col gap-4"><PanelBlockSkeleton className="h-[22rem] max-sm:h-[46rem]" /><PanelBlockSkeleton className="h-[22rem] max-sm:h-[44rem]" /></div>} />;
   if (!units || units.length === 0) return <EmptyText>Lineups aren't available for this game yet.</EmptyText>;
 
   return (

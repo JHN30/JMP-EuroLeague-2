@@ -2,6 +2,7 @@ import { useState } from "react";
 import { motion } from "motion/react";
 import { Link } from "react-router";
 import AsyncState from "../lib/AsyncState";
+import { QuickCompareSkeleton } from "./TeamPageSkeleton";
 import ComparisonRow from "../lib/ComparisonRow";
 import EmptyText from "../lib/EmptyText";
 import { listContainer, listItem } from "../lib/motion";
@@ -69,7 +70,7 @@ export default function TeamQuickCompare({ seasonCode, clubCode, team, nextOppon
   const [selectedKey, setSelectedKey] = useState("next");
 
   if (advancedQuery.isPending || standingsQuery.isPending) {
-    return <AsyncState status="loading" label="Loading the comparison" />;
+    return <AsyncState status="loading" label="Loading the comparison" skeleton={<QuickCompareSkeleton />} />;
   }
   if (advancedQuery.isError) {
     return <AsyncState status="error" message="Could not load the comparison." onRetry={() => advancedQuery.refetch()} />;

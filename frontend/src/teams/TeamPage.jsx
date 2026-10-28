@@ -40,6 +40,7 @@ import TeamShootingSection from "./TeamShootingSection";
 import ForfeitStatsNote from "../lib/ForfeitStatsNote";
 import TeamStatisticsSection from "./TeamStatisticsSection";
 import { fetchTeamRosterStats } from "./teamRosterStats";
+import TeamPageSkeleton, { SnapshotSkeleton, TeamLeadersSkeleton, TeamOverviewSkeleton } from "./TeamPageSkeleton";
 import { groupLabel, isGroupedTable } from "../standings/standingsGroups";
 import { advancedScopeForPhase, ordinal } from "./teamLeague";
 
@@ -273,7 +274,7 @@ function SnapshotFact({ label, value, className = "" }) {
 // The phase at a glance in one panel: the record as a win/loss bar with the last results and streak, points for and
 // against as paired bars, and the remaining facts in a single row.
 function TeamSnapshot({ standingsQuery, teamStatsQuery, clubCode, phaseGames, stageName }) {
-  if (standingsQuery.isPending) return <AsyncState status="loading" label="Loading the record" />;
+  if (standingsQuery.isPending) return <AsyncState status="loading" label="Loading the record" skeleton={<SnapshotSkeleton />} />;
   if (standingsQuery.isError) {
     return <AsyncState status="error" message="Could not load the record." onRetry={() => standingsQuery.refetch()} />;
   }
@@ -383,7 +384,7 @@ const LEADER_CATEGORIES = [
 function TeamLeaders({ seasonCode, rosterStatsQuery, stageName }) {
   // Below sm the four cards are one swipe row, so the row is a stop for keyboard users like Home's leader row.
   const isSwipeRow = useMediaQuery("not (min-width: 40rem)");
-  if (rosterStatsQuery.isPending) return <AsyncState status="loading" label="Loading team leaders" />;
+  if (rosterStatsQuery.isPending) return <AsyncState status="loading" label="Loading team leaders" skeleton={<TeamLeadersSkeleton />} />;
   if (rosterStatsQuery.isError) {
     return <AsyncState status="error" message="Could not load team leaders." onRetry={() => rosterStatsQuery.refetch()} />;
   }
@@ -572,7 +573,7 @@ export default function TeamPage() {
 
   const formatQuery = useSeasonFormat(seasonCode);
 
-  if (teamQuery.isLoading) return <AsyncState status="loading" label="Loading the team" />;
+  if (teamQuery.isLoading) return <AsyncState status="loading" label="Loading the team" skeleton={<TeamPageSkeleton />} />;
 
   if (teamQuery.isError) {
     const notFound = teamQuery.error?.response?.status === 404;
@@ -647,7 +648,7 @@ export default function TeamPage() {
           <EmptyText>{absentText}</EmptyText>
         ) : section === "overview" ? (
           gamesQuery.isPending ? (
-            <AsyncState status="loading" label="Loading this team's games" />
+            <AsyncState status="loading" label="Loading this team's games" skeleton={<TeamOverviewSkeleton />} />
           ) : gamesQuery.isError ? (
             <AsyncState status="error" message="Could not load this team's games." onRetry={() => gamesQuery.refetch()} />
           ) : (

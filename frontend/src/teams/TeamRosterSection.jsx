@@ -2,6 +2,7 @@ import { useState } from "react";
 import { motion } from "motion/react";
 import { Link } from "react-router";
 import AsyncState from "../lib/AsyncState";
+import { TeamRosterSkeleton } from "./TeamPageSkeleton";
 import EmptyText from "../lib/EmptyText";
 import { formatCount, formatDecimal, formatPerGame } from "../lib/format";
 import { EASE_OUT, cardHover, listContainer, listItem } from "../lib/motion";
@@ -326,7 +327,7 @@ function RosterTable({ registrations, statsByPersonKey, seasonCode }) {
 export default function TeamRosterSection({ rosterQuery, rosterStatsQuery, coachesQuery, seasonCode }) {
   const [view, setView] = useState("cards");
 
-  if (rosterQuery.isPending) return <AsyncState status="loading" label="Loading the roster" />;
+  if (rosterQuery.isPending) return <AsyncState status="loading" label="Loading the roster" skeleton={<TeamRosterSkeleton />} />;
   if (rosterQuery.isError) {
     return <AsyncState status="error" message="Could not load the roster." onRetry={() => rosterQuery.refetch()} />;
   }
@@ -334,7 +335,7 @@ export default function TeamRosterSection({ rosterQuery, rosterStatsQuery, coach
   if (registrations.length === 0) {
     return <EmptyText>Roster not available yet.</EmptyText>;
   }
-  if (rosterStatsQuery.isPending) return <AsyncState status="loading" label="Loading roster statistics" />;
+  if (rosterStatsQuery.isPending) return <AsyncState status="loading" label="Loading roster statistics" skeleton={<TeamRosterSkeleton />} />;
   if (rosterStatsQuery.isError) {
     return <AsyncState status="error" message="Could not load roster statistics." onRetry={() => rosterStatsQuery.refetch()} />;
   }

@@ -3,6 +3,7 @@ import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { motion } from "motion/react";
 import { getTeamAdvanced, getTeamLineups } from "../lib/api";
 import AsyncState from "../lib/AsyncState";
+import { LineupRowsSkeleton, TeamAdvancedSkeleton } from "./TeamPageSkeleton";
 import EmptyText from "../lib/EmptyText";
 import { formatDecimal, formatFractionPercent, formatSignedDecimal } from "../lib/format";
 import { EASE_OUT, sectionContainer, sectionItem } from "../lib/motion";
@@ -438,7 +439,7 @@ function LineupsCard({ seasonCode, clubCode, scope }) {
 
       <TabPanel id="team-lineups-panel" focusKey={size} scroll={false}>
         {active.isLoading || (useFallback && fallback.isLoading) ? (
-          <AsyncState status="loading" label="Loading lineups" compact />
+          <AsyncState status="loading" label="Loading lineups" skeleton={<LineupRowsSkeleton />} />
         ) : active.isError ? (
           <AsyncState status="error" message="Could not load lineups." onRetry={() => active.refetch()} />
         ) : lineups.length === 0 ? (
@@ -489,7 +490,7 @@ export default function TeamAdvancedSection({ seasonCode, clubCode }) {
     placeholderData: keepPreviousData,
   });
 
-  if (query.isLoading) return <AsyncState status="loading" label="Loading advanced team stats" />;
+  if (query.isLoading) return <AsyncState status="loading" label="Loading advanced team stats" skeleton={<TeamAdvancedSkeleton />} />;
   if (query.isError) {
     return <AsyncState status="error" message="Could not load advanced team stats." onRetry={() => query.refetch()} />;
   }

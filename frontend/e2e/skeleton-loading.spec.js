@@ -333,7 +333,7 @@ for (const { name, module, marker } of [
   });
 }
 
-test("a team page keeps the generic page skeleton while its code loads", async ({ page }) => {
+test("a team page shows its own page skeleton while its code loads", async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 900 });
   await page.goto("/2026/teams");
   await expect(page.locator("main ul a").first()).toBeVisible({ timeout: 30_000 });
@@ -341,7 +341,76 @@ test("a team page keeps the generic page skeleton while its code loads", async (
   await page.locator("main ul a").first().click();
   const fallback = page.getByRole("status", { name: "Loading page" });
   await expect(fallback).toBeVisible();
+  // Laid out as a team page on its Overview: the leader cards, not the Teams list's cards.
+  await expect(fallback.locator(".team-leaders-grid")).toHaveCount(1);
   await expect(fallback.locator("li.card")).toHaveCount(0);
   await release();
   await expect(fallback).toHaveCount(0, { timeout: 30_000 });
+});
+
+test("a player page keeps the generic page skeleton while its code loads", async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await page.goto("/2026/players");
+  await expect(page.locator("main a[href*='/players/']").first()).toBeVisible({ timeout: 30_000 });
+  const release = await hold(page, /\/src\/players\/PlayerPage\.jsx/);
+  await page.locator("main a[href*='/players/']").first().click();
+  const fallback = page.getByRole("status", { name: "Loading page" });
+  await expect(fallback).toBeVisible();
+  await expect(fallback.locator(".team-leaders-grid, li.rounded-box")).toHaveCount(0);
+  await release();
+  await expect(fallback).toHaveCount(0, { timeout: 30_000 });
+});
+
+test.describe("Team page", () => {
+  const TEAM = "/2026/teams/PAN";
+  const api = (rest) => new RegExp(`/api/seasons/[^/]+/${rest}`);
+
+  test("the whole page shows its skeleton while the team loads, then the page", async ({ page }) => {
+    const release = await hold(page, api("teams/PAN(\\?|$)"));
+    await page.goto(TEAM);
+    await expectSkeleton(page, "Loading the team");
+    await expect(page.getByRole("status", { name: "Loading the team" }).locator(".team-leaders-grid")).toHaveCount(1);
+    await release();
+    await expect(page.getByRole("heading", { level: 1 })).toBeVisible({ timeout: 30_000 });
+    await expectLoaded(page);
+  });
+
+  test("the Overview shows its skeleton while the games load, and each panel its own", async ({ page }) => {
+    const releaseGames = await hold(page, api("teams/PAN/games"));
+    const releasePanels = await hold(page, api("(phases/[^/]+/standings|season-stats|advanced/standings)"));
+    await page.goto(TEAM);
+    await expectSkeleton(page, "Loading this team's games");
+    await releaseGames();
+    for (const label of ["Loading the record", "Loading team leaders", "Loading the league profile", "Loading the comparison"]) {
+      await expectSkeleton(page, label);
+    }
+    await releasePanels();
+    await expectLoaded(page);
+  });
+
+  for (const { tab, pattern, label } of [
+    { tab: "Statistics", pattern: "teams/PAN/team-stats", label: "Loading team statistics" },
+    { tab: "Roster", pattern: "teams/PAN/roster", label: "Loading the roster" },
+    { tab: "Games", pattern: "teams/PAN/games", label: "Loading the games" },
+    { tab: "Shooting", pattern: "games/[^/]+/shots", label: /^Aggregating \d+ shooting charts$/ },
+    { tab: "Advanced", pattern: "teams/PAN/advanced", label: "Loading advanced team stats" },
+  ]) {
+    test(`the ${tab} tab shows its skeleton while it loads, then its content`, async ({ page }) => {
+      const release = await hold(page, api(pattern));
+      await page.goto(TEAM);
+      await page.getByRole("tab", { name: tab, exact: true }).click();
+      await expectSkeleton(page, label);
+      await release();
+      await expectLoaded(page);
+    });
+  }
+
+  test("a lineup size with no data yet shows lineup rows, not a spinner", async ({ page }) => {
+    const release = await hold(page, api("teams/PAN/lineups"));
+    await page.goto(TEAM);
+    await page.getByRole("tab", { name: "Advanced", exact: true }).click();
+    await expectSkeleton(page, "Loading lineups");
+    await release();
+    await expectLoaded(page);
+  });
 });

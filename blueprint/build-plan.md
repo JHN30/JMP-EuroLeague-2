@@ -255,7 +255,7 @@ Scaffolding, shared layout, design tokens, database connection setup, and deploy
 - [ ] 39. **Skeleton loading** - Replace the panel-sized loading spinners with skeletons shaped like the content they stand in for (rows, cards, tables, charts), so a page keeps its layout and feels faster while data loads. Small inline spinners stay. A skeleton shows only while there is nothing to show yet, never over loaded content during a refetch, and stays still under reduced motion. Screen readers keep the existing specific "Loading …" status.
   - [x] 39a. **Skeleton building blocks, route fallback and Home** - Shared skeleton pieces on daisyUI's `skeleton` (text lines, a card, a table with N rows, a chart box) and an opt-in skeleton for the shared loading state; the route-level fallback becomes a generic page skeleton; Home's panels (latest scores, league table, KPI strip, leaders, upcoming games) get matching skeletons.
   - [x] 39b. **League list pages** - Standings (every view), Games, Teams, Players, Leaders, Records, Postseason and the season Overview.
-  - [ ] 39c. **Team page** - Every team tab (Overview, Roster, Statistics, Games, Shooting, Advanced) and its panels.
+  - [x] 39c. **Team page** - Every team tab (Overview, Roster, Statistics, Games, Shooting, Advanced) and its panels.
   - [ ] 39d. **Player page** - Every player tab (Overview, Season by season, Statistics, Advanced, Shooting, Games).
   - [ ] 39e. **Game page and Compare** - Every game tab, the Compare sections and the Head-to-head page.
 

@@ -1,5 +1,6 @@
 import { motion } from "motion/react";
 import AsyncState from "../lib/AsyncState";
+import { LeagueProfileSkeleton } from "./TeamPageSkeleton";
 import EmptyText from "../lib/EmptyText";
 import HeaderTip from "../lib/HeaderTip";
 import { barFill } from "../lib/motion";
@@ -37,7 +38,7 @@ function ProfileRow({ metric, own, standing }) {
 export default function TeamLeagueProfile({ advancedQuery, clubCode, team, stageName }) {
   const name = team.abbreviatedName ?? team.name ?? clubCode;
 
-  if (advancedQuery.isPending) return <AsyncState status="loading" label="Loading the league profile" />;
+  if (advancedQuery.isPending) return <AsyncState status="loading" label="Loading the league profile" skeleton={<LeagueProfileSkeleton />} />;
   if (advancedQuery.isError) {
     return <AsyncState status="error" message="Could not load the league profile." onRetry={() => advancedQuery.refetch()} />;
   }

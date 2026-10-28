@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { motion } from "motion/react";
 import { Link } from "react-router";
 import AsyncState from "../lib/AsyncState";
+import { TeamGamesSkeleton } from "./TeamPageSkeleton";
 import EmptyText from "../lib/EmptyText";
 import HomeAwayIcon from "../lib/HomeAwayIcon";
 import { teamCode } from "../games/gameUtils";
@@ -293,7 +294,7 @@ function GameColumn({ kicker, title, games, seasonCode, clubCode, markFirst = fa
 export default function TeamGamesSection({ gamesQuery, seasonCode, clubCode, phaseCode }) {
   const [resultFilter, setResultFilter] = useState("all");
 
-  if (gamesQuery.isPending) return <AsyncState status="loading" label="Loading the games" />;
+  if (gamesQuery.isPending) return <AsyncState status="loading" label="Loading the games" skeleton={<TeamGamesSkeleton />} />;
   if (gamesQuery.isError) {
     return <AsyncState status="error" message="Could not load the games." onRetry={() => gamesQuery.refetch()} />;
   }

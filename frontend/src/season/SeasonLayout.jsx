@@ -13,6 +13,7 @@ import PlayersSkeleton from "../players/PlayersSkeleton";
 import PostseasonSkeleton from "../postseason/PostseasonSkeleton";
 import RecordsSkeleton from "../records/RecordsSkeleton";
 import StandingsSkeleton from "../standings/StandingsSkeleton";
+import TeamPageSkeleton from "../teams/TeamPageSkeleton";
 import TeamsSkeleton from "../teams/TeamsSkeleton";
 import OverviewSkeleton from "./OverviewSkeleton";
 
@@ -31,11 +32,16 @@ const PAGE_SKELETONS = {
   compare: CompareSkeleton,
 };
 
-// The skeleton of the page being opened, while its code loads: a list page and Compare get their own, every other page (a
-// game, team or player page, Head-to-head) the generic one.
+// The detail pages with a skeleton of their own, by the list they open from: `/:season/teams/:clubCode` is a team page.
+const DETAIL_SKELETONS = {
+  teams: TeamPageSkeleton,
+};
+
+// The skeleton of the page being opened, while its code loads: a list page, Compare and a team page get their own, every
+// other page (a game or player page, Head-to-head) the generic one.
 function pageSkeleton(pathname) {
-  const [, , page = "", detail] = pathname.split("/");
-  const Skeleton = detail ? null : PAGE_SKELETONS[page];
+  const [, , page = "", detail, extra] = pathname.split("/");
+  const Skeleton = extra ? null : detail ? DETAIL_SKELETONS[page] : PAGE_SKELETONS[page];
   return Skeleton ? <Skeleton /> : <SkeletonPage />;
 }
 import { BackTargetContext } from "../lib/backTarget";

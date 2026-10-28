@@ -3,6 +3,7 @@ import { motion } from "motion/react";
 import { teamCode } from "../games/gameUtils";
 import { getLeagueTeamStats } from "../lib/api";
 import AsyncState from "../lib/AsyncState";
+import { TeamStatisticsSkeleton } from "./TeamPageSkeleton";
 import EmptyText from "../lib/EmptyText";
 import ForfeitStatsNote from "../lib/ForfeitStatsNote";
 import HeaderTip from "../lib/HeaderTip";
@@ -98,7 +99,7 @@ export default function TeamStatisticsSection({ seasonCode, phaseCode, stageName
     enabled: Boolean(phaseCode),
   });
 
-  if (teamStatsSummaryQuery.isPending) return <AsyncState status="loading" label="Loading team statistics" />;
+  if (teamStatsSummaryQuery.isPending) return <AsyncState status="loading" label="Loading team statistics" skeleton={<TeamStatisticsSkeleton />} />;
   if (teamStatsSummaryQuery.isError) {
     return (
       <AsyncState

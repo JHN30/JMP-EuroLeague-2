@@ -1,5 +1,6 @@
 import { useState } from "react";
 import AsyncState from "../lib/AsyncState";
+import { TeamShootingSkeleton } from "./TeamPageSkeleton";
 import EmptyText from "../lib/EmptyText";
 import FilterDisclosure from "../games/FilterDisclosure";
 import { formatCount, formatPercentage } from "../lib/format";
@@ -36,7 +37,13 @@ export default function TeamShootingSection({ seasonCode, phaseCode, stageName, 
     return <EmptyText>{`No played games yet in the ${stageName} to map shot locations from.`}</EmptyText>;
   }
   if (loading) {
-    return <AsyncState status="loading" label={`Aggregating ${formatCount(playedGames.length)} shooting charts`} />;
+    return (
+      <AsyncState
+        status="loading"
+        label={`Aggregating ${formatCount(playedGames.length)} shooting charts`}
+        skeleton={<TeamShootingSkeleton />}
+      />
+    );
   }
   if (errored) {
     return <AsyncState status="error" message="Could not load season shot locations." onRetry={retry} />;

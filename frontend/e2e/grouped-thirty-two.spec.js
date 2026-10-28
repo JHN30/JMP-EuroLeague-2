@@ -163,8 +163,8 @@ for (const season of [2001, 2003]) {
     });
 
     test("Team Games margin strip excludes the forfeit and results label it", async ({ page, request }) => {
-      // The strip covers the whole season, every phase.
-      const games = await clubGames(request, season, "TEL", null);
+      // The strip covers the selected stage only: the Top 16, which holds the forfeit.
+      const games = await clubGames(request, season, "TEL", "TS");
       const real = games.filter((game) => !game.forfeit);
       expect(real.length).toBe(games.length - 1);
       await page.goto(`/${season}/teams/TEL?phase=TS`);

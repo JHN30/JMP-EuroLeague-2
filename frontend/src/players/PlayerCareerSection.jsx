@@ -4,6 +4,7 @@ import { motion } from "motion/react";
 import { Link } from "react-router";
 import { getSeasons } from "../lib/api";
 import AsyncState from "../lib/AsyncState";
+import { PlayerCareerSkeleton } from "./PlayerPageSkeleton";
 import EmptyText from "../lib/EmptyText";
 import { formatDecimal, formatSignedDecimal } from "../lib/format";
 import HomeAwayIcon from "../lib/HomeAwayIcon";
@@ -328,7 +329,7 @@ export default function PlayerCareerSection({ personKey, seasonCode }) {
     return <AsyncState status="error" message="Could not load season history." onRetry={() => careerQuery.refetch()} />;
   }
   if (seasonsQuery.isPending || careerQuery.isPending || !derived) {
-    return <AsyncState status="loading" label="Loading season history" />;
+    return <AsyncState status="loading" label="Loading season history" skeleton={<PlayerCareerSkeleton />} />;
   }
   if (cards.length === 0) return <EmptyText>No archived seasons found for this player.</EmptyText>;
 

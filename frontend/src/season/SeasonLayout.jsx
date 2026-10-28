@@ -9,6 +9,7 @@ import HomeSkeleton from "../dashboard/HomeSkeleton";
 import GamesSkeleton from "../games/GamesSkeleton";
 import LeadersSkeleton from "../leaders/LeadersSkeleton";
 import { SkeletonPage } from "../lib/Skeleton";
+import PlayerPageSkeleton from "../players/PlayerPageSkeleton";
 import PlayersSkeleton from "../players/PlayersSkeleton";
 import PostseasonSkeleton from "../postseason/PostseasonSkeleton";
 import RecordsSkeleton from "../records/RecordsSkeleton";
@@ -32,13 +33,15 @@ const PAGE_SKELETONS = {
   compare: CompareSkeleton,
 };
 
-// The detail pages with a skeleton of their own, by the list they open from: `/:season/teams/:clubCode` is a team page.
+// The detail pages with a skeleton of their own, by the list they open from: `/:season/teams/:clubCode` is a team page,
+// `/:season/players/:personKey` a player page.
 const DETAIL_SKELETONS = {
   teams: TeamPageSkeleton,
+  players: PlayerPageSkeleton,
 };
 
-// The skeleton of the page being opened, while its code loads: a list page, Compare and a team page get their own, every
-// other page (a game or player page, Head-to-head) the generic one.
+// The skeleton of the page being opened, while its code loads: a list page, Compare, a team page and a player page get their
+// own, every other page (a game page, Head-to-head) the generic one.
 function pageSkeleton(pathname) {
   const [, , page = "", detail, extra] = pathname.split("/");
   const Skeleton = extra ? null : detail ? DETAIL_SKELETONS[page] : PAGE_SKELETONS[page];

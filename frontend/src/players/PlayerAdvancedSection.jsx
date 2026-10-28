@@ -3,6 +3,7 @@ import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { motion } from "motion/react";
 import { getPlayerAdvanced } from "../lib/api";
 import AsyncState from "../lib/AsyncState";
+import { PlayerAdvancedSkeleton } from "./PlayerPageSkeleton";
 import ComparisonRow from "../lib/ComparisonRow";
 import EmptyText from "../lib/EmptyText";
 import { formatDecimal, formatFractionPercent, formatSignedDecimal } from "../lib/format";
@@ -474,7 +475,7 @@ export default function PlayerAdvancedSection({ seasonCode, personKey }) {
     placeholderData: keepPreviousData,
   });
 
-  if (query.isLoading) return <AsyncState status="loading" label="Loading advanced player stats" />;
+  if (query.isLoading) return <AsyncState status="loading" label="Loading advanced player stats" skeleton={<PlayerAdvancedSkeleton />} />;
   if (query.isError) {
     return <AsyncState status="error" message="Could not load advanced player stats." onRetry={() => query.refetch()} />;
   }

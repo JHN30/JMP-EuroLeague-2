@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { motion } from "motion/react";
 import { getPlayerSeasonStats } from "../lib/api";
 import AsyncState from "../lib/AsyncState";
+import { PlayerStatisticsSkeleton } from "./PlayerPageSkeleton";
 import EmptyText from "../lib/EmptyText";
 import HeaderTip from "../lib/HeaderTip";
 import { barFill, denseListContainer, listItem } from "../lib/motion";
@@ -152,7 +153,7 @@ export default function PlayerStatisticsSection({ seasonCode, personKey, phases,
 
   let body;
   if (statsQuery.isPending) {
-    body = <AsyncState status="loading" label="Loading season statistics" />;
+    body = <AsyncState status="loading" label="Loading season statistics" skeleton={<PlayerStatisticsSkeleton />} />;
   } else if (statsQuery.isError) {
     body = <AsyncState status="error" message="Could not load season statistics." onRetry={() => statsQuery.refetch()} />;
   } else if (!entry) {

@@ -9,6 +9,8 @@ import {
   getPlayerSeasonStats,
 } from "../lib/api";
 import AsyncState from "../lib/AsyncState";
+import { SkeletonShooting } from "../lib/Skeleton";
+import PlayerPageSkeleton from "./PlayerPageSkeleton";
 import BackLink from "../lib/BackLink";
 import EmptyText from "../lib/EmptyText";
 import { TabPanel, TabStrip } from "../lib/TabStrip";
@@ -29,7 +31,7 @@ const GAMES_LIMIT = 100;
 // The Shooting tab waits for the game log (to tell a phase with no games from one with no shots) and then hands over to
 // the shared layout.
 function PlayerShootingTab({ seasonCode, phaseCode, player, gamesQuery, personKey }) {
-  if (gamesQuery.isPending) return <AsyncState status="loading" label="Loading this player's shot locations" />;
+  if (gamesQuery.isPending) return <AsyncState status="loading" label="Loading this player's shot locations" skeleton={<SkeletonShooting sides={false} />} />;
   if (gamesQuery.isError) {
     return <AsyncState status="error" message="Could not load this player's shot locations." onRetry={() => gamesQuery.refetch()} />;
   }
@@ -90,7 +92,7 @@ export default function PlayerPage() {
     enabled: playerQuery.isSuccess && Boolean(phaseCode) && section === "overview",
   });
 
-  if (playerQuery.isLoading) return <AsyncState status="loading" label="Loading the player" />;
+  if (playerQuery.isLoading) return <AsyncState status="loading" label="Loading the player" skeleton={<PlayerPageSkeleton />} />;
 
   if (playerQuery.isError) {
     const notFound = playerQuery.error?.response?.status === 404;

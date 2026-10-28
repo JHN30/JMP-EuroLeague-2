@@ -348,7 +348,10 @@ test("a team page shows its own page skeleton while its code loads", async ({ pa
   await expect(fallback).toHaveCount(0, { timeout: 30_000 });
 });
 
-test("a player page keeps the generic page skeleton while its code loads", async ({ page }) => {
+// A part only the player page's skeleton has: the hero's portrait column.
+const PLAYER_HERO = "[class*='grid-cols-[11rem_1fr]']";
+
+test("a player page shows its own page skeleton while its code loads", async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 900 });
   await page.goto("/2026/players");
   await expect(page.locator("main a[href*='/players/']").first()).toBeVisible({ timeout: 30_000 });
@@ -356,9 +359,101 @@ test("a player page keeps the generic page skeleton while its code loads", async
   await page.locator("main a[href*='/players/']").first().click();
   const fallback = page.getByRole("status", { name: "Loading page" });
   await expect(fallback).toBeVisible();
-  await expect(fallback.locator(".team-leaders-grid, li.rounded-box")).toHaveCount(0);
+  await expect(fallback.locator(PLAYER_HERO)).toHaveCount(1);
+  await expect(fallback.locator("li.rounded-box")).toHaveCount(0);
   await release();
   await expect(fallback).toHaveCount(0, { timeout: 30_000 });
+});
+
+test("a game page keeps the generic page skeleton while its code loads", async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await page.goto("/2026/games");
+  await expect(page.locator("main a[href*='/games/']").first()).toBeVisible({ timeout: 30_000 });
+  const release = await hold(page, /\/src\/games\/GameDetailPage\.jsx/);
+  await page.locator("main a[href*='/games/']").first().click();
+  const fallback = page.getByRole("status", { name: "Loading page" });
+  await expect(fallback).toBeVisible();
+  await expect(fallback.locator(`${PLAYER_HERO}, .team-leaders-grid, .fixture-grid`)).toHaveCount(0);
+  await release();
+  await expect(fallback).toHaveCount(0, { timeout: 30_000 });
+});
+
+test.describe("Player page", () => {
+  const api = (rest) => new RegExp(`/api/seasons/[^/]+/${rest}`);
+  let playerPath;
+
+  // A player with games this season: the first on a club's roster.
+  test.beforeAll(async ({ browser }) => {
+    const page = await browser.newPage();
+    await page.goto("/2026/teams/PAN");
+    await page.getByRole("tab", { name: "Roster", exact: true }).click();
+    playerPath = await page.locator("main a[href*='/players/']").first().getAttribute("href", { timeout: 30_000 });
+    await page.close();
+  });
+
+  test("the whole page shows its skeleton while the player loads, then the page", async ({ page }) => {
+    const release = await hold(page, api("players/\\d+(\\?|$)"));
+    await page.goto(playerPath);
+    await expectSkeleton(page, "Loading the player");
+    await expect(page.getByRole("status", { name: "Loading the player" }).locator(PLAYER_HERO)).toHaveCount(1);
+    await release();
+    await expect(page.getByRole("heading", { level: 1 })).toBeVisible({ timeout: 30_000 });
+    await expectLoaded(page);
+  });
+
+  test("the Overview shows its skeleton while the rankings load, and the form panel its own", async ({ page }) => {
+    const releaseRankings = await hold(page, api("season-stats"));
+    const releaseGames = await hold(page, api("players/[^/]+/games"));
+    await page.goto(playerPath);
+    await expectSkeleton(page, "Loading league rankings");
+    await releaseRankings();
+    await expectSkeleton(page, "Loading recent games");
+    await releaseGames();
+    await expectLoaded(page);
+  });
+
+  for (const { tab, pattern, label, early = false } of [
+    { tab: "Season by season", pattern: "season-stats", label: "Loading season history" },
+    { tab: "Statistics", pattern: "season-stats", label: "Loading season statistics" },
+    { tab: "Advanced", pattern: "players/[^/]+/advanced", label: "Loading advanced player stats" },
+    { tab: "Shooting", pattern: "players/[^/]+/shots", label: /^Aggregating \d+ shooting charts$/ },
+    // The Overview already loads the game log, so it is held from the start.
+    { tab: "Games", pattern: "players/[^/]+/games", label: "Loading the game log", early: true },
+  ]) {
+    test(`the ${tab} tab shows its skeleton while it loads, then its content`, async ({ page }) => {
+      let release = early ? await hold(page, api(pattern)) : null;
+      await page.goto(playerPath);
+      if (!early) {
+        await expectLoaded(page);
+        release = await hold(page, api(pattern));
+      }
+      await page.getByRole("tab", { name: tab, exact: true }).click();
+      await expectSkeleton(page, label);
+      await release();
+      await expectLoaded(page);
+    });
+  }
+
+  test("the Shooting tab shows the shooting skeleton while the game log loads", async ({ page }) => {
+    const release = await hold(page, api("players/[^/]+/games"));
+    await page.goto(playerPath);
+    await page.getByRole("tab", { name: "Shooting", exact: true }).click();
+    await expectSkeleton(page, "Loading this player's shot locations");
+    await release();
+    await expectLoaded(page);
+  });
+
+  test("the profile by season shows a radar block while every season's rankings load", async ({ page }) => {
+    await page.goto(playerPath);
+    await expectLoaded(page);
+    await page.getByRole("tab", { name: "Season by season", exact: true }).click();
+    await expectLoaded(page);
+    const release = await hold(page, api("season-stats"));
+    await page.getByRole("button", { name: "Compare the profile by season" }).click();
+    await expectSkeleton(page, "Loading league rankings for every season");
+    await release();
+    await expectLoaded(page);
+  });
 });
 
 test.describe("Team page", () => {

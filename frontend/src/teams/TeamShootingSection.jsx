@@ -1,6 +1,6 @@
 import { useState } from "react";
 import AsyncState from "../lib/AsyncState";
-import { TeamShootingSkeleton } from "./TeamPageSkeleton";
+import { SkeletonShooting } from "../lib/Skeleton";
 import EmptyText from "../lib/EmptyText";
 import FilterDisclosure from "../games/FilterDisclosure";
 import { formatCount, formatPercentage } from "../lib/format";
@@ -41,7 +41,7 @@ export default function TeamShootingSection({ seasonCode, phaseCode, stageName, 
       <AsyncState
         status="loading"
         label={`Aggregating ${formatCount(playedGames.length)} shooting charts`}
-        skeleton={<TeamShootingSkeleton />}
+        skeleton={<SkeletonShooting />}
       />
     );
   }

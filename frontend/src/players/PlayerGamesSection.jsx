@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { motion } from "motion/react";
 import { Link } from "react-router";
 import AsyncState from "../lib/AsyncState";
+import { PlayerGamesSkeleton } from "./PlayerPageSkeleton";
 import EmptyText from "../lib/EmptyText";
 import { formatDecimal, formatMinutes, formatShortDate, formatSignedDecimal } from "../lib/format";
 import HomeAwayIcon from "../lib/HomeAwayIcon";
@@ -361,7 +362,7 @@ function PhaseSwitch({ phases, activeKey, onChange }) {
 export default function PlayerGamesSection({ gamesQuery, seasonCode }) {
   const [phaseKey, setPhaseKey] = useState("all");
 
-  if (gamesQuery.isPending) return <AsyncState status="loading" label="Loading the game log" />;
+  if (gamesQuery.isPending) return <AsyncState status="loading" label="Loading the game log" skeleton={<PlayerGamesSkeleton />} />;
   if (gamesQuery.isError) {
     return <AsyncState status="error" message="Could not load the game log." onRetry={() => gamesQuery.refetch()} />;
   }

@@ -3,6 +3,7 @@ import { useQueries } from "@tanstack/react-query";
 import { Chart } from "chart.js/auto";
 import { motion } from "motion/react";
 import AsyncState from "../lib/AsyncState";
+import { CareerRadarSkeleton } from "./PlayerPageSkeleton";
 import { formatDecimal, formatSignedDecimal } from "../lib/format";
 import { listContainer, listItem } from "../lib/motion";
 import Panel from "../lib/Panel";
@@ -264,7 +265,7 @@ export function ProfileComparison({ cards, personKey }) {
           <span className="muted text-sm">Ranks the player against the league in each season, using the six Overview axes.</span>
         </div>
       ) : pending ? (
-        <AsyncState status="loading" label="Loading league rankings for every season" />
+        <AsyncState status="loading" label="Loading league rankings for every season" skeleton={<CareerRadarSkeleton />} />
       ) : failed ? (
         <AsyncState status="error" message="Could not load the league rankings." onRetry={() => queries.forEach((query) => query.refetch())} />
       ) : series.length === 0 ? (

@@ -109,6 +109,65 @@ export function SkeletonPanel({ className = "", children }) {
   );
 }
 
+// A panel's kicker and title bars, as `PanelHeader` draws them, with the title bar `title` wide.
+export function SkeletonPanelHead({ title = "w-48" }) {
+  return (
+    <div className="mb-4 flex flex-col gap-2">
+      <div className="skeleton h-3 w-20" />
+      <div className={`skeleton h-6 max-w-full ${title}`} />
+    </div>
+  );
+}
+
+// Rows of zone or situation figures, as the shooting tables draw them.
+function SkeletonFigureRows({ rows }) {
+  return Array.from({ length: rows }, (_, index) => (
+    <div key={index} className="flex h-[1.8rem] items-center gap-3 border-b border-base-300 last:border-0 max-sm:h-[3.3rem]">
+      <div className="skeleton h-3.5 w-28" />
+      <div className="skeleton h-2 flex-1 rounded-full" />
+      <div className="skeleton h-3.5 w-10" />
+      <div className="skeleton h-3.5 w-10" />
+    </div>
+  ));
+}
+
+// A Shooting tab, as the team and player pages draw it around `ShootingBreakdown`: the panel's controls, the four headline
+// cards, then the court beside the zone and situation tables. `sides` adds the club-or-opponents tabs the team page has.
+export function SkeletonShooting({ sides = true }) {
+  return (
+    <div aria-hidden="true" className="panel p-4">
+      <SkeletonPanelHead title="w-56" />
+      <div className="mb-4 flex flex-wrap items-center gap-x-6 gap-y-3">
+        {sides ? <div className="skeleton h-9 w-44" /> : null}
+        <div className="skeleton h-9 w-44" />
+        <div className="skeleton h-8 w-52 max-sm:w-full" />
+      </div>
+      <div className="mb-4 grid grid-cols-2 gap-3 lg:grid-cols-4">
+        {Array.from({ length: 4 }, (_, index) => (
+          <div key={index} className="panel flex flex-col items-center gap-2 p-3">
+            <div className="skeleton h-3 w-20" />
+            <div className="skeleton h-6 w-24 max-sm:h-12" />
+          </div>
+        ))}
+      </div>
+      <div className="grid grid-cols-[minmax(0,1fr)] gap-4 xl:grid-cols-[minmax(0,1.75fr)_minmax(0,1fr)]">
+        {/* The court over its legend; below sm the legend wraps to a second line. */}
+        <div className="skeleton aspect-7/8 w-full max-sm:aspect-4/5" />
+        <div className="flex flex-col gap-4">
+          {[14, 3].map((rows, table) => (
+            <div key={table} className="panel p-3">
+              <SkeletonPanelHead title="w-48" />
+              {/* Below sm the zones' hottest and coldest badges sit under the title. */}
+              {table === 0 ? <div className="skeleton mb-4 h-14 w-56 sm:hidden" /> : null}
+              <SkeletonFigureRows rows={rows} />
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // A page while its code loads, for the pages without a skeleton of their own: a header over a table and a chart panel.
 export function SkeletonPage() {
   return (

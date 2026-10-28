@@ -1,20 +1,10 @@
-import { SkeletonChip } from "../lib/Skeleton";
+import { SkeletonChip, SkeletonPanelHead } from "../lib/Skeleton";
 
 // The team page's skeletons: the whole page (while its code or the team loads) and each tab and Overview panel (while its data
 // loads), so the two always match. Each mirrors the loaded markup's grid, gaps and paddings. This file imports none of the
 // page's code, so the page skeleton stays out of its bundle.
 
 const range = (length) => Array.from({ length }, (_, index) => index);
-
-// A panel's kicker and title, as `PanelHeader` draws them.
-function PanelHead({ title = "w-48" }) {
-  return (
-    <div className="mb-4 flex flex-col gap-2">
-      <div className="skeleton h-3 w-20" />
-      <div className={`skeleton h-6 max-w-full ${title}`} />
-    </div>
-  );
-}
 
 // A label over a value, as the snapshot and roster facts draw them.
 function FactSkeleton({ value = "h-5 w-12" }) {
@@ -125,7 +115,7 @@ export function TeamLeadersSkeleton() {
 export function LeagueProfileSkeleton() {
   return (
     <div aria-hidden="true" className="panel p-4">
-      <PanelHead title="w-64" />
+      <SkeletonPanelHead title="w-64" />
       <div className="grid gap-x-8 gap-y-4 sm:grid-cols-2">
         {[5, 5].map((rows, group) => (
           <div key={group}>
@@ -151,7 +141,7 @@ export function LeagueProfileSkeleton() {
 function GameLinesSkeleton({ rows = 5 }) {
   return (
     <div className="panel flex flex-col p-4">
-      <PanelHead title="w-32" />
+      <SkeletonPanelHead title="w-32" />
       <div className="flex flex-col gap-2">
         {range(rows).map((index) => (
           <div key={index} className="flex h-[2.375rem] items-center gap-3 rounded-field border border-base-300 bg-base-200 px-3 max-sm:h-14">
@@ -169,7 +159,7 @@ function GameLinesSkeleton({ rows = 5 }) {
 export function QuickCompareSkeleton() {
   return (
     <div aria-hidden="true" className="panel flex flex-col p-4">
-      <PanelHead title="w-36" />
+      <SkeletonPanelHead title="w-36" />
       <div className="skeleton mb-3 h-9 w-56 max-w-full" />
       <div className="mb-1 grid grid-cols-2 gap-4">
         <div className="skeleton ml-auto h-6 w-24" />
@@ -232,7 +222,7 @@ function StatGroupSkeleton({ rows }) {
 export function TeamStatisticsSkeleton() {
   return (
     <div aria-hidden="true" className="panel p-4">
-      <PanelHead title="w-72" />
+      <SkeletonPanelHead title="w-72" />
       <div className="grid gap-x-10 gap-y-6 xl:grid-cols-2">
         <StatGroupSkeleton rows={10} />
         <div className="flex flex-col gap-6">
@@ -294,7 +284,7 @@ export function TeamRosterSkeleton() {
 function GameColumnSkeleton({ tabs = false }) {
   return (
     <div className="panel p-4">
-      <PanelHead title="w-32" />
+      <SkeletonPanelHead title="w-32" />
       {tabs ? <div className="skeleton mb-3 h-9 w-48" /> : null}
       <div className="flex flex-col gap-2">
         {range(8).map((index) => (
@@ -318,61 +308,13 @@ export function TeamGamesSkeleton() {
   return (
     <div aria-hidden="true" className="flex flex-col gap-6">
       <div className="panel p-4">
-        <PanelHead title="w-44" />
+        <SkeletonPanelHead title="w-44" />
         <div className="skeleton h-48 w-full max-sm:h-56" />
         <div className="skeleton mt-2 h-4 w-60 max-w-full" />
       </div>
       <div className="grid grid-cols-[minmax(0,1fr)] items-start gap-6 lg:grid-cols-2">
         <GameColumnSkeleton />
         <GameColumnSkeleton tabs />
-      </div>
-    </div>
-  );
-}
-
-// Rows of zone or situation figures, as the shooting tables draw them.
-function FigureRows({ rows }) {
-  return range(rows).map((index) => (
-    <div key={index} className="flex h-[1.8rem] items-center gap-3 border-b max-sm:h-[3.3rem] border-base-300 last:border-0">
-      <div className="skeleton h-3.5 w-28" />
-      <div className="skeleton h-2 flex-1 rounded-full" />
-      <div className="skeleton h-3.5 w-10" />
-      <div className="skeleton h-3.5 w-10" />
-    </div>
-  ));
-}
-
-// The Shooting tab: the panel's controls, the four headline cards, then the court beside the zone and situation tables.
-export function TeamShootingSkeleton() {
-  return (
-    <div aria-hidden="true" className="panel p-4">
-      <PanelHead title="w-56" />
-      <div className="mb-4 flex flex-wrap items-center gap-x-6 gap-y-3">
-        <div className="skeleton h-9 w-44" />
-        <div className="skeleton h-9 w-44" />
-        <div className="skeleton h-8 w-52 max-sm:w-full" />
-      </div>
-      <div className="mb-4 grid grid-cols-2 gap-3 lg:grid-cols-4">
-        {range(4).map((index) => (
-          <div key={index} className="panel flex flex-col items-center gap-2 p-3">
-            <div className="skeleton h-3 w-20" />
-            <div className="skeleton h-6 w-24 max-sm:h-12" />
-          </div>
-        ))}
-      </div>
-      <div className="grid grid-cols-[minmax(0,1fr)] gap-4 xl:grid-cols-[minmax(0,1.75fr)_minmax(0,1fr)]">
-        {/* The court over its legend; below sm the legend wraps to a second line. */}
-        <div className="skeleton aspect-[7/8] w-full max-sm:aspect-[4/5]" />
-        <div className="flex flex-col gap-4">
-          {[14, 3].map((rows, table) => (
-            <div key={table} className="panel p-3">
-              <PanelHead title="w-48" />
-              {/* Below sm the zones' hottest and coldest badges sit under the title. */}
-              {table === 0 ? <div className="skeleton mb-4 h-14 w-56 sm:hidden" /> : null}
-              <FigureRows rows={rows} />
-            </div>
-          ))}
-        </div>
       </div>
     </div>
   );
@@ -413,7 +355,7 @@ export function TeamAdvancedSkeleton() {
       <div className="skeleton h-10 w-56 max-w-full" />
       <div className="flex flex-col gap-8">
         <div className="panel p-4">
-          <PanelHead title="w-72" />
+          <SkeletonPanelHead title="w-72" />
           <div className="skeleton h-[16.5rem] w-full sm:h-[20.5rem]" />
           <div className="skeleton mt-3 h-4 w-96 max-w-full" />
           <div className="mt-2 flex flex-col gap-2">
@@ -424,7 +366,7 @@ export function TeamAdvancedSkeleton() {
           </div>
         </div>
         <div>
-          <PanelHead title="w-60" />
+          <SkeletonPanelHead title="w-60" />
           <div className="grid grid-cols-2 gap-2 sm:gap-3 xl:grid-cols-4">
             {range(4).map((index) => (
               <div key={index} className="skeleton h-44 rounded-box" />
@@ -432,7 +374,7 @@ export function TeamAdvancedSkeleton() {
           </div>
         </div>
         <div className="panel p-4">
-          <PanelHead title="w-40" />
+          <SkeletonPanelHead title="w-40" />
           <div className="grid gap-6 lg:grid-cols-2 lg:gap-10">
             <div className="skeleton h-28" />
             <div className="skeleton h-28" />
@@ -444,7 +386,7 @@ export function TeamAdvancedSkeleton() {
           </div>
         </div>
         <div>
-          <PanelHead title="w-32" />
+          <SkeletonPanelHead title="w-32" />
           <div className="mb-3 flex flex-wrap items-center gap-x-6 gap-y-3">
             <div className="skeleton h-9 w-40" />
             <div className="skeleton h-8 w-64 max-w-full" />

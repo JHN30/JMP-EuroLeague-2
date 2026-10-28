@@ -256,7 +256,7 @@ Scaffolding, shared layout, design tokens, database connection setup, and deploy
   - [x] 39a. **Skeleton building blocks, route fallback and Home** - Shared skeleton pieces on daisyUI's `skeleton` (text lines, a card, a table with N rows, a chart box) and an opt-in skeleton for the shared loading state; the route-level fallback becomes a generic page skeleton; Home's panels (latest scores, league table, KPI strip, leaders, upcoming games) get matching skeletons.
   - [x] 39b. **League list pages** - Standings (every view), Games, Teams, Players, Leaders, Records, Postseason and the season Overview.
   - [x] 39c. **Team page** - Every team tab (Overview, Roster, Statistics, Games, Shooting, Advanced) and its panels.
-  - [ ] 39d. **Player page** - Every player tab (Overview, Season by season, Statistics, Advanced, Shooting, Games).
+  - [x] 39d. **Player page** - Every player tab (Overview, Season by season, Statistics, Advanced, Shooting, Games).
   - [ ] 39e. **Game page and Compare** - Every game tab, the Compare sections and the Head-to-head page.
 
 ## Deferred beyond Phase 1

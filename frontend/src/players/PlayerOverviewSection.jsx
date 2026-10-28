@@ -3,6 +3,7 @@ import { Chart } from "chart.js/auto";
 import { motion } from "motion/react";
 import { Link } from "react-router";
 import AsyncState from "../lib/AsyncState";
+import { FormBodySkeleton, PlayerOverviewSkeleton } from "./PlayerPageSkeleton";
 import EmptyText from "../lib/EmptyText";
 import { formatPerGame, formatPercentage, formatSignedDecimal } from "../lib/format";
 import HomeAwayIcon from "../lib/HomeAwayIcon";
@@ -236,7 +237,7 @@ function FormPanel({ gamesQuery, own, seasonCode }) {
   let body;
   let kicker = `LAST ${FORM_GAMES} GAMES`;
   if (gamesQuery.isPending) {
-    body = <AsyncState status="loading" label="Loading recent games" />;
+    body = <AsyncState status="loading" label="Loading recent games" skeleton={<FormBodySkeleton />} />;
   } else if (gamesQuery.isError) {
     body = <AsyncState status="error" message="Could not load the recent games." onRetry={() => gamesQuery.refetch()} />;
   } else {
@@ -392,7 +393,7 @@ function ShootingPanel({ own, players, personKey }) {
 // ---- The tab ----
 
 export default function PlayerOverviewSection({ leaderboardQuery, gamesQuery, personKey, seasonCode }) {
-  if (leaderboardQuery.isPending) return <AsyncState status="loading" label="Loading league rankings" />;
+  if (leaderboardQuery.isPending) return <AsyncState status="loading" label="Loading league rankings" skeleton={<PlayerOverviewSkeleton />} />;
   if (leaderboardQuery.isError) {
     return <AsyncState status="error" message="Could not load league rankings." onRetry={() => leaderboardQuery.refetch()} />;
   }

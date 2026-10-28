@@ -177,10 +177,6 @@ function ConnectionsSection({ game, seasonCode, playByPlayQuery }) {
 // Who was on the court and when and which five-man units played together come from the pipeline; who scored off whose
 // assists is built from the play-by-play. Each section loads, fails and retries on its own.
 export default function RotationsTab({ game, seasonCode, boxScoreQuery, playByPlayQuery, lineupsQuery }) {
-  if (!game.played) {
-    return <EmptyText>Rotations aren't available until this game is played.</EmptyText>;
-  }
-
   return (
     <motion.div className="flex flex-col gap-6" variants={sectionContainer} initial="hidden" animate="show">
       <motion.section variants={sectionItem}>

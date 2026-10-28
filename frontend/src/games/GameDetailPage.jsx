@@ -797,15 +797,12 @@ function PlayByPlayRow({ event, localTeam, roadTeam }) {
   );
 }
 
-function PlayByPlaySection({ played, events, localTeam, roadTeam }) {
+function PlayByPlaySection({ events, localTeam, roadTeam }) {
   const [typeFilter, setTypeFilter] = useState("key");
   const [periodFilter, setPeriodFilter] = useState("all");
   const [teamFilter, setTeamFilter] = useState("all");
   const [visibleCount, setVisibleCount] = useState(PAGE_STEP);
 
-  if (!played) {
-    return <EmptyText>Play-by-play isn't available until this game is played.</EmptyText>;
-  }
   if (events.length === 0) {
     return <EmptyText>Play-by-play isn't available for this game yet.</EmptyText>;
   }
@@ -1064,7 +1061,7 @@ const LOADING_MARK = (
 // prints a dash and leaves both sides unhighlighted: it is not a 0 to beat.
 function TeamComparisonRows({ localTotal, roadTotal, localTeam, roadTeam, playerStats, shotsQuery }) {
   if (!localTotal || !roadTotal) {
-    return <EmptyText>Team comparison isn't available until this game is played.</EmptyText>;
+    return <EmptyText>Team totals weren't recorded for this game.</EmptyText>;
   }
   const paintFor = (team) => (shotsQuery.isSuccess ? paintPoints(shotsQuery.data.shots, team?.clubCode) : null);
   const counted = (label, valueA, valueB) => ({
@@ -1129,9 +1126,6 @@ function TeamComparisonRows({ localTotal, roadTotal, localTeam, roadTeam, player
 // two panels are equally tall: the shorter one spreads its rows out evenly instead of leaving empty space at the bottom.
 // They load separately, so trouble with one never hides the other.
 function TeamComparisonTab({ game, boxScoreQuery, advancedQuery, teamFlowQuery, shotsQuery }) {
-  if (!game.played) {
-    return <EmptyText>Team comparison isn't available until this game is played.</EmptyText>;
-  }
   const totalFor = (side) => boxScoreQuery.data?.teamStats.find((row) => row.side === side && row.statsKind === "total");
 
   return (
@@ -1282,9 +1276,7 @@ export default function GameDetailPage() {
         {tab === "rotations" ? <RotationsTab game={game} seasonCode={seasonCode} boxScoreQuery={boxScoreQuery} playByPlayQuery={playByPlayQuery} lineupsQuery={lineupsQuery} /> : null}
 
         {tab === "game-flow" ? (
-          !game.played ? (
-            <EmptyText>Game flow isn't available until this game is played.</EmptyText>
-          ) : boxScoreQuery.isLoading || playByPlayQuery.isLoading ? (
+          boxScoreQuery.isLoading || playByPlayQuery.isLoading ? (
             <AsyncState status="loading" label="Loading game flow" skeleton={<GameFlowSkeleton />} />
           ) : boxScoreQuery.isError || playByPlayQuery.isError ? (
             <AsyncState
@@ -1308,9 +1300,7 @@ export default function GameDetailPage() {
         {tab === "comparison" ? <TeamComparisonTab game={game} boxScoreQuery={boxScoreQuery} advancedQuery={advancedQuery} teamFlowQuery={teamFlowQuery} shotsQuery={shotsQuery} /> : null}
 
         {tab === "shooting" ? (
-          !game.played ? (
-            <EmptyText>Shot data isn't available until this game is played.</EmptyText>
-          ) : boxScoreQuery.isLoading || shotsQuery.isLoading ? (
+          boxScoreQuery.isLoading || shotsQuery.isLoading ? (
             <AsyncState status="loading" label="Loading shot chart" skeleton={<GameShootingSkeleton />} />
           ) : boxScoreQuery.isError || shotsQuery.isError ? (
             <AsyncState
@@ -1331,15 +1321,12 @@ export default function GameDetailPage() {
         ) : null}
 
         {tab === "play-by-play" ? (
-          !game.played ? (
-            <PlayByPlaySection played={false} events={[]} localTeam={game.localTeam} roadTeam={game.roadTeam} />
-          ) : playByPlayQuery.isLoading ? (
+          playByPlayQuery.isLoading ? (
             <AsyncState status="loading" label="Loading play-by-play" skeleton={<PlayByPlaySkeleton />} />
           ) : playByPlayQuery.isError ? (
             <AsyncState status="error" message="Could not load play-by-play." onRetry={() => playByPlayQuery.refetch()} />
           ) : (
             <PlayByPlaySection
-              played={game.played}
               events={playByPlayQuery.data.events}
               localTeam={game.localTeam}
               roadTeam={game.roadTeam}

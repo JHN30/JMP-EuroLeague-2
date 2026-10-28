@@ -2,6 +2,7 @@ import { useState } from "react";
 import { motion } from "motion/react";
 import { Link } from "react-router";
 import AsyncState from "../lib/AsyncState";
+import { CategoryRowsSkeleton } from "./LeadersSkeleton";
 import EmptyText from "../lib/EmptyText";
 import { EASE_OUT, listContainer, listItem } from "../lib/motion";
 import Panel from "../lib/Panel";
@@ -96,7 +97,7 @@ export function CategoryCard({ kicker, title, tip, entries, isLoading, isError, 
         </div>
       </div>
       {isLoading ? (
-        <AsyncState status="loading" label={`Loading ${title}`} inline />
+        <AsyncState status="loading" label={`Loading ${title}`} skeleton={<CategoryRowsSkeleton />} />
       ) : isError ? (
         <AsyncState status="error" message="Could not load this category." onRetry={onRetry} inline />
       ) : entries.length === 0 ? (

@@ -3,6 +3,7 @@ import { motion } from "motion/react";
 import { Link } from "react-router";
 import { getGame, getSeasonGames, getSeasonStandings } from "../lib/api";
 import AsyncState from "../lib/AsyncState";
+import { UpcomingGamesSkeleton } from "./CompareSkeleton";
 import { formatDateTime, formatShortDate, formatTimeOfDay } from "../lib/format";
 import { shortTeamName, teamCode } from "../games/gameUtils";
 import { listContainer, listItem, wideCardHover } from "../lib/motion";
@@ -103,11 +104,7 @@ export default function CompareFixtures({ seasonCode, onPick }) {
   const games = gamesQuery.data?.games ?? [];
 
   if (nextQuery.isLoading || (nextGame && gamesQuery.isLoading)) {
-    return (
-      <Panel className="p-4">
-        <AsyncState status="loading" label="Loading games" inline />
-      </Panel>
-    );
+    return <AsyncState status="loading" label="Loading games" skeleton={<UpcomingGamesSkeleton />} />;
   }
   if (nextQuery.isError || gamesQuery.isError) {
     return (

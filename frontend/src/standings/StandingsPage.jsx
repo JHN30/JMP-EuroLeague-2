@@ -15,6 +15,7 @@ import { useSeasonFormat } from "../lib/useSeasonFormat";
 import { TabPanel, TabStrip } from "../lib/TabStrip";
 import { resultsByClub } from "./breakdownUtils";
 import StandingsKpiStrip from "./StandingsKpiStrip";
+import StandingsSkeleton, { StandingsBodySkeleton } from "./StandingsSkeleton";
 import StandingsTable from "./StandingsTable";
 import RaceView from "./RaceView";
 import ViewSelect from "../lib/ViewSelect";
@@ -156,7 +157,7 @@ export default function StandingsPage() {
   });
   const netByClub = new Map((netQuery.data?.standings ?? []).map((row) => [row.clubCode, row]));
 
-  if (phasesQuery.isLoading) return <AsyncState status="loading" label="Loading phases" />;
+  if (phasesQuery.isLoading) return <AsyncState status="loading" label="Loading phases" skeleton={<StandingsSkeleton />} />;
   if (phasesQuery.isError) {
     return <AsyncState status="error" message="Could not load phases." onRetry={() => phasesQuery.refetch()} />;
   }
@@ -179,7 +180,7 @@ export default function StandingsPage() {
 
       <TabPanel id="standings-panel" focusKey={`${phaseCode}-${view}`} scroll={false}>
         {standingsQuery.isLoading ? (
-          <AsyncState status="loading" label="Loading standings" />
+          <AsyncState status="loading" label="Loading standings" skeleton={<StandingsBodySkeleton />} />
         ) : standingsQuery.isError ? (
           <AsyncState status="error" message="Could not load standings." onRetry={() => standingsQuery.refetch()} />
         ) : standings.length === 0 ? (

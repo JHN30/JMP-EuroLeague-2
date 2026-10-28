@@ -2,6 +2,7 @@ import { useState } from "react";
 import { motion } from "motion/react";
 import HeaderTip from "../lib/HeaderTip";
 import AsyncState from "../lib/AsyncState";
+import { BreakdownSkeleton } from "./StandingsSkeleton";
 import { formatSignedDecimal } from "../lib/format";
 import { barFill, EASE_OUT, listContainer, listItem } from "../lib/motion";
 import Panel from "../lib/Panel";
@@ -105,7 +106,7 @@ function TimeInFront({ flow }) {
 export default function AheadBehindView({ standings, seasonCode, shortNames, resultsQuery, resultsByClub, gameFlowQuery }) {
   const [view, setView] = useState("quarters");
 
-  if (resultsQuery.isPending) return <AsyncState status="loading" label="Loading the quarter scores" />;
+  if (resultsQuery.isPending) return <AsyncState status="loading" label="Loading the quarter scores" skeleton={<BreakdownSkeleton />} />;
   if (resultsQuery.isError) {
     return <AsyncState status="error" message="Could not load the quarter scores." onRetry={() => resultsQuery.refetch()} />;
   }

@@ -4,6 +4,7 @@ import { useMemo } from "react";
 import { useParams, useSearchParams } from "react-router";
 import { getPlayerSeasonRecords, getSingleGameRecords, getTeamGameRecords, getTeamSeasonRecords } from "../lib/api";
 import AsyncState from "../lib/AsyncState";
+import { RecordDetailSkeleton } from "./RecordsSkeleton";
 import BackLink from "../lib/BackLink";
 import { EASE_OUT } from "../lib/motion";
 import PageHeader from "../lib/PageHeader";
@@ -130,7 +131,7 @@ function RecordsDetail({ seasonCode, params, setParams }) {
         {query.isError ? (
           <AsyncState status="error" message="Could not load archive records." onRetry={() => query.refetch()} />
         ) : !query.data ? (
-          <AsyncState status="loading" label="Loading archive records" />
+          <AsyncState status="loading" label="Loading archive records" skeleton={<RecordDetailSkeleton />} />
         ) : (
           <RecordsContent data={query.data} />
         )}

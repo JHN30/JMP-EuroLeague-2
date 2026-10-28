@@ -4,6 +4,7 @@ import { motion } from "motion/react";
 import { Link, useParams } from "react-router";
 import { getPostseasonSeries, getRounds, getSeasonGames, getSeasonStandings, getSeasonTeams } from "../lib/api";
 import AsyncState from "../lib/AsyncState";
+import PostseasonSkeleton from "./PostseasonSkeleton";
 import EmptyText from "../lib/EmptyText";
 import { formatSeasonLabel, formatShortDate } from "../lib/format";
 import { EASE_OUT } from "../lib/motion";
@@ -184,7 +185,7 @@ export default function PostseasonPage() {
     [enabled, grouped, elimination, standings, remainingQuery.data, tiers],
   );
 
-  if (formatQuery.isLoading) return <AsyncState status="loading" label="Loading the postseason" />;
+  if (formatQuery.isLoading) return <AsyncState status="loading" label="Loading the postseason" skeleton={<PostseasonSkeleton />} />;
   if (formatQuery.isError) return <AsyncState status="error" message="Could not load the postseason." onRetry={() => formatQuery.refetch()} />;
   if (cancelled) {
     return (
@@ -201,7 +202,7 @@ export default function PostseasonPage() {
   if (!format) return <EmptyText>The season format is unavailable, so there is no bracket to show.</EmptyText>;
 
   const queries = [formatQuery, standingsQuery, teamsQuery, seriesQuery, roundsQuery, ...(elimination ? [knockoutGamesQuery] : grouped ? [top16Query, ffGamesQuery] : [remainingQuery])];
-  if (queries.some((query) => query.isLoading)) return <AsyncState status="loading" label="Loading the postseason" />;
+  if (queries.some((query) => query.isLoading)) return <AsyncState status="loading" label="Loading the postseason" skeleton={<PostseasonSkeleton />} />;
   if (queries.some((query) => query.isError)) {
     return <AsyncState status="error" message="Could not load the postseason." onRetry={() => queries.forEach((query) => query.isError && query.refetch())} />;
   }

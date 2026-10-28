@@ -3,6 +3,7 @@ import { useQueries, useQuery } from "@tanstack/react-query";
 import { motion } from "motion/react";
 import { getRounds, getSeasonStandings } from "../lib/api";
 import AsyncState from "../lib/AsyncState";
+import { RaceSkeleton } from "./StandingsSkeleton";
 import EmptyText from "../lib/EmptyText";
 import CompetitionContext from "../lib/CompetitionContext";
 import { sectionContainer, sectionItem } from "../lib/motion";
@@ -98,7 +99,7 @@ export default function RaceView({ seasonCode, phaseCode, latestRound, latestSta
   const sideBySide = useMediaQuery(SIDE_BY_SIDE_QUERY);
   const raceRef = useRef(null);
 
-  if (isLoading) return <AsyncState status="loading" label="Loading standings race" />;
+  if (isLoading) return <AsyncState status="loading" label="Loading standings race" skeleton={<RaceSkeleton />} />;
   if (isError) {
     return (
       <AsyncState

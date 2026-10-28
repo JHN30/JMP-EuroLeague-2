@@ -35,6 +35,31 @@ export function SkeletonTable({ rows = 5, columns = 4, className = "" }) {
   );
 }
 
+// Ranked rows, as the standings tables, leaderboards and record lists draw them: a rank, a crest or photo, the name and
+// `columns` figures, each row `rowClassName` tall (the loaded row's height). Below sm only the first three figures show, as
+// the loaded tables scroll the rest out of view.
+export function SkeletonRankedRows({ rows = 10, columns = 3, className = "", rowClassName = "h-10" }) {
+  return (
+    <div aria-hidden="true" className={`flex flex-col ${className}`}>
+      {Array.from({ length: rows }, (_, row) => (
+        <div key={row} className={`flex items-center gap-2 border-b border-base-300 px-2 last:border-0 sm:gap-3 ${rowClassName}`}>
+          <div className="skeleton size-6 flex-none rounded-full" />
+          <div className="skeleton size-7 flex-none rounded-full" />
+          <div className="skeleton h-4 min-w-0 flex-1" />
+          {Array.from({ length: columns }, (_, column) => (
+            <div key={column} className={`skeleton h-4 w-8 flex-none sm:w-12 ${column >= 3 ? "max-sm:hidden" : ""}`} />
+          ))}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// A row of tabs or a select, as the pages draw their view switches: `className` sets its width.
+export function SkeletonTabs({ className = "w-64" }) {
+  return <div aria-hidden="true" className={`skeleton h-9 max-w-full ${className}`} />;
+}
+
 // A card of a KPI strip or leaders row while it loads: its label (or a bar in its place), bars for the name and the value,
 // and the image box the loaded card has (a round crest, or the person silhouette), so the card keeps its loaded size.
 // Other props (a loading status, say) go on the card.

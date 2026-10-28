@@ -3,6 +3,7 @@ import { motion } from "motion/react";
 import { Link } from "react-router";
 import { getRecordBook } from "../lib/api";
 import AsyncState from "../lib/AsyncState";
+import { RecordBookSkeleton } from "./RecordsSkeleton";
 import { listContainer, listItem } from "../lib/motion";
 import Panel from "../lib/Panel";
 import { Holder } from "./RecordParts";
@@ -48,7 +49,7 @@ function BookCard({ seasonCode, family, card }) {
 export default function RecordBook({ seasonCode }) {
   const query = useQuery({ queryKey: ["records-book", seasonCode], queryFn: () => getRecordBook(seasonCode) });
   if (query.isError) return <AsyncState status="error" message="Could not load the record book." onRetry={() => query.refetch()} />;
-  if (!query.data) return <AsyncState status="loading" label="Loading the record book" />;
+  if (!query.data) return <AsyncState status="loading" label="Loading the record book" skeleton={<RecordBookSkeleton />} />;
   return (
     <div className="flex flex-col gap-8">
       {query.data.sections.map((section) => {

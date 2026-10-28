@@ -4,14 +4,39 @@ import { Link, Navigate, Outlet, useLocation, useParams } from "react-router";
 import { getSeasons } from "../lib/api";
 import { isLegacySeasonCode, seasonSlug } from "../lib/seasonSlug";
 import AsyncState from "../lib/AsyncState";
+import CompareSkeleton from "../comparisons/CompareSkeleton";
 import HomeSkeleton from "../dashboard/HomeSkeleton";
+import GamesSkeleton from "../games/GamesSkeleton";
+import LeadersSkeleton from "../leaders/LeadersSkeleton";
 import { SkeletonPage } from "../lib/Skeleton";
+import PlayersSkeleton from "../players/PlayersSkeleton";
+import PostseasonSkeleton from "../postseason/PostseasonSkeleton";
+import RecordsSkeleton from "../records/RecordsSkeleton";
+import StandingsSkeleton from "../standings/StandingsSkeleton";
+import TeamsSkeleton from "../teams/TeamsSkeleton";
+import OverviewSkeleton from "./OverviewSkeleton";
 
-// The skeleton of the page being opened, while its code loads: a page with a skeleton of its own gets it, every other page the
-// generic one. `/:season` and `/:season/home` are Home.
+// The list pages' own skeletons, by their path under the season. `/:season` is Home too.
+const PAGE_SKELETONS = {
+  "": HomeSkeleton,
+  home: HomeSkeleton,
+  overview: OverviewSkeleton,
+  standings: StandingsSkeleton,
+  games: GamesSkeleton,
+  teams: TeamsSkeleton,
+  players: PlayersSkeleton,
+  leaders: LeadersSkeleton,
+  records: RecordsSkeleton,
+  postseason: PostseasonSkeleton,
+  compare: CompareSkeleton,
+};
+
+// The skeleton of the page being opened, while its code loads: a list page and Compare get their own, every other page (a
+// game, team or player page, Head-to-head) the generic one.
 function pageSkeleton(pathname) {
-  const page = pathname.split("/")[2] ?? "";
-  return page === "" || page === "home" ? <HomeSkeleton /> : <SkeletonPage />;
+  const [, , page = "", detail] = pathname.split("/");
+  const Skeleton = detail ? null : PAGE_SKELETONS[page];
+  return Skeleton ? <Skeleton /> : <SkeletonPage />;
 }
 import { BackTargetContext } from "../lib/backTarget";
 import { isPlainClick, useBackLinkClick } from "../lib/historyTrail";

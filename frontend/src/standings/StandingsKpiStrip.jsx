@@ -72,6 +72,7 @@ export default function StandingsKpiStrip({ seasonCode, phaseCode, round, previo
       {previousRound !== null ? (
         <CompactMetric
           isLoading={previousRoundQuery.isLoading}
+          skeleton
           isError={previousRoundQuery.isError}
           value={biggestRiser ? `▲ ${Math.abs(biggestRiser.delta)}` : "–"}
           label="Biggest riser"
@@ -84,6 +85,7 @@ export default function StandingsKpiStrip({ seasonCode, phaseCode, round, previo
       {previousRound !== null ? (
         <CompactMetric
           isLoading={previousRoundQuery.isLoading}
+          skeleton
           isError={previousRoundQuery.isError}
           value={biggestFaller ? `▼ ${Math.abs(biggestFaller.delta)}` : "–"}
           label="Biggest faller"
@@ -95,6 +97,7 @@ export default function StandingsKpiStrip({ seasonCode, phaseCode, round, previo
       ) : null}
       <CompactMetric
         isLoading={netQuery.isLoading}
+        skeleton
         isError={netQuery.isError}
         value={bestNet ? formatSignedDecimal(bestNet.netRating) : "–"}
         label="Best net rating"

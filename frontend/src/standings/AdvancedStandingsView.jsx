@@ -3,6 +3,7 @@ import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { motion } from "motion/react";
 import { getAdvancedStandings } from "../lib/api";
 import AsyncState from "../lib/AsyncState";
+import { AdvancedStandingsSkeleton } from "./StandingsSkeleton";
 import EmptyText from "../lib/EmptyText";
 import { formatDecimal, formatFractionPercent, formatRound, formatSignedDecimal } from "../lib/format";
 import HeaderTip from "../lib/HeaderTip";
@@ -261,7 +262,7 @@ export default function AdvancedStandingsView({ seasonCode, shortNames }) {
     placeholderData: keepPreviousData,
   });
 
-  if (query.isLoading) return <AsyncState status="loading" label="Loading advanced standings" />;
+  if (query.isLoading) return <AsyncState status="loading" label="Loading advanced standings" skeleton={<AdvancedStandingsSkeleton />} />;
   if (query.isError) {
     return <AsyncState status="error" message="Could not load advanced standings." onRetry={() => query.refetch()} />;
   }

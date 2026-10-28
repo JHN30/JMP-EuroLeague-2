@@ -4,6 +4,7 @@ import { motion } from "motion/react";
 import { Link } from "react-router";
 import { getLeaderForm, getLeaderStats, getSeasonGames } from "../lib/api";
 import AsyncState from "../lib/AsyncState";
+import { BoardSkeleton, FormSkeleton } from "./LeadersSkeleton";
 import EmptyText from "../lib/EmptyText";
 import FilterDisclosure from "../games/FilterDisclosure";
 import { formatSignedDecimal } from "../lib/format";
@@ -107,7 +108,7 @@ function FormSection({ seasonCode, phaseCode, openMetric }) {
   const climbers = moved.filter((entry) => entry.change > 0).sort((a, b) => b.change - a.change).slice(0, 3);
   const fallers = moved.filter((entry) => entry.change < 0).sort((a, b) => a.change - b.change).slice(0, 3);
 
-  if (formQuery.isLoading) return <AsyncState status="loading" label="Loading player form" />;
+  if (formQuery.isLoading) return <AsyncState status="loading" label="Loading player form" skeleton={<FormSkeleton />} />;
   if (formQuery.isError) return <AsyncState status="error" message="Could not load player form." onRetry={() => formQuery.refetch()} />;
   if (full.length === 0) {
     return <EmptyText>Player form appears once players have five games in this phase.</EmptyText>;
@@ -350,7 +351,7 @@ function PlayersBoard({ seasonCode, phaseCode, stage, metric, params, setParams 
       {stat.volume ? <p className="muted text-sm">Ranked among players with {stat.volume.label}.</p> : null}
 
       {boardQuery.isLoading ? (
-        <AsyncState status="loading" label="Loading the player leaderboard" />
+        <AsyncState status="loading" label="Loading the player leaderboard" skeleton={<BoardSkeleton />} />
       ) : boardQuery.isError ? (
         <AsyncState status="error" message="Could not load the player leaderboard." onRetry={() => boardQuery.refetch()} />
       ) : shown.length === 0 ? (

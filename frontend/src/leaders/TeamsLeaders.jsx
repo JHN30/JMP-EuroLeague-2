@@ -1,5 +1,6 @@
 import { motion } from "motion/react";
 import AsyncState from "../lib/AsyncState";
+import { BoardSkeleton } from "./LeadersSkeleton";
 import EmptyText from "../lib/EmptyText";
 import FilterDisclosure from "../games/FilterDisclosure";
 import LabelledSelect from "../lib/LabelledSelect";
@@ -104,7 +105,7 @@ function TeamsBoard({ seasonCode, phaseCode, stage, metric, source, params, setP
         </FilterDisclosure>
       </div>
       {source.isLoading ? (
-        <AsyncState status="loading" label="Loading the team leaderboard" />
+        <AsyncState status="loading" label="Loading the team leaderboard" skeleton={<BoardSkeleton />} />
       ) : source.isError ? (
         <AsyncState status="error" message="Could not load the team leaderboard." onRetry={source.refetch} />
       ) : shown.length === 0 ? (

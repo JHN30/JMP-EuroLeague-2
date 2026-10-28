@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { motion } from "motion/react";
 import { getAdvancedLeaders } from "../lib/api";
 import AsyncState from "../lib/AsyncState";
+import { BoardSkeleton, LandingSkeleton } from "./LeadersSkeleton";
 import EmptyText from "../lib/EmptyText";
 import FilterDisclosure from "../games/FilterDisclosure";
 import LabelledSelect from "../lib/LabelledSelect";
@@ -141,7 +142,7 @@ function AdvancedBoard({ seasonCode, scope, stage, metric, params, setParams }) 
       </div>
 
       {pageQuery.isLoading ? (
-        <AsyncState status="loading" label="Loading the advanced leaderboard" />
+        <AsyncState status="loading" label="Loading the advanced leaderboard" skeleton={<BoardSkeleton />} />
       ) : pageQuery.isError ? (
         <AsyncState status="error" message="Could not load the advanced leaderboard." onRetry={() => pageQuery.refetch()} />
       ) : entries.length === 0 ? (
@@ -211,7 +212,7 @@ export default function AdvancedLeaders({ seasonCode, params, setParams }) {
     set({ metric: key, offset: undefined });
   };
 
-  if (scopesQuery.isLoading) return <AsyncState status="loading" label="Loading advanced leaders" />;
+  if (scopesQuery.isLoading) return <AsyncState status="loading" label="Loading advanced leaders" skeleton={<LandingSkeleton />} />;
   if (scopesQuery.isError) return <AsyncState status="error" message="Could not load advanced leaders." onRetry={() => scopesQuery.refetch()} />;
   if (!scope) return <EmptyText>Advanced statistics are not available for this season yet.</EmptyText>;
 

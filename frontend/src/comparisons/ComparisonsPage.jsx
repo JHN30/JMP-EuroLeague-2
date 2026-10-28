@@ -16,6 +16,7 @@ import { TabPanel, TabStrip } from "../lib/TabStrip";
 import BackLink from "../lib/BackLink";
 import { PLAYER_STAT_TIPS } from "./statTips";
 import CompareFixtures, { ComparisonContext } from "./CompareFixtures";
+import CompareSkeleton from "./CompareSkeleton";
 import PickerPanel, { PickerImage, PickerOption } from "./PickerPanel";
 import PlayerPairHeader from "./PlayerPairHeader";
 import TeamPairHeader from "./TeamPairHeader";
@@ -736,7 +737,7 @@ export default function ComparisonsPage() {
     queryFn: () => getSeasonTeams(seasonCode),
   });
 
-  if (phasesQuery.isLoading || teamsQuery.isLoading) return <AsyncState status="loading" label="Loading phases" />;
+  if (phasesQuery.isLoading || teamsQuery.isLoading) return <AsyncState status="loading" label="Loading phases" skeleton={<CompareSkeleton />} />;
   if (phasesQuery.isError) {
     return <AsyncState status="error" message="Could not load phases." onRetry={() => phasesQuery.refetch()} />;
   }

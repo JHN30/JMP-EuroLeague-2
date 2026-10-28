@@ -3,6 +3,7 @@ import { motion } from "motion/react";
 import { Link, useParams } from "react-router";
 import { getSeasonTeams } from "../lib/api";
 import AsyncState from "../lib/AsyncState";
+import { TeamListSkeleton } from "./TeamsSkeleton";
 import EmptyText from "../lib/EmptyText";
 import { cardHover, listContainer, listItem } from "../lib/motion";
 import RevealImage from "../lib/RevealImage";
@@ -29,7 +30,7 @@ export default function TeamsPage() {
       <PageHeader kicker="CLUBS" title="Teams" />
 
       {teamsQuery.isLoading ? (
-        <AsyncState status="loading" label="Loading teams" />
+        <AsyncState status="loading" label="Loading teams" skeleton={<TeamListSkeleton />} />
       ) : teamsQuery.isError ? (
         <AsyncState status="error" message="Could not load teams." onRetry={() => teamsQuery.refetch()} />
       ) : teams.length === 0 ? (

@@ -1,4 +1,5 @@
 import AsyncState from "../lib/AsyncState";
+import { BreakdownSkeleton } from "./StandingsSkeleton";
 import { formatDecimal, formatSignedDecimal } from "../lib/format";
 import Panel from "../lib/Panel";
 import PanelHeader from "../lib/PanelHeader";
@@ -49,7 +50,7 @@ function ExpectedWins({ wins, expected, low, high, clubName }) {
 }
 
 export default function MarginsView({ standings, seasonCode, shortNames, resultsQuery, resultsByClub, netByClub }) {
-  if (resultsQuery.isPending) return <AsyncState status="loading" label="Loading margins" />;
+  if (resultsQuery.isPending) return <AsyncState status="loading" label="Loading margins" skeleton={<BreakdownSkeleton />} />;
   if (resultsQuery.isError) {
     return <AsyncState status="error" message="Could not load the margins." onRetry={() => resultsQuery.refetch()} />;
   }

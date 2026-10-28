@@ -5,6 +5,8 @@ import { motion } from "motion/react";
 import { Link, useParams } from "react-router";
 import { getLeaderStats, getLeagueTeamStats, getPhases, getPostseasonSeries, getSeasonGames, getSeasonStandings } from "../lib/api";
 import AsyncState from "../lib/AsyncState";
+import { SkeletonChip } from "../lib/Skeleton";
+import OverviewSkeleton, { SummarySkeleton } from "./OverviewSkeleton";
 import { cardHover, listContainer, listItem, sectionContainer, sectionItem } from "../lib/motion";
 import { withoutComma } from "../lib/playerName";
 import Panel from "../lib/Panel";
@@ -545,6 +547,9 @@ function LeaderCard({ seasonCode, category, phaseCode }) {
   const leader = query.data?.players[0] ?? null;
   const status = query.isLoading ? "loading" : query.isError ? "error" : !leader ? "empty" : "ready";
 
+  if (status === "loading") {
+    return <SkeletonChip label={category.label} image="person" role="status" aria-label={`Loading ${category.label}`} aria-busy="true" />;
+  }
   if (status !== "ready") {
     return (
       <div className="kpi-chip">
@@ -840,7 +845,7 @@ export default function SeasonOverviewPage() {
   const champion = format?.status === "completed" ? (elimination ? eliminationChampion : findChampion(finalFourGamesQuery.data?.games ?? [])) : null;
   const roadSteps = championRoadSteps(champion, knockoutPhases, knockoutPhaseGamesQueries, format);
 
-  if (phasesQuery.isLoading) return <AsyncState status="loading" label="Loading phases" fullScreen />;
+  if (phasesQuery.isLoading) return <AsyncState status="loading" label="Loading phases" skeleton={<OverviewSkeleton />} />;
   if (phasesQuery.isError) {
     return (
       <AsyncState status="error" fullScreen message="Could not load this season." onRetry={() => phasesQuery.refetch()} />
@@ -880,7 +885,7 @@ export default function SeasonOverviewPage() {
       </motion.div>
 
       {summaryLoading ? (
-        <AsyncState status="loading" label="Loading season summary" />
+        <AsyncState status="loading" label="Loading season summary" skeleton={<SummarySkeleton />} />
       ) : summaryError ? (
         <AsyncState status="error" message="Could not load this season's summary." onRetry={retrySummary} />
       ) : (

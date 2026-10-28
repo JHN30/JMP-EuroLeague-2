@@ -4,6 +4,7 @@ import { motion } from "motion/react";
 import { useParams, useSearchParams } from "react-router";
 import { getPhases, getRounds, getSeasonGames, getSeasonStandings } from "../lib/api";
 import AsyncState from "../lib/AsyncState";
+import GamesSkeleton, { FixturesSkeleton } from "./GamesSkeleton";
 import EmptyText from "../lib/EmptyText";
 import CompetitionContext from "../lib/CompetitionContext";
 import LabelledSelect from "../lib/LabelledSelect";
@@ -150,7 +151,7 @@ export default function FixturesPage() {
     });
   }
 
-  if (phasesQuery.isLoading) return <AsyncState status="loading" label="Loading phases" />;
+  if (phasesQuery.isLoading) return <AsyncState status="loading" label="Loading phases" skeleton={<GamesSkeleton />} />;
   if (phasesQuery.isError) {
     return <AsyncState status="error" message="Could not load phases." onRetry={() => phasesQuery.refetch()} />;
   }
@@ -242,7 +243,7 @@ export default function FixturesPage() {
 
       <TabPanel id="fixtures-panel" focusKey={`${phaseCode}-${stageMode ? selectedStage : selectedRound}`} scroll={false}>
         {isResolvingRound || (!stageMode && gamesQuery.isLoading) ? (
-          <AsyncState status="loading" label="Loading games" />
+          <AsyncState status="loading" label="Loading games" skeleton={<FixturesSkeleton />} />
         ) : (stageMode ? stageGamesQuery.isError : roundsQuery.isError || gamesQuery.isError) ? (
           <AsyncState
             status="error"

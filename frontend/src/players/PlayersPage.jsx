@@ -5,6 +5,7 @@ import { Link, useParams } from "react-router";
 import { getSeasonPlayers } from "../lib/api";
 import { useDebouncedValue } from "../lib/useDebouncedValue";
 import AsyncState from "../lib/AsyncState";
+import { PlayerListSkeleton } from "./PlayersSkeleton";
 import EmptyText from "../lib/EmptyText";
 import { cardHover, denseListContainer, listItem } from "../lib/motion";
 import PageHeader from "../lib/PageHeader";
@@ -111,7 +112,7 @@ export default function PlayersPage() {
       </div>
 
       {playersQuery.isLoading ? (
-        <AsyncState status="loading" label="Loading players" />
+        <AsyncState status="loading" label="Loading players" skeleton={<PlayerListSkeleton />} />
       ) : playersQuery.isError ? (
         <AsyncState status="error" message="Could not load players." onRetry={() => playersQuery.refetch()} />
       ) : players.length === 0 ? (

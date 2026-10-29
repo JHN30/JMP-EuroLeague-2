@@ -303,7 +303,8 @@ function PlayersBoard({ seasonCode, phaseCode, stage, metric, params, setParams 
     });
   }
   const setMode = (key) => update({ mode: key === "perGame" ? undefined : key, offset: undefined });
-  const chooseStat = (key) => update({ metric: key, direction: undefined, offset: undefined, mode: stat.kind === "games" ? mode : params.get("mode") });
+  // Leaving a games count writes the mode it showed; otherwise the live address keeps its own mode.
+  const chooseStat = (key) => update({ metric: key, direction: undefined, offset: undefined, ...(stat.kind === "games" ? { mode } : {}) });
   const activeFilters = [minGames > 0, team, position, search].filter(Boolean).length;
   // The page buttons are under the list, so a new page brings the top of the list back into view.
   const listRef = useRef(null);

@@ -86,6 +86,27 @@ test("the player board sorts the shared league list as the API sorts each statis
   expect(await boardKeys()).toEqual(keys(threes));
 });
 
+test("on a slow CPU, two choices made back to back both stay in the address", async ({ page }) => {
+  // 4x slower, about a mid-range phone: React re-renders well after the address changes, which is when a choice used to undo the one before.
+  // The slowed page needs more than the usual time to load its board.
+  test.slow();
+  const cdp = await page.context().newCDPSession(page);
+  await cdp.send("Emulation.setCPUThrottlingRate", { rate: 4 });
+  await page.goto("/2025/leaders");
+  await expect(page.getByRole("heading", { name: "Points", exact: true })).toBeVisible({ timeout: 60_000 });
+
+  await page.getByRole("group", { name: "Player statistics mode" }).getByRole("button", { name: "Totals" }).click();
+  await page.getByLabel("Stage", { exact: true }).selectOption({ label: "Playoffs" });
+  await expect(page).toHaveURL(/[?&]phase=PO/);
+  await expect(page).toHaveURL(/[?&]mode=accumulated/);
+
+  await page.getByRole("button", { name: "See the full leaderboard" }).first().click();
+  await page.getByLabel("Statistic", { exact: true }).selectOption("assists");
+  await expect(page).toHaveURL(/[?&]metric=assists/);
+  await expect(page).toHaveURL(/[?&]phase=PO/);
+  await expect(page).toHaveURL(/[?&]mode=accumulated/);
+});
+
 test("the cards ask the feed's CDN for small WebP photos and crests, loaded near the screen", async ({ page }) => {
   // Every CDN request is recorded and answered with a local picture, so the test needs no network.
   const requested = [];
@@ -100,8 +121,8 @@ test("the cards ask the feed's CDN for small WebP photos and crests, loaded near
   await expect(photos.first()).toBeVisible();
   await expect(photos.first()).toHaveAttribute("loading", "lazy");
   await expect(page.locator("main img[src*='width=128&format=webp']").first()).toBeVisible();
-  // No picture is asked for at its full size.
-  expect(requested.length).toBeGreaterThan(0);
+  // No picture is asked for at its full size. Polled, since lazy pictures are requested a moment after they are laid out.
+  await expect.poll(() => requested.length).toBeGreaterThan(0);
   expect(requested.filter((url) => !url.includes("format=webp"))).toEqual([]);
 });
 

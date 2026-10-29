@@ -29,7 +29,10 @@ const BOARD_PARAMS = SCOPE_PARAMS.filter((name) => name !== "ascope" && name !==
 export default function LeadersPage() {
   useDocumentTitle("Leaders");
   const { seasonCode } = useParams();
-  const [params, setParams] = useSearchParams();
+  const [params, setRouterParams] = useSearchParams();
+  // React Router hands an updater the address of the last render, so a choice made before the page re-renders (quick clicks on a slow
+  // phone) would undo the one before it. Every change here, and in the three views, starts from the live address instead.
+  const setParams = (update, options) => setRouterParams(() => update(new URLSearchParams(window.location.search)), options);
   const scope = SCOPES.some((entry) => entry.key === params.get("scope")) ? params.get("scope") : "players";
 
   const phasesQuery = useQuery({ queryKey: ["phases", seasonCode], queryFn: () => getPhases(seasonCode) });

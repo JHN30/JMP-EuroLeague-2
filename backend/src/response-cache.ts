@@ -1,10 +1,16 @@
 import type { NextFunction, Request, Response } from "express";
+import { ENV } from "./config/env";
 import { SUPPORTED_SEASONS } from "./db/season-catalog";
 
 // The data only changes when the pipeline publishes, so repeated reads within this window skip Neon,
 // whose free plan meters every byte sent back.
 const TTL_MS = 10 * 60 * 1000;
 const MAX_ENTRIES = 1000;
+
+// In production a reload or a new tab within 5 minutes (the frontend's staleTime) reuses the browser's copy. `private` keeps
+// shared caches such as Cloudflare out, so a publish is never held back by a copy the app cannot clear. Development sends
+// nothing, so a change of database or data shows at once.
+const BROWSER_CACHE = ENV.NODE_ENV === "production" ? "private, max-age=300" : null;
 
 const entries = new Map<string, { body: string; expiresAt: number }>();
 
@@ -38,6 +44,7 @@ export function responseCache(req: Request, res: Response, next: NextFunction) {
   const hit = entries.get(key);
   if (hit && hit.expiresAt > Date.now()) {
     res.setHeader("X-Cache", "HIT");
+    if (BROWSER_CACHE) res.setHeader("Cache-Control", BROWSER_CACHE);
     res.type("json").send(hit.body);
     return;
   }
@@ -49,6 +56,7 @@ export function responseCache(req: Request, res: Response, next: NextFunction) {
     if (res.statusCode !== 200) return json(data);
     const body = JSON.stringify(data);
     remember(key, body);
+    if (BROWSER_CACHE) res.setHeader("Cache-Control", BROWSER_CACHE);
     return res.type("json").send(body);
   };
   next();

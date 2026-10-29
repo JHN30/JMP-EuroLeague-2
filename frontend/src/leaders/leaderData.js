@@ -7,21 +7,6 @@ export function statNumber(raw) {
 }
 
 const PAGE_LIMIT = 100;
-const MAX_PAGES = 5;
-
-// Every player's line for one season, phase and mode, sorted by one stat on the server (so ties and order are the
-// database's), read page by page. Filters and search are applied on the page, so the rank a row shows is its true rank.
-export async function fetchFullPlayerBoard(seasonCode, phaseCode, mode, sort, order) {
-  const players = [];
-  let offset = 0;
-  for (let page = 0; page < MAX_PAGES; page += 1) {
-    const data = await getLeaderStats(seasonCode, { phase: phaseCode, mode, sort, order, limit: PAGE_LIMIT, offset });
-    players.push(...data.players);
-    if (!data.pagination.hasMore) break;
-    offset += PAGE_LIMIT;
-  }
-  return players;
-}
 
 // Every qualified player's line for one season, phase and mode, in the API's order (its tie-break when it sorts), so the landing
 // ranks all its cards from one pool: the first page says how many there are, and the rest are read together.

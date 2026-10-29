@@ -16,8 +16,9 @@ import { nameParts, titleCase } from "../lib/playerName";
 import SearchField from "../lib/SearchField";
 import { TabStrip } from "../lib/TabStrip";
 import { Avatar, BoardHeader, BoardRow, BoardTopLine, CardGrid, CategoryCard, LeadersToolbar, ModeToggle, RankBadge, StatSelect, TeamTag } from "./LeaderParts";
-import { barShare, fetchFullPlayerBoard, fetchQualifiedPool, formatPlayerValue, hasVolume, playerValue, rankRows, statNumber } from "./leaderData";
+import { barShare, fetchQualifiedPool, formatPlayerValue, hasVolume, playerValue, rankRows, statNumber } from "./leaderData";
 import { FORM_STATS, PLAYER_CARDS, PLAYER_FAMILIES, PLAYER_STATS, PLAYER_TOTAL_CARDS } from "./leaderDefs";
+import { fetchLeagueLeaderboard, leaderboardQueryKey } from "../players/leagueLeaderboard";
 
 const PAGE_SIZE = 25;
 const FORM_GAMES = 5;
@@ -239,11 +240,21 @@ function PlayersBoard({ seasonCode, phaseCode, stage, metric, params, setParams 
   const search = params.get("search") ?? "";
   const offset = Number(params.get("offset")) || 0;
 
+  // The season's whole list, shared with the player pages, sorted here by the stat: a stable sort keeps equal values in the
+  // list's order, which is the API's tie-break, so a change of stat or direction needs no request.
   const boardQuery = useQuery({
-    queryKey: ["leaders-board", seasonCode, phaseCode, mode, stat.key, direction],
-    queryFn: () => fetchFullPlayerBoard(seasonCode, phaseCode, mode, stat.key, direction),
+    queryKey: leaderboardQueryKey(seasonCode, phaseCode, mode),
+    queryFn: () => fetchLeagueLeaderboard(seasonCode, phaseCode, mode),
     enabled: Boolean(phaseCode),
   });
+  const sorted = useMemo(() => {
+    const value = (player) => playerValue(player, stat);
+    return [...(boardQuery.data ?? [])].sort((a, b) => {
+      const [x, y] = [value(a), value(b)];
+      if (x === null || y === null) return x === null ? (y === null ? 0 : 1) : -1;
+      return direction === "asc" ? x - y : y - x;
+    });
+  }, [boardQuery.data, stat, direction]);
   // Rank movement is the per-game board's, and only for the six stats the form endpoint covers.
   const formStat = FORM_STATS.find((entry) => entry.field === stat.key);
   const formQuery = useQuery({
@@ -256,7 +267,7 @@ function PlayersBoard({ seasonCode, phaseCode, stage, metric, params, setParams 
     return new Map((formQuery.data?.players ?? []).map((player) => [player.personKey, player.rank[formStat.key]]));
   }, [formQuery.data, formStat, mode]);
 
-  const all = boardQuery.data ?? [];
+  const all = sorted;
   const phaseMinGames = all[0]?.minGames ?? null;
   // The ranked pool: qualified players (or at least N games) with enough volume for the stat. Team, position and search only
   // narrow what is shown, so a row keeps its true rank.

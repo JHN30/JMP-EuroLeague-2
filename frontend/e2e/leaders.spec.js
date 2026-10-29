@@ -27,7 +27,8 @@ test("the player cards rank one shared pool, in the order the API ranks each sta
     const hrefs = await card.locator("ol > li a").evaluateAll((links) => links.map((link) => link.getAttribute("href")));
     return hrefs.map((href) => href.split("/").at(-1));
   };
-  const expectSame = async (title, players) => expect(await cardKeys(title)).toEqual(players.map((player) => player.personKey));
+  // Polled, since a card's rows can still be animating in under a busy test run.
+  const expectSame = async (title, players) => expect.poll(() => cardKeys(title)).toEqual(players.map((player) => player.personKey));
 
   for (const [title, sort] of [["Points", "pointsScored"], ["Assists", "assists"], ["Turnovers", "turnovers"]]) {
     await expectSame(title, await topOf(sort, "desc", 5));
@@ -37,6 +38,52 @@ test("the player cards rank one shared pool, in the order the API ranks each sta
     (player) => player.traditional.threePointersPercentage !== null && Number(player.traditional.threePointersAttempted) >= 1,
   );
   await expectSame("3-point %", threes.slice(0, 5));
+});
+
+test("the player board sorts the shared league list as the API sorts each statistic, and a new statistic needs no request", async ({ page, request }) => {
+  const calls = [];
+  page.on("request", (req) => {
+    if (req.url().includes("/season-stats")) calls.push(req.url());
+  });
+  const boardKeys = async () => {
+    const hrefs = await page.locator("main ol a[href*='/players/']").evaluateAll((links) => links.map((link) => link.getAttribute("href")));
+    return hrefs.map((href) => href.split("/").at(-1));
+  };
+  const open = async (query) => {
+    await page.goto(`/2025/leaders?${query}`);
+    await expect(page.getByText(/Showing 1-25 of \d+ players/)).toBeVisible({ timeout: 30_000 });
+  };
+
+  await open("metric=pointsScored");
+  // The API the page called, asked directly for each statistic's own order.
+  const list = new URL(calls[0]);
+  const api = `${list.origin}${list.pathname}`;
+  const phase = list.searchParams.get("phase");
+  const sortedBy = async (sort, order, limit) => {
+    const response = await request.get(api, { params: { phase, mode: "perGame", sort, order, limit, qualified: "true" } });
+    return (await response.json()).players;
+  };
+  const keys = (players) => players.slice(0, 25).map((player) => player.personKey);
+
+  expect(await boardKeys()).toEqual(keys(await sortedBy("pointsScored", "desc", 25)));
+
+  // Changing the statistic re-sorts the same list: no request, and the API's order.
+  const before = calls.length;
+  await page.getByLabel("Statistic", { exact: true }).selectOption("assists");
+  await expect(page).toHaveURL(/metric=assists/);
+  await expect.poll(boardKeys).toEqual(keys(await sortedBy("assists", "desc", 25)));
+  expect(calls.length).toBe(before);
+
+  // The fewest turnovers first, where equal values are many: the ties keep the API's order.
+  await open("metric=turnovers&direction=asc");
+  expect(await boardKeys()).toEqual(keys(await sortedBy("turnovers", "asc", 25)));
+
+  // 3-point %: among players with 1+ three-point attempt a game.
+  await open("metric=threePointersPercentage");
+  const threes = (await sortedBy("threePointersPercentage", "desc", 100)).filter(
+    (player) => player.traditional.threePointersPercentage !== null && Number(player.traditional.threePointersAttempted) >= 1,
+  );
+  expect(await boardKeys()).toEqual(keys(threes));
 });
 
 test("the cards ask the feed's CDN for small WebP photos and crests, loaded near the screen", async ({ page }) => {

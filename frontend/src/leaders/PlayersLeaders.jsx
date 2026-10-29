@@ -2,7 +2,7 @@ import { useMemo, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { motion } from "motion/react";
 import { Link } from "react-router";
-import { getLeaderForm, getLeaderStats, getSeasonGames } from "../lib/api";
+import { getLeaderForm, getSeasonGames } from "../lib/api";
 import AsyncState from "../lib/AsyncState";
 import { BoardSkeleton, FormSkeleton } from "./LeadersSkeleton";
 import EmptyText from "../lib/EmptyText";
@@ -16,12 +16,11 @@ import { nameParts, titleCase } from "../lib/playerName";
 import SearchField from "../lib/SearchField";
 import { TabStrip } from "../lib/TabStrip";
 import { Avatar, BoardHeader, BoardRow, BoardTopLine, CardGrid, CategoryCard, LeadersToolbar, ModeToggle, RankBadge, StatSelect, TeamTag } from "./LeaderParts";
-import { barShare, fetchFullPlayerBoard, formatPlayerValue, hasVolume, playerValue, rankRows, statNumber } from "./leaderData";
+import { barShare, fetchFullPlayerBoard, fetchQualifiedPool, formatPlayerValue, hasVolume, playerValue, rankRows, statNumber } from "./leaderData";
 import { FORM_STATS, PLAYER_CARDS, PLAYER_FAMILIES, PLAYER_STATS, PLAYER_TOTAL_CARDS } from "./leaderDefs";
 
 const PAGE_SIZE = 25;
 const FORM_GAMES = 5;
-const CARD_POOL = 60;
 
 const statByKey = (key) => PLAYER_STATS.find((stat) => stat.key === key);
 // Minutes a game: the per-game table has them, the totals table has the season's minutes to divide by games.
@@ -39,23 +38,18 @@ const teamOf = (player) => ({ code: player.clubCode, name: player.clubName, tvCo
 
 // ---- Landing: a card per category, then who is hot and who has moved ----
 
-function PlayerCard({ stat, seasonCode, phaseCode, mode, onOpen }) {
+// `query` is the landing's one pool of qualified players. The card keeps those with a value and the stat's volume, and sorts them
+// the way the API would (a stable sort, so equal values keep the pool's order, the API's tie-break).
+function PlayerCard({ stat, seasonCode, mode, query, onOpen }) {
   const lowerFirst = stat.lowerIsBetter && !stat.showMost;
-  const query = useQuery({
-    queryKey: ["leaders-card", seasonCode, phaseCode, stat.key, mode],
-    queryFn: () =>
-      getLeaderStats(seasonCode, {
-        phase: phaseCode,
-        mode,
-        sort: stat.key,
-        order: lowerFirst ? "asc" : "desc",
-        // A stat that needs volume is read from a longer list, since the first few may not qualify.
-        limit: stat.volume ? CARD_POOL : 5,
-        qualified: true,
-      }),
-    enabled: Boolean(phaseCode),
-  });
-  const players = (query.data?.players ?? []).filter((player) => playerValue(player, stat) !== null && hasVolume(player, stat, mode)).slice(0, 5);
+  const players = useMemo(
+    () =>
+      (query.data ?? [])
+        .filter((player) => playerValue(player, stat) !== null && hasVolume(player, stat, mode))
+        .sort((a, b) => (lowerFirst ? playerValue(a, stat) - playerValue(b, stat) : playerValue(b, stat) - playerValue(a, stat)))
+        .slice(0, 5),
+    [query.data, stat, mode, lowerFirst],
+  );
   const ranked = rankRows(players, (player) => playerValue(player, stat));
   const best = ranked[0]?.value ?? null;
   const worst = ranked.length ? ranked[ranked.length - 1].value : 0;
@@ -194,6 +188,11 @@ function FormSection({ seasonCode, phaseCode, openMetric }) {
 
 function PlayersLanding({ seasonCode, phaseCode, stage, params, setParams, openMetric }) {
   const mode = params.get("mode") === "accumulated" ? "accumulated" : "perGame";
+  const poolQuery = useQuery({
+    queryKey: ["leaders-card-pool", seasonCode, phaseCode, mode],
+    queryFn: () => fetchQualifiedPool(seasonCode, phaseCode, mode),
+    enabled: Boolean(phaseCode),
+  });
   const setMode = (key) =>
     setParams((current) => {
       const next = new URLSearchParams(current);
@@ -215,7 +214,7 @@ function PlayersLanding({ seasonCode, phaseCode, stage, params, setParams, openM
             <PanelHeader title={family} />
             <CardGrid>
               {keys.map((key) => (
-                <PlayerCard key={key} stat={statByKey(key)} seasonCode={seasonCode} phaseCode={phaseCode} mode={mode} onOpen={() => openMetric(key, statByKey(key).showMost ? "desc" : undefined)} />
+                <PlayerCard key={key} stat={statByKey(key)} seasonCode={seasonCode} mode={mode} query={poolQuery} onOpen={() => openMetric(key, statByKey(key).showMost ? "desc" : undefined)} />
               ))}
             </CardGrid>
           </section>

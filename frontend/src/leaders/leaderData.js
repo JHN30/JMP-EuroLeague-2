@@ -23,6 +23,17 @@ export async function fetchFullPlayerBoard(seasonCode, phaseCode, mode, sort, or
   return players;
 }
 
+// Every qualified player's line for one season, phase and mode, in the API's order (its tie-break when it sorts), so the landing
+// ranks all its cards from one pool: the first page says how many there are, and the rest are read together.
+export async function fetchQualifiedPool(seasonCode, phaseCode, mode) {
+  const page = (offset) => getLeaderStats(seasonCode, { phase: phaseCode, mode, qualified: true, limit: PAGE_LIMIT, offset });
+  const first = await page(0);
+  const offsets = [];
+  for (let offset = PAGE_LIMIT; offset < first.pagination.total; offset += PAGE_LIMIT) offsets.push(offset);
+  const rest = await Promise.all(offsets.map(page));
+  return [first, ...rest].flatMap((data) => data.players);
+}
+
 // Competition ranking (1, 2, 2, 4): equal values share a rank.
 export function rankRows(rows, valueOf) {
   let lastValue;

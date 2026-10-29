@@ -62,8 +62,8 @@ export const PLAYER_STATS = [
 ];
 
 // The landing's cards, listed in the order they appear. The landing groups them under their stat's family, so each family's run
-// reads as one story: attempts, makes, then the percentage for each kind of shot. A card with a `volume` stat is read from a
-// longer list and filtered before its top 5.
+// reads as one story: attempts, makes, then the percentage for each kind of shot. Every card ranks the same pool of qualified
+// players, and a card with a `volume` stat drops those without it before its top 5.
 // `showMost`: a card (and the board it opens) lists who has the most of a lower-is-better count, since the fewest is just the
 // players who barely played.
 export const PLAYER_CARDS = [

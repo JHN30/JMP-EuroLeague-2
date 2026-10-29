@@ -1,6 +1,44 @@
 import { fileURLToPath } from "node:url";
 import { test, expect } from "@playwright/test";
 
+test("the player cards rank one shared pool, in the order the API ranks each statistic", async ({ page, request }) => {
+  const pages = [];
+  page.on("request", (req) => {
+    if (req.url().includes("/season-stats")) pages.push(req.url());
+  });
+  await page.goto("/2025/leaders");
+  await expect(page.getByRole("heading", { name: "Points", exact: true })).toBeVisible({ timeout: 30_000 });
+  await expect(page.locator("main ol").first().locator("li")).toHaveCount(5);
+  // One pool for every card: a few pages of the qualified players, not a request per card.
+  expect(pages.length).toBeGreaterThan(0);
+  expect(pages.length).toBeLessThanOrEqual(3);
+
+  // The API the page called, asked directly for each statistic's own ranking.
+  const pool = new URL(pages[0]);
+  const api = `${pool.origin}${pool.pathname}`;
+  const phase = pool.searchParams.get("phase");
+  const topOf = async (sort, order, limit) => {
+    const response = await request.get(api, { params: { phase, mode: "perGame", sort, order, limit, qualified: "true" } });
+    return (await response.json()).players;
+  };
+  // The players a card links to, in its order.
+  const cardKeys = async (title) => {
+    const card = page.getByRole("heading", { name: title, exact: true }).locator("xpath=ancestor::*[.//ol][1]");
+    const hrefs = await card.locator("ol > li a").evaluateAll((links) => links.map((link) => link.getAttribute("href")));
+    return hrefs.map((href) => href.split("/").at(-1));
+  };
+  const expectSame = async (title, players) => expect(await cardKeys(title)).toEqual(players.map((player) => player.personKey));
+
+  for (const [title, sort] of [["Points", "pointsScored"], ["Assists", "assists"], ["Turnovers", "turnovers"]]) {
+    await expectSame(title, await topOf(sort, "desc", 5));
+  }
+  // 3-point %: the API's 60 best, then 1+ three-point attempt a game, as the cards read it before.
+  const threes = (await topOf("threePointersPercentage", "desc", 60)).filter(
+    (player) => player.traditional.threePointersPercentage !== null && Number(player.traditional.threePointersAttempted) >= 1,
+  );
+  await expectSame("3-point %", threes.slice(0, 5));
+});
+
 test("the cards ask the feed's CDN for small WebP photos and crests, loaded near the screen", async ({ page }) => {
   // Every CDN request is recorded and answered with a local picture, so the test needs no network.
   const requested = [];

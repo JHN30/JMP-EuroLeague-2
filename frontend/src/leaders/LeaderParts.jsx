@@ -4,6 +4,7 @@ import { Link } from "react-router";
 import AsyncState from "../lib/AsyncState";
 import { CategoryRowsSkeleton } from "./LeadersSkeleton";
 import EmptyText from "../lib/EmptyText";
+import { CREST_WIDTH, PORTRAIT_WIDTH, sizedImageUrl } from "../lib/imageSize";
 import { EASE_OUT, listContainer, listItem } from "../lib/motion";
 import Panel from "../lib/Panel";
 import { Silhouette } from "../lib/PlayerPortrait";
@@ -16,23 +17,27 @@ import ViewSelect from "../lib/ViewSelect";
 
 // A player's face (the feed's portraits are full length, so the photo is zoomed onto the head) or a club's crest.
 // A player without a photo, or whose photo does not load, shows the silhouette instead; never both.
-export function Avatar({ imageUrl, crest = false, size = "h-8 w-8 sm:h-10 sm:w-10" }) {
+// `optimize` asks the CDN for a small copy and loads it only near the screen (Records and Leaders; Compare keeps the original).
+export function Avatar({ imageUrl, crest = false, size = "h-8 w-8 sm:h-10 sm:w-10", optimize = false }) {
   const [failedUrl, setFailedUrl] = useState(null);
+  const src = optimize ? sizedImageUrl(imageUrl, crest ? CREST_WIDTH : PORTRAIT_WIDTH) : imageUrl;
+  const loading = optimize ? { loading: "lazy", decoding: "async" } : {};
   if (crest) {
     return (
       <span className={`${size} flex flex-none items-center justify-center`}>
-        {imageUrl ? <RevealImage src={imageUrl} className="max-h-full max-w-full object-contain" /> : null}
+        {src ? <RevealImage src={src} className="max-h-full max-w-full object-contain" {...loading} /> : null}
       </span>
     );
   }
   return (
     <span className={`${size} relative flex-none overflow-hidden rounded-full bg-neutral`}>
-      {imageUrl && failedUrl !== imageUrl ? (
+      {src && failedUrl !== src ? (
         <RevealImage
-          src={imageUrl}
+          src={src}
           effect="wipe"
           className="h-full w-full origin-top scale-[1.7] object-cover object-top"
-          onError={() => setFailedUrl(imageUrl)}
+          onError={() => setFailedUrl(src)}
+          {...loading}
         />
       ) : (
         <Silhouette />
@@ -48,7 +53,7 @@ export function TeamTag({ code, name, tvCode, crestUrl }) {
   const short = (tvCode ?? code ?? name).replaceAll(";", "/");
   return (
     <span className="muted flex min-w-0 items-center gap-1.5 text-xs">
-      {crestUrl ? <RevealImage src={crestUrl} className="h-4 w-4 flex-none object-contain" /> : null}
+      {crestUrl ? <RevealImage src={sizedImageUrl(crestUrl, CREST_WIDTH)} loading="lazy" decoding="async" className="h-4 w-4 flex-none object-contain" /> : null}
       <span className="min-w-0 line-clamp-2 wrap-break-word">{name ? <ShortLabel short={short} full={full} /> : full}</span>
     </span>
   );
@@ -115,7 +120,7 @@ export function CategoryCard({ kicker, title, tip, entries, isLoading, isError, 
                   <div className="flex items-center gap-2 sm:gap-3">
                     <RankBadge rank={entry.rank} />
                     {/* The top row stands out with larger sizes from sm; on a phone they would leave too little room for a long name. */}
-                    <Avatar imageUrl={entry.imageUrl} crest={entry.crest} size={entry.rank === 1 ? "h-10 w-10 sm:h-12 sm:w-12" : "h-10 w-10"} />
+                    <Avatar optimize imageUrl={entry.imageUrl} crest={entry.crest} size={entry.rank === 1 ? "h-10 w-10 sm:h-12 sm:w-12" : "h-10 w-10"} />
                     <div className="min-w-0 flex-1">
                       <p className={`font-semibold max-sm:line-clamp-2 max-sm:wrap-break-word sm:truncate ${entry.rank === 1 ? "text-sm sm:text-base" : "text-sm"}`}>{entry.name}</p>
                       <TeamTag {...entry.team} />

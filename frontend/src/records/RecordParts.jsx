@@ -30,13 +30,13 @@ export function Holder({ record, size = "h-9 w-9", short = false }) {
   return (
     <div className="flex min-w-0 items-center gap-2.5">
       {/* A player always has a picture: the headshot, or the silhouette when there is none. */}
-      {!record.isClub ? <Avatar imageUrl={record.portraitUrl} size={`${size} flex-none`} /> : null}
-      {record.crestUrl ? <Avatar crest imageUrl={record.crestUrl} size={`${size} flex-none`} /> : null}
+      {!record.isClub ? <Avatar optimize imageUrl={record.portraitUrl} size={`${size} flex-none`} /> : null}
+      {record.crestUrl ? <Avatar optimize crest imageUrl={record.crestUrl} size={`${size} flex-none`} /> : null}
       <div className="min-w-0">
         <p className="wrap-break-word">{name}</p>
         {record.line ? (
           <p className="muted flex items-center gap-1.5 text-sm">
-            {record.lineCrestUrl ? <Avatar crest imageUrl={record.lineCrestUrl} size="h-4 w-4" /> : null}
+            {record.lineCrestUrl ? <Avatar optimize crest imageUrl={record.lineCrestUrl} size="h-4 w-4" /> : null}
             <span className="wrap-break-word">{labelOf(record.line, record.shortLine)}</span>
           </p>
         ) : null}

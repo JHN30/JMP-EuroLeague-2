@@ -1,3 +1,4 @@
+import { fileURLToPath } from "node:url";
 import { test, expect } from "@playwright/test";
 
 // Mocked records: what the page does with the API's answers. The API itself is records-api.spec.js.
@@ -218,6 +219,23 @@ test("the podium, the timeline and the Top 50 read from the rows, with the pictu
   await expect(rows.nth(3)).toContainText("Dee Four");
   await expect(rows.nth(0).locator("img")).toHaveCount(2);
   await expect(rows.nth(3).locator("img")).toHaveCount(0);
+});
+
+test("a picture on the feed's CDN is asked for small, as WebP, and loads only near the screen", async ({ page }) => {
+  // The CDN answers with a local picture, so the test needs no network.
+  await page.route(/^https:\/\/media-cdn\.(cortextech\.io|incrowdsports\.com)\//, (route) => route.fulfill({ path: fileURLToPath(new URL("../public/logo-header.png", import.meta.url)) }));
+  const portrait = "https://media-cdn.cortextech.io/a/b/portrait.png";
+  const crest = "https://media-cdn.incrowdsports.com/crest.png";
+  await mockApi(page, { rows: { player: [{ ...ROWS.player[0], playerImageUrl: portrait, clubImageUrl: crest }, ...ROWS.player.slice(1)] } });
+  await page.goto(DETAIL);
+
+  const podium = page.locator("ol").first().locator("> li");
+  const photo = podium.nth(0).locator(`img[src='${portrait}?width=192&format=webp']`);
+  await expect(photo).toBeVisible();
+  await expect(photo).toHaveAttribute("loading", "lazy");
+  await expect(podium.nth(0).locator(`img[src='${crest}?width=128&format=webp']`)).toBeVisible();
+  // A picture that is not on the CDN is left as it is.
+  await expect(podium.nth(1).locator("img[src='/logo-header.png']")).toBeVisible();
 });
 
 test("the metrics of each record type in two sections of one select, and what a choice keeps", async ({ page }) => {

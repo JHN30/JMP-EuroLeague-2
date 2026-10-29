@@ -1,4 +1,24 @@
+import { fileURLToPath } from "node:url";
 import { test, expect } from "@playwright/test";
+
+test("the cards ask the feed's CDN for small WebP photos and crests, loaded near the screen", async ({ page }) => {
+  // Every CDN request is recorded and answered with a local picture, so the test needs no network.
+  const requested = [];
+  await page.route(/^https:\/\/media-cdn\.(cortextech\.io|incrowdsports\.com)\//, (route) => {
+    requested.push(route.request().url());
+    return route.fulfill({ path: fileURLToPath(new URL("../public/logo-header.png", import.meta.url)) });
+  });
+  await page.goto("/2025/leaders");
+  await expect(page.getByRole("heading", { name: "Points", exact: true })).toBeVisible({ timeout: 30_000 });
+
+  const photos = page.locator("main img[src*='width=192&format=webp']");
+  await expect(photos.first()).toBeVisible();
+  await expect(photos.first()).toHaveAttribute("loading", "lazy");
+  await expect(page.locator("main img[src*='width=128&format=webp']").first()).toBeVisible();
+  // No picture is asked for at its full size.
+  expect(requested.length).toBeGreaterThan(0);
+  expect(requested.filter((url) => !url.includes("format=webp"))).toEqual([]);
+});
 
 test("Leaders opens on category cards, opens a full leaderboard and goes back", async ({ page }) => {
   const errors = [];

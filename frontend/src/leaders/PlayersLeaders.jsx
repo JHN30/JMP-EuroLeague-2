@@ -140,7 +140,7 @@ function FormSection({ seasonCode, phaseCode, openMetric }) {
                 <li key={player.personKey} className="border-b border-base-300 last:border-0">
                   <Link to={`/${seasonCode}/players/${player.personKey}`} className="board-row-link flex items-center gap-2 py-2 sm:gap-3">
                       <RankBadge rank={index + 1} />
-                    <Avatar imageUrl={player.imageUrl} />
+                    <Avatar optimize imageUrl={player.imageUrl} />
                     <div className="min-w-0 flex-1">
                       <p className="font-semibold max-sm:line-clamp-2 max-sm:wrap-break-word sm:truncate">{displayName({ playerName: player.playerName, personKey: player.personKey })}</p>
                       <TeamTag code={player.clubCode} name={player.clubName} tvCode={player.clubTvCode} crestUrl={player.crestUrl} />
@@ -171,7 +171,7 @@ function FormSection({ seasonCode, phaseCode, openMetric }) {
                       {change > 0 ? "▲" : "▼"}
                       {Math.abs(change)}
                     </span>
-                    <Avatar imageUrl={player.imageUrl} size="h-9 w-9" />
+                    <Avatar optimize imageUrl={player.imageUrl} size="h-9 w-9" />
                     <div className="min-w-0 flex-1">
                       <p className="text-sm font-semibold max-sm:line-clamp-2 max-sm:wrap-break-word sm:truncate">{displayName({ playerName: player.playerName, personKey: player.personKey })}</p>
                       <p className="muted text-xs tabular-nums">
@@ -370,7 +370,7 @@ function PlayersBoard({ seasonCode, phaseCode, stage, metric, params, setParams 
                   key={row.personKey}
                   rank={rank}
                   change={move && move.before !== null ? move.before - move.now : null}
-                  avatar={<Avatar imageUrl={row.playerImageUrl} />}
+                  avatar={<Avatar optimize imageUrl={row.playerImageUrl} />}
                   name={displayName(row)}
                   sub={
                     <span className="flex min-w-0 flex-wrap items-center gap-x-2">

@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { motion } from "motion/react";
-import { Link, useParams, useSearchParams } from "react-router";
+import { Link, useParams } from "react-router";
+import { useLiveSearchParams } from "../lib/useLiveSearchParams";
 import { getAdvancedStandings, getGameFlow, getPhaseResults, getPhases, getRounds, getSeasonStandings, getSeasonTeams } from "../lib/api";
 import AsyncState from "../lib/AsyncState";
 import EmptyText from "../lib/EmptyText";
@@ -48,7 +49,7 @@ const PHONE_VIEW_OPTIONS = [...VIEW_TABS, ...BREAKDOWN_TABS.filter((tab) => tab.
 export default function StandingsPage() {
   useDocumentTitle("Standings");
   const { seasonCode } = useParams();
-  const [searchParams, setSearchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useLiveSearchParams();
   const [view, setView] = useState("overall");
   const [mode, setMode] = useState("table");
   const [breakdown, setBreakdown] = useState("overview");
@@ -128,7 +129,8 @@ export default function StandingsPage() {
     if (current.get("phase") === phaseCode && current.getAll("group").length < 2 && (current.get("group") || null) === (name || null)) return;
     setSearchParams((params) => {
       const next = new URLSearchParams(params);
-      next.set("phase", phaseCode);
+      // A phase chosen just before (still on its way to the screen) is kept; the one on screen is written only when the address has none.
+      if (!next.get("phase")) next.set("phase", phaseCode);
       if (name) next.set("group", name);
       else next.delete("group");
       return next;

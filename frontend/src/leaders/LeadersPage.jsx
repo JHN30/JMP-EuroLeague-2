@@ -1,12 +1,13 @@
 import { useQuery } from "@tanstack/react-query";
 import { motion } from "motion/react";
-import { useParams, useSearchParams } from "react-router";
+import { useParams } from "react-router";
 import { getPhases } from "../lib/api";
 import BackLink from "../lib/BackLink";
 import { EASE_OUT } from "../lib/motion";
 import PageHeader from "../lib/PageHeader";
 import { TabStrip } from "../lib/TabStrip";
 import { useDocumentTitle } from "../lib/useDocumentTitle";
+import { useLiveSearchParams } from "../lib/useLiveSearchParams";
 import { usePhaseParam } from "../lib/usePhaseParam";
 import { StageSelect } from "./LeaderParts";
 import AdvancedLeaders from "./AdvancedLeaders";
@@ -29,10 +30,8 @@ const BOARD_PARAMS = SCOPE_PARAMS.filter((name) => name !== "ascope" && name !==
 export default function LeadersPage() {
   useDocumentTitle("Leaders");
   const { seasonCode } = useParams();
-  const [params, setRouterParams] = useSearchParams();
-  // React Router hands an updater the address of the last render, so a choice made before the page re-renders (quick clicks on a slow
-  // phone) would undo the one before it. Every change here, and in the three views, starts from the live address instead.
-  const setParams = (update, options) => setRouterParams(() => update(new URLSearchParams(window.location.search)), options);
+  // Every change here, and in the three views, starts from the live address.
+  const [params, setParams] = useLiveSearchParams();
   const scope = SCOPES.some((entry) => entry.key === params.get("scope")) ? params.get("scope") : "players";
 
   const phasesQuery = useQuery({ queryKey: ["phases", seasonCode], queryFn: () => getPhases(seasonCode) });

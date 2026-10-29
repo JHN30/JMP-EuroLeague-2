@@ -1,7 +1,8 @@
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { motion } from "motion/react";
 import { useMemo } from "react";
-import { useParams, useSearchParams } from "react-router";
+import { useParams } from "react-router";
+import { useLiveSearchParams } from "../lib/useLiveSearchParams";
 import { getPlayerSeasonRecords, getSingleGameRecords, getTeamGameRecords, getTeamSeasonRecords } from "../lib/api";
 import AsyncState from "../lib/AsyncState";
 import { RecordDetailSkeleton } from "./RecordsSkeleton";
@@ -71,22 +72,28 @@ function RecordsContent({ data }) {
   );
 }
 
-// One record type and metric: the podium, the timeline and the Top 50. The choices are in the address (`type` and `metric` always, `per=game`
-// when chosen) so a view can be linked and Back steps through them.
-function RecordsDetail({ seasonCode, params, setParams }) {
+// The record type, metric and totals-or-per-game an address asks for, each falling back to its default. Anything but `per=game` where per game
+// exists reads as totals.
+function choicesOf(params) {
   const family = pickKey(FAMILIES, params.get("type"), DEFAULT_FAMILY);
-  const familyInfo = FAMILIES.find((entry) => entry.key === family);
   const metrics = allMetrics(family);
   const metric = pickKey(metrics, params.get("metric"), DEFAULT_METRIC);
   const group = metrics.find((entry) => entry.key === metric).group;
   const hasPer = perGameAvailable(family, group);
-  // Anything but `per=game` where per game exists reads as totals.
-  const per = hasPer && params.get("per") === "game" ? "game" : "total";
+  return { family, metrics, metric, hasPer, per: hasPer && params.get("per") === "game" ? "game" : "total" };
+}
 
-  function setAddress(changes) {
+// One record type and metric: the podium, the timeline and the Top 50. The choices are in the address (`type` and `metric` always, `per=game`
+// when chosen) so a view can be linked and Back steps through them.
+function RecordsDetail({ seasonCode, params, setParams }) {
+  const { family, metric, hasPer, per } = choicesOf(params);
+  const familyInfo = FAMILIES.find((entry) => entry.key === family);
+
+  // `changesFor` reads the choices of the live address, so a choice made before the page re-renders builds on the one before it.
+  function setAddress(changesFor) {
     setParams((current) => {
       const next = new URLSearchParams(current);
-      for (const [name, [value, fallback]] of Object.entries(changes)) {
+      for (const [name, [value, fallback]] of Object.entries(changesFor(choicesOf(current)))) {
         if (value === fallback) next.delete(name);
         else next.set(name, value);
       }
@@ -97,14 +104,16 @@ function RecordsDetail({ seasonCode, params, setParams }) {
   // Changing the kind keeps the metric when the new kind has it, and otherwise opens the default. Per game stays chosen while the new choice
   // has it (a metric can be in the other group), and leaves the address when it does not. The type and metric are always written (a null
   // fallback never matches), so an address without them stays the record book.
-  const keepPer = (nextFamily, nextGroup) => [per === "game" && perGameAvailable(nextFamily, nextGroup) ? "game" : "total", "total"];
-  const chooseFamily = (key) => {
-    const nextMetric = allMetrics(key).some((entry) => entry.key === metric) ? metric : DEFAULT_METRIC;
-    const nextGroup = allMetrics(key).find((entry) => entry.key === nextMetric).group;
-    setAddress({ type: [key, null], metric: [nextMetric, null], per: keepPer(key, nextGroup) });
-  };
-  const chooseMetric = (key) => setAddress({ type: [family, null], metric: [key, null], per: keepPer(family, metrics.find((entry) => entry.key === key).group) });
-  const choosePer = (key) => setAddress({ type: [family, null], metric: [metric, null], per: [key, "total"] });
+  const keepPer = (live, nextFamily, nextGroup) => [live.per === "game" && perGameAvailable(nextFamily, nextGroup) ? "game" : "total", "total"];
+  const chooseFamily = (key) =>
+    setAddress((live) => {
+      const nextMetric = allMetrics(key).some((entry) => entry.key === live.metric) ? live.metric : DEFAULT_METRIC;
+      const nextGroup = allMetrics(key).find((entry) => entry.key === nextMetric).group;
+      return { type: [key, null], metric: [nextMetric, null], per: keepPer(live, key, nextGroup) };
+    });
+  const chooseMetric = (key) =>
+    setAddress((live) => ({ type: [live.family, null], metric: [key, null], per: keepPer(live, live.family, live.metrics.find((entry) => entry.key === key)?.group) }));
+  const choosePer = (key) => setAddress((live) => ({ type: [live.family, null], metric: [live.metric, null], per: [key, "total"] }));
   const metricGroups = GROUPS.map((entry) => ({ label: entry.label, options: metricsOf(family, entry.key) }));
 
   // The rows stay on screen while the next choice loads; the full loading state is only for the very first load.
@@ -145,7 +154,7 @@ function RecordsDetail({ seasonCode, params, setParams }) {
 export default function RecordsPage() {
   useDocumentTitle("Records");
   const { seasonCode } = useParams();
-  const [params, setParams] = useSearchParams();
+  const [params, setParams] = useLiveSearchParams();
   if (["type", "metric", "per"].some((name) => params.has(name))) return <RecordsDetail seasonCode={seasonCode} params={params} setParams={setParams} />;
   return (
     <div>

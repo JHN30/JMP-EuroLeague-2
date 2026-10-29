@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Chart } from "chart.js/auto";
-import { Link, useParams, useSearchParams } from "react-router";
+import { Link, useParams } from "react-router";
+import { useLiveSearchParams } from "../lib/useLiveSearchParams";
 import { shortTeamName, teamCode } from "../games/gameUtils";
 import { getSeasonTeams, getSeasons, getTeamGames } from "../lib/api";
 import AsyncState from "../lib/AsyncState";
@@ -299,7 +300,7 @@ function SummaryGridStrip({ matchups, teamA, teamB, teamAId }) {
 }
 
 function HeadToHeadBody({ seasonCode, seasons, allTeams }) {
-  const [searchParams, setSearchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useLiveSearchParams();
   const teamAId = searchParams.get("teamA");
   const teamBId = searchParams.get("teamB");
 
@@ -312,10 +313,12 @@ function HeadToHeadBody({ seasonCode, seasons, allTeams }) {
   }
 
   function handleSwap() {
+    // Both teams from the live address, so a team picked just before the swap is swapped too.
     setSearchParams((params) => {
+      const [liveA, liveB] = [params.get("teamA"), params.get("teamB")];
       const next = new URLSearchParams(params);
-      if (teamBId) next.set("teamA", teamBId); else next.delete("teamA");
-      if (teamAId) next.set("teamB", teamAId); else next.delete("teamB");
+      if (liveB) next.set("teamA", liveB); else next.delete("teamA");
+      if (liveA) next.set("teamB", liveA); else next.delete("teamB");
       return next;
     });
   }

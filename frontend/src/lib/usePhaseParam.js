@@ -1,10 +1,10 @@
-import { useSearchParams } from "react-router";
+import { useLiveSearchParams } from "./useLiveSearchParams";
 
 // Archive-level phase selection lives in the `phase` URL search param so it
 // survives a refresh and can be shared. Falls back to the RS-or-first phase
 // once the phases list has loaded.
 export function usePhaseParam(phases) {
-  const [searchParams, setSearchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useLiveSearchParams();
   const requested = searchParams.get("phase");
   const isValid = phases.some((phase) => phase.code === requested);
   const phaseCode = isValid ? requested : (phases.find((phase) => phase.code === "RS")?.code ?? phases[0]?.code);

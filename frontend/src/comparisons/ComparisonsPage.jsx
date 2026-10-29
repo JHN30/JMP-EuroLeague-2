@@ -2,6 +2,7 @@ import { useEffect, useId, useRef, useState } from "react";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { motion } from "motion/react";
 import { useLocation, useParams, useSearchParams } from "react-router";
+import { useLiveSearchParams } from "../lib/useLiveSearchParams";
 import AsyncState from "../lib/AsyncState";
 import LabelledSelect from "../lib/LabelledSelect";
 import Panel from "../lib/Panel";
@@ -427,7 +428,7 @@ function ComparisonsBody({
   initialPlayerB,
   initialGame,
 }) {
-  const [, setSearchParams] = useSearchParams();
+  const [, setSearchParams] = useLiveSearchParams();
   const location = useLocation();
   const [view, setView] = useState(initialView);
   const [section, setSection] = useState(firstSection(initialView));

@@ -1,7 +1,8 @@
 import { useEffect, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { motion } from "motion/react";
-import { useParams, useSearchParams } from "react-router";
+import { useParams } from "react-router";
+import { useLiveSearchParams } from "../lib/useLiveSearchParams";
 import { getPhases, getRounds, getSeasonGames, getSeasonStandings } from "../lib/api";
 import AsyncState from "../lib/AsyncState";
 import GamesSkeleton, { FixturesSkeleton } from "./GamesSkeleton";
@@ -26,7 +27,7 @@ const ROUND_GAME_LIMIT = 100;
 export default function FixturesPage() {
   useDocumentTitle("Games");
   const { seasonCode } = useParams();
-  const [searchParams, setSearchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useLiveSearchParams();
   const roundStripRef = useRef(null);
 
   const phasesQuery = useQuery({
@@ -124,6 +125,19 @@ export default function FixturesPage() {
     });
   }
 
+  // The previous or next round, from the round in the live address (a click before the strip re-renders steps on from it), or from the
+  // round on screen when the address has none of this phase's rounds.
+  function stepRound(step) {
+    setSearchParams((params) => {
+      const liveIndex = rounds.findIndex((round) => round.number === Number(params.get("round")));
+      const target = rounds[(liveIndex === -1 ? selectedIndex : liveIndex) + step];
+      if (!target) return params;
+      const next = new URLSearchParams(params);
+      next.set("round", String(target.number));
+      return next;
+    });
+  }
+
   function selectStage(key) {
     setSearchParams((params) => {
       const next = new URLSearchParams(params);
@@ -191,7 +205,7 @@ export default function FixturesPage() {
             className="btn btn-sm btn-square btn-ghost text-xl leading-none"
             aria-label="Previous round"
             disabled={selectedIndex <= 0}
-            onClick={() => selectRound(rounds[selectedIndex - 1].number)}
+            onClick={() => stepRound(-1)}
           >
             ‹
           </motion.button>
@@ -225,7 +239,7 @@ export default function FixturesPage() {
             className="btn btn-sm btn-square btn-ghost text-xl leading-none"
             aria-label="Next round"
             disabled={selectedIndex === -1 || selectedIndex >= rounds.length - 1}
-            onClick={() => selectRound(rounds[selectedIndex + 1].number)}
+            onClick={() => stepRound(1)}
           >
             ›
           </motion.button>

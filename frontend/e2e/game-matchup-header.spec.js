@@ -105,8 +105,9 @@ test("the header fits a phone with a high round, a long date and a three-digit s
     await expect(header.locator("p.tabular-nums")).toHaveText("112 - 101");
     await expectNoPageOverflow(page);
   });
-  await atWidths(page, [640, 768, 1024], async () => {
-    expect(await crestWidth()).toBe(80);
+  await atWidths(page, [640, 768, 1024], async (width) => {
+    // From 1024px the crests are a little smaller, with the match facts beside them.
+    expect(await crestWidth()).toBe(width >= 1024 ? 64 : 80);
     expect(await scoreSize()).toBeGreaterThanOrEqual(48);
     expect(await date.evaluate((el) => el.getBoundingClientRect().height <= parseFloat(getComputedStyle(el).lineHeight) * 1.2)).toBe(true);
     await expectNoPageOverflow(page);

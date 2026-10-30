@@ -2,9 +2,10 @@ import { useMemo } from "react";
 import { motion } from "motion/react";
 import { Link } from "react-router";
 import AsyncState from "../lib/AsyncState";
-import { GameOverviewSkeleton, PanelBlockSkeleton, TwoBlocksSkeleton } from "./GamePageSkeleton";
+import { GameOverviewSkeleton, PanelBlockSkeleton } from "./GamePageSkeleton";
 import ComparisonRow from "../lib/ComparisonRow";
 import EmptyText from "../lib/EmptyText";
+import HeaderTip from "../lib/HeaderTip";
 import { formatCount, formatDecimal, formatMissing } from "../lib/format";
 import { sectionContainer, sectionItem } from "../lib/motion";
 import Panel from "../lib/Panel";
@@ -33,12 +34,12 @@ function Headshot({ player }) {
   );
 }
 
-function StandoutCard({ team, player, metric, seasonCode }) {
+function BestPlayer({ team, player, metric, seasonCode }) {
   return (
-    <Panel className="p-4" role="article" aria-label={`${teamName(team)} best player`}>
-      <TeamLabel team={team} />
+    <div role="article" aria-label={`${teamName(team)} best player`}>
+      <p className="eyebrow mb-2">Best player</p>
       {player ? (
-        <div className="mt-3 flex items-center gap-3">
+        <div className="flex items-center gap-3">
           <Headshot player={player} />
           <div className="min-w-0">
             <p className="text-lg font-semibold break-words">
@@ -56,27 +57,46 @@ function StandoutCard({ team, player, metric, seasonCode }) {
           </div>
         </div>
       ) : (
-        <p className="muted mt-3 text-sm">Not enough minutes data to pick a best player.</p>
+        <p className="muted text-sm">Not enough minutes data to pick a best player.</p>
       )}
-    </Panel>
+    </div>
   );
 }
 
-function LeadersCard({ team, rows, seasonCode }) {
+function Leaders({ team, rows, seasonCode }) {
   return (
-    <Panel className="p-4" role="group" aria-label={`${teamName(team)} game leaders`}>
-      <TeamLabel team={team} />
-      <ul className="mt-3">
-        {gameLeaders(rows).map(({ key, label, player, value }) => (
-          <li key={key} className="flex items-baseline justify-between gap-3 border-b border-base-300 py-2 last:border-0">
-            <span className="muted text-sm">{label}</span>
+    <div role="group" aria-label={`${teamName(team)} game leaders`}>
+      <p className="eyebrow">Game leaders</p>
+      <ul className="mt-1">
+        {gameLeaders(rows).map(({ key, label, player, value, format, desktopOnly, tip }) => (
+          <li
+            key={key}
+            className={`items-baseline justify-between gap-3 border-b border-base-300 py-2 last:border-0 ${desktopOnly ? "hidden lg:flex" : "flex"}`}
+          >
+            <span className="muted text-sm">{tip ? <HeaderTip tip={tip}>{label}</HeaderTip> : label}</span>
             <span className="flex min-w-0 items-baseline gap-2">
               {player ? <PlayerLink seasonCode={seasonCode} player={player} className="truncate" /> : null}
-              <span className="font-bold tabular-nums">{player ? formatCount(value) : formatMissing(null)}</span>
+              <span className="font-bold tabular-nums">{player ? format(value) : formatMissing(null)}</span>
             </span>
           </li>
         ))}
       </ul>
+    </div>
+  );
+}
+
+// One team's card: its best player over its points, rebounds and assists leaders. The best player waits for the advanced
+// stats (game PER), the leaders do not.
+function TeamCard({ team, rows, metric, bestLoading, seasonCode, className }) {
+  return (
+    <Panel className={`flex flex-col gap-4 p-4 ${className}`}>
+      <TeamLabel team={team} />
+      {bestLoading ? (
+        <AsyncState status="loading" label="Loading the best player" skeleton={<PanelBlockSkeleton className="h-24" />} />
+      ) : (
+        <BestPlayer team={team} player={pickBestPlayer(rows, metric)} metric={metric} seasonCode={seasonCode} />
+      )}
+      <Leaders team={team} rows={rows} seasonCode={seasonCode} />
     </Panel>
   );
 }
@@ -84,7 +104,7 @@ function LeadersCard({ team, rows, seasonCode }) {
 // `flowRows` are the extra rows from the score-flow and shot-split tables; without them the box-score rows stand alone.
 function KeyStatsCard({ game, localTotal, roadTotal, flowRows }) {
   return (
-    <Panel className="p-4">
+    <Panel className="h-full p-4">
       <div className="mb-2 grid grid-cols-2 gap-4">
         <div className="flex justify-end">
           <TeamLabel team={game.localTeam} />
@@ -138,7 +158,7 @@ function GamePreview({ game, seasonCode }) {
   );
 }
 
-// The game summary: line score, standouts, leaders, key stats, and a compact score flow.
+// The game summary: line score, each team's best player and leaders, key stats, and a compact score flow.
 export default function OverviewTab({ game, seasonCode, boxScoreQuery, playByPlayQuery, advancedQuery, teamFlowQuery }) {
   if (!game.played) {
     return <GamePreview game={game} seasonCode={seasonCode} />;
@@ -161,50 +181,43 @@ export default function OverviewTab({ game, seasonCode, boxScoreQuery, playByPla
   const localTotal = totalFor("local");
   const roadTotal = totalFor("road");
 
+  // Below lg the sections stack in reading order: the line score, the two team cards, the key stats, the score flow. From lg
+  // the line score and the score flow share the top row, and the key stats sit between the two team cards under them.
   return (
-    <motion.div className="flex flex-col gap-6" variants={sectionContainer} initial="hidden" animate="show">
-      <motion.section variants={sectionItem}>
-        <PanelHeader kicker="LINE SCORE" title="Score by period" />
-        <PeriodTable periodScores={boxScore.periodScores} localTeam={game.localTeam} roadTeam={game.roadTeam} forfeit={game.gameStatus === "Walkover"} />
+    <motion.div className="grid grid-cols-1 gap-6 lg:grid-cols-2 lg:gap-4" variants={sectionContainer} initial="hidden" animate="show">
+      <motion.section variants={sectionItem} className="lg:col-start-1 lg:row-start-1 lg:flex lg:flex-col">
+        <PanelHeader kicker="LINE SCORE" title="Score by period" compact />
+        <PeriodTable periodScores={boxScore.periodScores} localTeam={game.localTeam} roadTeam={game.roadTeam} forfeit={game.gameStatus === "Walkover"} fill />
       </motion.section>
 
-      <motion.section variants={sectionItem}>
-        <PanelHeader kicker="STANDOUTS" title="Best player on each team" />
-        {advancedQuery.isLoading ? (
-          <AsyncState status="loading" label="Loading the best players" skeleton={<TwoBlocksSkeleton />} />
-        ) : hasPlayers ? (
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <StandoutCard team={game.localTeam} player={pickBestPlayer(localRows, metric)} metric={metric} seasonCode={seasonCode} />
-            <StandoutCard team={game.roadTeam} player={pickBestPlayer(roadRows, metric)} metric={metric} seasonCode={seasonCode} />
-          </div>
-        ) : (
-          <EmptyText>Player statistics aren't available for this game yet.</EmptyText>
-        )}
+      <motion.section variants={sectionItem} className="lg:col-span-2 lg:row-start-2">
+        <PanelHeader kicker="SUMMARY" title="Best players, leaders and key stats" compact />
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.3fr)_minmax(0,1fr)]">
+          {hasPlayers ? (
+            <>
+              <TeamCard team={game.localTeam} rows={localRows} metric={metric} bestLoading={advancedQuery.isLoading} seasonCode={seasonCode} className="lg:col-start-1 lg:row-start-1" />
+              <TeamCard team={game.roadTeam} rows={roadRows} metric={metric} bestLoading={advancedQuery.isLoading} seasonCode={seasonCode} className="lg:col-start-3 lg:row-start-1" />
+            </>
+          ) : (
+            <div className="sm:col-span-2 lg:col-span-1 lg:col-start-1 lg:row-start-1">
+              <EmptyText>Player statistics aren't available for this game yet.</EmptyText>
+            </div>
+          )}
+          <section aria-labelledby="overview-key-stats" className="sm:col-span-2 lg:col-span-1 lg:col-start-2 lg:row-start-1">
+            <h3 id="overview-key-stats" className="sr-only">
+              How the teams compared
+            </h3>
+            {localTotal && roadTotal ? (
+              <KeyStatsCard game={game} localTotal={localTotal} roadTotal={roadTotal} flowRows={flowRows} />
+            ) : (
+              <EmptyText>Team totals aren't available for this game yet.</EmptyText>
+            )}
+          </section>
+        </div>
       </motion.section>
 
-      <motion.section variants={sectionItem}>
-        <PanelHeader kicker="GAME LEADERS" title="Points, rebounds and assists" />
-        {hasPlayers ? (
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <LeadersCard team={game.localTeam} rows={localRows} seasonCode={seasonCode} />
-            <LeadersCard team={game.roadTeam} rows={roadRows} seasonCode={seasonCode} />
-          </div>
-        ) : (
-          <EmptyText>Player statistics aren't available for this game yet.</EmptyText>
-        )}
-      </motion.section>
-
-      <motion.section variants={sectionItem}>
-        <PanelHeader kicker="KEY STATS" title="How the teams compared" />
-        {localTotal && roadTotal ? (
-          <KeyStatsCard game={game} localTotal={localTotal} roadTotal={roadTotal} flowRows={flowRows} />
-        ) : (
-          <EmptyText>Team totals aren't available for this game yet.</EmptyText>
-        )}
-      </motion.section>
-
-      <motion.section variants={sectionItem}>
-        <PanelHeader kicker="FLOW" title="Score flow" />
+      <motion.section variants={sectionItem} className="lg:col-start-2 lg:row-start-1">
+        <PanelHeader kicker="FLOW" title="Score flow" compact />
         <FlowSection game={game} playByPlayQuery={playByPlayQuery} />
       </motion.section>
     </motion.div>

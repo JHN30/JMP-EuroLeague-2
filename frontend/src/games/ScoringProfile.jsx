@@ -6,10 +6,10 @@ import Panel from "../lib/Panel";
 import TeamLabel from "./TeamLabel";
 import { scoringProfileRows } from "./teamFlow";
 
-// The team labels above a column of mirrored rows: the local team on the left, the road team on the right.
-function TeamHeader({ localTeam, roadTeam, className = "" }) {
+// The team labels above the mirrored rows: the local team on the left, the road team on the right.
+function TeamHeader({ localTeam, roadTeam }) {
   return (
-    <div className={`mb-2 grid grid-cols-2 gap-4 max-sm:gap-2 ${className}`}>
+    <div className="mb-2 grid grid-cols-2 gap-4 max-sm:gap-2">
       <div className="flex justify-end">
         <TeamLabel team={localTeam} />
       </div>
@@ -21,7 +21,7 @@ function TeamHeader({ localTeam, roadTeam, className = "" }) {
 // How each team scored and how the game was led, from the pipeline's per-game team tables. Its own loading, error and
 // unavailable states, so trouble here never hides the rest of the Team comparison tab.
 export default function ScoringProfile({ teamFlowQuery, localTeam, roadTeam }) {
-  if (teamFlowQuery.isLoading) return <AsyncState status="loading" label="Loading the scoring profile" skeleton={<PanelBlockSkeleton className="h-96 max-lg:h-[36rem]" />} />;
+  if (teamFlowQuery.isLoading) return <AsyncState status="loading" label="Loading the scoring profile" skeleton={<PanelBlockSkeleton className="h-[41rem]" />} />;
   if (teamFlowQuery.isError) {
     return <AsyncState status="error" message="Could not load the scoring profile." onRetry={() => teamFlowQuery.refetch()} />;
   }
@@ -29,14 +29,11 @@ export default function ScoringProfile({ teamFlowQuery, localTeam, roadTeam }) {
   if (rows.length === 0) return <EmptyText>The scoring profile isn't available for this game yet.</EmptyText>;
 
   return (
-    <Panel className="p-4 max-sm:p-3">
-      <div className="grid gap-x-10 lg:grid-cols-2" data-testid="scoring-profile-grid">
-        <TeamHeader localTeam={localTeam} roadTeam={roadTeam} />
-        <TeamHeader localTeam={localTeam} roadTeam={roadTeam} className="hidden lg:grid" />
-        {rows.map(({ key, ...row }) => (
-          <ComparisonRow key={key} {...row} inline bars={false} />
-        ))}
-      </div>
+    <Panel className="p-4 max-sm:p-3" data-testid="scoring-profile-rows">
+      <TeamHeader localTeam={localTeam} roadTeam={roadTeam} />
+      {rows.map(({ key, ...row }) => (
+        <ComparisonRow key={key} {...row} inline bars={false} />
+      ))}
     </Panel>
   );
 }

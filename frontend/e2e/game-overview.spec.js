@@ -76,10 +76,10 @@ test("the game reply carries the arena and the crowd, with a missing figure as n
   expect(abuDhabi.venue).toEqual({ name: "ETIHAD ARENA", capacity: 12000, attendance: 10218, neutral: true });
 });
 
-test("a played game shows its arena, capacity and attendance in the header, on every tab", async ({ page }) => {
+test("a played game shows its arena and attendance in the header, on every tab, without the capacity the crowd figure replaces", async ({ page }) => {
   await page.goto("/2025/games/1");
   await expect(page.getByRole("heading", { name: "Score by period" })).toBeVisible({ timeout: 30_000 });
-  await expect(headerEntry(page, "Arena")).toHaveText("MoracaCapacity 5,262");
+  await expect(headerEntry(page, "Arena")).toHaveText("Moraca");
   await expect(headerEntry(page, "Attendance")).toHaveText("2,110");
   await expect(page.locator("main dl > div > dt")).toHaveText(["Arena", "Attendance", "Officials"]);
   await page.getByRole("tab", { name: "Box score", exact: true }).click();
@@ -156,7 +156,7 @@ test("each team's best player and game leaders come from the box score, linked t
   await expect(teamBBest).toContainText("PIR 22");
 
   const teamALeaders = page.getByRole("group", { name: "Team A game leaders" });
-  await expect(teamALeaders.locator("li", { hasText: "Points" })).toContainText("STARTER, SAM30");
+  await expect(teamALeaders.locator("li", { hasText: /^Points/ })).toContainText("STARTER, SAM30");
   await expect(teamALeaders.locator("li", { hasText: "Rebounds" })).toContainText("BENCH, BO9");
   await expect(teamALeaders.locator("li", { hasText: "Assists" })).toContainText("STARTER, SAM7");
   // The player who did not play is never a leader or a standout.
@@ -214,13 +214,13 @@ test("best player and leader rules: 10-minute minimum, tie-breaks, and teams wit
 
   // Leaders: points tie at 12 goes to the earlier name; rebounds tie at 6 likewise; nobody has an assist.
   const teamALeaders = page.getByRole("group", { name: "Team A game leaders" });
-  await expect(teamALeaders.locator("li", { hasText: "Points" })).toContainText("ALPHA, AL12");
+  await expect(teamALeaders.locator("li", { hasText: /^Points/ })).toContainText("ALPHA, AL12");
   await expect(teamALeaders.locator("li", { hasText: "Rebounds" })).toContainText("ALPHA, AL6");
   await expect(teamALeaders.locator("li", { hasText: "Assists" })).toHaveText(/Assists\s*—/);
 
   // Leaders ignore the 10-minute minimum, and a player with no minutes data is not considered.
   const teamBLeaders = page.getByRole("group", { name: "Team B game leaders" });
-  await expect(teamBLeaders.locator("li", { hasText: "Points" })).toContainText("ONE, OLI20");
+  await expect(teamBLeaders.locator("li", { hasText: /^Points/ })).toContainText("ONE, OLI20");
   await expect(teamBLeaders.locator("li", { hasText: "Assists" })).toContainText("ONE, OLI4");
   await expect(page.getByRole("link", { name: "NULL, NIA" })).toHaveCount(0);
 });
@@ -239,7 +239,7 @@ test("key stats are mirrored bars with the lower-is-better stat marked", async (
   await page.goto(`/${SEASON}/games/1`);
 
   await expect(page.getByRole("heading", { name: "How the teams compared" })).toBeVisible();
-  const section = page.locator("section", { has: page.getByRole("heading", { name: "How the teams compared" }) });
+  const section = page.getByRole("region", { name: "How the teams compared" });
   for (const label of ["Field goals", "3-pointers", "Free throws", "Rebounds", "Assists", "Steals", "Turnovers"]) {
     await expect(section.getByText(label, { exact: true })).toBeVisible();
   }
@@ -280,4 +280,135 @@ test("without play-by-play events the flow section says there is not enough yet"
   await page.goto(`/${SEASON}/games/1`);
 
   await expect(page.getByText("Not enough play-by-play yet to chart game flow.")).toBeVisible();
+});
+
+test("from 1024px the line score and the score flow share the top row, and the key stats sit between the two team cards", async ({ page }) => {
+  await mockGameApi(page, { playByPlay: PLAY_BY_PLAY });
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await page.goto(`/${SEASON}/games/1`);
+  await expect(page.getByRole("img", { name: /Running score margin/ })).toBeVisible();
+
+  const box = (locator) => locator.boundingBox();
+  const sectionBox = (name) => box(page.locator("section", { has: page.getByRole("heading", { name }) }));
+  // The sections slide in: compare them once they have settled.
+  await expect.poll(async () => Math.abs((await sectionBox("Score by period")).y - (await sectionBox("Score flow")).y)).toBeLessThan(2);
+  const [lineScore, flow] = await Promise.all([sectionBox("Score by period"), sectionBox("Score flow")]);
+  expect(flow.x).toBeGreaterThan(lineScore.x + lineScore.width - 1);
+
+  const card = (name) => box(page.locator(".panel", { has: page.getByRole("group", { name: `${name} game leaders` }) }));
+  const [home, road, keyStats] = await Promise.all([card("Team A"), card("Team B"), box(page.getByRole("region", { name: "How the teams compared" }))]);
+  expect(keyStats.x).toBeGreaterThan(home.x + home.width - 1);
+  expect(road.x).toBeGreaterThan(keyStats.x + keyStats.width - 1);
+  expect(Math.abs(home.y - keyStats.y)).toBeLessThan(2);
+  expect(keyStats.y).toBeGreaterThan(flow.y);
+
+  // Below 1024px the cards are side by side over the key stats, and the score flow comes last.
+  await page.setViewportSize({ width: 768, height: 900 });
+  const [narrowHome, narrowRoad, narrowStats] = await Promise.all([card("Team A"), card("Team B"), box(page.getByRole("region", { name: "How the teams compared" }))]);
+  expect(Math.abs(narrowHome.y - narrowRoad.y)).toBeLessThan(2);
+  expect(narrowStats.y).toBeGreaterThan(narrowHome.y + narrowHome.height - 1);
+  const narrowFlow = await box(page.locator("section", { has: page.getByRole("heading", { name: "Score flow" }) }));
+  expect(narrowFlow.y).toBeGreaterThan(narrowStats.y + narrowStats.height - 1);
+});
+
+test("the team cards list five leaders below 1024px and eight from it, and the line score stands as tall as the score flow", async ({ page }) => {
+  await mockGameApi(page, { playByPlay: PLAY_BY_PLAY });
+  await page.setViewportSize({ width: 390, height: 900 });
+  await page.goto(`/${SEASON}/games/1`);
+  const leaders = page.getByRole("group", { name: "Team A game leaders" });
+  await expect(leaders).toBeVisible();
+  const shownLabels = () =>
+    leaders.locator("li").evaluateAll((items) =>
+      items
+        .filter((item) => item.getBoundingClientRect().height > 0)
+        .map((item) => {
+          // The label without a tip's screen-reader text.
+          const label = item.firstElementChild.cloneNode(true);
+          label.querySelectorAll(".sr-only").forEach((el) => el.remove());
+          return label.textContent;
+        }),
+    );
+  await expect.poll(shownLabels).toEqual(["Points", "Rebounds", "Assists", "Steals", "Blocks"]);
+
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await expect.poll(shownLabels).toEqual(["Points", "Rebounds", "Assists", "Steals", "Blocks", "+/-", "PIR", "TS%"]);
+  await expect(page.getByRole("img", { name: /Running score margin/ })).toBeVisible();
+  const panelHeight = (name) =>
+    page.locator("section", { has: page.getByRole("heading", { name }) }).locator(".panel").first().evaluate((el) => Math.round(el.getBoundingClientRect().height));
+  await expect.poll(async () => Math.abs((await panelHeight("Score by period")) - (await panelHeight("Score flow")))).toBeLessThan(2);
+});
+
+test("below 640px the arena and the crowd share a row over the officials, and an arena without a crowd figure takes the row", async ({ page }) => {
+  await mockGameApi(page, { officials: OFFICIALS, venue: { name: "BELGRADE ARENA", capacity: 21000, attendance: 15000, neutral: false } });
+  await page.setViewportSize({ width: 390, height: 900 });
+  await page.goto(`/${SEASON}/games/1`);
+  await expect(page.getByRole("heading", { name: "Score by period" })).toBeVisible();
+  const top = async (label) => Math.round((await page.locator("main dl > div", { has: page.locator("dt", { hasText: new RegExp(`^${label}$`) }) }).boundingBox()).y);
+  expect(await top("Arena")).toBe(await top("Attendance"));
+  expect(await top("Officials")).toBeGreaterThan(await top("Arena"));
+
+  await page.unrouteAll({ behavior: "ignoreErrors" });
+  await mockGameApi(page, { played: false, officials: OFFICIALS, venue: { name: "BELGRADE ARENA", capacity: 21000, attendance: 15000, neutral: false } });
+  await page.goto(`/${SEASON}/games/1`);
+  await expect(headerEntry(page, "Arena")).toHaveText("Belgrade ArenaCapacity 21,000");
+  const [arena, list] = await Promise.all([
+    page.locator("main dl > div", { has: page.locator("dt", { hasText: /^Arena$/ }) }).boundingBox(),
+    page.locator("main dl").boundingBox(),
+  ]);
+  expect(arena.width).toBeGreaterThan(list.width - 2);
+});
+
+test("a team whose players all have a negative +/- still names its best one", async ({ page }) => {
+  const boxScore = {
+    ...BOX_SCORE,
+    playerStats: BOX_SCORE.playerStats.map((row) => (row.side === "road" ? { ...row, plusMinus: -Math.abs(row.plusMinus) - 1 } : row)),
+  };
+  const best = Math.max(...boxScore.playerStats.filter((row) => row.side === "road" && row.timePlayed > 0).map((row) => row.plusMinus));
+  await mockGameApi(page, { boxScore });
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await page.goto(`/${SEASON}/games/1`);
+  const plusMinus = page.getByRole("group", { name: "Team B game leaders" }).locator("li", { hasText: "+/-" });
+  await expect(plusMinus).toBeVisible();
+  await expect(plusMinus.locator("a")).toHaveCount(1);
+  await expect(plusMinus).toContainText(String(best));
+});
+
+test("the line score bolds the side that won each period and the winner's total, and a tied period neither", async ({ page }) => {
+  await mockGameApi(page);
+  await page.goto(`/${SEASON}/games/1`);
+  await expect(page.getByRole("heading", { name: "Score by period" })).toBeVisible();
+  const lines = await page
+    .locator("table")
+    .first()
+    .locator("tbody tr")
+    .evaluateAll((rows) => rows.slice(0, 2).map((row) => [...row.querySelectorAll("td")].slice(1).map((cell) => ({ value: Number(cell.textContent), bold: Number(getComputedStyle(cell).fontWeight) >= 700 }))));
+  const [home, road] = lines;
+  home.forEach((cell, index) => {
+    expect(cell.bold).toBe(cell.value > road[index].value);
+    expect(road[index].bold).toBe(road[index].value > cell.value);
+  });
+});
+
+test("the TS% leader needs five field goal attempts and its label explains it on hover", async ({ page }) => {
+  // Team A: a 2-of-2 shooter (100%) is skipped for too few attempts; the 5-of-8 shooter with 2 free throw attempts leads.
+  const boxScore = {
+    ...BOX_SCORE,
+    playerStats: BOX_SCORE.playerStats.map((row, index) => {
+      if (row.side !== "local") return row;
+      const base = { ...row, fieldGoalsAttempted2: 0, fieldGoalsAttempted3: 0, freeThrowsAttempted: 0, points: 0 };
+      if (index === 0) return { ...base, points: 4, fieldGoalsAttempted2: 2 };
+      if (index === 1) return { ...base, points: 12, fieldGoalsAttempted2: 8, freeThrowsAttempted: 2 };
+      return base;
+    }),
+  };
+  const shooter = boxScore.playerStats[1];
+  await mockGameApi(page, { boxScore });
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await page.goto(`/${SEASON}/games/1`);
+  const row = page.getByRole("group", { name: "Team A game leaders" }).locator("li", { hasText: "TS%" });
+  await expect(row.locator("a")).toHaveText(shooter.personName);
+  // 12 / (2 × (8 + 0.44 × 2)) = 67.6%
+  await expect(row).toContainText("67.6%");
+  await row.locator(".header-tip-label").hover();
+  await expect(page.getByRole("tooltip")).toContainText("True shooting percentage");
 });

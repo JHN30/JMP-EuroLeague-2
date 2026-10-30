@@ -13,9 +13,11 @@ import { computeConnections, computeRotations } from "./rotations";
 import TeamLabel from "./TeamLabel";
 
 // Below sm a player row is two lines (the name and the minutes, then the bar across the whole panel) and the period ruler is
-// one full-width row; from sm the name, the bar and the minutes share one line.
-const ROW_GRID = "grid grid-cols-[minmax(0,1fr)_3rem] items-center gap-x-2 gap-y-1 sm:grid-cols-[11rem_minmax(0,1fr)_3.5rem] sm:gap-3";
-const RULER_GRID = "grid grid-cols-1 items-center sm:grid-cols-[11rem_minmax(0,1fr)_3.5rem] sm:gap-3";
+// one full-width row; from sm the name, the bar and the minutes share one line. From xl the two teams sit side by side, so
+// the name column narrows to leave the bars most of each half.
+const ROW_GRID =
+  "grid grid-cols-[minmax(0,1fr)_3rem] items-center gap-x-2 gap-y-1 sm:grid-cols-[11rem_minmax(0,1fr)_3.5rem] sm:gap-3 xl:grid-cols-[9rem_minmax(0,1fr)_3.5rem]";
+const RULER_GRID = "grid grid-cols-1 items-center sm:grid-cols-[11rem_minmax(0,1fr)_3.5rem] sm:gap-3 xl:grid-cols-[9rem_minmax(0,1fr)_3.5rem]";
 
 const percent = (seconds, total) => `${(seconds / total) * 100}%`;
 
@@ -101,7 +103,7 @@ function TimelineSection({ game, seasonCode, boxScoreQuery, lineupsQuery }) {
   if (rotations.status === "empty") return <EmptyText>Rotations aren't available for this game yet.</EmptyText>;
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className="grid gap-4 xl:grid-cols-2">
       <TeamTimeline team={game.localTeam} side={rotations.sides.local} periods={rotations.periods} gameSeconds={rotations.gameSeconds} seasonCode={seasonCode} />
       <TeamTimeline team={game.roadTeam} side={rotations.sides.road} periods={rotations.periods} gameSeconds={rotations.gameSeconds} seasonCode={seasonCode} />
     </div>
@@ -178,19 +180,19 @@ function ConnectionsSection({ game, seasonCode, playByPlayQuery }) {
 // assists is built from the play-by-play. Each section loads, fails and retries on its own.
 export default function RotationsTab({ game, seasonCode, boxScoreQuery, playByPlayQuery, lineupsQuery }) {
   return (
-    <motion.div className="flex flex-col gap-6" variants={sectionContainer} initial="hidden" animate="show">
+    <motion.div className="flex flex-col gap-6 lg:gap-4" variants={sectionContainer} initial="hidden" animate="show">
       <motion.section variants={sectionItem}>
-        <PanelHeader kicker="ROTATIONS" title="Minutes on the court" />
+        <PanelHeader kicker="ROTATIONS" title="Minutes on the court" compact />
         <TimelineSection game={game} seasonCode={seasonCode} boxScoreQuery={boxScoreQuery} lineupsQuery={lineupsQuery} />
       </motion.section>
 
       <motion.section variants={sectionItem}>
-        <PanelHeader kicker="CONNECTIONS" title="Assist connections" />
+        <PanelHeader kicker="CONNECTIONS" title="Assist connections" compact />
         <ConnectionsSection game={game} seasonCode={seasonCode} playByPlayQuery={playByPlayQuery} />
       </motion.section>
 
       <motion.section variants={sectionItem}>
-        <PanelHeader kicker="LINEUPS" title="Five-man units" />
+        <PanelHeader kicker="LINEUPS" title="Five-man units" compact />
         <LineupsSection game={game} seasonCode={seasonCode} boxScoreQuery={boxScoreQuery} lineupsQuery={lineupsQuery} />
       </motion.section>
     </motion.div>

@@ -9,7 +9,8 @@ import { buildMarginSeries, eventMoment, momentLabel } from "./gameFlowData";
 import { teamCode, teamName } from "./gameUtils";
 import { TeamName } from "./TeamLabel";
 
-export function PeriodTable({ periodScores, localTeam, roadTeam, forfeit = false }) {
+// `fill` stretches the panel to its parent's height from lg, the rows sharing it out (the Overview, beside the score flow).
+export function PeriodTable({ periodScores, localTeam, roadTeam, forfeit = false, fill = false }) {
   // A forfeit has no play: the source's zero period scores are placeholders, not recorded values.
   if (forfeit) return <EmptyText>Period scores were not recorded: this game was a forfeit.</EmptyText>;
   if (periodScores.length === 0) {
@@ -37,8 +38,8 @@ export function PeriodTable({ periodScores, localTeam, roadTeam, forfeit = false
   const roadTotal = total(roadScores);
 
   return (
-    <Panel className="overflow-x-auto overscroll-x-contain p-2">
-      <table className="table table-sm max-sm:[&_td]:px-1.5 max-sm:[&_th]:px-1.5">
+    <Panel className={`overflow-x-auto overscroll-x-contain p-2${fill ? " lg:flex-1" : ""}`}>
+      <table className={`table table-sm max-sm:[&_td]:px-1.5 max-sm:[&_th]:px-1.5 lg:[&_th]:text-sm${fill ? " lg:h-full" : ""}`}>
         <thead>
           <tr>
             <th>Team</th>
@@ -51,42 +52,59 @@ export function PeriodTable({ periodScores, localTeam, roadTeam, forfeit = false
           </tr>
         </thead>
         <tbody>
+          <TeamRow team={localTeam} scores={localScores} otherScores={roadScores} total={localTotal} otherTotal={roadTotal} periodNumbers={periodNumbers} />
+          <TeamRow team={roadTeam} scores={roadScores} otherScores={localScores} total={roadTotal} otherTotal={localTotal} periodNumbers={periodNumbers} />
           <tr>
-            <td className="font-medium">
-              <TeamName team={localTeam} />
-            </td>
-            {localScores.map((score, index) => (
-              <td key={periodNumbers[index]} className="text-center tabular-nums">
-                {score ?? "-"}
-              </td>
-            ))}
-            <td className="text-center font-bold tabular-nums">{formatMissing(localTotal)}</td>
-          </tr>
-          <tr>
-            <td className="font-medium">
-              <TeamName team={roadTeam} />
-            </td>
-            {roadScores.map((score, index) => (
-              <td key={periodNumbers[index]} className="text-center tabular-nums">
-                {score ?? "-"}
-              </td>
-            ))}
-            <td className="text-center font-bold tabular-nums">{formatMissing(roadTotal)}</td>
-          </tr>
-          <tr>
-            <td className="muted">Margin</td>
+            <td className="muted lg:text-sm">Margin</td>
             {margins.map((margin, index) => (
-              <td key={periodNumbers[index]} className="muted text-center tabular-nums">
+              <td key={periodNumbers[index]} className="muted text-center tabular-nums lg:text-sm">
                 {margin == null ? "-" : formatSignedDiff(margin)}
               </td>
             ))}
-            <td className="muted text-center tabular-nums">
+            <td className="muted text-center tabular-nums lg:text-sm">
               {localTotal != null && roadTotal != null ? formatSignedDiff(localTotal - roadTotal) : formatMissing(null)}
             </td>
           </tr>
         </tbody>
       </table>
     </Panel>
+  );
+}
+
+// A score that beat the other side's in the same column; a tie or a missing score beats nothing.
+const beats = (score, other) => score != null && other != null && score > other;
+
+// One team's line: its crest and name, then each period and the total. The side that won a period has its score in bold, and
+// the winner's total is bold in the theme's first colour, as in the header. From lg the numbers are larger. Below 360px the crest
+// is left out: three-digit scores over four periods need its room.
+function TeamRow({ team, scores, otherScores, total, otherTotal, periodNumbers }) {
+  const wonGame = beats(total, otherTotal);
+  return (
+    <tr>
+      <td className="font-medium lg:text-base">
+        <span className="flex items-center gap-2 max-sm:gap-1.5">
+          {team?.crestUrl ? (
+            <img
+              src={team.crestUrl}
+              alt=""
+              className="size-5 flex-none object-contain max-[359px]:hidden lg:size-7"
+              onError={(event) => {
+                event.currentTarget.style.display = "none";
+              }}
+            />
+          ) : null}
+          <span className="min-w-0">
+            <TeamName team={team} />
+          </span>
+        </span>
+      </td>
+      {scores.map((score, index) => (
+        <td key={periodNumbers[index]} className={`text-center tabular-nums lg:text-lg ${beats(score, otherScores[index]) ? "font-bold" : ""}`}>
+          {score ?? "-"}
+        </td>
+      ))}
+      <td className={`text-center tabular-nums lg:text-lg ${wonGame ? "font-bold text-primary" : ""}`}>{formatMissing(total)}</td>
+    </tr>
   );
 }
 

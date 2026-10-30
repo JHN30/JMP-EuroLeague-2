@@ -6,11 +6,12 @@ import { formatCount, formatDecimal, formatFractionPercent, formatMinutes } from
 
 const number = (value) => (Number.isFinite(value) ? value : null);
 
-function share(flow) {
+// The share of game time spent in one state (`key`: leading or tied), or null without all three times.
+function share(flow, key = "timeLeadingSeconds") {
   const parts = [flow?.timeLeadingSeconds, flow?.timeTrailingSeconds, flow?.timeTiedSeconds];
   if (!parts.every(Number.isFinite)) return null;
   const total = parts[0] + parts[1] + parts[2];
-  return total > 0 ? parts[0] / total : null;
+  return total > 0 ? flow[key] / total : null;
 }
 
 const ROWS = [
@@ -21,6 +22,14 @@ const ROWS = [
     direction: "higher",
     value: (team) => number(team.flow?.timeLeadingSeconds),
     display: (team) => `${formatMinutes(team.flow?.timeLeadingSeconds)} (${formatFractionPercent(share(team.flow), 0)})`,
+  },
+  {
+    key: "timeTied",
+    label: "Time tied",
+    tip: "Game time with the score level; the same for both teams",
+    direction: "neutral",
+    value: (team) => number(team.flow?.timeTiedSeconds),
+    display: (team) => `${formatMinutes(team.flow?.timeTiedSeconds)} (${formatFractionPercent(share(team.flow, "timeTiedSeconds"), 0)})`,
   },
   {
     key: "largestLead",
@@ -61,6 +70,14 @@ const ROWS = [
     direction: "neutral",
     value: (team) => number(team.flow?.ties),
     display: (team) => formatCount(team.flow?.ties),
+  },
+  {
+    key: "clutchTime",
+    label: "Clutch time",
+    tip: "Game time in the last five minutes of regulation and in overtime with a margin of 5 or less; the same for both teams",
+    direction: "neutral",
+    value: (team) => number(team.flow?.clutchSeconds),
+    display: (team) => formatMinutes(team.flow?.clutchSeconds),
   },
   {
     key: "clutchPoints",

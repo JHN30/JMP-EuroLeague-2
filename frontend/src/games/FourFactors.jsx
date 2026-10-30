@@ -29,11 +29,15 @@ const BLOCKS = [
       { label: "Opp TOV%", tip: "The opponent's turnover percentage: turnovers this team forced", direction: "higher", field: "oppTovPct", format: pct },
       { label: "DRB%", tip: "Defensive rebound percentage: the share of the opponent's misses this team rebounded", direction: "higher", field: "drbPct", format: pct },
       { label: "Opp FT rate", tip: "The opponent's free throw rate against this team", direction: "lower", field: "oppFtRate", format: pct },
+      { label: "Steal %", tip: "Steal percentage: steals per 100 opponent possessions", direction: "higher", field: "stealPct", format: pct },
+      { label: "Block %", tip: "Block percentage: the share of the opponent's two-point attempts this team blocked", direction: "higher", field: "blockPct", format: pct },
     ],
   },
   {
     title: "Pace and ratings",
     rows: [
+      { label: "Possessions", tip: "The game's possessions, estimated from the box score: the average of the two teams' own estimates", direction: "neutral", field: "possessions", format: one },
+      { label: "Own possessions", tip: "This team's own possession estimate from its box score, before the two teams are averaged", direction: "neutral", field: "ownPossessionsEstimate", format: one },
       { label: "Pace", tip: "Possessions per 40 minutes", direction: "neutral", field: "pace", format: one },
       { label: "Offensive rating", tip: "Points scored per 100 possessions", direction: "higher", field: "offensiveRating", format: one },
       { label: "Defensive rating", tip: "Points allowed per 100 possessions", direction: "lower", field: "defensiveRating", format: one },
@@ -62,19 +66,33 @@ function averageText(value, format) {
   return value === null ? null : `Season avg ${format(value)}`;
 }
 
+// Steal and block percentages are not pipeline fields: they come from the box-score totals (`total`, `opponent`) over the
+// game's possessions and the opponent's two-point attempts. Missing totals leave them null, a dash.
+function withDefenseRates(team, total, opponent, possessions) {
+  const rate = (count, base) => (Number.isFinite(count) && Number.isFinite(base) && base > 0 ? count / base : null);
+  return {
+    ...team,
+    stealPct: rate(total?.steals, possessions),
+    blockPct: rate(total?.blocksFavour, opponent?.fieldGoalsAttempted2),
+  };
+}
+
 // The pipeline's per-game team stats against each team's season average through the game's round. Its own loading,
-// error and unavailable states, so trouble here never hides the rest of the Team comparison tab.
-export default function FourFactors({ advancedQuery, localTeam, roadTeam }) {
-  if (advancedQuery.isLoading) return <AsyncState status="loading" label="Loading the Four Factors" skeleton={<PanelBlockSkeleton className="h-[67rem] max-sm:h-[57rem]" />} />;
+// error and unavailable states, so trouble here never hides the rest of the Team comparison tab. `localTotal` and
+// `roadTotal` are the box-score totals for the steal and block rates.
+export default function FourFactors({ advancedQuery, localTeam, roadTeam, localTotal = null, roadTotal = null }) {
+  if (advancedQuery.isLoading) return <AsyncState status="loading" label="Loading the Four Factors" skeleton={<PanelBlockSkeleton className="h-[84rem] max-sm:h-[71rem]" />} />;
   if (advancedQuery.isError) {
     return <AsyncState status="error" message="Could not load the Four Factors." onRetry={() => advancedQuery.refetch()} />;
   }
   const advanced = advancedQuery.data;
-  const local = advanced?.teams?.find((team) => team.side === "local");
-  const road = advanced?.teams?.find((team) => team.side === "road");
-  if (!advanced?.available || !local || !road) {
+  const localRow = advanced?.teams?.find((team) => team.side === "local");
+  const roadRow = advanced?.teams?.find((team) => team.side === "road");
+  if (!advanced?.available || !localRow || !roadRow) {
     return <EmptyText>Four Factors aren't available for this game yet.</EmptyText>;
   }
+  const local = withDefenseRates(localRow, localTotal, roadTotal, localRow.possessions);
+  const road = withDefenseRates(roadRow, roadTotal, localTotal, roadRow.possessions);
   const averagesHidden = !(local.season && !local.season.hidden) || !(road.season && !road.season.hidden);
 
   return (

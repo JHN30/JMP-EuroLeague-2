@@ -330,6 +330,24 @@ button {
   margin-bottom: 1rem;
 }
 
+/* The game page's compact section heading: from lg the kicker sits before the title on one line. */
+@media (min-width: 64rem) {
+  .panel-header-compact {
+    margin-bottom: 0.5rem;
+  }
+
+  .panel-header-compact > div {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    column-gap: 0.75rem;
+  }
+
+  .panel-header-compact .eyebrow {
+    margin-bottom: 0;
+  }
+}
+
 .panel-title {
   font-size: 1rem;
   font-weight: 700;
@@ -724,6 +742,17 @@ button {
   }
   .site-menu-footer .eyebrow {
     margin-bottom: 0.25rem;
+  }
+}
+
+/* The Shooting tab's filter box: from xl, where its selects fit one row, it stays under the nav while the courts and the
+   tables it filters scroll by. Below the nav's z-index (30), above the page content. */
+@media (min-width: 80rem) {
+  .shooting-filters {
+    position: sticky;
+    top: var(--app-nav-height);
+    z-index: 20;
+    box-shadow: 0 4px 12px -6px color-mix(in srgb, var(--color-base-content) 25%, transparent);
   }
 }
 

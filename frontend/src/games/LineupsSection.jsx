@@ -70,7 +70,7 @@ function TeamUnits({ team, units, minimum, playersByKey, seasonCode }) {
   );
 }
 
-// The five-man units each team used, from the pipeline's lineup stints. Names come from the box score, and a failed box
+// The five-man units each team used, from the pipeline's lineup stints, the two teams side by side from lg. Names come from the box score, and a failed box
 // score only leaves the person keys in their place.
 export default function LineupsSection({ game, seasonCode, boxScoreQuery, lineupsQuery }) {
   const [minimum, setMinimum] = useState(DEFAULT_MINIMUM);
@@ -91,7 +91,7 @@ export default function LineupsSection({ game, seasonCode, boxScoreQuery, lineup
   if (lineupsQuery.isError) {
     return <AsyncState status="error" message="Could not load lineups." onRetry={() => lineupsQuery.refetch()} />;
   }
-  if (lineupsQuery.isLoading || boxScoreQuery.isLoading) return <AsyncState status="loading" label="Loading lineups" skeleton={<div className="flex flex-col gap-4"><PanelBlockSkeleton className="h-[22rem] max-sm:h-[46rem]" /><PanelBlockSkeleton className="h-[22rem] max-sm:h-[44rem]" /></div>} />;
+  if (lineupsQuery.isLoading || boxScoreQuery.isLoading) return <AsyncState status="loading" label="Loading lineups" skeleton={<div className="grid gap-4 lg:grid-cols-2"><PanelBlockSkeleton className="h-[22rem] max-sm:h-[46rem]" /><PanelBlockSkeleton className="h-[22rem] max-sm:h-[44rem]" /></div>} />;
   if (!units || units.length === 0) return <EmptyText>Lineups aren't available for this game yet.</EmptyText>;
 
   return (
@@ -109,8 +109,10 @@ export default function LineupsSection({ game, seasonCode, boxScoreQuery, lineup
           </option>
         ))}
       </LabelledSelect>
-      <TeamUnits team={game.localTeam} units={bySide.local} minimum={minimum} playersByKey={playersByKey} seasonCode={seasonCode} />
-      <TeamUnits team={game.roadTeam} units={bySide.road} minimum={minimum} playersByKey={playersByKey} seasonCode={seasonCode} />
+      <div className="grid gap-4 lg:grid-cols-2">
+        <TeamUnits team={game.localTeam} units={bySide.local} minimum={minimum} playersByKey={playersByKey} seasonCode={seasonCode} />
+        <TeamUnits team={game.roadTeam} units={bySide.road} minimum={minimum} playersByKey={playersByKey} seasonCode={seasonCode} />
+      </div>
       <p className="muted text-xs">
         Poss is the unit's possessions on offense; PF and PA are points for and against while it was on the court. Net rtg is points per 100
         possessions, for minus against. Small samples swing a lot: a few minutes together is noise, not a trend.

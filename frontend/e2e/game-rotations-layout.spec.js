@@ -234,3 +234,26 @@ test("the select, badges, notes and a team without on-court rows hold their cont
     }
   });
 });
+
+test("the five-man units sit side by side from 1024px, and the two timelines from 1280px with bars at least 300px wide", async ({ page }) => {
+  await openRotations(page);
+  await expect(page.getByRole("heading", { name: "Five-man units" })).toBeVisible();
+  await expect(section(page, "Minutes on the court").locator("li").first()).toBeVisible();
+  const columns = (name) => section(page, name).locator(".panel").evaluateAll((els) => new Set(els.map((el) => Math.round(el.getBoundingClientRect().left))).size);
+
+  await atWidths(page, [768], async () => {
+    expect(await columns("Five-man units")).toBe(1);
+    expect(await columns("Minutes on the court")).toBe(1);
+  });
+  await atWidths(page, [1024], async () => {
+    await expectNoPageOverflow(page);
+    expect(await columns("Five-man units")).toBe(2);
+    expect(await columns("Minutes on the court")).toBe(1);
+  });
+  await atWidths(page, [1280], async () => {
+    await expectNoPageOverflow(page);
+    expect(await columns("Minutes on the court")).toBe(2);
+    const bar = await section(page, "Minutes on the court").locator("li .relative.h-5").first().boundingBox();
+    expect(bar.width).toBeGreaterThanOrEqual(300);
+  });
+});

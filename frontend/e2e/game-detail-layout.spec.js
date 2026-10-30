@@ -192,7 +192,7 @@ test("the Overview holds long names, a long player name and three-digit scores a
     await expect(star).toContainText("MILLER-MCINTYRE-WHITAKER-ALEXANDROPOULOS, CODI");
     expect(await holdsContent(page.getByRole("article"))).toBe(true);
     expect(await holdsContent(page.getByRole("group"))).toBe(true);
-    const keyStats = page.locator("section", { has: page.getByRole("heading", { name: "How the teams compared" }) }).locator(".panel");
+    const keyStats = page.getByRole("region", { name: "How the teams compared" }).locator(".panel");
     expect(await holdsContent(keyStats)).toBe(true);
     expect(await splitWords(page.locator("main .panel .font-semibold"))).toEqual([]);
 
@@ -210,7 +210,8 @@ test("the Overview holds long names, a long player name and three-digit scores a
   await atWidths(page, [640, 768, 1024], async () => {
     expect(await shown()).toEqual([]);
     await expect(periodTable.locator("tbody tr td:first-child").first()).toContainText("Panathinaikos AKTOR Athens");
-    await expect(page.getByRole("article", { name: "Panathinaikos AKTOR Athens best player" })).toContainText("Panathinaikos AKTOR Athens");
+    const card = page.locator(".panel", { has: page.getByRole("article", { name: "Panathinaikos AKTOR Athens best player" }) });
+    await expect(card).toContainText("Panathinaikos AKTOR Athens");
   });
 });
 
@@ -230,11 +231,14 @@ test("the header's arena, attendance and officials, with long names, wrap inside
   await expect(header.locator("dl > div > dt")).toHaveText(["Arena", "Attendance", "Officials"]);
   await expect(entry.locator("dd")).toContainText("Maximilian-Alexander Van Der Berghe-Konstantinopoulos, Jordi Aliaga, Guido Giovannetti, Damir Javor");
   await atWidths(page, [320, 390, 640, 1024, 1280], async () => {
-    // The strip and everything in it stay inside the header.
-    const [strip, panel] = await Promise.all([header.locator("dl").boundingBox(), header.boundingBox()]);
-    expect(strip.x).toBeGreaterThanOrEqual(panel.x - 1);
-    expect(strip.x + strip.width).toBeLessThanOrEqual(panel.x + panel.width + 1);
-    expect(await holdsContent(header.locator("dl"))).toBe(true);
+    // The facts (a strip below 1024px, the two ends of the header from 1024px) and everything in them stay inside the header.
+    const panel = await header.boundingBox();
+    for (const fact of await header.locator("dl > div").all()) {
+      const box = await fact.boundingBox();
+      expect(box.x).toBeGreaterThanOrEqual(panel.x - 1);
+      expect(box.x + box.width).toBeLessThanOrEqual(panel.x + panel.width + 1);
+    }
+    expect(await holdsContent(header.locator("dl > div"))).toBe(true);
     for (const each of await header.locator("dl > div").all()) {
       const [label, value] = await Promise.all([each.locator("dt").boundingBox(), each.locator("dd").boundingBox()]);
       expect(value.y).toBeGreaterThanOrEqual(label.y + label.height - 1);
@@ -257,7 +261,7 @@ test("a played game's header shows the date without a time, the key stats are va
   await expect(page.locator("main p.muted", { hasText: "Round 12" })).not.toHaveText(/\d:\d{2}/);
   await expect(page.locator("main p.muted", { hasText: "Round 12" })).toContainText("2025");
 
-  const keyStats = page.locator("section", { has: page.getByRole("heading", { name: "How the teams compared" }) });
+  const keyStats = page.getByRole("region", { name: "How the teams compared" });
   await expect(keyStats.getByText("30-55 (54.5%)")).toBeVisible();
   await expect(keyStats.locator('[class~="h-1.5"]')).toHaveCount(0);
   await expect(keyStats.locator('[class~="bg-primary/10"]').first()).toBeVisible();

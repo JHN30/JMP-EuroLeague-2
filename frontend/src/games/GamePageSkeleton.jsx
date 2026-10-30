@@ -25,11 +25,11 @@ function TableSkeleton({ rows, rowClassName = "h-9", head = "h-11", avatar = fal
   );
 }
 
-// A section heading over its content, as the game tabs lay out their sections.
+// A section heading over its content, as the game tabs lay out their sections (one line from lg).
 function Section({ title, children }) {
   return (
     <div>
-      <SkeletonPanelHead title={title} />
+      <SkeletonPanelHead title={title} compact />
       {children}
     </div>
   );
@@ -54,14 +54,14 @@ export function TwoBlocksSkeleton({ className = "h-44", breakpoint = "sm" }) {
 function HeaderSide() {
   return (
     <div className="flex flex-col items-center gap-2">
-      <div className="skeleton size-14 rounded-box sm:size-20" />
+      <div className="skeleton size-14 rounded-box sm:size-20 lg:size-16" />
       <div className="skeleton h-6 w-16 sm:w-24" />
     </div>
   );
 }
 
 // The page top, as `GameDetailPage` lays it out: the way back, the matchup header (two clubs either side of the score, the
-// round line, then the arena, attendance and officials), then the tabs.
+// round line, then the arena, attendance and officials: two columns below sm, one row from it), then the tabs.
 function GameTopSkeleton() {
   return (
     <>
@@ -79,11 +79,11 @@ function GameTopSkeleton() {
           <HeaderSide />
         </div>
         <div className="skeleton mx-auto mt-4 h-4 w-48" />
-        <div className="mt-4 grid gap-4 border-t border-base-300 pt-4 sm:grid-cols-3">
+        <div className="mt-3 grid grid-cols-2 gap-x-3 gap-y-2 border-t border-base-300 pt-3 sm:grid-cols-3">
           {range(3).map((index) => (
-            <div key={index} className="flex flex-col items-center gap-1.5">
+            <div key={index} className={`flex flex-col items-center gap-1.5 ${index === 2 ? "max-sm:col-span-2" : ""}`}>
               <div className="skeleton h-3 w-16" />
-              <div className="skeleton h-5 w-36" />
+              <div className="skeleton h-5 w-28 sm:w-36" />
             </div>
           ))}
         </div>
@@ -93,26 +93,30 @@ function GameTopSkeleton() {
   );
 }
 
-// The Overview tab, as `OverviewTab` lays it out: the line score, the best player on each side, the game leaders, the key
-// stats and the score flow, each under its heading.
+// The Overview tab, as `OverviewTab` lays it out: the line score, the two team cards with the key stats between them (under
+// them below lg) and the score flow, each under its heading; from lg the line score and the score flow share the top row.
 export function GameOverviewSkeleton() {
   return (
-    <div aria-hidden="true" className="flex flex-col gap-6">
-      <Section title="w-36">
-        <TableSkeleton rows={3} />
-      </Section>
-      <Section title="w-52">
-        <TwoBlocksSkeleton />
-      </Section>
-      <Section title="w-60">
-        <TwoBlocksSkeleton className="h-48" />
-      </Section>
-      <Section title="w-48">
-        <PanelBlockSkeleton className="h-[33rem]" />
-      </Section>
-      <Section title="w-28">
-        <PanelBlockSkeleton className="h-64" />
-      </Section>
+    <div aria-hidden="true" className="grid grid-cols-1 gap-6 lg:grid-cols-2 lg:gap-4">
+      <div className="lg:col-start-1 lg:row-start-1">
+        <Section title="w-36">
+          <TableSkeleton rows={3} />
+        </Section>
+      </div>
+      <div className="lg:col-span-2 lg:row-start-2">
+        <Section title="w-64">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.3fr)_minmax(0,1fr)]">
+            <PanelBlockSkeleton className="h-[27rem] lg:col-start-1 lg:row-start-1 lg:h-auto" />
+            <PanelBlockSkeleton className="h-[27rem] lg:col-start-3 lg:row-start-1 lg:h-auto" />
+            <PanelBlockSkeleton className="h-[33rem] sm:col-span-2 lg:col-span-1 lg:col-start-2 lg:row-start-1" />
+          </div>
+        </Section>
+      </div>
+      <div className="lg:col-start-2 lg:row-start-1">
+        <Section title="w-28">
+          <PanelBlockSkeleton className="h-64" />
+        </Section>
+      </div>
     </div>
   );
 }
@@ -149,13 +153,13 @@ export function BoxScoreSkeleton() {
   );
 }
 
-// The Game flow tab: the four headline cards, the lead tracker, the line score and the turning points.
+// The Game flow tab: the five headline cards, the lead tracker and the line score.
 export function GameFlowSkeleton() {
   return (
-    <div aria-hidden="true" className="flex flex-col gap-6">
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        {range(4).map((index) => (
-          <PanelBlockSkeleton key={index} className="h-32 max-sm:h-24" />
+    <div aria-hidden="true" className="flex flex-col gap-6 lg:gap-4">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-5 lg:gap-3">
+        {range(5).map((index) => (
+          <PanelBlockSkeleton key={index} className={`h-32 max-sm:h-24 lg:h-[6.5rem] ${index === 0 ? "sm:col-span-2 lg:col-span-1" : ""}`} />
         ))}
       </div>
       <div className="panel p-4">
@@ -163,21 +167,14 @@ export function GameFlowSkeleton() {
         <div className="skeleton h-[21.5rem] w-full max-sm:h-68" />
       </div>
       <TableSkeleton rows={3} />
-      <Section title="w-36">
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          {range(4).map((index) => (
-            <PanelBlockSkeleton key={index} className="h-24" />
-          ))}
-        </div>
-      </Section>
     </div>
   );
 }
 
-// The rotations: each team's timeline panel, one row a player.
+// The rotations: each team's timeline panel, one row a player, side by side from xl.
 export function RotationsSkeleton() {
   return (
-    <div aria-hidden="true" className="flex flex-col gap-4">
+    <div aria-hidden="true" className="grid gap-4 xl:grid-cols-2">
       <PanelBlockSkeleton className="h-[23rem] max-sm:h-[42rem]" />
       <PanelBlockSkeleton className="h-[24.5rem] max-sm:h-[47rem]" />
     </div>
@@ -185,7 +182,7 @@ export function RotationsSkeleton() {
 }
 
 // Team comparison rows: the two sides' numbers either side of the label.
-export function ComparisonRowsSkeleton({ rows = 20 }) {
+export function ComparisonRowsSkeleton({ rows = 19 }) {
   return (
     <div aria-hidden="true" className="panel p-4">
       <div className="mx-auto mb-3 skeleton h-6 w-72 max-w-full" />
@@ -200,21 +197,24 @@ export function ComparisonRowsSkeleton({ rows = 20 }) {
   );
 }
 
-// The Shooting tab: the view tabs and filters, the two teams' shot maps, then the zone comparison.
+// The Shooting tab: the heading and view tabs, the filter box, the two teams' shot maps, then the zone comparison.
 export function GameShootingSkeleton() {
   return (
     <div aria-hidden="true" className="flex flex-col gap-6">
-      <div className="panel p-4">
+      <div>
         <SkeletonPanelHead title="w-36" />
         <div className="skeleton mb-4 h-9 w-56" />
-        <div className="mb-3 grid grid-cols-2 gap-4 sm:flex sm:flex-wrap">
-          {range(5).map((index) => (
+        <div className="panel mb-4 grid grid-cols-2 gap-3 p-3 max-sm:hidden lg:grid-cols-3 xl:grid-cols-6">
+          {range(6).map((index) => (
             <div key={index} className="flex flex-col gap-1.5">
               <div className="skeleton h-3.5 w-20" />
-              <div className="skeleton h-8 w-full sm:w-44" />
+              <div className="skeleton h-8 w-full" />
             </div>
           ))}
         </div>
+        <div className="skeleton h-8 w-full sm:hidden" />
+      </div>
+      <div className="panel p-4">
         <div className="skeleton mb-4 h-7 w-80 max-w-full" />
         <div className="grid gap-4 lg:grid-cols-2">
           <PanelBlockSkeleton className="h-[41.5rem] max-sm:h-[28rem]" />
@@ -250,7 +250,7 @@ export function PlayByPlaySkeleton() {
         ))}
       </div>
       {range(60).map((index) => (
-        <div key={index} className="flex h-[3.55rem] items-center gap-3 border-b border-base-300 last:border-0">
+        <div key={index} className="flex h-[3.55rem] items-center gap-3 border-b border-base-300 last:border-0 lg:h-[2.1rem]">
           <div className="flex w-10 flex-col gap-1.5">
             <div className="skeleton h-3 w-6" />
             <div className="skeleton h-3 w-10" />

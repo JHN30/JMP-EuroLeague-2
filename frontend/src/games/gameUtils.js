@@ -36,6 +36,12 @@ export function paintPoints(shots, clubCode) {
   return 2 * located.filter((shot) => shot.actionCode.endsWith("M") && PAINT_ZONES.has(shotZone(shot))).length;
 }
 
+// The period a shot's game minute falls in: four 10-minute quarters, then 5-minute overtimes. 0 without a minute.
+export function periodNumberForMinute(minute) {
+  if (minute == null) return 0;
+  return minute <= 40 ? Math.ceil(minute / 10) : 4 + Math.ceil((minute - 40) / 5);
+}
+
 export function compareByName(left, right) {
   return (left.personName ?? "").localeCompare(right.personName ?? "") || left.personKey.localeCompare(right.personKey);
 }

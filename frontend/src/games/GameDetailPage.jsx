@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { motion } from "motion/react";
 import { useParams } from "react-router";
@@ -26,12 +26,14 @@ import PanelHeader from "../lib/PanelHeader";
 import ShortLabel from "../lib/ShortLabel";
 import ShootingCourt from "../lib/ShootingCourt";
 import ShootingLegend from "../lib/ShootingLegend";
+import { displayName } from "../lib/playerName";
 import { useDocumentTitle } from "../lib/useDocumentTitle";
 import { sectionContainer, sectionItem } from "../lib/motion";
 import { usePrefersReducedMotion } from "../lib/usePrefersReducedMotion";
 import { AnimatedBody, AnimatedRow } from "../standings/motionTable";
 import ScrollingTable from "../standings/ScrollingTable";
-import { benchPoints, compareByName, hasMinutes, isStarter, paintPoints, teamName } from "./gameUtils";
+import { stickyBottomOf } from "../standings/raceSizing";
+import { benchPoints, compareByName, hasMinutes, isStarter, paintPoints, periodNumberForMinute, shortTeamName, teamCode, teamName } from "./gameUtils";
 import { PeriodTable, ScoreFlowChart } from "./gameFlow";
 import { computeGameFlow, momentLabel, withRunningScore } from "./gameFlowData";
 import { advancedColumns, attachAdvanced } from "./AdvancedBoxScore";
@@ -44,6 +46,7 @@ import OverviewTab from "./OverviewTab";
 import PlayerLink from "./PlayerLink";
 import RotationsTab from "./RotationsTab";
 import { TabPanel, TabStrip } from "../lib/TabStrip";
+import { PlayContextComparison, PlayerShooting, ShootingByQuarter } from "./ShootingTables";
 import ZoneComparison from "./ZoneComparison";
 
 const GAME_TABS = [
@@ -370,11 +373,6 @@ function shootingPercentage(made, attempted) {
   return (Number(made) / attemptedNum) * 100;
 }
 
-function periodNumberForMinute(minute) {
-  if (minute == null) return 0;
-  return minute <= 40 ? Math.ceil(minute / 10) : 4 + Math.ceil((minute - 40) / 5);
-}
-
 const SHOT_TYPE_FILTERS = [
   { key: "all", label: "All shots", test: () => true },
   { key: "2", label: "2-pointers", test: (shot) => shot.actionCode.startsWith("2") },
@@ -488,8 +486,11 @@ function MiniShootingLine({ shots, test }) {
 // Each court is as tall as the room left under the page's header, tabs and filters, so both teams sit in one screen.
 const COURT_MAX_WIDTH = "max(18rem, calc(100svh - 20rem))";
 
-// One team's side of the comparison: its 2PT/3PT/eFG line over its own court, as markers or as zones.
-function TeamComparisonPanel({ team, shots, teams, mode }) {
+const FT_TIP = "Free throws come from the box score: the whole game, for the team or the chosen player. The period, shot and play-context filters don't apply to them";
+
+// One team's side of the comparison: its 2PT, 3PT, FT, eFG% and paint points over its own court, as markers or as zones.
+// `freeThrows` is the box score's made and attempted, since free throws are not in the shot data.
+function TeamComparisonPanel({ team, shots, teams, mode, freeThrows }) {
   const twoPoint = (shot) => shot.actionCode.startsWith("2");
   const threePoint = (shot) => shot.actionCode.startsWith("3");
   const made = shots.filter((shot) => shot.actionCode.endsWith("M"));
@@ -513,7 +514,7 @@ function TeamComparisonPanel({ team, shots, teams, mode }) {
           <TeamName team={team} />
         </span>
       </div>
-      <div className="mb-3 grid grid-cols-3 gap-2 text-center text-sm">
+      <div className="mb-3 grid grid-cols-3 gap-2 text-center text-sm lg:grid-cols-5">
         <div>
           <p className="eyebrow">2PT</p>
           <p className="tabular-nums">
@@ -527,8 +528,29 @@ function TeamComparisonPanel({ team, shots, teams, mode }) {
           </p>
         </div>
         <div>
+          <p className="eyebrow">
+            <HeaderTip tip={FT_TIP}>FT</HeaderTip>
+          </p>
+          <p className="tabular-nums">
+            {freeThrows && Number(freeThrows.attempted) > 0 ? (
+              <>
+                <span>{`${formatCount(freeThrows.made)}-${formatCount(freeThrows.attempted)}`}</span>{" "}
+                <span className="max-sm:block">({formatPercentage(shootingPercentage(freeThrows.made, freeThrows.attempted))})</span>
+              </>
+            ) : (
+              formatMissing(null)
+            )}
+          </p>
+        </div>
+        <div>
           <p className="eyebrow">eFG%</p>
           <p className="tabular-nums">{formatPercentage(effectiveFg)}</p>
+        </div>
+        <div>
+          <p className="eyebrow">
+            <HeaderTip tip="Points from made shots in the restricted area and the paint">Paint pts</HeaderTip>
+          </p>
+          <p className="tabular-nums">{formatMissing(paintPoints(shots, team?.clubCode))}</p>
         </div>
       </div>
       <div className="rounded-field border border-base-300 bg-base-100/60 p-1 sm:p-2">
@@ -549,14 +571,16 @@ function TeamComparisonPanel({ team, shots, teams, mode }) {
   );
 }
 
-function ShootingTab({ shots, localTeam, roadTeam }) {
+function ShootingTab({ shots, localTeam, roadTeam, boxScore }) {
   const [presentationMode, setPresentationMode] = useState("map");
-  const [playerFilter, setPlayerFilter] = useState("all");
+  // One player filter per team, home first: each one narrows only its own team's court and tables.
+  const [playerFilters, setPlayerFilters] = useState(["all", "all"]);
   const [shotTypeFilter, setShotTypeFilter] = useState("all");
   const [periodFilter, setPeriodFilter] = useState("all");
   const [resultFilter, setResultFilter] = useState("all");
   const [contextFilter, setContextFilter] = useState("all");
   const [quarterPlaying, setQuarterPlaying] = useState(false);
+  const filtersRef = useRef(null);
 
   if (shots.length === 0) {
     return <EmptyText>Shot data isn't available for this game yet.</EmptyText>;
@@ -569,10 +593,24 @@ function ShootingTab({ shots, localTeam, roadTeam }) {
     };
   }
 
-  const players = [...new Map(shots.map((shot) => [shot.personCode, shot.playerName])).entries()].filter(
+  const players = [...new Map(shots.map((shot) => [shot.personCode, { name: shot.playerName, clubCode: shot.clubCode }])).entries()].filter(
     ([code]) => code,
   );
-  const effectivePlayerFilter = players.some(([code]) => code === playerFilter) ? playerFilter : "all";
+  const teams = [localTeam, roadTeam];
+  // The players in two lists, one per team, each with its own choice (back to everyone when that player isn't there).
+  const playerGroups = teams.map((team, index) => {
+    const teamPlayers = players.filter(([, player]) => player.clubCode === team?.clubCode);
+    const filter = teamPlayers.some(([code]) => code === playerFilters[index]) ? playerFilters[index] : "all";
+    return { team, players: teamPlayers, filter };
+  });
+  const playerFilterFor = (clubCode) => playerGroups.find(({ team }) => team?.clubCode === clubCode)?.filter ?? "all";
+  const playerTest = (shot) => {
+    const filter = playerFilterFor(shot.clubCode);
+    return filter === "all" || shot.personCode === filter;
+  };
+  function changePlayerFilter(index, code) {
+    changeFilter(setPlayerFilters)((current) => current.map((filter, other) => (other === index ? code : filter)));
+  }
 
   const periodNumbers = [...new Set(shots.map((shot) => periodNumberForMinute(shot.minute)))].sort((a, b) => a - b);
   const periodOptions = ["all", ...periodNumbers.map(String)];
@@ -593,46 +631,88 @@ function ShootingTab({ shots, localTeam, roadTeam }) {
     });
   }
 
-  const filteredShots = applySharedFilters(
-    effectivePlayerFilter === "all" ? shots : shots.filter((shot) => shot.personCode === effectivePlayerFilter),
-  );
+  const filteredShots = applySharedFilters(shots.filter(playerTest));
+
+  // The tables under the zones: the filters, but never the result (a table of makes is all 100%) and never their own
+  // dimension, so the quarter table shows every quarter, the play-context table every context and the player table everyone.
+  const tableShots = ({ player = true, period = true, context = true }) =>
+    shots.filter((shot) => {
+      if (player && !playerTest(shot)) return false;
+      if (!shotTypeTest(shot)) return false;
+      if (period && periodFilter !== "all" && String(periodNumberForMinute(shot.minute)) !== periodFilter) return false;
+      if (context && !contextTest(shot)) return false;
+      return true;
+    });
+
+  // Free throws for the court header, from the box score: the team's chosen player's, else the team's.
+  const freeThrowsFor = (team) => {
+    const side = team === localTeam ? "local" : "road";
+    const filter = playerFilterFor(team?.clubCode);
+    const row =
+      filter === "all"
+        ? boxScore?.teamStats.find((stat) => stat.side === side && stat.statsKind === "total")
+        : boxScore?.playerStats.find((stat) => stat.side === side && stat.personKey === filter);
+    if (filter !== "all" && !row) return { made: 0, attempted: 0 };
+    return row ? { made: row.freeThrowsMade, attempted: row.freeThrowsAttempted } : null;
+  };
+
+  // A name in the player table picks that player in its team's list and brings the courts into view, below the filter box
+  // where it sticks (from xl).
+  function selectPlayer(teamIndex, code) {
+    changePlayerFilter(teamIndex, code);
+    const courts = document.getElementById("shooting-presentation-panel");
+    const bar = filtersRef.current;
+    if (courts && bar) courts.style.scrollMarginTop = getComputedStyle(bar).position === "sticky" ? `${stickyBottomOf(bar) + 16}px` : "";
+    if (courts) courts.scrollIntoView({ behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth", block: "start" });
+  }
   const teamShots = (team) => filteredShots.filter((shot) => shot.clubCode === team?.clubCode);
 
   const activeFilters = [
-    effectivePlayerFilter !== "all",
+    ...playerGroups.map(({ filter }) => filter !== "all"),
     showsShotFilters && shotTypeFilter !== "all",
     periodFilter !== "all",
     showsShotFilters && resultFilter !== "all",
     contextFilter !== "all",
   ].filter(Boolean).length;
 
+  // The filters are a box of their own, a sibling of everything they filter, so from xl it can stay under the nav while
+  // the courts and the tables below scroll by. Below sm it is just the Filters button.
   return (
-    <div className="flex flex-col gap-6">
-      <Panel className="p-3 sm:p-4">
-        <PanelHeader kicker="SHOOTING" title="Shooting studio" />
-        <TabStrip
-          ariaLabel="Shooting presentation"
-          panelId="shooting-presentation-panel"
-          activeKey={presentationMode}
-          onChange={changeFilter(setPresentationMode)}
-          scrolling
-          className="mb-4 lg:w-fit"
-          tabs={PRESENTATION_MODES}
-        />
-        <FilterDisclosure activeCount={activeFilters} gridClassName="min-[24rem]:grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
-          <LabelledSelect
-            label="Player"
-            labelClassName="max-sm:col-span-full"
-            value={effectivePlayerFilter}
-            onChange={(event) => changeFilter(setPlayerFilter)(event.target.value)}
-          >
-            <option value="all">All players</option>
-            {players.map(([code, name]) => (
-              <option key={code} value={code}>
-                {name}
-              </option>
-            ))}
-          </LabelledSelect>
+    <div>
+      <PanelHeader kicker="SHOOTING" title="Shooting studio" />
+      <TabStrip
+        ariaLabel="Shooting presentation"
+        panelId="shooting-presentation-panel"
+        activeKey={presentationMode}
+        onChange={changeFilter(setPresentationMode)}
+        scrolling
+        className="mb-4 lg:w-fit"
+        tabs={PRESENTATION_MODES}
+      />
+      <Panel ref={filtersRef} className="shooting-filters mb-4 p-3 max-sm:contents">
+        {/* The filters fill the row. Phones show the two player lists first, side by side; from lg the home team's list
+            opens the row and the away team's closes it, each above its own court, with the shared filters between. */}
+        <FilterDisclosure
+          activeCount={activeFilters}
+          className="max-sm:mb-4"
+          gridClassName={`min-[24rem]:grid-cols-2 ${showsShotFilters ? "lg:grid-cols-3 xl:grid-cols-6" : "lg:grid-cols-4"}`}
+        >
+          {playerGroups.map(({ team, players: teamPlayers, filter }, index) => (
+            <LabelledSelect
+              key={team?.clubCode ?? index}
+              label={`${teamCode(team)} player`}
+              labelClassName={index === 1 ? "lg:order-last" : ""}
+              value={filter}
+              onChange={(event) => changePlayerFilter(index, event.target.value)}
+            >
+              <option value="all">All players</option>
+              {teamPlayers.map(([code, player]) => (
+                <option key={code} value={code}>
+                  {player.name}
+                </option>
+              ))}
+            </LabelledSelect>
+          ))}
           {showsShotFilters ? (
             <LabelledSelect
               label="Shot type"
@@ -684,35 +764,53 @@ function ShootingTab({ shots, localTeam, roadTeam }) {
             ))}
           </LabelledSelect>
         </FilterDisclosure>
-
-        <TabPanel id="shooting-presentation-panel" focusKey={presentationMode} scroll={false}>
-          <div className="mb-3">
-            <QuarterPlayback
-              periodOptions={periodOptions}
-              activeOption={periodFilter}
-              onSelect={setPeriodFilter}
-              playing={quarterPlaying}
-              onPlayingChange={setQuarterPlaying}
-            />
-          </div>
-          <div className="grid gap-4 sm:grid-cols-2">
-            {[localTeam, roadTeam].map((team, index) => (
-              <TeamComparisonPanel
-                key={team?.clubCode ?? index}
-                team={team}
-                shots={teamShots(team)}
-                teams={[localTeam, roadTeam]}
-                mode={presentationMode === "zones" ? "heatmap" : "markers"}
-              />
-            ))}
-          </div>
-          <div className="mt-3">
-            {presentationMode === "zones" ? <HeatmapLegend /> : <ShootingLegend teams={[localTeam, roadTeam]} />}
-          </div>
-        </TabPanel>
       </Panel>
 
-      <ZoneComparison localTeam={localTeam} roadTeam={roadTeam} shots={filteredShots} />
+      <div className="flex flex-col gap-6">
+        <Panel className="p-3 sm:p-4">
+          <TabPanel id="shooting-presentation-panel" focusKey={presentationMode} scroll={false}>
+            <div className="mb-3">
+              <QuarterPlayback
+                periodOptions={periodOptions}
+                activeOption={periodFilter}
+                onSelect={setPeriodFilter}
+                playing={quarterPlaying}
+                onPlayingChange={setQuarterPlaying}
+              />
+            </div>
+            <div className="grid gap-4 sm:grid-cols-2">
+              {teams.map((team, index) => (
+                <TeamComparisonPanel
+                  key={team?.clubCode ?? index}
+                  team={team}
+                  shots={teamShots(team)}
+                  teams={teams}
+                  mode={presentationMode === "zones" ? "heatmap" : "markers"}
+                  freeThrows={freeThrowsFor(team)}
+                />
+              ))}
+            </div>
+            <div className="mt-3">
+              {presentationMode === "zones" ? <HeatmapLegend /> : <ShootingLegend teams={[localTeam, roadTeam]} />}
+            </div>
+          </TabPanel>
+        </Panel>
+
+        <ZoneComparison localTeam={localTeam} roadTeam={roadTeam} shots={filteredShots} />
+
+        <div className="grid grid-cols-[minmax(0,1fr)] gap-6 lg:grid-cols-2 lg:gap-4">
+          <ShootingByQuarter shots={tableShots({ period: false })} localTeam={localTeam} roadTeam={roadTeam} />
+          <PlayContextComparison shots={tableShots({ context: false })} localTeam={localTeam} roadTeam={roadTeam} />
+        </div>
+
+        <PlayerShooting
+          shots={tableShots({ player: false })}
+          localTeam={localTeam}
+          roadTeam={roadTeam}
+          activePlayers={playerGroups.map(({ filter }) => filter)}
+          onSelectPlayer={selectPlayer}
+        />
+      </div>
     </div>
   );
 }
@@ -759,10 +857,11 @@ function PlayByPlayRow({ event, localTeam, roadTeam }) {
 
   return (
     <div
-      className={`grid grid-cols-[2.5rem_auto_minmax(0,1fr)_auto] items-center gap-x-2 gap-y-0.5 px-2 py-1.5 sm:grid-cols-[3.5rem_1.5rem_minmax(0,1fr)_auto] sm:gap-3 sm:px-3 sm:py-2 ${isScoring ? "bg-primary/6" : ""}`}
+      className={`grid grid-cols-[2.5rem_auto_minmax(0,1fr)_auto] items-center gap-x-2 gap-y-0.5 px-2 py-1.5 sm:grid-cols-[3.5rem_1.5rem_minmax(0,1fr)_auto] sm:gap-3 sm:px-3 sm:py-2 lg:grid-cols-[5.5rem_1.5rem_minmax(0,1fr)_auto] lg:py-1 ${isScoring ? "bg-primary/6" : ""}`}
     >
-      {/* Below sm the name, badge, detail and score are laid straight on this grid: the name and score on the first line, the badge and detail on the second. */}
-      <div className="max-sm:row-span-2">
+      {/* Below sm the name, badge, detail and score are laid straight on this grid: the name and score on the first line, the badge and detail on the second.
+          From lg the whole event is one line: the period beside the clock, and the detail after the badge, cut to fit. */}
+      <div className="max-sm:row-span-2 lg:flex lg:items-baseline lg:gap-2">
         <p className="text-xs font-bold text-primary uppercase">{formatPeriod(event.periodNumber)}</p>
         <p className="muted font-mono text-xs">{event.markerTime ?? "-"}</p>
       </div>
@@ -779,13 +878,15 @@ function PlayByPlayRow({ event, localTeam, roadTeam }) {
       ) : (
         <span aria-hidden="true" className="hidden h-6 w-6 sm:block" />
       )}
-      <div className="min-w-0 max-sm:contents">
-        <p className="flex flex-wrap items-center gap-2 max-sm:contents">
-          <span className="font-medium break-words max-sm:col-[2/4] max-sm:text-sm max-sm:row-start-1 max-sm:min-w-0 sm:truncate">{who}</span>
-          <span className="stat-badge stat-badge-neutral text-xs max-sm:col-start-2 max-sm:row-start-2 max-sm:justify-self-start">{label}</span>
+      <div className="min-w-0 max-sm:contents lg:flex lg:items-center lg:gap-3">
+        <p className="flex flex-wrap items-center gap-2 max-sm:contents lg:max-w-[60%] lg:min-w-0 lg:flex-none lg:flex-nowrap">
+          <span className="font-medium break-words max-sm:col-[2/4] max-sm:text-sm max-sm:row-start-1 max-sm:min-w-0 sm:truncate lg:min-w-0">{who}</span>
+          <span className="stat-badge stat-badge-neutral text-xs max-sm:col-start-2 max-sm:row-start-2 max-sm:justify-self-start lg:flex-none">{label}</span>
         </p>
         {event.playInfo ? (
-          <p className="muted text-xs max-sm:col-[3/5] max-sm:row-start-2 max-sm:line-clamp-2 sm:truncate">{event.playInfo}</p>
+          <p className="muted text-xs max-sm:col-[3/5] max-sm:row-start-2 max-sm:line-clamp-2 sm:truncate lg:min-w-0 lg:flex-1" title={event.playInfo}>
+            {event.playInfo}
+          </p>
         ) : null}
       </div>
       <div className="text-right tabular-nums max-sm:col-start-4 max-sm:row-start-1 max-sm:text-sm sm:min-w-[4.5rem]">
@@ -893,98 +994,72 @@ function PlayByPlaySection({ events, localTeam, roadTeam }) {
   );
 }
 
-function FlowMetric({ label, value, detail, tone }) {
+// `team` puts its crest before the label.
+function FlowMetric({ label, value, detail, tone, team, className = "" }) {
   return (
-    <Panel className={`p-4 max-sm:p-3 ${tone ? `border-${tone} bg-${tone}/10` : ""}`}>
-      <p className="eyebrow mb-1">{label}</p>
-      <p className="text-2xl font-semibold max-sm:text-xl">{value}</p>
+    <Panel className={`p-4 max-sm:p-3 lg:p-3 ${tone ? `border-${tone} bg-${tone}/10` : ""} ${className}`}>
+      {/* At least the crest's height, so a card without a crest (Lead changes) puts its value on the same line. */}
+      <div className="mb-1 flex min-h-5 items-start gap-2">
+        {team?.crestUrl ? (
+          <img
+            src={team.crestUrl}
+            alt=""
+            className="size-5 flex-none object-contain"
+            onError={(event) => {
+              event.currentTarget.style.display = "none";
+            }}
+          />
+        ) : null}
+        {/* Between lg and xl five cards in a row leave a label room for about one short line: each keeps two lines, so the
+            values still line up when one wraps. */}
+        <p className="eyebrow min-w-0 lg:max-xl:min-h-[2lh]">{label}</p>
+      </div>
+      <p className="text-2xl font-semibold max-sm:text-xl lg:text-xl">{value}</p>
       {detail ? <p className="muted mt-1 text-xs">{detail}</p> : null}
     </Panel>
   );
 }
 
+// A team in a tile's label: its TV code (else its abbreviated name) at every width, so five tiles in a row keep one-line
+// labels; the full name stays for screen readers.
+function TileTeam({ team }) {
+  return (
+    <>
+      <span aria-hidden="true">{team?.tvCode ?? shortTeamName(team)}</span>
+      <span className="sr-only">{teamName(team)}</span>
+    </>
+  );
+}
+
+// The game's headline numbers: lead changes, then each team's biggest lead and best run with the moment it came, in the
+// team's colour from the lead tracker. Two columns from sm (home left, road right), one row from lg.
 function FlowMetrics({ flow, localTeam, roadTeam }) {
-  const longerRun =
-    (flow.localRun?.points ?? 0) >= (flow.roadRun?.points ?? 0)
-      ? { team: localTeam, run: flow.localRun }
-      : { team: roadTeam, run: flow.roadRun };
-
-  return (
-    <div className="grid gap-3 sm:grid-cols-2 sm:gap-4 xl:grid-cols-4">
-      <FlowMetric label="Lead changes" value={flow.leadChanges} detail={`${flow.ties} tie${flow.ties === 1 ? "" : "s"}`} />
-      <FlowMetric
-        label={<><TeamName team={localTeam} /> biggest lead</>}
-        value={flow.localBiggest ? `+${flow.localBiggest.margin}` : "—"}
-        detail={flow.localBiggest ? momentLabel(flow.localBiggest.moment) : "Never led"}
-        tone="primary"
-      />
-      <FlowMetric
-        label={<><TeamName team={roadTeam} /> biggest lead</>}
-        value={flow.roadBiggest ? `+${flow.roadBiggest.margin}` : "—"}
-        detail={flow.roadBiggest ? momentLabel(flow.roadBiggest.moment) : "Never led"}
-        tone="secondary"
-      />
-      <FlowMetric
-        label="Longest run"
-        value={longerRun.run ? `${longerRun.run.points}-0` : "—"}
-        detail={longerRun.run ? <><TeamName team={longerRun.team} /> · {momentLabel(longerRun.run.endMoment)}</> : "No runs yet"}
-      />
-    </div>
+  const biggestLead = (team, biggest) => (
+    <FlowMetric
+      label={<><TileTeam team={team} /> biggest lead</>}
+      value={biggest ? `+${biggest.margin}` : "—"}
+      detail={biggest ? momentLabel(biggest.moment) : "Never led"}
+      tone={team === localTeam ? "primary" : "secondary"}
+      team={team}
+    />
   );
-}
-
-function MomentCard({ title, team, detail, moment }) {
-  return (
-    <Panel className="flex items-start gap-3 p-4 max-sm:gap-2 max-sm:p-3">
-      {team?.crestUrl ? (
-        <img
-          src={team.crestUrl}
-          alt=""
-          className="h-8 w-8 flex-none object-contain max-sm:h-6 max-sm:w-6"
-          onError={(event) => {
-            event.currentTarget.style.display = "none";
-          }}
-        />
-      ) : null}
-      <div className="min-w-0">
-        <p className="font-medium">{title}</p>
-        <p className="muted text-sm">{detail}</p>
-        {moment ? <p className="muted text-xs">{momentLabel(moment)}</p> : null}
-      </div>
-    </Panel>
+  const bestRun = (team, run) => (
+    <FlowMetric
+      label={<><TileTeam team={team} /> best run</>}
+      value={run ? `${run.points}-0` : "—"}
+      detail={run ? momentLabel(run.endMoment) : "No runs"}
+      tone={team === localTeam ? "primary" : "secondary"}
+      team={team}
+    />
   );
-}
 
-function TurningPoints({ flow, localTeam, roadTeam }) {
   return (
-    <div>
-      <PanelHeader kicker="MOMENTS" title="Turning points" />
-      <div className="grid gap-3 sm:grid-cols-2 sm:gap-4 xl:grid-cols-4">
-        <MomentCard
-          title={<><TeamName team={localTeam} /> peak lead</>}
-          team={localTeam}
-          detail={flow.localBiggest ? `Up by ${flow.localBiggest.margin}` : "Never led"}
-          moment={flow.localBiggest?.moment}
-        />
-        <MomentCard
-          title={<><TeamName team={roadTeam} /> peak lead</>}
-          team={roadTeam}
-          detail={flow.roadBiggest ? `Up by ${flow.roadBiggest.margin}` : "Never led"}
-          moment={flow.roadBiggest?.moment}
-        />
-        <MomentCard
-          title={<><TeamName team={localTeam} /> best run</>}
-          team={localTeam}
-          detail={flow.localRun ? `${flow.localRun.points} unanswered points` : "No runs"}
-          moment={flow.localRun?.endMoment}
-        />
-        <MomentCard
-          title={<><TeamName team={roadTeam} /> best run</>}
-          team={roadTeam}
-          detail={flow.roadRun ? `${flow.roadRun.points} unanswered points` : "No runs"}
-          moment={flow.roadRun?.endMoment}
-        />
-      </div>
+    <div className="grid gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-5 lg:gap-3">
+      <FlowMetric label="Lead changes" value={flow.leadChanges} detail={`${flow.ties} tie${flow.ties === 1 ? "" : "s"}`} className="sm:col-span-2 lg:col-span-1" />
+      {biggestLead(localTeam, flow.localBiggest)}
+      {biggestLead(roadTeam, flow.roadBiggest)}
+      {bestRun(localTeam, flow.localRun)}
+      {bestRun(roadTeam, flow.roadRun)}
     </div>
   );
 }
@@ -996,11 +1071,10 @@ function GameFlowTab({ events, periodScores, localTeam, roadTeam, forfeit }) {
   );
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-6 lg:gap-4">
       <FlowMetrics flow={flow} localTeam={localTeam} roadTeam={roadTeam} />
       <ScoreFlowChart flow={flow} localTeam={localTeam} roadTeam={roadTeam} />
       <PeriodTable periodScores={periodScores} localTeam={localTeam} roadTeam={roadTeam} forfeit={forfeit} />
-      <TurningPoints flow={flow} localTeam={localTeam} roadTeam={roadTeam} />
     </div>
   );
 }
@@ -1012,6 +1086,12 @@ function shootingCell(made, attempted) {
 
 const COMPARISON_ROWS = [
   { label: "Points", render: (row) => formatCount(row.points), value: (row) => Number(row.points) },
+  {
+    label: "Field goals",
+    tip: "All shots from the field, twos and threes: made-attempted",
+    render: (row) => shootingCell(row.fieldGoalsMadeTotal, row.fieldGoalsAttemptedTotal),
+    value: (row) => shootingPercentage(row.fieldGoalsMadeTotal, row.fieldGoalsAttemptedTotal),
+  },
   {
     label: "2PT",
     render: (row) => shootingCell(row.fieldGoalsMade2, row.fieldGoalsAttempted2),
@@ -1037,17 +1117,24 @@ const COMPARISON_ROWS = [
   { label: "Blocks against", render: (row) => formatCount(row.blocksAgainst), value: (row) => Number(row.blocksAgainst), lowerIsBetter: true },
   { label: "Fouls committed", render: (row) => formatCount(row.foulsCommited), value: (row) => Number(row.foulsCommited), lowerIsBetter: true },
   { label: "Fouls drawn", render: (row) => formatCount(row.foulsReceived), value: (row) => Number(row.foulsReceived) },
-  { label: "PIR", render: (row) => formatCount(row.valuation), value: (row) => Number(row.valuation) },
 ];
 
-// The Head to head rows in groups, by label. The rows are basic counts, so they carry no tips.
+// The Head to head rows in groups, by label. The basic counts carry no tips; a row built from other numbers explains itself.
 const COMPARISON_GROUPS = [
-  { title: "Scoring", labels: ["Points", "Bench points", "Points in the paint"] },
-  { title: "Shooting", labels: ["2PT", "3PT", "FT"] },
+  { title: "Scoring", labels: ["Points", "Starters' points", "Bench points", "Points in the paint"] },
+  { title: "Shooting", labels: ["Field goals", "2PT", "3PT", "FT"] },
   { title: "Rebounds", labels: ["Rebounds", "Offensive rebounds", "Defensive rebounds"] },
-  { title: "Ball and defense", labels: ["Assists", "Turnovers", "Steals", "Blocks", "Blocks against"] },
-  { title: "Fouls and PIR", labels: ["Fouls committed", "Fouls drawn", "PIR"] },
+  { title: "Ball and defense", labels: ["Assists", "Turnovers", "Team turnovers", "Steals", "Blocks", "Blocks against"] },
+  { title: "Fouls", labels: ["Fouls committed", "Fouls drawn"] },
 ];
+
+// A team line count (credited to the team, not a player), or null without a team line.
+const teamLineCount = (teamRow, field) => (Number.isFinite(teamRow?.[field]) ? teamRow[field] : null);
+
+// One side's head coach under its name, in the order the names read elsewhere ("Ibon Navarro").
+function CoachLine({ total, className = "" }) {
+  return total?.coachName ? <p className={`muted mt-0.5 text-xs ${className}`}>Coach: {displayName(total.coachName)}</p> : null;
+}
 
 const LOADING_MARK = (
   <span className="muted">
@@ -1056,28 +1143,33 @@ const LOADING_MARK = (
   </span>
 );
 
-// Each team's box-score totals on one line per stat, in groups. Bench points come from the players' starter flags and
-// points in the paint from the shots, which load separately: their trouble only touches that row. A side with no value
-// prints a dash and leaves both sides unhighlighted: it is not a 0 to beat.
-function TeamComparisonRows({ localTotal, roadTotal, localTeam, roadTeam, playerStats, shotsQuery }) {
+// Each team's box-score totals on one line per stat, in groups. Bench and starters' points come from the players' starter
+// flags, the team turnovers from the team line, and points in the paint from the shots, which load separately:
+// their trouble only touches that row. A side with no value prints a dash and leaves both sides unhighlighted: it is not a 0
+// to beat.
+function TeamComparisonRows({ localTotal, roadTotal, localTeamRow, roadTeamRow, localTeam, roadTeam, playerStats, shotsQuery }) {
   if (!localTotal || !roadTotal) {
     return <EmptyText>Team totals weren't recorded for this game.</EmptyText>;
   }
   const paintFor = (team) => (shotsQuery.isSuccess ? paintPoints(shotsQuery.data.shots, team?.clubCode) : null);
-  const counted = (label, valueA, valueB) => ({
+  const counted = (label, valueA, valueB, { tip, lowerIsBetter = false } = {}) => ({
     label,
-    direction: valueA === null || valueB === null ? "neutral" : "higher",
+    tip,
+    direction: valueA === null || valueB === null ? "neutral" : lowerIsBetter ? "lower" : "higher",
     rawA: valueA,
     rawB: valueB,
     displayA: formatCount(valueA),
     displayB: formatCount(valueB),
   });
+  const [localBench, roadBench] = [benchPoints(playerStats, "local"), benchPoints(playerStats, "road")];
+  const starters = (total, bench) => (bench === null || !Number.isFinite(total.points) ? null : total.points - bench);
   const rows = new Map(
     [
       ...COMPARISON_ROWS.map((row) => {
         const [rawA, rawB] = [row.value(localTotal), row.value(roadTotal)];
         return {
           label: row.label,
+          tip: row.tip,
           direction: rawA === null || rawB === null ? "neutral" : row.lowerIsBetter ? "lower" : "higher",
           rawA,
           rawB,
@@ -1085,7 +1177,14 @@ function TeamComparisonRows({ localTotal, roadTotal, localTeam, roadTeam, player
           displayB: row.render(roadTotal),
         };
       }),
-      counted("Bench points", benchPoints(playerStats, "local"), benchPoints(playerStats, "road")),
+      counted("Bench points", localBench, roadBench),
+      counted("Starters' points", starters(localTotal, localBench), starters(roadTotal, roadBench), {
+        tip: "Points scored by the starting five",
+      }),
+      counted("Team turnovers", teamLineCount(localTeamRow, "turnovers"), teamLineCount(roadTeamRow, "turnovers"), {
+        tip: "Turnovers credited to the team rather than a player, such as a shot-clock violation",
+        lowerIsBetter: true,
+      }),
       {
         ...counted("Points in the paint", paintFor(localTeam), paintFor(roadTeam)),
         ...(shotsQuery.isLoading ? { missingText: LOADING_MARK } : {}),
@@ -1094,16 +1193,19 @@ function TeamComparisonRows({ localTotal, roadTotal, localTeam, roadTeam, player
   );
 
   return (
-    <Panel className="flex flex-1 flex-col p-4 max-sm:p-3">
+    <Panel className="p-4 max-sm:p-3">
       <div className="mb-2 grid grid-cols-2 gap-4 max-sm:gap-2">
-        <div className="flex justify-end">
+        <div className="flex flex-col items-end text-right">
           <TeamLabel team={localTeam} />
+          <CoachLine total={localTotal} />
         </div>
-        <TeamLabel team={roadTeam} />
+        <div>
+          <TeamLabel team={roadTeam} />
+          <CoachLine total={roadTotal} />
+        </div>
       </div>
       {COMPARISON_GROUPS.map((group) => (
-        // Each group grows by its number of rows, so the rows spread evenly when the panel is stretched.
-        <section key={group.title} aria-label={group.title} className="mt-3 flex flex-col first-of-type:mt-0" style={{ flexGrow: group.labels.length }}>
+        <section key={group.title} aria-label={group.title} className="mt-3 first-of-type:mt-0">
           <h4 className="muted mb-0.5 text-center text-xs font-bold tracking-wide uppercase">{group.title}</h4>
           {group.labels.map((label) => (
             <ComparisonRow key={label} {...rows.get(label)} inline bars={false} />
@@ -1122,16 +1224,18 @@ function TeamComparisonRows({ localTotal, roadTotal, localTeam, roadTeam, player
   );
 }
 
-// The box-score rows (left) and the Four Factors (right) sit side by side on wide screens and stack on narrow ones. The
-// two panels are equally tall: the shorter one spreads its rows out evenly instead of leaving empty space at the bottom.
-// They load separately, so trouble with one never hides the other.
+// Below lg the Head to head rows, the Four Factors and the Scoring profile stack in that order. From lg the Four Factors fill
+// the right column and the Head to head rows sit on the left with the Scoring profile right under them, at their own
+// heights: the auto first row is the Head to head's, the Scoring profile starts the second. They load separately, so
+// trouble with one never hides the others.
 function TeamComparisonTab({ game, boxScoreQuery, advancedQuery, teamFlowQuery, shotsQuery }) {
-  const totalFor = (side) => boxScoreQuery.data?.teamStats.find((row) => row.side === side && row.statsKind === "total");
+  const statsFor = (side, kind) => boxScoreQuery.data?.teamStats.find((row) => row.side === side && row.statsKind === kind);
+  const totalFor = (side) => statsFor(side, "total");
 
   return (
-    <div className="grid gap-6 lg:grid-cols-2">
-      <section className="flex flex-col">
-        <PanelHeader kicker="BOX SCORE" title="Head to head" />
+    <div className="grid gap-6 lg:grid-cols-2 lg:grid-rows-[auto_1fr] lg:gap-4">
+      <section className="flex flex-col lg:col-start-1 lg:row-start-1">
+        <PanelHeader kicker="BOX SCORE" title="Head to head" compact />
         {boxScoreQuery.isLoading ? (
           <AsyncState status="loading" label="Loading team comparison" skeleton={<ComparisonRowsSkeleton />} />
         ) : boxScoreQuery.isError ? (
@@ -1140,6 +1244,8 @@ function TeamComparisonTab({ game, boxScoreQuery, advancedQuery, teamFlowQuery, 
           <TeamComparisonRows
             localTotal={totalFor("local")}
             roadTotal={totalFor("road")}
+            localTeamRow={statsFor("local", "team")}
+            roadTeamRow={statsFor("road", "team")}
             localTeam={game.localTeam}
             roadTeam={game.roadTeam}
             playerStats={boxScoreQuery.data.playerStats}
@@ -1147,12 +1253,18 @@ function TeamComparisonTab({ game, boxScoreQuery, advancedQuery, teamFlowQuery, 
           />
         )}
       </section>
-      <section className="flex flex-col">
-        <PanelHeader kicker="FOUR FACTORS" title="Each team against its season average" />
-        <FourFactors advancedQuery={advancedQuery} localTeam={game.localTeam} roadTeam={game.roadTeam} />
+      <section className="flex flex-col lg:col-start-2 lg:row-span-2 lg:row-start-1 lg:self-start">
+        <PanelHeader kicker="FOUR FACTORS" title="Each team against its season average" compact />
+        <FourFactors
+          advancedQuery={advancedQuery}
+          localTeam={game.localTeam}
+          roadTeam={game.roadTeam}
+          localTotal={totalFor("local")}
+          roadTotal={totalFor("road")}
+        />
       </section>
-      <section className="flex flex-col lg:col-span-2">
-        <PanelHeader kicker="SCORING PROFILE" title="How each team scored and how the game was led" />
+      <section className="flex flex-col lg:col-start-1 lg:row-start-2 lg:self-start">
+        <PanelHeader kicker="SCORING PROFILE" title="How each team scored and how the game was led" compact />
         <ScoringProfile teamFlowQuery={teamFlowQuery} localTeam={game.localTeam} roadTeam={game.roadTeam} />
       </section>
     </div>
@@ -1316,6 +1428,7 @@ export default function GameDetailPage() {
               shots={shotsQuery.data.shots}
               localTeam={game.localTeam}
               roadTeam={game.roadTeam}
+              boxScore={boxScoreQuery.data}
             />
           )
         ) : null}

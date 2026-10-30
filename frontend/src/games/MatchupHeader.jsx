@@ -24,7 +24,7 @@ function formatTipOff(scheduledAt) {
 // The crest in a fixed slot, so a club with no crest, or one that fails to load, leaves the layout as it is.
 function Crest({ team }) {
   const [failed, setFailed] = useState(false);
-  const slot = "h-12 w-12 flex-none sm:h-20 sm:w-20";
+  const slot = "h-12 w-12 flex-none sm:h-20 sm:w-20 lg:h-16 lg:w-16";
   if (!team?.crestUrl || failed) return <div aria-hidden="true" className={slot} />;
   return <img src={team.crestUrl} alt="" className={`${slot} object-contain`} onError={() => setFailed(true)} />;
 }
@@ -52,17 +52,21 @@ function Side({ team, seasonCode, position, groupPlace, won }) {
   );
 }
 
-// The facts about the game itself, as EuroLeague's match information box gives them: a small label over each value, side by side from sm and
-// stacked below it. A fact the game does not have is left out, and with none there is no strip at all.
+// The facts about the game itself, as EuroLeague's match information box gives them: a small label over each value, side by side from sm.
+// Below sm they take two columns (the arena beside the crowd, the officials across the width) in smaller type. A fact the game does
+// not have is left out, and with none there is no strip at all.
 function MatchInfo({ items }) {
   const shown = items.filter((item) => item.value);
   if (shown.length === 0) return null;
+  // A half-width fact left without a partner (the arena of a game with no crowd figure) takes the whole row too.
+  const halves = shown.filter((item) => !item.wide);
+  const spans = (item) => item.wide || (halves.length % 2 === 1 && item === halves.at(-1));
   return (
-    <dl className="mt-4 grid grid-cols-[minmax(0,1fr)] gap-3 border-t border-base-300 pt-4 text-center sm:auto-cols-fr sm:grid-flow-col">
+    <dl className="mt-3 grid grid-cols-2 gap-x-3 gap-y-2 border-t border-base-300 pt-3 text-center sm:auto-cols-fr sm:grid-flow-col sm:grid-cols-none">
       {shown.map((item) => (
-        <div key={item.label} className="min-w-0">
+        <div key={item.label} className={`min-w-0${spans(item) ? " max-sm:col-span-2" : ""}`}>
           <dt className="muted text-xs font-semibold tracking-wide uppercase">{item.label}</dt>
-          <dd className="mt-0.5 font-semibold wrap-break-word">{item.value}</dd>
+          <dd className="mt-0.5 text-sm font-semibold wrap-break-word sm:text-base">{item.value}</dd>
         </div>
       ))}
     </dl>
@@ -70,13 +74,14 @@ function MatchInfo({ items }) {
 }
 
 // The arena as the Arena entry reads: the feed writes most names in capitals ("BELGRADE ARENA"), so those read in title case and a
-// name with its own lower-case letters is left as it is. Its capacity and the feed's neutral-venue flag go in small lines under it.
-function arenaValue(venue) {
+// name with its own lower-case letters is left as it is. Its capacity (only when the crowd is not shown) and the feed's neutral-venue
+// flag go in small lines under it.
+function arenaValue(venue, showCapacity) {
   if (!venue?.name) return null;
   return (
     <>
       {/[a-z]/.test(venue.name) ? venue.name : titleCase(venue.name)}
-      {venue.capacity ? <span className="muted block text-xs font-normal">Capacity {formatCount(venue.capacity)}</span> : null}
+      {showCapacity && venue.capacity ? <span className="muted block text-xs font-normal">Capacity {formatCount(venue.capacity)}</span> : null}
       {venue.neutral ? <span className="muted block text-xs font-normal">Neutral venue</span> : null}
     </>
   );
@@ -99,6 +104,7 @@ export default function MatchupHeader({ game, officials = [], venue = null, seas
   const entries = new Map((standingsQuery.data?.standings ?? []).map((entry) => [entry.clubCode, entry]));
   const positionOf = (team) => ((game.phaseCode === "RS" || groupedStage) && team?.clubCode ? (entries.get(team.clubCode)?.basic?.position ?? null) : null);
   const groupPlaceOf = (team) => (groupedStage && team?.clubCode ? groupPositionLabel(entries.get(team.clubCode)) : null);
+  const attendance = game.played && venue?.attendance ? formatCount(venue.attendance) : null;
   const round = eliminationStageLabel(format, game) ?? game.roundName ?? (game.roundNumber ? `Round ${game.roundNumber}` : game.phaseName);
 
   return (
@@ -135,9 +141,9 @@ export default function MatchupHeader({ game, officials = [], venue = null, seas
       </p>
       <MatchInfo
         items={[
-          { label: "Arena", value: arenaValue(venue) },
-          { label: "Attendance", value: game.played && venue?.attendance ? formatCount(venue.attendance) : null },
-          { label: "Officials", value: officials.map((official) => displayName(official.name)).join(", ") },
+          { label: "Arena", value: arenaValue(venue, !attendance) },
+          { label: "Attendance", value: attendance },
+          { label: "Officials", value: officials.map((official) => displayName(official.name)).join(", "), wide: true },
         ]}
       />
     </Panel>

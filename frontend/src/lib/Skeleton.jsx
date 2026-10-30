@@ -110,9 +110,10 @@ export function SkeletonPanel({ className = "", children }) {
 }
 
 // A panel's kicker and title bars, as `PanelHeader` draws them, with the title bar `title` wide.
-export function SkeletonPanelHead({ title = "w-48" }) {
+// `compact` mirrors PanelHeader's compact heading: one line from lg.
+export function SkeletonPanelHead({ title = "w-48", compact = false }) {
   return (
-    <div className="mb-4 flex flex-col gap-2">
+    <div className={`mb-4 flex flex-col gap-2${compact ? " lg:mb-2 lg:flex-row lg:items-center lg:gap-3" : ""}`}>
       <div className="skeleton h-3 w-20" />
       <div className={`skeleton h-6 max-w-full ${title}`} />
     </div>

@@ -76,7 +76,9 @@ const holdsContent = (locator) =>
     }),
   );
 
-const studio = (page) => page.locator(".panel").filter({ has: page.getByRole("heading", { name: "Shooting studio" }) });
+// The box with the quarter buttons and the two courts; the heading, the view tabs and the filter box sit above it.
+const studio = (page) => page.locator(".panel").filter({ has: page.locator("#shooting-presentation-panel") });
+const filterBox = (page) => page.locator(".shooting-filters");
 const filtersButton = (page) => page.getByRole("button", { name: /^Filters/ });
 const select = (page, name) => page.getByRole("combobox", { name, exact: true });
 const mode = (page, name) => page.getByRole("tab", { name, exact: true }).click();
@@ -112,24 +114,26 @@ test("below 640px the filters sit behind one button that counts the changed ones
   await atWidths(page, [390], async () => {
     await expect(filtersButton(page)).toHaveText(/^Filters\s*▾?$/);
     await expect(filtersButton(page)).toHaveAttribute("aria-expanded", "false");
-    await expect(select(page, "Player")).toBeHidden();
+    await expect(select(page, "PAO player")).toBeHidden();
     await filtersButton(page).click();
     await expect(filtersButton(page)).toHaveAttribute("aria-expanded", "true");
 
-    // Player takes a line; Shot type and Result share one in two columns.
-    const [player, shotType, result, context] = await Promise.all(
-      ["Player", "Shot type", "Result", "Play context"].map((name) => boxOf(select(page, name))),
+    // The two teams' player lists share a line, home first; Shot type and Result share the next one.
+    const [homePlayer, roadPlayer, shotType, result, context] = await Promise.all(
+      ["PAO player", "CZV player", "Shot type", "Result", "Play context"].map((name) => boxOf(select(page, name))),
     );
+    expect(Math.abs(homePlayer.top - roadPlayer.top)).toBeLessThan(2);
+    expect(roadPlayer.left).toBeGreaterThan(homePlayer.right);
     expect(Math.abs(shotType.top - result.top)).toBeLessThan(2);
     expect(result.left).toBeGreaterThan(shotType.right);
-    expect(shotType.top).toBeGreaterThan(player.bottom - 1);
+    expect(shotType.top).toBeGreaterThan(homePlayer.bottom - 1);
     expect(context.top).toBeGreaterThan(shotType.bottom - 1);
 
     await select(page, "Shot type").selectOption("3");
     await select(page, "Result").selectOption("made");
     await expect(filtersButton(page)).toContainText("2 active");
     await filtersButton(page).click();
-    await expect(select(page, "Player")).toBeHidden();
+    await expect(select(page, "PAO player")).toBeHidden();
     await expect(filtersButton(page)).toContainText("2 active");
     await expect(page.getByRole("img", { name: /Shot chart, Panathinaikos.*: 5 attempts shown/ })).toBeVisible();
   });
@@ -137,7 +141,7 @@ test("below 640px the filters sit behind one button that counts the changed ones
     await filtersButton(page).click();
     const [shotType, result] = await Promise.all(["Shot type", "Result"].map((name) => boxOf(select(page, name))));
     expect(result.top).toBeGreaterThan(shotType.bottom - 1);
-    expect(await holdsContent(studio(page))).toBe(true);
+    expect(await holdsContent(page.locator("[id] > .grid", { has: select(page, "Shot type") }))).toBe(true);
     await expectNoPageOverflow(page);
   });
 });
@@ -152,8 +156,59 @@ test("the Period select is left out on a phone for both views, where the quarter
     await mode(page, "Shot map");
   });
   await atWidths(page, [768, 1280], async () => {
-    for (const name of ["Player", "Shot type", "Period", "Result", "Play context"]) await expect(select(page, name)).toBeVisible();
+    for (const name of ["PAO player", "CZV player", "Shot type", "Period", "Result", "Play context"]) await expect(select(page, name)).toBeVisible();
     await expect(select(page, "Team")).toHaveCount(0);
+  });
+});
+
+test("on a wide screen the home player list opens the filter row and the away one closes it, and the row is filled on both views", async ({ page }) => {
+  await openShooting(page);
+  const rowOf = async (names) => {
+    const boxes = await Promise.all(names.map((name) => boxOf(select(page, name))));
+    for (const box of boxes) expect(Math.abs(box.top - boxes[0].top)).toBeLessThan(2);
+    for (let index = 1; index < boxes.length; index += 1) expect(boxes[index].left).toBeGreaterThan(boxes[index - 1].right);
+    return boxes;
+  };
+  const filled = async (boxes) => {
+    const panel = await boxOf(filterBox(page));
+    // The last select ends near the panel's right edge, inside its padding.
+    expect(panel.right - boxes.at(-1).right).toBeLessThan(40);
+  };
+  await atWidths(page, [1280], async () => {
+    await filled(await rowOf(["PAO player", "Shot type", "Period", "Result", "Play context", "CZV player"]));
+    await mode(page, "Shooting zones");
+    await filled(await rowOf(["PAO player", "Period", "Play context", "CZV player"]));
+    await mode(page, "Shot map");
+  });
+  await atWidths(page, [1024], async () => {
+    await mode(page, "Shooting zones");
+    await filled(await rowOf(["PAO player", "Period", "Play context", "CZV player"]));
+    await mode(page, "Shot map");
+  });
+});
+
+test("from 1280px the filter box stays under the nav down to the player tables, and a name there scrolls the courts in below it", async ({ page }) => {
+  await openShooting(page);
+  const navBottom = () => page.locator(".app-nav").evaluate((el) => el.getBoundingClientRect().bottom);
+  const players = page.locator("section", { has: page.getByRole("heading", { name: "Each player's shooting" }) });
+
+  await atWidths(page, [1024], async () => {
+    await players.scrollIntoViewIfNeeded();
+    expect((await boxOf(filterBox(page))).bottom).toBeLessThan(await navBottom());
+  });
+  await atWidths(page, [1280, 1440], async () => {
+    await players.scrollIntoViewIfNeeded();
+    const bar = await boxOf(filterBox(page));
+    expect(bar.top).toBeGreaterThanOrEqual(await navBottom());
+    expect(bar.top - (await navBottom())).toBeLessThan(12);
+    // The bar still works from down here, and the tables follow it.
+    await select(page, "Result").selectOption("made");
+    await expect(select(page, "Result")).toHaveValue("made");
+    await select(page, "Result").selectOption("all");
+
+    await players.getByRole("button", { name: LONG_NAME }).click();
+    await expect.poll(async () => (await boxOf(page.locator("#shooting-presentation-panel"))).top - (await boxOf(filterBox(page))).bottom).toBeGreaterThan(0);
+    await players.getByRole("button", { name: LONG_NAME }).click();
   });
 });
 
@@ -199,7 +254,7 @@ test("the legend and the zone table fit every width, and the table has no inner 
     // The team columns are headed by their TV codes, the detail sits under the FG%.
     await expect(zones.locator("th", { hasText: "PAO" })).toBeVisible();
     await expect(zones.locator("th", { hasText: "CZV" })).toBeVisible();
-    const cell = zones.locator("tbody tr").first().locator("td").nth(2);
+    const cell = zones.locator("tbody tr", { has: page.locator("td") }).first().locator("td").nth(2);
     expect(await cell.evaluate((el) => el.querySelector("span.muted").getBoundingClientRect().top >= el.getBoundingClientRect().top + 12)).toBe(true);
   });
   await atWidths(page, [768, 1024], async () => {
@@ -239,13 +294,14 @@ test("a narrow heatmap labels each zone with its percentage in larger type, and 
   await expect.poll(async () => (await chipTexts()).some(({ text }) => text.includes("/"))).toBe(true);
 });
 
-test("in each zone the team with the higher FG% is shaded in its own colour, and a tie or a one-sided zone is not", async ({ page }) => {
+test("in each zone the team with the higher FG% is shaded in its own colour, from three attempts a side, and a tie or a one-sided zone is not", async ({ page }) => {
   const shots = [
-    shot(1, "A", "2FGM", 0, 50), shot(2, "A", "2FGM", 0, 60), // Restricted area: A 2/2
-    shot(3, "B", "2FGM", 0, 40), shot(4, "B", "2FGA", 10, 60), // B 1/2
-    shot(5, "A", "2FGA", 200, 300), shot(6, "B", "2FGM", 200, 300), // In the paint: A 0/1, B 1/1
+    shot(1, "A", "2FGM", 0, 50), shot(2, "A", "2FGM", 0, 60), shot(10, "A", "2FGM", 0, 55), // Restricted area: A 3/3
+    shot(3, "B", "2FGM", 0, 40), shot(4, "B", "2FGA", 10, 60), shot(11, "B", "2FGM", 5, 45), // B 2/3
+    shot(5, "A", "2FGA", 200, 300), shot(12, "A", "2FGA", 210, 300), shot(13, "A", "2FGM", 190, 300), // In the paint: A 1/3
+    shot(6, "B", "2FGM", 200, 300), shot(14, "B", "2FGM", 210, 300), shot(15, "B", "2FGM", 190, 300), // B 3/3
     shot(7, "A", "3FGM", 500, 480), // Left wing 3: only A
-    shot(8, "A", "3FGA", -500, 480), shot(9, "B", "3FGA", -500, 480), // Right wing 3: both 0/1
+    shot(8, "A", "3FGA", -500, 480), shot(9, "B", "3FGA", -500, 480), // Right wing 3: both 0/1, too few to shade
   ];
   await openShooting(page, { shots });
   const zones = page.locator(".panel").filter({ has: page.getByRole("heading", { name: "Zone comparison" }) });
@@ -261,7 +317,10 @@ test("in each zone the team with the higher FG% is shaded in its own colour, and
     await expect(shaded("In the paint")).toHaveClass(/text-secondary/);
     await expect(shaded("Left wing 3")).toHaveCount(0);
     await expect(shaded("Right wing 3")).toHaveCount(0);
-    await expect(zones.locator("span.font-bold")).toHaveCount(2);
+    // The paint total (A 4/6, B 5/6) is shaded too; the threes total (A 1/2, B 0/1) is too small.
+    await expect(row("Paint total").locator("span.font-bold")).toHaveClass(/text-secondary/);
+    await expect(row("Threes total").locator("span.font-bold")).toHaveCount(0);
+    await expect(zones.locator("span.font-bold")).toHaveCount(3);
     expect(await zones.locator(".overflow-x-auto").evaluate((el) => el.scrollWidth <= el.clientWidth)).toBe(true);
     await expectNoPageOverflow(page);
   }

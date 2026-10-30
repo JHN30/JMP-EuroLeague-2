@@ -84,8 +84,15 @@ test("each zone has its own shot on Team A's court, and Team B's court shades on
 test("each zone of the table gets its own shot", async ({ page }) => {
   await openShooting(page);
 
-  await expect(page.locator("tbody tr")).toHaveCount(15);
-  expect(await page.locator("tbody tr td:first-child").allTextContents()).toEqual([...ZONE_NAMES, "Location unknown"]);
+  // The zones in three groups, each under its heading and closed by its subtotal.
+  const zones = page.locator(".panel").filter({ has: page.getByRole("heading", { name: "Zone comparison" }) });
+  expect(await zones.locator("tbody tr th").allTextContents()).toEqual(["Paint", "Mid-range", "Threes"]);
+  expect(await zones.locator("tbody tr td:first-child").allTextContents()).toEqual([
+    ...ZONE_NAMES.slice(0, 2), "Paint total",
+    ...ZONE_NAMES.slice(2, 7), "Mid-range total",
+    ...ZONE_NAMES.slice(7), "Threes total",
+    "Location unknown",
+  ]);
   for (const zone of ZONE_NAMES) {
     // Team A took one of its 14 located shots in each zone.
     await expect(zoneRow(page, zone).locator("td").nth(1)).toHaveText("7.1%");
@@ -167,8 +174,8 @@ test("the table follows the filters", async ({ page }) => {
   await expect(zoneRow(page, "Left corner 3").locator("td").nth(1)).toHaveText("7.1%");
 
   await page.getByLabel("Result").selectOption({ label: "Made" });
-  // Only Team A's two makes are left: a share of 50% each, and dashes everywhere else.
-  await expect(zoneRow(page, "Left corner 3").locator("td").nth(1)).toHaveText("—");
+  // Only Team A's two makes are left: a share of 50% each; the zones nobody scored from are left out.
+  await expect(zoneRow(page, "Left corner 3")).toHaveCount(0);
   await expect(zoneRow(page, "Restricted area").locator("td").nth(1)).toHaveText("50.0%");
   await expect(zoneRow(page, "Right wing 3").locator("td").nth(1)).toHaveText("50.0%");
 });
@@ -223,15 +230,20 @@ test("a zone without attempts is left empty on the heatmap", async ({ page }) =>
   await expect(zoneCourt(page).getByText("100%", { exact: true })).toBeVisible();
 });
 
-test("both teams' panels sit side by side and fit one screen once the mode strip is at the top", async ({ page }) => {
+test("both teams' panels sit side by side and fit one screen once the courts are scrolled up under the stuck filter box", async ({ page }) => {
   for (const height of [900, 1080]) {
     await page.setViewportSize({ width: 1280, height });
     await openShooting(page);
-    const strip = page.getByRole("tablist", { name: "Shooting presentation" });
     for (const show of [() => page.getByRole("tab", { name: "Shot map", exact: true }).click(), () => openZones(page)]) {
       await show();
-      await strip.scrollIntoViewIfNeeded();
-      await page.evaluate(() => window.scrollBy(0, document.querySelector('[role="tablist"][aria-label="Shooting presentation"]').getBoundingClientRect().top - 80));
+      await page.evaluate(() => window.scrollTo(0, 0));
+      // The courts' box 16px under the filter box once it sticks under the nav.
+      await page.evaluate(() => {
+        const bar = document.querySelector(".shooting-filters");
+        const courts = document.getElementById("shooting-presentation-panel").closest(".panel");
+        const stuckBottom = parseFloat(getComputedStyle(bar).top) + bar.offsetHeight;
+        window.scrollBy(0, courts.getBoundingClientRect().top - stuckBottom - 16);
+      });
       const panels = page.locator("#shooting-presentation-panel .panel");
       const [first, second] = await Promise.all([panels.nth(0).boundingBox(), panels.nth(1).boundingBox()]);
       expect(Math.abs(first.y - second.y)).toBeLessThan(2);
@@ -246,7 +258,7 @@ test("the zone table spans the whole panel", async ({ page }) => {
   await openShooting(page);
 
   const panel = await page.getByRole("heading", { name: "Zone comparison" }).locator("xpath=ancestor::div[contains(@class, 'panel')][1]").boundingBox();
-  const table = await page.locator("table").boundingBox();
+  const table = await page.locator(".panel", { has: page.getByRole("heading", { name: "Zone comparison" }) }).locator("table").boundingBox();
   expect(table.width).toBeGreaterThan(panel.width - 40);
 });
 
@@ -263,4 +275,79 @@ test("a game without shots says so", async ({ page }) => {
   await page.getByRole("tab", { name: "Shooting", exact: true }).click();
 
   await expect(page.getByText("Shot data isn't available for this game yet.")).toBeVisible();
+});
+
+test("each court's header adds the box score's free throws and the paint points, and each team has its own player list", async ({ page }) => {
+  await openShooting(page);
+  const header = (side) => court(page, side).locator("xpath=ancestor::div[contains(@class, 'panel')][1]");
+  // Free throws come from the box score: Team A 9-9, Team B 6-8.
+  await expect(header(0)).toContainText("9-9 (100.0%)");
+  await expect(header(1)).toContainText("6-8 (75.0%)");
+  // One made Restricted-area shot each.
+  await expect(header(0).locator("div", { has: page.locator(".header-tip-label", { hasText: /^Paint pts/ }) }).last()).toContainText("2");
+  await header(0).locator(".header-tip-label", { hasText: "FT" }).hover();
+  await expect(page.getByRole("tooltip")).toContainText("Free throws come from the box score");
+
+  // One list per team, home first, and each narrows only its own team's court.
+  const homeList = page.getByLabel("A player", { exact: true });
+  const roadList = page.getByLabel("B player", { exact: true });
+  expect(await homeList.locator("option").allTextContents()).toEqual(["All players", "ONE, AL"]);
+  expect(await roadList.locator("option").allTextContents()).toEqual(["All players", "UNO, BO"]);
+  const homeCourt = await court(page, 0).getAttribute("aria-label");
+  const roadCourt = await court(page, 1).getAttribute("aria-label");
+  await roadList.selectOption({ label: "UNO, BO" });
+  await expect(homeList).toHaveValue("all");
+  await expect(court(page, 0)).toHaveAttribute("aria-label", homeCourt);
+  await homeList.selectOption({ label: "ONE, AL" });
+  await expect(roadList).toHaveValue("B-STARTER");
+  await expect(court(page, 1)).toHaveAttribute("aria-label", roadCourt);
+  // The shared filters still apply to both courts.
+  await page.getByLabel("Result", { exact: true }).selectOption("made");
+  await expect(court(page, 0)).not.toHaveAttribute("aria-label", homeCourt);
+  await expect(court(page, 1)).not.toHaveAttribute("aria-label", roadCourt);
+});
+
+test("the quarter and play-context tables split the shots, and the context table counts baskets, not FG%", async ({ page }) => {
+  const shots = [
+    shot(1, "A", "2FGM", 0, 50, { minute: 4, fastbreak: true }),
+    shot(2, "A", "2FGA", 0, 60, { minute: 6 }),
+    shot(3, "A", "3FGM", 500, 480, { minute: 25, pointsOffTurnover: true }),
+    shot(4, "B", "2FGM", 0, 40, { minute: 7, secondChance: true }),
+    shot(5, "B", "3FGM", -500, 480, { minute: 28, secondChance: true }),
+  ];
+  await openShooting(page, { shots });
+
+  const quarters = page.locator(".panel", { has: page.getByRole("heading", { name: "Shooting by quarter" }) });
+  expect(await quarters.locator("tbody tr td:first-child").allTextContents()).toEqual(["Q1", "Q3"]);
+  await expect(quarters.locator("tbody tr").first()).toContainText("1-2");
+  await expect(quarters.locator("tbody tr").nth(1)).toContainText("1-1");
+
+  const contexts = page.locator(".panel", { has: page.getByRole("heading", { name: "Fast breaks, second chances and turnovers" }) });
+  const contextRow = (label) => contexts.locator("tbody tr", { has: page.getByRole("cell", { name: label, exact: true }) });
+  // Team A: one fast-break two and one three off a turnover; Team B: a two and a three on second chances.
+  await expect(contextRow("Fast breaks").locator("td")).toHaveText(["Fast breaks", "1", "2 (more)", "0", "0"]);
+  await expect(contextRow("Second chances").locator("td")).toHaveText(["Second chances", "0", "0", "2", "5 (more)"]);
+  await expect(contextRow("Off turnovers").locator("td")).toHaveText(["Off turnovers", "1", "3 (more)", "0", "0"]);
+  await expect(contexts.getByText("%")).toHaveCount(0);
+});
+
+test("each player's shooting lists who shot, and a name picks that player in their team's list until it is chosen again", async ({ page }) => {
+  await openShooting(page);
+  const players = page.locator("section", { has: page.getByRole("heading", { name: "Each player's shooting" }) });
+  const name = players.getByRole("button", { name: "ONE, AL" });
+  // Team A's player took 15 shots, the one without a location included; 2 went in.
+  await expect(players.locator("tr", { has: page.getByRole("button", { name: "ONE, AL" }) })).toContainText("2-15");
+  await expect(players.getByRole("button", { name: "UNO, BO" })).toBeVisible();
+
+  const roadCourt = await court(page, 1).getAttribute("aria-label");
+  await name.click();
+  await expect(page.getByLabel("A player", { exact: true })).toHaveValue("A-STARTER");
+  await expect(name).toHaveAttribute("aria-pressed", "true");
+  // Team B keeps every player.
+  await expect(page.getByLabel("B player", { exact: true })).toHaveValue("all");
+  await expect(court(page, 1)).toHaveAttribute("aria-label", roadCourt);
+
+  await name.click();
+  await expect(page.getByLabel("A player", { exact: true })).toHaveValue("all");
+  await expect(name).toHaveAttribute("aria-pressed", "false");
 });

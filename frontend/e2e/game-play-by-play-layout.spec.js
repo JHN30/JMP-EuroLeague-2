@@ -173,3 +173,17 @@ test("an empty feed says so and fits a phone", async ({ page }) => {
     await expectNoPageOverflow(page);
   });
 });
+
+test("from 1024px each event is one line, a long detail cut to fit with its full text on hover", async ({ page }) => {
+  await openPlayByPlay(page, { events: FEED });
+  await select(page, "Event type").selectOption("all");
+  await expect(rows(page)).toHaveCount(5);
+
+  await atWidths(page, [1024, 1280], async () => {
+    await expectNoPageOverflow(page);
+    for (const index of [0, 2, 3, 4]) expect(await heightOf(rows(page).nth(index))).toBeLessThanOrEqual(40);
+    const long = rows(page).nth(3);
+    await expect(long.locator("p.muted", { hasText: "Two Pointer" })).toHaveAttribute("title", LONG_INFO);
+    expect(await holdsContent(log(page))).toBe(true);
+  });
+});

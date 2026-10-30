@@ -23,6 +23,11 @@ function boxScoreRow(page, label) {
   return page.locator("div.border-b", { has: page.getByText(label, { exact: true }) });
 }
 
+// A Head to head row whose label carries a tip (screen-reader text inside the label), found by the label's start.
+function tippedRow(page, label) {
+  return page.locator("div.border-b", { has: page.locator(".header-tip-label").filter({ hasText: new RegExp(`^${label}`) }) });
+}
+
 
 const SHOOTING = "Shooting and passing";
 
@@ -98,17 +103,50 @@ test("the box-score rows are mirrored rows (no bars) with the old values", async
   await expect(turnovers).toContainText("Lower is better");
   await expect(turnovers.locator(".text-primary")).toContainText("10");
 
-  // Basic counts: no Head to head row carries a tip.
-  await expect(page.locator(".panel", { has: page.getByRole("region", { name: "Scoring" }) }).locator(".header-tip-label")).toHaveCount(0);
+  // Basic counts carry no tip; a row built from other numbers explains itself.
+  await expect(points.locator(".header-tip-label")).toHaveCount(0);
+  await expect(turnovers.locator(".header-tip-label")).toHaveCount(0);
+  await expect(tippedRow(page, "Starters' points")).toHaveCount(1);
+});
+
+test("the Head to head adds field goals, starters' points, team turnovers and the coaches", async ({ page }) => {
+  await openComparison(page);
+
+  await expect(tippedRow(page, "Field goals")).toContainText("30-55 (54.5%)");
+  // Starters' and bench points add up to the total.
+  const starters = Number((await tippedRow(page, "Starters' points").locator("span.tabular-nums").first().textContent()).trim());
+  const bench = Number((await boxScoreRow(page, "Bench points").locator("span.tabular-nums").first().textContent()).trim());
+  expect(starters + bench).toBe(80);
+  // No team line in this box score: a dash, not a zero.
+  await expect(tippedRow(page, "Team turnovers")).toContainText("—");
+  // Left out on purpose: points by shot type, possible points, team rebounds, rebound share and PIR.
+  for (const label of ["Points from 2s", "Possible points scored", "Team rebounds", "Rebound share", "PIR"]) {
+    await expect(page.getByRole("region", { name: "Scoring" }).locator("xpath=..").getByText(label, { exact: true })).toHaveCount(0);
+  }
+  await expect(page.getByText("Coach: Alpha Coach")).toBeVisible();
+  await expect(page.getByText("Coach: Bravo Coach")).toBeVisible();
+});
+
+test("the Four Factors add the possessions and the steal and block rates", async ({ page }) => {
+  const advanced = { ...ADVANCED, teams: ADVANCED.teams.map((team) => ({ ...team, possessions: 70, ownPossessionsEstimate: team.side === "local" ? 71 : 69 })) };
+  await openComparison(page, { advanced });
+
+  await expect(factorRow(page, "Pace and ratings", "Possessions")).toContainText("70.0");
+  await expect(factorRow(page, "Pace and ratings", "Own possessions")).toContainText("71.0");
+  await expect(factorRow(page, "Pace and ratings", "Own possessions")).toContainText("69.0");
+  // Steals per opponent possession: 7 / 70 and 9 / 70.
+  await expect(factorRow(page, DEFENSE, "Steal %")).toContainText("10.0%");
+  await expect(factorRow(page, DEFENSE, "Steal %")).toContainText("12.9%");
+  await expect(factorRow(page, DEFENSE, "Block %")).toBeVisible();
 });
 
 test("the Head to head rows are grouped, one line per stat", async ({ page }) => {
   await openComparison(page);
 
-  for (const group of ["Scoring", "Shooting", "Rebounds", "Ball and defense", "Fouls and PIR"]) {
+  for (const group of ["Scoring", "Shooting", "Rebounds", "Ball and defense", "Fouls"]) {
     await expect(page.getByRole("region", { name: group, exact: true })).toBeVisible();
   }
-  await expect(page.getByRole("region", { name: "Scoring" }).locator("div.border-b")).toHaveCount(3);
+  await expect(page.getByRole("region", { name: "Scoring" }).locator("div.border-b")).toHaveCount(4);
   // The label sits between the two values, on their line.
   const points = boxScoreRow(page, "Points");
   const label = await points.getByText("Points", { exact: true }).boundingBox();
@@ -117,7 +155,7 @@ test("the Head to head rows are grouped, one line per stat", async ({ page }) =>
   expect(value.x).toBeLessThan(label.x);
 });
 
-test("the standard rows sit on the left and the Four Factors on the right on a wide screen, stacked on a narrow one", async ({ page }) => {
+test("the standard rows and the scoring profile sit on the left and the Four Factors on the right on a wide screen, stacked on a narrow one", async ({ page }) => {
   await page.setViewportSize({ width: 1400, height: 1000 });
   await openComparison(page);
 
@@ -126,10 +164,12 @@ test("the standard rows sit on the left and the Four Factors on the right on a w
   expect(right.x).toBeGreaterThan(left.x + left.width - 1);
   expect(Math.abs(left.y - right.y)).toBeLessThan(400);
 
-  // The two panels are equally tall, the shorter one spreading its rows out.
+  // Neither panel is stretched: the Scoring profile sits right under the Head to head rows, in the same column.
   const leftPanel = await page.locator(".panel", { has: boxScoreRow(page, "Points") }).boundingBox();
-  const rightPanel = await page.locator(".panel", { has: page.getByRole("region", { name: "Offense" }) }).boundingBox();
-  expect(Math.abs(leftPanel.height - rightPanel.height)).toBeLessThan(2);
+  const profilePanel = await page.locator("section", { has: page.getByRole("heading", { name: "How each team scored and how the game was led" }) }).boundingBox();
+  expect(Math.abs(profilePanel.x - leftPanel.x)).toBeLessThan(2);
+  expect(profilePanel.y).toBeGreaterThan(leftPanel.y + leftPanel.height);
+  expect(profilePanel.y - (leftPanel.y + leftPanel.height)).toBeLessThan(60);
 
   await page.setViewportSize({ width: 600, height: 1000 });
   const stackedLeft = await boxScoreRow(page, "Points").boundingBox();

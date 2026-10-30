@@ -1,4 +1,4 @@
-import { formatCount, formatMissing, formatPercentage } from "../lib/format";
+import { formatCount, formatMissing, formatPercentage, formatSignedDiff } from "../lib/format";
 import { compareByName, hasMinutes } from "./gameUtils";
 
 // The one place that names the "best player" ranking metric. Game PER comes from `app_game_player_advanced` and is
@@ -27,23 +27,50 @@ export function pickBestPlayer(rows, metric = PIR_METRIC) {
   )[0];
 }
 
+// A few shots say little about efficiency (one make in one attempt is 100%), so true shooting needs this many field goal attempts.
+export const TS_MIN_ATTEMPTS = 5;
+
+// True shooting percentage from the box score: points per two shooting possessions, a free throw attempt counting as 0.44 of
+// one. Null below the attempts minimum.
+function trueShooting(row) {
+  const attempts = (row.fieldGoalsAttempted2 ?? 0) + (row.fieldGoalsAttempted3 ?? 0);
+  if (!Number.isFinite(row.points) || attempts < TS_MIN_ATTEMPTS) return null;
+  return (row.points / (2 * (attempts + 0.44 * (row.freeThrowsAttempted ?? 0)))) * 100;
+}
+
+// `desktopOnly` categories fill the team card from lg, where it stands as tall as the key stats beside it; a phone or a
+// tablet shows the first five. `value` reads a category the box score does not carry as one field; `tip` explains its label.
 export const LEADER_CATEGORIES = [
   { key: "points", label: "Points", field: "points" },
   { key: "rebounds", label: "Rebounds", field: "totalRebounds" },
   { key: "assists", label: "Assists", field: "assistances" },
+  { key: "steals", label: "Steals", field: "steals" },
+  { key: "blocks", label: "Blocks", field: "blocksFavour" },
+  { key: "plusMinus", label: "+/-", field: "plusMinus", format: formatSignedDiff, desktopOnly: true, anyValue: true },
+  { key: "pir", label: "PIR", field: "valuation", desktopOnly: true },
+  {
+    key: "trueShooting",
+    label: "TS%",
+    value: trueShooting,
+    format: formatPercentage,
+    desktopOnly: true,
+    tip: `True shooting percentage: scoring efficiency counting twos, threes and free throws. Points divided by twice the shooting possessions (field goal attempts plus 0.44 per free throw attempt). Needs at least ${TS_MIN_ATTEMPTS} field goal attempts.`,
+  },
 ];
 
 // The leader in each category among players who played (everyone, if nobody on the team has minutes). Ties go to more
-// minutes, then name. A category whose best value is 0 or missing has no leader.
+// minutes, then name. A category whose best value is 0 or missing has no leader, except an `anyValue` one (+/-): a losing
+// team's best +/- can be 0 or below and is still its best.
 export function gameLeaders(rows) {
   const pool = rows.some(hasMinutes) ? rows.filter(hasMinutes) : rows;
-  return LEADER_CATEGORIES.map(({ key, label, field }) => {
-    const candidates = pool.filter((row) => Number.isFinite(row[field]) && row[field] > 0);
-    if (candidates.length === 0) return { key, label, player: null, value: null };
+  return LEADER_CATEGORIES.map(({ key, label, field, value = (row) => row[field], format = formatCount, desktopOnly = false, anyValue = false, tip = null }) => {
+    const entry = { key, label, format, desktopOnly, tip };
+    const candidates = pool.filter((row) => Number.isFinite(value(row)) && (anyValue || value(row) > 0));
+    if (candidates.length === 0) return { ...entry, player: null, value: null };
     const player = [...candidates].sort(
-      (left, right) => right[field] - left[field] || (right.timePlayed ?? 0) - (left.timePlayed ?? 0) || compareByName(left, right),
+      (left, right) => value(right) - value(left) || (right.timePlayed ?? 0) - (left.timePlayed ?? 0) || compareByName(left, right),
     )[0];
-    return { key, label, player, value: player[field] };
+    return { ...entry, player, value: value(player) };
   });
 }
 

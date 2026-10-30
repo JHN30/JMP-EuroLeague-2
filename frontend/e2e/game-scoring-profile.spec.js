@@ -11,7 +11,7 @@ async function openComparison(page, options = {}) {
 // A mirrored row of the Scoring profile, found by the start of its label (the tip is screen-reader text in the label).
 function profileRow(page, label) {
   return page
-    .getByTestId("scoring-profile-grid")
+    .getByTestId("scoring-profile-rows")
     .locator("div.border-b", { has: page.locator(".header-tip-label").filter({ hasText: new RegExp(`^${label}`) }) });
 }
 
@@ -49,8 +49,10 @@ test("the Scoring profile shows how each team scored and how the game was led", 
   await expect(profileRow(page, "Average possession")).toContainText("16.0 s");
   await expect(profileRow(page, "Time of possession")).toContainText("20:49");
   await expect(profileRow(page, "Time of possession")).toContainText("19:11");
-  // Fourteen rows, so the two columns are even on a wide screen.
-  await expect(page.getByTestId("scoring-profile-grid").locator("div.border-b")).toHaveCount(14);
+  // Time tied and clutch time are the same for both teams: 211 s of a 2,400 s game, and 90 s.
+  await expect(profileRow(page, "Time tied")).toContainText("3:31 (9%)");
+  await expect(profileRow(page, "Clutch time")).toContainText("1:30");
+  await expect(page.getByTestId("scoring-profile-rows").locator("div.border-b")).toHaveCount(16);
 });
 
 test("neutral rows highlight neither side, and clutch is a real result when there was clutch time", async ({ page }) => {
@@ -89,14 +91,14 @@ test("a missing block is an em dash on that side only", async ({ page }) => {
   await expect(profileRow(page, "Biggest lead")).toContainText("6");
 });
 
-test("the rows sit in two columns on a wide screen and one on a narrow screen", async ({ page }) => {
+test("the rows are one column on a wide screen, under the Head to head rows, and on a narrow screen", async ({ page }) => {
   await page.setViewportSize({ width: 1400, height: 1200 });
   await openComparison(page);
 
   const first = await profileRow(page, "Time in front").boundingBox();
   const second = await profileRow(page, "Biggest lead").boundingBox();
-  expect(second.x).toBeGreaterThan(first.x + first.width - 1);
-  expect(Math.abs(second.y - first.y)).toBeLessThan(2);
+  expect(second.y).toBeGreaterThan(first.y);
+  expect(Math.abs(second.x - first.x)).toBeLessThan(2);
 
   await page.setViewportSize({ width: 600, height: 1200 });
   const stackedFirst = await profileRow(page, "Time in front").boundingBox();
@@ -130,7 +132,7 @@ test("the Overview key stats gain four rows, and keep their own rows when the re
   await mockGameApi(page, { teamFlow: TEAM_FLOW });
   await page.goto(`/${SEASON}/games/1`);
 
-  const keyStats = page.locator("section", { hasText: "How the teams compared" });
+  const keyStats = page.getByRole("region", { name: "How the teams compared" });
   await expect(keyStats.getByText("Time in front")).toBeVisible();
   await expect(keyStats.getByText("Biggest lead")).toBeVisible();
   await expect(keyStats.getByText("Fast-break points")).toBeVisible();
@@ -144,7 +146,7 @@ test("a failed team-flow request leaves the Overview key stats as they were", as
   await mockGameApi(page, { teamFlowStatus: 500 });
   await page.goto(`/${SEASON}/games/1`);
 
-  const keyStats = page.locator("section", { hasText: "How the teams compared" });
+  const keyStats = page.getByRole("region", { name: "How the teams compared" });
   await expect(keyStats.getByText("Field goals")).toBeVisible();
   await expect(keyStats.getByText("Time in front")).toHaveCount(0);
   await expect(page.getByRole("alert")).toHaveCount(0);

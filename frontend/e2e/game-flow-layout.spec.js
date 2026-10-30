@@ -123,7 +123,10 @@ const canvasFits = async (page) => {
 test("the Game flow tab is compact below 640px, keeps its clubs' names whole and fits the chart to its panel", async ({ page }) => {
   await openTab(page, "Game flow");
   const tab = page.locator("#game-detail-panel");
-  await expect(tab.getByRole("heading", { name: "Turning points" })).toBeVisible();
+  // Five headline cards: the lead changes, then each team's biggest lead and best run. There are no turning-point cards.
+  await expect(tab.getByText("Panathinaikos AKTOR Athens best run")).toBeAttached();
+  await expect(tab.getByRole("heading", { name: "Turning points" })).toHaveCount(0);
+  await expect(tab.locator(".grid").first().locator("> .panel")).toHaveCount(5);
   await expect(page.getByRole("img", { name: /Running score margin/ })).toBeVisible();
   const canvas = page.getByRole("img", { name: /Running score margin/ });
   const shown = () => tab.locator(".eyebrow [aria-hidden=true], .font-medium [aria-hidden=true]").evaluateAll((els) => els.filter((el) => el.getBoundingClientRect().width > 0).map((el) => el.textContent));
@@ -148,16 +151,34 @@ test("the Game flow tab is compact below 640px, keeps its clubs' names whole and
     await expectNoPageOverflow(page);
   });
 
-  // From 640px: today's sizes, the full names, two cards to a row.
+  // From 640px: today's sizes, two cards to a row; from 1024px the five cards are one compact row. The cards keep the short
+  // names at every width, so their labels stay on one line.
   await atWidths(page, [640, 768, 1024], async (width) => {
     await expectNoPageOverflow(page);
-    expect(await shown()).toEqual([]);
-    expect(await tab.locator(".panel").first().evaluate((el) => getComputedStyle(el).paddingTop)).toBe("16px");
+    expect(new Set(await shown())).toEqual(new Set(["Panathinaikos", "Crvena Zvezda"]));
+    expect(await tab.locator(".panel").first().evaluate((el) => getComputedStyle(el).paddingTop)).toBe(width >= 1024 ? "12px" : "16px");
     await expect.poll(async () => Math.round((await canvas.boundingBox()).height)).toBeGreaterThanOrEqual(300);
     await expect.poll(() => canvasFits(page)).toBe(true);
     const lefts = await tab.locator(".grid").first().locator("> .panel").evaluateAll((cards) => new Set(cards.map((card) => Math.round(card.getBoundingClientRect().left))).size);
-    expect(lefts).toBe(2);
-    expect(width).toBeGreaterThan(0);
+    expect(lefts).toBe(width >= 1024 ? 5 : 2);
+  });
+});
+
+test("from 1024px the five Game flow cards line up their values, with one-line labels from 1280px, each club's TV code and crest", async ({ page }) => {
+  await openTab(page, "Game flow", { game: { localTeam: { ...PAN, tvCode: "PAN" }, roadTeam: { ...CZV, tvCode: "CZV" } } });
+  const cards = page.locator("#game-detail-panel .grid").first();
+  await expect(cards.getByText("PAN", { exact: true }).first()).toBeVisible();
+  await expect(cards.locator("img")).toHaveCount(4);
+  const valueTops = () => cards.locator("p.text-2xl").evaluateAll((values) => new Set(values.map((value) => Math.round(value.getBoundingClientRect().top))).size);
+  await atWidths(page, [1024, 1100], async () => {
+    expect(await valueTops()).toBe(1);
+  });
+  await atWidths(page, [1280, 1920], async () => {
+    expect(await valueTops()).toBe(1);
+    const lines = await cards.locator(".eyebrow").evaluateAll((labels) =>
+      labels.map((label) => Math.round(label.getBoundingClientRect().height / parseFloat(getComputedStyle(label).lineHeight))),
+    );
+    expect(lines).toEqual([1, 1, 1, 1, 1]);
   });
 });
 

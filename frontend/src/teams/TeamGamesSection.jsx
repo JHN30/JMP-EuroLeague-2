@@ -19,7 +19,8 @@ const MotionLink = motion.create(Link);
 // Rows shown in each column before "Show all"; both columns start the same length so they line up.
 const INITIAL_ROWS = 8;
 const STRIP_COLUMN_REM = 2.75;
-const STRIP_AREA_CLASS = "h-32";
+// Lower from lg, where the strip is wide, so the crests sit closer to the bars.
+const STRIP_AREA_CLASS = "h-32 lg:h-24";
 // How much of each half (as a percentage) the tallest bar fills; the rest is room for the margin label above it.
 const STRIP_HALF_FILL = 40;
 // The tallest bar is at least this many points, so a season of narrow games does not blow every bar up to full height.
@@ -120,6 +121,7 @@ function MarginStrip({ played, seasonCode, clubCode }) {
   return (
     <Panel as="section" className="p-4">
       <PanelHeader
+        compact
         kicker="FORM"
         title="How the games went"
         trailing={<div className="flex flex-wrap justify-end gap-2 max-sm:hidden">{badges}</div>}
@@ -136,7 +138,8 @@ function MarginStrip({ played, seasonCode, clubCode }) {
               side.won ? "won" : "lost"
             } ${side.clubScore}-${side.opponentScore}`;
             return (
-              <li key={game.gameCode} className="flex min-w-0 flex-1 basis-0" style={{ maxWidth: real.length <= 12 ? "8rem" : "6rem" }}>
+              // Up to 12 games share the strip's whole width from lg; below lg (or with more games) each column is capped.
+              <li key={game.gameCode} className={`flex min-w-0 flex-1 basis-0 ${real.length <= 12 ? "max-w-32 lg:max-w-none" : "max-w-24"}`}>
                 <Link
                   to={`/${seasonCode}/games/${game.gameCode}`}
                   title={description}
@@ -190,20 +193,21 @@ function GameRow({ seasonCode, game, clubCode, isNext }) {
   return (
     <MotionLink
       to={`/${seasonCode}/games/${game.gameCode}`}
-      className="flex items-center gap-3 rounded-field border border-base-300 bg-base-200 p-3 transition-colors hover:border-primary"
+      className="flex items-center gap-3 rounded-field border border-base-300 bg-base-200 p-3 transition-colors hover:border-primary lg:py-2"
       variants={listItem}
       {...wideCardHover}
     >
-      <Crest team={side.opponent} />
-      <div className="min-w-0 flex-1">
-        <p className="flex min-w-0 items-center gap-1.5 font-semibold">
+      <Crest team={side.opponent} className="h-10 w-10 lg:h-7 lg:w-7" />
+      {/* One line from lg: the opponent, then the round, which is the part cut short when the row is narrow. */}
+      <div className="min-w-0 flex-1 lg:flex lg:items-baseline lg:gap-2">
+        <p className="flex min-w-0 items-center gap-1.5 font-semibold lg:max-w-full lg:flex-none">
           <HomeAwayIcon home={side.home} className="h-4 w-4 text-base-content/60" />
           <span className="muted font-normal">{side.home ? "vs" : "@"}</span>
           <span className="truncate">
             <OpponentLabel opponent={side.opponent} />
           </span>
         </p>
-        <p className="muted truncate text-xs">
+        <p className="muted truncate text-xs lg:min-w-0">
           {roundLabel(game)}
           {/* Below sm the "Next" badge sits after the round, so it does not squeeze the opponent beside the date (the badge class sets
               its own display, so the wrapper is what is hidden). */}
@@ -231,7 +235,7 @@ function GameRow({ seasonCode, game, clubCode, isNext }) {
               <span className="stat-badge stat-badge-neutral">Next</span>
             </span>
           ) : null}
-          <div>
+          <div className="lg:flex lg:items-baseline lg:gap-2">
             <p className="text-sm font-semibold">{formatShortDate(game.scheduledAt)}</p>
             <p className="muted text-xs">{formatTimeOfDay(game.scheduledAt)}</p>
           </div>
@@ -244,7 +248,7 @@ function GameRow({ seasonCode, game, clubCode, isNext }) {
 // The list sits in a tab panel when filter tabs control it (so they have something to point at), and loose otherwise.
 function ListBody({ panelId, listKey, children }) {
   return panelId ? (
-    <TabPanel id={panelId} focusKey={listKey} scroll={false}>
+    <TabPanel id={panelId} focusKey={listKey} scroll={false} className="flex flex-1 flex-col">
       {children}
     </TabPanel>
   ) : (
@@ -252,14 +256,15 @@ function ListBody({ panelId, listKey, children }) {
   );
 }
 
-// A column of games that starts short and grows with "Show all".
-function GameColumn({ kicker, title, games, seasonCode, clubCode, markFirst = false, emptyText, controls = null, panelId, listKey }) {
-  const [expanded, setExpanded] = useState(false);
+// A column of games that starts short and grows with "Show all". "Show all" sits at the foot of the panel, so when the two
+// columns share one height their buttons line up.
+function GameColumn({ kicker, title, games, seasonCode, clubCode, markFirst = false, emptyText, controls = null, panelId, listKey, expanded, onToggle }) {
   const visible = expanded ? games : games.slice(0, INITIAL_ROWS);
 
   return (
-    <Panel as="section" className="p-4">
+    <Panel as="section" className="flex flex-col p-4">
       <PanelHeader
+        compact
         kicker={kicker}
         title={title}
         trailing={<span className="muted text-sm font-semibold tabular-nums">{games.length}</span>}
@@ -278,9 +283,11 @@ function GameColumn({ kicker, title, games, seasonCode, clubCode, markFirst = fa
             ))}
           </motion.ul>
           {games.length > INITIAL_ROWS ? (
-            <button type="button" className="btn btn-sm btn-ghost mt-3 w-full" onClick={() => setExpanded((open) => !open)}>
-              {expanded ? "Show fewer" : `Show all ${games.length}`}
-            </button>
+            <div className="mt-auto pt-3">
+              <button type="button" className="btn btn-sm btn-ghost w-full" onClick={onToggle}>
+                {expanded ? "Show fewer" : `Show all ${games.length}`}
+              </button>
+            </div>
           ) : null}
         </>
       )}
@@ -293,6 +300,8 @@ function GameColumn({ kicker, title, games, seasonCode, clubCode, markFirst = fa
 // first) beside what has happened (right, the latest game first), with the opponent's crest on every row.
 export default function TeamGamesSection({ gamesQuery, seasonCode, clubCode, phaseCode }) {
   const [resultFilter, setResultFilter] = useState("all");
+  const [expanded, setExpanded] = useState({ upcoming: false, results: false });
+  const toggle = (key) => setExpanded((open) => ({ ...open, [key]: !open[key] }));
 
   if (gamesQuery.isPending) return <AsyncState status="loading" label="Loading the games" skeleton={<TeamGamesSkeleton />} />;
   if (gamesQuery.isError) {
@@ -319,7 +328,8 @@ export default function TeamGamesSection({ gamesQuery, seasonCode, clubCode, pha
   return (
     <div className="flex flex-col gap-6">
       <MarginStrip played={played} seasonCode={seasonCode} clubCode={clubCode} />
-      <div className="grid grid-cols-[minmax(0,1fr)] items-start gap-6 lg:grid-cols-2">
+      {/* The two columns share one height until either is expanded; then each keeps its own. */}
+      <div className={`grid grid-cols-[minmax(0,1fr)] gap-6 lg:grid-cols-2 ${expanded.upcoming || expanded.results ? "items-start" : ""}`}>
         <GameColumn
           kicker="UPCOMING"
           title="Next games"
@@ -328,6 +338,8 @@ export default function TeamGamesSection({ gamesQuery, seasonCode, clubCode, pha
           clubCode={clubCode}
           markFirst
           emptyText="No games left to play."
+          expanded={expanded.upcoming}
+          onToggle={() => toggle("upcoming")}
         />
         <GameColumn
           kicker="RESULTS"
@@ -338,6 +350,8 @@ export default function TeamGamesSection({ gamesQuery, seasonCode, clubCode, pha
           emptyText={resultFilter === "all" ? "No games played yet." : "No games match this filter."}
           panelId="team-results-panel"
           listKey={resultFilter}
+          expanded={expanded.results}
+          onToggle={() => toggle("results")}
           controls={
             <TabStrip
               ariaLabel="Results filter"

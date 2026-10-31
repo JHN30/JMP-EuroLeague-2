@@ -103,7 +103,7 @@ export function SnapshotSkeleton() {
 // The four leader cards, in the loaded grid (a swipe row below sm).
 export function TeamLeadersSkeleton() {
   return (
-    <div aria-hidden="true" className="team-leaders-grid grid grid-cols-1 gap-3 sm:grid-cols-2 2xl:grid-cols-4">
+    <div aria-hidden="true" className="team-leaders-grid grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
       {range(4).map((index) => (
         <SkeletonChip key={index} image="person" />
       ))}
@@ -183,12 +183,12 @@ export function QuickCompareSkeleton() {
 // The Overview tab, as `OverviewSection` lays it out.
 export function TeamOverviewSkeleton() {
   return (
-    <div aria-hidden="true" className="flex flex-col gap-6">
+    <div aria-hidden="true" className="flex flex-col gap-6 lg:gap-4">
       <SnapshotSkeleton />
       <TeamLeadersSkeleton />
       <LeagueProfileSkeleton />
-      <div className="grid grid-cols-[minmax(0,1fr)] gap-6 lg:grid-cols-2">
-        <div className="flex flex-col gap-6">
+      <div className="grid grid-cols-[minmax(0,1fr)] gap-6 lg:grid-cols-2 lg:items-start lg:gap-4 xl:grid-cols-3">
+        <div className="flex flex-col gap-6 lg:gap-4 xl:contents">
           <GameLinesSkeleton />
           <GameLinesSkeleton />
         </div>
@@ -254,7 +254,7 @@ export function TeamRosterSkeleton() {
         {[8, 7, 3, 6].map((cards, section) => (
           <div key={section}>
             <div className="skeleton mb-3 h-6 w-28" />
-            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
+            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
               {range(cards).map((index) => (
                 <div key={index} className="flex min-h-28 overflow-hidden rounded-box border border-base-300 bg-base-100 sm:min-h-34">
                   <div className="skeleton w-20 flex-none rounded-none sm:w-28" />

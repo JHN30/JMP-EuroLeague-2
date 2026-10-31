@@ -122,7 +122,7 @@ export default function TeamStatisticsSection({ seasonCode, phaseCode, stageName
 
   return (
     <Panel as="section" className="p-4">
-      <PanelHeader kicker="STATISTICS" title={`Per game: ${teamName} against its opponents`} />
+      <PanelHeader compact kicker="STATISTICS" title={`Per game: ${teamName} against its opponents`} />
       <ForfeitStatsNote seasonCode={seasonCode} phaseCode={phaseCode} clubCodes={[clubCode]} className="muted mb-3 text-sm" />
       <div className="grid gap-x-10 gap-y-6 xl:grid-cols-2">
         <StatGroup key={`${phaseCode}-${traditional.title}`} group={traditional} {...shared} />

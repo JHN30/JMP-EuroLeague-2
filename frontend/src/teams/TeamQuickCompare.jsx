@@ -84,7 +84,7 @@ export default function TeamQuickCompare({ seasonCode, clubCode, team, nextOppon
   if (!active) {
     return (
       <Panel as="section" className="p-4">
-        <PanelHeader kicker="COMPARE" title="Quick comparison" />
+        <PanelHeader compact kicker="COMPARE" title="Quick comparison" />
         <EmptyText>{`No upcoming game or league leader to compare against in the ${stageName}.`}</EmptyText>
       </Panel>
     );
@@ -97,6 +97,7 @@ export default function TeamQuickCompare({ seasonCode, clubCode, team, nextOppon
   return (
     <Panel as="section" className="flex flex-col p-4">
       <PanelHeader
+        compact
         kicker="COMPARE"
         title="Quick comparison"
         trailing={
@@ -124,7 +125,7 @@ export default function TeamQuickCompare({ seasonCode, clubCode, team, nextOppon
       <TabPanel id="team-compare-panel" focusKey={active.key} scroll={false} className="flex flex-1 flex-col">
         {own && other ? (
           // Keyed by the chosen opponent, so each switch replays the entrance instead of swapping numbers in place. The rows
-          // grow to fill the panel, so it ends level with the form and fixtures column beside it.
+          // share any height the panel gets from taller form and fixtures beside it (at lg, where those two are stacked).
           <motion.div key={active.key} className="flex flex-1 flex-col" variants={listContainer} initial="hidden" animate="show">
             <motion.div variants={listItem} className="mb-1 grid grid-cols-2 gap-4">
               <div className="flex justify-end">

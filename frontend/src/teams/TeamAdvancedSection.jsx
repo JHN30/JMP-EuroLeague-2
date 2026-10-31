@@ -78,6 +78,7 @@ function RatingsCard({ trend }) {
   return (
     <Panel as="section" className="p-4">
       <PanelHeader
+        compact
         kicker="RATINGS"
         title="Offense and defense through the season"
         trailing={netBadge ? <div className="max-sm:hidden">{netBadge}</div> : null}
@@ -103,9 +104,8 @@ function RatingsCard({ trend }) {
             <span className="muted">over {latest.gamesPlayed === 1 ? "1 game" : `${latest.gamesPlayed} games`}</span>
           </p>
           <p className="muted mt-2 text-sm">
-            Each point is that round&apos;s own rating, in points scored and allowed per 100 possessions; the dashed lines are the
-            season averages. The shaded gap between the round lines is the round&apos;s net rating (offense minus defense): green
-            when the offense was ahead, red when it was behind.
+            Per 100 possessions; dashed lines are the season averages, and the shaded gap is each round&apos;s net rating (green
+            ahead, red behind).
           </p>
         </>
       )}
@@ -176,7 +176,7 @@ function SplitsCards({ splits }) {
 
   return (
     <section>
-      <PanelHeader kicker="SPLITS" title="Home, away and recent form" />
+      <PanelHeader compact kicker="SPLITS" title="Home, away and recent form" />
       {/* Two by two on a phone: four full-width cards were about 1,000px of scrolling. */}
       <div className="grid grid-cols-2 gap-2 sm:gap-3 xl:grid-cols-4">
         {items.map((item) => (
@@ -216,7 +216,7 @@ function GameFlowCard({ pbp }) {
 
   return (
     <Panel as="section" className="p-4">
-      <PanelHeader kicker="PLAY BY PLAY" title="How games unfold" />
+      <PanelHeader compact kicker="PLAY BY PLAY" title="How games unfold" />
       <div className="grid gap-6 lg:grid-cols-2 lg:gap-10">
         <div>
           <p className="muted mb-2 text-xs font-bold uppercase tracking-wide">Time in the game</p>
@@ -417,7 +417,7 @@ function LineupsCard({ seasonCode, clubCode, scope }) {
 
   return (
     <section>
-      <PanelHeader kicker="LINEUPS" title="Best lineups" />
+      <PanelHeader compact kicker="LINEUPS" title="Best lineups" />
       <div className="mb-3 flex flex-wrap items-center gap-x-6 gap-y-3">
         <TabStrip ariaLabel="Lineup size" panelId="team-lineups-panel" activeKey={size} onChange={setSize} tabs={LINEUP_TABS} />
         <label className="flex items-center gap-2 text-sm font-medium whitespace-nowrap">

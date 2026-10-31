@@ -106,11 +106,13 @@ test("the Statistics states fit a phone: failing, no games, and no league ranks"
 // The Roster tab's parts, live data: the facts panel, a player card, a coach card.
 const rosterParts = (page) => ({
   facts: page.locator("#team-panel .panel").first(),
-  cards: page.locator("section[aria-label=Guard] a, section[aria-label=Forward] a, section[aria-label=Center] a"),
-  coaches: page.locator("section[aria-label='Coaching staff'] .rounded-box"),
+  cards: page.locator("section[aria-label=Guard] a.rounded-box, section[aria-label=Forward] a.rounded-box, section[aria-label=Center] a.rounded-box"),
+  // The players without a game: one line of links under their position's cards.
+  notPlayed: page.locator("section[aria-label=Guard] p a, section[aria-label=Forward] p a, section[aria-label=Center] p a"),
+  coaches: page.locator("section[aria-label='Coaching staff'] li"),
 });
 
-test("the roster facts are two columns, the cards narrower and the coaches compact below 640px, and as before from 640px", async ({ page }) => {
+test("the roster facts are two columns and the cards narrower below 640px, and the coaches are one line each at every width", async ({ page }) => {
   const { slug, team } = await liveTeam(page);
   await openTab(page, slug, team.clubCode, "Roster");
   const { facts, cards, coaches } = rosterParts(page);
@@ -118,7 +120,6 @@ test("the roster facts are two columns, the cards narrower and the coaches compa
   // The roster is the season's squad: no stage to choose.
   await expect(page.getByRole("tablist", { name: "Phase" })).toHaveCount(0);
   await expect(coaches.first()).toBeVisible({ timeout: 30_000 });
-  await expect(page.locator("section[aria-label='Coaching staff'] .rounded-box")).not.toHaveCount(0);
 
   await atWidths(page, WIDTHS, async (width) => {
     const phone = width < 640;
@@ -146,16 +147,16 @@ test("the roster facts are two columns, the cards narrower and the coaches compa
     if (phone) expect(tallest).toBeLessThan(130);
     else expect(tallest).toBeGreaterThan(130);
 
-    // Coaches: no portrait and about half as tall on a phone; the empty portrait and the card as before from 640px.
+    // Coaches: one line each (name, role, country), no portrait, at every width.
     expect(await holdsContent(coaches)).toBe(true);
-    const portraitWidths = await coaches.evaluateAll((els) => [...new Set(els.map((el) => Math.round(el.firstElementChild.getBoundingClientRect().width)))]);
-    expect(portraitWidths).toEqual([phone ? 0 : 112]);
+    expect(await coaches.locator("img, .skeleton").count()).toBe(0);
     const coachHeight = await coaches.evaluateAll((els) => Math.max(...els.map((el) => el.getBoundingClientRect().height)));
-    if (phone) expect(coachHeight).toBeLessThan(100);
-    else expect(coachHeight).toBeGreaterThan(130);
-    // The country shows once: after the role on a phone, on its own line from 640px.
-    const countryLines = await coaches.first().locator("p").evaluateAll((els) => els.filter((el) => el.getBoundingClientRect().width > 0 && el.textContent.trim().length === 3).length);
-    expect(countryLines).toBe(phone ? 0 : 1);
+    expect(coachHeight).toBeLessThan(50);
+    // Four in a row from 1280px, the cards too.
+    if (width >= 1280) {
+      expect(await coaches.evaluateAll((els) => new Set(els.slice(0, 4).map((el) => Math.round(el.getBoundingClientRect().top))).size)).toBe(1);
+      expect(await cards.evaluateAll((els) => new Set(els.map((el) => Math.round(el.getBoundingClientRect().left))).size)).toBe(4);
+    }
     await expectNoSidewaysScroll(page);
   });
 });
@@ -318,12 +319,16 @@ test("awkward rosters keep their cards and table tidy at 320px: a long name, no 
   );
   await page.route(COACHES_URL, failing);
   await openTab(page, slug, team.clubCode, "Roster");
-  const { cards } = rosterParts(page);
-  await expect(cards).toHaveCount(5, { timeout: 30_000 });
+  const { cards, notPlayed } = rosterParts(page);
+  // Cards for the two who have played; the three without a game are one line of links to their pages.
+  await expect(cards).toHaveCount(2, { timeout: 30_000 });
   // The coaches failing leaves the players, and no coaching section.
   await expect(page.locator("section[aria-label='Coaching staff']")).toHaveCount(0);
   expect(await holdsContent(cards)).toBe(true);
-  await expect(page.getByText("Has not played yet")).toHaveCount(3);
+  await expect(page.getByText("Not played yet:")).toHaveCount(1);
+  await expect(notPlayed).toHaveText(["#7 Ben Bench", "#7 Frank Former", /^#7 Onename$/i]);
+  await expect(notPlayed.first()).toHaveAttribute("href", /\/players\/p3$/);
+  expect(await holdsContent(page.locator("section[aria-label=Forward] p"))).toBe(true);
   await expectNoSidewaysScroll(page);
 
   await page.getByRole("tab", { name: "Table", exact: true }).click();

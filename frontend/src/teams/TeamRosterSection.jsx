@@ -9,7 +9,7 @@ import { EASE_OUT, cardHover, listContainer, listItem } from "../lib/motion";
 import Panel from "../lib/Panel";
 import PlayerPortrait from "../lib/PlayerPortrait";
 import ShortLabel from "../lib/ShortLabel";
-import { nameParts, withoutComma } from "../lib/playerName";
+import { displayName, nameParts, withoutComma } from "../lib/playerName";
 import { formatStatValue } from "../lib/statsFields";
 import { TabPanel, TabStrip } from "../lib/TabStrip";
 import StatBarCell from "../statistics/StatBarCell";
@@ -105,7 +105,7 @@ function RosterCard({ entry, stats, seasonCode }) {
         <div className="flex items-start justify-between gap-2">
           <div className="min-w-0">
             <p className="muted truncate text-[0.7rem] font-bold uppercase tracking-[0.18em]">{first}</p>
-            <p className="truncate text-lg font-extrabold uppercase leading-tight">{last}</p>
+            <p className="truncate text-lg font-extrabold uppercase leading-tight" title={last}>{last}</p>
           </div>
           <p className="flex-none text-3xl font-black leading-none tabular-nums">
             <span className="muted mr-0.5 text-sm font-bold">#</span>
@@ -138,9 +138,7 @@ function RosterCard({ entry, stats, seasonCode }) {
               <span className="muted w-14 flex-none text-right text-xs tabular-nums">{formatPerGame(minutes)} min</span>
             </div>
           </>
-        ) : (
-          <p className="muted text-xs">Has not played yet</p>
-        )}
+        ) : null}
       </div>
     </>
   );
@@ -160,27 +158,20 @@ function RosterCard({ entry, stats, seasonCode }) {
 
 const COACH_ROLES = { E: "Head coach", A: "Assistant coach" };
 
-// A coach has no photo, number or statistics in the data, only a name and a nationality, so the card is the player card
-// without the numbers.
-function CoachCard({ coach }) {
-  const { last, first } = nameParts(coach.name);
+// A coach has no photo, number or statistics in the data, only a name and a nationality, so each coach is one line: the name,
+// the role and the country.
+function CoachLine({ coach }) {
   return (
-    <motion.div
-      className="flex overflow-hidden rounded-box border border-base-300 bg-base-100 sm:min-h-34"
+    <motion.li
+      className="flex min-w-0 items-baseline gap-2 rounded-field border border-base-300 bg-base-100 px-3 py-2 text-sm"
       variants={listItem}
     >
-      {/* A coach has no photo, so below sm the card is only the text. */}
-      <PlayerPortrait imageUrl={null} className="w-24 sm:w-28 max-sm:hidden" />
-      <div className="flex min-w-0 flex-1 flex-col justify-center gap-1 px-3 py-2 sm:gap-1.5 sm:px-4 sm:py-3">
-        <p className="muted truncate text-[0.7rem] font-bold uppercase tracking-[0.18em]">{first}</p>
-        <p className="truncate text-lg font-extrabold uppercase leading-tight">{last}</p>
-        <p className="text-xs font-bold uppercase tracking-wide text-primary">
-          {COACH_ROLES[coach.roleCode] ?? "Staff"}
-          {coach.countryCode ? <span className="muted sm:hidden"> · {coach.countryCode}</span> : null}
-        </p>
-        {coach.countryCode ? <p className="muted text-xs max-sm:hidden">{coach.countryCode}</p> : null}
-      </div>
-    </motion.div>
+      <span className="truncate font-semibold" title={displayName(coach.name)}>
+        {displayName(coach.name)}
+      </span>
+      <span className="flex-none text-xs font-bold uppercase tracking-wide text-primary">{COACH_ROLES[coach.roleCode] ?? "Staff"}</span>
+      {coach.countryCode ? <span className="muted flex-none text-xs">{coach.countryCode}</span> : null}
+    </motion.li>
   );
 }
 
@@ -192,46 +183,72 @@ function CoachingStaff({ coaches }) {
         Coaching staff
         <span className="muted text-sm font-semibold">{coaches.length}</span>
       </h3>
-      <motion.div
-        className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4"
-        variants={listContainer}
-        initial="hidden"
-        animate="show"
-      >
+      <motion.ul className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4" variants={listContainer} initial="hidden" animate="show">
         {coaches.map((coach) => (
-          <CoachCard key={`${coach.roleCode}-${coach.personKey}`} coach={coach} />
+          <CoachLine key={`${coach.roleCode}-${coach.personKey}`} coach={coach} />
         ))}
-      </motion.div>
+      </motion.ul>
     </section>
   );
+}
+
+// The players of a position who have not played yet, as one line of links instead of cards with an empty photo and no numbers.
+function NotPlayedLine({ entries, seasonCode, afterCards }) {
+  if (entries.length === 0) return null;
+  return (
+    <p className={`muted text-sm ${afterCards ? "mt-3" : ""}`}>
+      <span className="font-semibold">Not played yet:</span>{" "}
+      {entries.map((entry, index) => {
+        const label = `#${entry.dorsal ?? "-"} ${displayName(entry.player?.name ?? "")}`.trim();
+        return (
+          <span key={entry.registrationKey}>
+            {index > 0 ? ", " : null}
+            {entry.player ? (
+              <Link to={`/${seasonCode}/players/${entry.player.personKey}`} className="link link-hover whitespace-nowrap">
+                {label}
+              </Link>
+            ) : (
+              <span className="whitespace-nowrap">{label}</span>
+            )}
+          </span>
+        );
+      })}
+    </p>
+  );
+}
+
+function hasPlayed(stats) {
+  return statNumber(stats?.traditional?.gamesPlayed) > 0;
 }
 
 function RosterCards({ registrations, statsByPersonKey, coaches, seasonCode }) {
   return (
     <div className="flex flex-col gap-8">
-      {groupByPosition(registrations).map(({ position, entries }) => (
-        <section key={position} aria-label={position}>
-          <h3 className="mb-3 flex items-baseline gap-2 text-xl font-bold">
-            {position}
-            <span className="muted text-sm font-semibold">{entries.length}</span>
-          </h3>
-          <motion.div
-            className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4"
-            variants={listContainer}
-            initial="hidden"
-            animate="show"
-          >
-            {entries.map((entry) => (
-              <RosterCard
-                key={entry.registrationKey}
-                entry={entry}
-                stats={statsByPersonKey.get(entry.player?.personKey)}
-                seasonCode={seasonCode}
-              />
-            ))}
-          </motion.div>
-        </section>
-      ))}
+      {groupByPosition(registrations).map(({ position, entries }) => {
+        const played = entries.filter((entry) => hasPlayed(statsByPersonKey.get(entry.player?.personKey)));
+        const notPlayed = entries.filter((entry) => !played.includes(entry));
+        return (
+          <section key={position} aria-label={position}>
+            <h3 className="mb-3 flex items-baseline gap-2 text-xl font-bold">
+              {position}
+              <span className="muted text-sm font-semibold">{entries.length}</span>
+            </h3>
+            {played.length > 0 ? (
+              <motion.div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4" variants={listContainer} initial="hidden" animate="show">
+                {played.map((entry) => (
+                  <RosterCard
+                    key={entry.registrationKey}
+                    entry={entry}
+                    stats={statsByPersonKey.get(entry.player?.personKey)}
+                    seasonCode={seasonCode}
+                  />
+                ))}
+              </motion.div>
+            ) : null}
+            <NotPlayedLine entries={notPlayed} seasonCode={seasonCode} afterCards={played.length > 0} />
+          </section>
+        );
+      })}
       <CoachingStaff coaches={coaches} />
     </div>
   );

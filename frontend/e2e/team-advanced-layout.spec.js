@@ -144,7 +144,7 @@ test("the Ratings title has the panel's width below 640px with the badge under i
   const canvas = ratings.locator("canvas");
   await expect(canvas).toBeVisible();
   // The caption says what the points and the dashed lines are, and the season averages are the cumulative values after the last round.
-  await expect(ratings.locator("p.muted").last()).toContainText("Each point is that round's own rating");
+  await expect(ratings.locator("p.muted").last()).toContainText("dashed lines are the season averages");
   await expect(ratings.locator("p.muted").last()).toContainText("dashed lines are the season averages");
   const last = advancedOf().trend.at(-1);
   await expect(canvas).toHaveAttribute("data-average-offense", String(Number(last.offensiveRating.toFixed(1))));

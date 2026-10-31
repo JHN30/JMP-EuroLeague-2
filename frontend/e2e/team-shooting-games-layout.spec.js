@@ -122,6 +122,18 @@ test("the Games tab fits every width: panels as wide as the page, TV codes below
       els.filter((el) => el.querySelector(".relative") && el.querySelector(".relative").getBoundingClientRect().width > el.getBoundingClientRect().width + 1).map((el) => el.textContent),
     );
     expect(cut, `at ${width}px`).toEqual([]);
+    // From 1024px each game is one line: the opponent and the round side by side, the date and time (or the score) beside them.
+    if (width >= 1024) {
+      const heights = await rows.evaluateAll((els) => els.map((el) => el.getBoundingClientRect().height));
+      expect(heights.length).toBeGreaterThan(0);
+      for (const height of heights) expect(height).toBeLessThan(52);
+      // Next games and Latest results share one height, with their "Show all" buttons level.
+      const columns = page.locator("#team-panel section.panel").filter({ has: page.getByRole("button", { name: /^Show all/ }) });
+      const [upcoming, results] = await columns.evaluateAll((els) => els.map((el) => el.getBoundingClientRect().height));
+      expect(Math.abs(upcoming - results)).toBeLessThan(2);
+      const buttons = await page.getByRole("button", { name: /^Show all/ }).evaluateAll((els) => els.map((el) => Math.round(el.getBoundingClientRect().top)));
+      expect(new Set(buttons).size).toBe(1);
+    }
 
     // The strip's two badges: under the title below 640px, beside it from 640px; two are drawn (the other pair is display: none).
     await expect

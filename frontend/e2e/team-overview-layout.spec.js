@@ -105,8 +105,8 @@ test("the header and the two strips fit at every width: the chip under the names
     } else {
       expect(await chip.evaluate((el) => getComputedStyle(el).textAlign)).toBe("right");
     }
-    // The crest keeps its size: 96px above the name on a phone, 64px beside it from 640px.
-    expect(await page.locator("section img").first().evaluate((img) => img.offsetWidth)).toBe(phone ? 96 : 64);
+    // The crest keeps its size: 96px above the name on a phone, 64px beside it from 640px and 48px in the compact header from 1024px.
+    expect(await page.locator("section img").first().evaluate((img) => img.offsetWidth)).toBe(phone ? 96 : width >= 1024 ? 48 : 64);
 
     // The opponent: the TV code below 640px, the abbreviated name from 640px.
     const shown = await chip.locator("span[aria-hidden=true], .max-sm\\:sr-only").evaluateAll((els) => els.filter((el) => el.getBoundingClientRect().width > 1).map((el) => el.textContent.trim()));
@@ -189,8 +189,9 @@ test("the snapshot holds its content and the leaders are a swipe row below 640px
       expect(cards[0].width / (pageWidth - 24)).toBeLessThan(0.87);
       await expect(leaders).toHaveAttribute("tabindex", "0");
     } else {
-      // Two columns, and nothing scrolls sideways.
-      expect(new Set(cards.map((card) => Math.round(card.left))).size).toBe(2);
+      // Two columns (four in one row from 1024px), and nothing scrolls sideways.
+      expect(new Set(cards.map((card) => Math.round(card.left))).size).toBe(width >= 1024 ? 4 : 2);
+      if (width >= 1024) expect(new Set(cards.map((card) => Math.round(card.top))).size).toBe(1);
       expect(await leaders.evaluate((el) => el.scrollWidth <= el.clientWidth)).toBe(true);
       await expect(leaders).not.toHaveAttribute("tabindex");
     }
@@ -364,4 +365,46 @@ test("in the quick comparison only the other club's label opens its team page", 
   const links = panel.getByRole("link");
   await expect(links).toHaveCount(1);
   await expect(links.first()).toHaveAttribute("href", new RegExp(`/${slug}/teams/(?!${team.clubCode}$)[^/]+$`));
+});
+
+// The compact team page on desktop: the header's short name only when it differs, the stage tabs on the section tabs' row,
+// one-line profile rows, and form, fixtures and comparison side by side from 1280px.
+test("from 1024px the stage tabs share the tabs' row and profile rows are one line; from 1280px the last three panels are one row", async ({ page }) => {
+  const { slug, team, rival } = await liveTeam(page);
+  await mockGames(page, gamesFor(team, rival));
+  await page.goto(`/${slug}/teams/${team.clubCode}`);
+  const profile = page.locator("section", { has: page.getByRole("heading", { name: /ranks in the league/ }) });
+  await expect(profile.locator("li").first()).toBeVisible({ timeout: 30_000 });
+  // The longest-named club has a short name of its own, so it shows under the name; the country leads or follows the city.
+  if (team.abbreviatedName && team.abbreviatedName !== team.name) {
+    await expect(page.locator("main section").first().locator("p.muted").first()).toHaveText(team.abbreviatedName);
+  }
+  await expect(page.locator("main section").first().locator("p.muted").last()).toContainText(team.countryCode);
+  const panel = (name) => page.locator("section.panel", { has: page.getByRole("heading", { name, exact: true }) });
+
+  await atWidths(page, [1024, 1280, 1440], async (width) => {
+    const section = await strip(page, "Section").boundingBox();
+    const phase = await strip(page, "Phase").boundingBox();
+    // The stage tabs sit to the right of the section tabs, on the same row (their bottoms line up).
+    expect(phase.x).toBeGreaterThan(section.x + section.width);
+    expect(Math.abs(phase.y + phase.height - (section.y + section.height))).toBeLessThan(4);
+    // Each league-profile metric is one line.
+    const rowHeights = await profile.locator("li").evaluateAll((els) => els.map((el) => el.getBoundingClientRect().height));
+    for (const height of rowHeights) expect(height).toBeLessThan(34);
+    const tops = await Promise.all(["Recent form", "Upcoming games", "Quick comparison"].map((name) => panel(name).boundingBox().then((box) => Math.round(box.y))));
+    const heights = await Promise.all(["Recent form", "Upcoming games", "Quick comparison"].map((name) => panel(name).boundingBox().then((box) => box.height)));
+    if (width >= 1280) {
+      expect(new Set(tops).size).toBe(1);
+      // The three panels share one height.
+      for (const height of heights) expect(Math.abs(height - heights[2])).toBeLessThan(2);
+    } else {
+      expect(tops[0]).toBe(tops[2]);
+      expect(tops[1]).toBeGreaterThan(tops[0]);
+      // Form and fixtures stacked end level with the comparison beside them.
+      const formTop = tops[0];
+      const fixturesBottom = tops[1] + heights[1];
+      expect(Math.abs(fixturesBottom - (formTop + heights[2]))).toBeLessThan(2);
+    }
+    await expectNoSidewaysScroll(page);
+  });
 });

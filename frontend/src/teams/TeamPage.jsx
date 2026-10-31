@@ -79,9 +79,9 @@ function websiteHost(website) {
   }
 }
 
-// Where the club plays and how long it has been in the EuroLeague, in one muted line under the codes. A fact the feed leaves
+// Where the club plays and how long it has been in the EuroLeague, in one muted line under the name. A fact the feed leaves
 // empty is left out, and with none there is no line.
-function ClubFacts({ club }) {
+function ClubFacts({ club, countryCode }) {
   const host = club?.website ? websiteHost(club.website) : null;
   const history = club?.seasonsPlayed && club.firstSeasonCode
     ? club.seasonsPlayed === 1
@@ -90,6 +90,7 @@ function ClubFacts({ club }) {
     : null;
   const facts = [
     club?.city ? readableName(club.city) : null,
+    countryCode ?? null,
     club?.arena ? readableName(club.arena) : null,
     host ? (
       <a href={club.website} target="_blank" rel="noopener noreferrer" className="link link-hover">
@@ -130,6 +131,9 @@ function NextGameChip({ nextGame, clubCode }) {
 
 const FORM_LIST_LIMIT = 5;
 const UPCOMING_LIMIT = 5;
+// From xl form, fixtures and the comparison share one row, so the two lists show a few more games to match its height.
+const WIDE_LIST_LIMIT = 8;
+const WIDE_ONLY_CLASS = "max-xl:hidden";
 
 function gameRoundLabel(game) {
   return game.roundName ?? (game.roundNumber ? `Round ${game.roundNumber}` : game.phaseName);
@@ -137,13 +141,14 @@ function gameRoundLabel(game) {
 
 // One compact line that opens the game: round, opponent, then whatever ends the line (a result or a tip-off time). Below sm the
 // opponent has the first line with the round under it, and the result or date takes the right-hand end of both.
-function GameLinkRow({ seasonCode, game, clubCode, children }) {
+function GameLinkRow({ seasonCode, game, clubCode, className = "", children }) {
   const { team, home } = opponent(game, clubCode);
   return (
-    <li className="flex flex-1">
+    // Rows grow a little to fill a stretched panel, never past 3.5rem.
+    <li className={`flex flex-1 lg:max-h-14 ${className}`}>
       <Link
         to={`/${seasonCode}/games/${game.gameCode}`}
-        className="flex w-full items-center gap-3 rounded-field border border-base-300 bg-base-200 px-3 py-2 text-sm transition-colors hover:border-primary max-sm:grid max-sm:grid-cols-[minmax(0,1fr)_auto] max-sm:gap-y-0.5"
+        className="flex w-full items-center gap-3 rounded-field border border-base-300 bg-base-200 px-3 py-2 text-sm transition-colors lg:py-1.5 hover:border-primary max-sm:grid max-sm:grid-cols-[minmax(0,1fr)_auto] max-sm:gap-y-0.5"
       >
         <span className="muted w-16 flex-none truncate text-xs font-bold uppercase tracking-wide max-sm:col-start-1 max-sm:row-start-2 max-sm:w-auto">
           {gameRoundLabel(game)}
@@ -167,23 +172,29 @@ function RecentFormList({ seasonCode, games, clubCode }) {
     .filter((game) => game.played)
     .slice()
     .reverse()
-    .slice(0, FORM_LIST_LIMIT);
+    .slice(0, WIDE_LIST_LIMIT);
 
   return (
     <Panel as="section" className="flex flex-col p-4">
-      <PanelHeader kicker="FORM" title="Recent form" />
+      <PanelHeader compact kicker="FORM" title="Recent form" />
       {recent.length === 0 ? (
         <EmptyText>No played games yet.</EmptyText>
       ) : (
         <ul className="flex flex-1 flex-col gap-2">
-          {recent.map((game) => {
+          {recent.map((game, index) => {
             const { home } = opponent(game, clubCode);
             const hasScores = game.localScore != null && game.roadScore != null;
             const clubScore = home ? game.localScore : game.roadScore;
             const opponentScore = home ? game.roadScore : game.localScore;
             const won = hasScores && clubScore > opponentScore;
             return (
-              <GameLinkRow key={game.gameCode} seasonCode={seasonCode} game={game} clubCode={clubCode}>
+              <GameLinkRow
+                key={game.gameCode}
+                seasonCode={seasonCode}
+                game={game}
+                clubCode={clubCode}
+                className={index >= FORM_LIST_LIMIT ? WIDE_ONLY_CLASS : ""}
+              >
                 {hasScores ? (
                   <>
                     <span className={`flex-none text-xs font-bold uppercase tracking-wide ${won ? "text-success" : "text-error"}`}>
@@ -204,15 +215,21 @@ function RecentFormList({ seasonCode, games, clubCode }) {
 }
 
 function UpcomingGamesList({ seasonCode, games, clubCode }) {
-  const upcoming = games.filter((game) => !game.played).slice(0, UPCOMING_LIMIT);
+  const upcoming = games.filter((game) => !game.played).slice(0, WIDE_LIST_LIMIT);
   if (upcoming.length === 0) return null;
 
   return (
     <Panel as="section" className="flex flex-col p-4">
-      <PanelHeader kicker="FIXTURES" title="Upcoming games" />
+      <PanelHeader compact kicker="FIXTURES" title="Upcoming games" />
       <ul className="flex flex-1 flex-col gap-2">
-        {upcoming.map((game) => (
-          <GameLinkRow key={game.gameCode} seasonCode={seasonCode} game={game} clubCode={clubCode}>
+        {upcoming.map((game, index) => (
+          <GameLinkRow
+            key={game.gameCode}
+            seasonCode={seasonCode}
+            game={game}
+            clubCode={clubCode}
+            className={index >= UPCOMING_LIMIT ? WIDE_ONLY_CLASS : ""}
+          >
             <span className="muted flex-none text-xs tabular-nums sm:text-sm">{formatDateTime(game.scheduledAt)}</span>
           </GameLinkRow>
         ))}
@@ -302,8 +319,8 @@ function TeamSnapshot({ standingsQuery, teamStatsQuery, clubCode, phaseGames, st
   const diffText = diff == null ? "-" : `${diff > 0 ? "+" : ""}${formatPerGame(diff)}`;
 
   return (
-    <Panel as="section" aria-label="Phase snapshot" className="p-4 sm:p-5">
-      <div className="grid gap-6 lg:grid-cols-2 lg:gap-10">
+    <Panel as="section" aria-label="Phase snapshot" className="p-4 sm:p-5 lg:grid lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center lg:gap-8">
+      <div className="grid gap-6 lg:grid-cols-2 lg:gap-8">
         <div>
           <div className="mb-2 flex items-end justify-between gap-3">
             <div className="flex items-baseline gap-3">
@@ -354,7 +371,7 @@ function TeamSnapshot({ standingsQuery, teamStatsQuery, clubCode, phaseGames, st
         </div>
       </div>
 
-      <div className="mt-5 grid grid-cols-2 gap-x-4 gap-y-3 border-t border-base-300 pt-4 sm:flex sm:flex-wrap sm:gap-x-8">
+      <div className="mt-5 grid grid-cols-2 gap-x-4 gap-y-3 border-t border-base-300 pt-4 sm:flex sm:flex-wrap sm:gap-x-8 lg:mt-0 lg:grid lg:grid-cols-3 lg:content-center lg:gap-x-6 lg:border-t-0 lg:border-l lg:pt-0 lg:pl-6">
         <SnapshotFact
           className="max-sm:col-span-2"
           label={grouped ? "Group position" : "League position"}
@@ -391,7 +408,7 @@ function TeamLeaders({ seasonCode, rosterStatsQuery, stageName }) {
 
   return (
     <motion.div
-      className="team-leaders-grid grid grid-cols-1 gap-3 sm:grid-cols-2 2xl:grid-cols-4"
+      className="team-leaders-grid grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4"
       role="group"
       aria-label="Team leaders"
       tabIndex={isSwipeRow ? 0 : undefined}
@@ -452,14 +469,16 @@ function OverviewSection({ seasonCode, clubCode, team, phaseCode, stageName, sta
   });
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-6 lg:gap-4">
       <TeamSnapshot standingsQuery={standingsQuery} teamStatsQuery={teamStatsQuery} clubCode={clubCode} phaseGames={phaseGames} stageName={stageName} />
       <ForfeitStatsNote seasonCode={seasonCode} phaseCode={phaseCode} clubCodes={[clubCode]} />
       <TeamLeaders seasonCode={seasonCode} rosterStatsQuery={rosterStatsQuery} stageName={stageName} />
       <TeamLeagueProfile advancedQuery={advancedQuery} clubCode={clubCode} team={team} stageName={stageName} />
-      <div className="grid grid-cols-[minmax(0,1fr)] gap-6 lg:grid-cols-2">
-        {/* The last panel here grows to the comparison's height, so the two columns end together. */}
-        <div className="flex flex-col gap-6 *:last:flex-1">
+      {/* Form and fixtures stacked beside the comparison from lg, and the three side by side from xl; the panels in the row share
+          one height. */}
+      <div className="grid grid-cols-[minmax(0,1fr)] gap-6 lg:grid-cols-2 lg:gap-4 xl:grid-cols-3">
+        {/* At lg the two stacked panels grow evenly when the comparison beside them is the taller. */}
+        <div className="flex flex-col gap-6 lg:gap-4 lg:*:flex-1 xl:contents">
           <RecentFormList seasonCode={seasonCode} games={games} clubCode={clubCode} />
           <UpcomingGamesList seasonCode={seasonCode} games={games} clubCode={clubCode} />
         </div>
@@ -587,6 +606,7 @@ export default function TeamPage() {
   const games = gamesQuery.data?.games ?? [];
   const nextGame = games.find((game) => !game.played) ?? null;
   const clubName = team.abbreviatedName ?? team.name ?? team.clubCode;
+  const fullName = team.name ?? team.abbreviatedName ?? team.clubCode;
   const stageName = phases.find((phase) => phase.code === phaseCode)?.name ?? phaseCode;
   // A stage the club has no games in: every stage-driven tab says so in one sentence instead of showing empty panels.
   const absentText =
@@ -600,14 +620,14 @@ export default function TeamPage() {
       <PageHeader
         kicker="CLUB"
         centred
-        title={team.name ?? team.abbreviatedName ?? team.clubCode}
-        media={team.crestUrl ? <RevealImage src={team.crestUrl} className="h-16 w-16 flex-none object-contain max-sm:h-24 max-sm:w-24" /> : null}
+        compact
+        title={fullName}
+        media={team.crestUrl ? <RevealImage src={team.crestUrl} className="h-16 w-16 flex-none object-contain max-sm:h-24 max-sm:w-24 lg:h-12 lg:w-12" /> : null}
         description={
           <>
-            <p className="muted">
-              {team.abbreviatedName ?? team.clubCode} · {team.countryCode ?? "-"}
-            </p>
-            <ClubFacts club={teamQuery.data?.club} />
+            {/* The short name only when it says something the title does not ("Crvena Zvezda" under its sponsor name). */}
+            {team.abbreviatedName && team.abbreviatedName !== fullName ? <p className="muted">{team.abbreviatedName}</p> : null}
+            <ClubFacts club={teamQuery.data?.club} countryCode={team.countryCode} />
           </>
         }
       >
@@ -615,28 +635,31 @@ export default function TeamPage() {
       </PageHeader>
       <CompetitionContext seasonCode={seasonCode} phaseCode={phaseCode} roundNumber={standingsQuery.data?.round} clubCode={clubCode} />
 
-      <TabStrip
-        ariaLabel="Section"
-        level={1}
-        scrolling
-        panelId="team-panel"
-        activeKey={section}
-        onChange={setSection}
-        className={`w-fit ${SEASON_WIDE_SECTIONS.includes(section) ? "mb-6" : "mb-4"}`}
-        tabs={SECTIONS}
-      />
-      {SEASON_WIDE_SECTIONS.includes(section) ? null : (
+      {/* From lg the stage choice sits at the end of the section tabs' row instead of on a row of its own. */}
+      <div className="lg:mb-5 lg:flex lg:flex-wrap lg:items-end lg:justify-between lg:gap-x-8 lg:gap-y-2">
         <TabStrip
-          ariaLabel="Phase"
-          level={2}
+          ariaLabel="Section"
+          level={1}
           scrolling
           panelId="team-panel"
-          activeKey={phaseCode}
-          onChange={setPhaseCode}
-          className="mb-6 w-fit"
-          tabs={phases.map((phase) => ({ key: phase.code, label: phase.name ?? phase.code }))}
+          activeKey={section}
+          onChange={setSection}
+          className={`w-fit ${SEASON_WIDE_SECTIONS.includes(section) ? "mb-6" : "mb-4"} lg:mb-0`}
+          tabs={SECTIONS}
         />
-      )}
+        {SEASON_WIDE_SECTIONS.includes(section) ? null : (
+          <TabStrip
+            ariaLabel="Phase"
+            level={2}
+            scrolling
+            panelId="team-panel"
+            activeKey={phaseCode}
+            onChange={setPhaseCode}
+            className="mb-6 w-fit lg:mb-0"
+            tabs={phases.map((phase) => ({ key: phase.code, label: phase.name ?? phase.code }))}
+          />
+        )}
+      </div>
 
       <TabPanel id="team-panel" focusKey={`${phaseCode}-${section}`} scroll={false}>
         {absentText && !SEASON_WIDE_SECTIONS.includes(section) ? (

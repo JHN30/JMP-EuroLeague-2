@@ -14,15 +14,18 @@ function ProfileRow({ metric, own, standing }) {
   const fill = Math.max(5, ((standing.of - standing.rank + 1) / standing.of) * 100);
 
   return (
-    <li className="py-2">
-      <div className="mb-1 flex items-baseline justify-between gap-2 text-sm">
-        <HeaderTip tip={metric.tip}>{metric.label}</HeaderTip>
-        <span className="flex items-baseline gap-2">
+    // From lg one line: the name, the bar, then the value and the rank.
+    <li className="py-2 lg:flex lg:items-center lg:gap-3 lg:py-1">
+      <div className="mb-1 flex items-baseline justify-between gap-2 text-sm lg:contents">
+        <span className="lg:order-1 lg:w-40 lg:flex-none">
+          <HeaderTip tip={metric.tip}>{metric.label}</HeaderTip>
+        </span>
+        <span className="flex items-baseline gap-2 lg:order-3 lg:flex-none">
           <span className="font-semibold tabular-nums">{metric.format(own[metric.field])}</span>
           <span className={`w-10 text-right text-xs font-bold tabular-nums ${tier.text}`}>{ordinal(standing.rank)}</span>
         </span>
       </div>
-      <div aria-hidden="true" className="h-1.5 w-full overflow-hidden rounded-full bg-base-300">
+      <div aria-hidden="true" className="h-1.5 w-full overflow-hidden rounded-full bg-base-300 lg:order-2 lg:min-w-0 lg:flex-1">
         <motion.div
           className={`h-full origin-left rounded-full ${tier.bar}`}
           style={{ width: `${fill}%` }}
@@ -48,7 +51,7 @@ export default function TeamLeagueProfile({ advancedQuery, clubCode, team, stage
   if (!own) {
     return (
       <Panel as="section" className="p-4">
-        <PanelHeader kicker="PROFILE" title={`Where ${name} ranks in the league`} />
+        <PanelHeader compact kicker="PROFILE" title={`Where ${name} ranks in the league`} />
         <EmptyText>{`No league rankings yet for the ${stageName}.`}</EmptyText>
       </Panel>
     );
@@ -78,6 +81,7 @@ export default function TeamLeagueProfile({ advancedQuery, clubCode, team, stage
   return (
     <Panel as="section" className="p-4">
       <PanelHeader
+        compact
         kicker="PROFILE"
         title={`Where ${name} ranks in the league`}
         trailing={extremes ? <div className="flex flex-wrap justify-end gap-2 max-sm:hidden">{extremes}</div> : null}

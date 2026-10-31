@@ -1592,6 +1592,23 @@ button {
 .team-leaders-grid .kpi-chip .value {
   font-size: 1.7rem;
 }
+/* From lg the four leaders are one row (TeamPage), so each card is shorter: tighter padding and a smaller photo. */
+@media (min-width: 64rem) {
+  .team-leaders-grid .kpi-chip {
+    padding: 0.85rem 1rem;
+  }
+  .team-leaders-grid .kpi-chip-image {
+    height: 5.25rem;
+    max-width: 5rem;
+    margin: -0.85rem -0.5rem -0.85rem 0;
+  }
+  .team-leaders-grid .kpi-chip .name {
+    font-size: 0.9rem;
+  }
+  .team-leaders-grid .kpi-chip .value {
+    font-size: 1.45rem;
+  }
+}
 
 /* Home's four KPI cards and the Season overview's two hero cards: compact and stacked below sm (crest on top, cards about 140px wide so club
    names wrap by whole words), the tall photo card from sm up. */

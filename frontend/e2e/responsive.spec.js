@@ -73,7 +73,9 @@ const PAGES = [
 test.describe("the page header", () => {
   for (const width of [390, 1280]) {
     for (const { name, route } of PAGES.filter((page) => page.name !== "Page not found")) {
-      test(`sits 24px above the content on ${name} at ${width}px`, async ({ page }) => {
+      // The team page's header is compact from 1024px, with 16px under it.
+      const gap = name === "Team page" && width >= 1024 ? 16 : 24;
+      test(`sits ${gap}px above the content on ${name} at ${width}px`, async ({ page }) => {
         test.setTimeout(60_000);
         await page.setViewportSize({ width, height: HEIGHT });
         const season = await seasonSlug(page);
@@ -90,7 +92,7 @@ test.describe("the page header", () => {
               return Math.round(node.nextElementSibling.getBoundingClientRect().top - header.getBoundingClientRect().bottom);
             }),
           )
-          .toBe(24);
+          .toBe(gap);
       });
     }
   }

@@ -73,6 +73,7 @@ export default function TeamShootingSection({ seasonCode, phaseCode, stageName, 
   return (
     <Panel as="section" className="p-4">
       <PanelHeader
+        compact
         kicker="SHOOTING"
         title={side === "team" ? `Where ${name} shoots` : `Where opponents shoot against ${name}`}
       />

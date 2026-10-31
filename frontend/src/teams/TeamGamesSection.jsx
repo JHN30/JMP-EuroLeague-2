@@ -31,6 +31,8 @@ const RESULT_TABS = [
   { key: "wins", label: "Wins" },
   { key: "losses", label: "Losses" },
 ];
+// The heading row's height with the result filter in it; the count-only heading gets the same, so the columns line up.
+const HEADING_TRAILING_CLASS = "flex min-h-9 items-center self-center";
 
 const byDate = (a, b) => new Date(a.scheduledAt) - new Date(b.scheduledAt);
 
@@ -193,7 +195,8 @@ function GameRow({ seasonCode, game, clubCode, isNext }) {
   return (
     <MotionLink
       to={`/${seasonCode}/games/${game.gameCode}`}
-      className="flex items-center gap-3 rounded-field border border-base-300 bg-base-200 p-3 transition-colors hover:border-primary lg:py-2"
+      // The next game is tinted so it stands out without hovering; every row keeps the hover border.
+      className={`flex items-center gap-3 rounded-field border p-3 transition-colors hover:border-primary lg:py-2 ${isNext ? "border-primary/30 bg-primary/5" : "border-base-300 bg-base-200"}`}
       variants={listItem}
       {...wideCardHover}
     >
@@ -248,7 +251,7 @@ function GameRow({ seasonCode, game, clubCode, isNext }) {
 // The list sits in a tab panel when filter tabs control it (so they have something to point at), and loose otherwise.
 function ListBody({ panelId, listKey, children }) {
   return panelId ? (
-    <TabPanel id={panelId} focusKey={listKey} scroll={false} className="flex flex-1 flex-col">
+    <TabPanel id={panelId} focusKey={listKey} scroll={false}>
       {children}
     </TabPanel>
   ) : (
@@ -256,20 +259,26 @@ function ListBody({ panelId, listKey, children }) {
   );
 }
 
-// A column of games that starts short and grows with "Show all". "Show all" sits at the foot of the panel, so when the two
-// columns share one height their buttons line up.
-function GameColumn({ kicker, title, games, seasonCode, clubCode, markFirst = false, emptyText, controls = null, panelId, listKey, expanded, onToggle }) {
+// A column of games that starts short and grows with "Show all". `controls` (a filter) sits in the heading row from sm,
+// in place of the count, and on a row of its own under the heading below sm.
+function GameColumn({ kicker, title, games, seasonCode, clubCode, markFirst = false, emptyText, controls = null, panelId, listKey }) {
+  const [expanded, setExpanded] = useState(false);
   const visible = expanded ? games : games.slice(0, INITIAL_ROWS);
 
   return (
-    <Panel as="section" className="flex flex-col p-4">
+    <Panel as="section" className="p-4">
       <PanelHeader
         compact
         kicker={kicker}
         title={title}
-        trailing={<span className="muted text-sm font-semibold tabular-nums">{games.length}</span>}
+        trailing={
+          <div className={HEADING_TRAILING_CLASS}>
+            <span className={`muted text-sm font-semibold tabular-nums ${controls ? "sm:hidden" : ""}`}>{games.length}</span>
+            {controls ? <div className="max-sm:hidden">{controls}</div> : null}
+          </div>
+        }
       />
-      {controls}
+      {controls ? <div className="mb-3 sm:hidden">{controls}</div> : null}
       <ListBody panelId={panelId} listKey={listKey}>
       {games.length === 0 ? (
         <EmptyText>{emptyText}</EmptyText>
@@ -283,11 +292,9 @@ function GameColumn({ kicker, title, games, seasonCode, clubCode, markFirst = fa
             ))}
           </motion.ul>
           {games.length > INITIAL_ROWS ? (
-            <div className="mt-auto pt-3">
-              <button type="button" className="btn btn-sm btn-ghost w-full" onClick={onToggle}>
-                {expanded ? "Show fewer" : `Show all ${games.length}`}
-              </button>
-            </div>
+            <button type="button" className="btn btn-sm btn-ghost mt-3 w-full" onClick={() => setExpanded((open) => !open)}>
+              {expanded ? "Show fewer" : `Show all ${games.length}`}
+            </button>
           ) : null}
         </>
       )}
@@ -300,8 +307,6 @@ function GameColumn({ kicker, title, games, seasonCode, clubCode, markFirst = fa
 // first) beside what has happened (right, the latest game first), with the opponent's crest on every row.
 export default function TeamGamesSection({ gamesQuery, seasonCode, clubCode, phaseCode }) {
   const [resultFilter, setResultFilter] = useState("all");
-  const [expanded, setExpanded] = useState({ upcoming: false, results: false });
-  const toggle = (key) => setExpanded((open) => ({ ...open, [key]: !open[key] }));
 
   if (gamesQuery.isPending) return <AsyncState status="loading" label="Loading the games" skeleton={<TeamGamesSkeleton />} />;
   if (gamesQuery.isError) {
@@ -316,20 +321,29 @@ export default function TeamGamesSection({ gamesQuery, seasonCode, clubCode, pha
 
   const played = allGames.filter((game) => game.played).sort(byDate);
   const upcoming = allGames.filter((game) => !game.played).sort(byDate);
-  const results = played
-    .slice()
-    .reverse()
-    .filter((game) => {
-      if (resultFilter === "all") return true;
-      const side = sideOf(game, clubCode);
-      return resultFilter === "wins" ? side.won : side.hasScore && !side.won;
-    });
+  const matches = (game, key) => {
+    if (key === "all") return true;
+    const side = sideOf(game, clubCode);
+    return key === "wins" ? side.won : side.hasScore && !side.won;
+  };
+  const latestFirst = played.slice().reverse();
+  const results = latestFirst.filter((game) => matches(game, resultFilter));
+  // Each filter tab carries how many games it holds ("Wins 3").
+  const resultTabs = RESULT_TABS.map((tab) => ({
+    ...tab,
+    // One span, so the tab's flex layout keeps the space between the label and the count.
+    label: (
+      <span>
+        {tab.label} <span className="muted tabular-nums">{latestFirst.filter((game) => matches(game, tab.key)).length}</span>
+      </span>
+    ),
+  }));
 
   return (
     <div className="flex flex-col gap-6">
       <MarginStrip played={played} seasonCode={seasonCode} clubCode={clubCode} />
-      {/* The two columns share one height until either is expanded; then each keeps its own. */}
-      <div className={`grid grid-cols-[minmax(0,1fr)] gap-6 lg:grid-cols-2 ${expanded.upcoming || expanded.results ? "items-start" : ""}`}>
+      {/* Each column keeps its own height; with the filter in the heading row, two full columns end level. */}
+      <div className="grid grid-cols-[minmax(0,1fr)] items-start gap-6 lg:grid-cols-2">
         <GameColumn
           kicker="UPCOMING"
           title="Next games"
@@ -338,8 +352,6 @@ export default function TeamGamesSection({ gamesQuery, seasonCode, clubCode, pha
           clubCode={clubCode}
           markFirst
           emptyText="No games left to play."
-          expanded={expanded.upcoming}
-          onToggle={() => toggle("upcoming")}
         />
         <GameColumn
           kicker="RESULTS"
@@ -350,16 +362,14 @@ export default function TeamGamesSection({ gamesQuery, seasonCode, clubCode, pha
           emptyText={resultFilter === "all" ? "No games played yet." : "No games match this filter."}
           panelId="team-results-panel"
           listKey={resultFilter}
-          expanded={expanded.results}
-          onToggle={() => toggle("results")}
           controls={
             <TabStrip
               ariaLabel="Results filter"
               panelId="team-results-panel"
               activeKey={resultFilter}
               onChange={setResultFilter}
-              tabs={RESULT_TABS}
-              className="mb-3 w-fit"
+              tabs={resultTabs}
+              className="w-fit"
             />
           }
         />

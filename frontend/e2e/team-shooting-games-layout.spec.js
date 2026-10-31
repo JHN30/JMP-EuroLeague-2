@@ -127,13 +127,28 @@ test("the Games tab fits every width: panels as wide as the page, TV codes below
       const heights = await rows.evaluateAll((els) => els.map((el) => el.getBoundingClientRect().height));
       expect(heights.length).toBeGreaterThan(0);
       for (const height of heights) expect(height).toBeLessThan(52);
-      // Next games and Latest results share one height, with their "Show all" buttons level.
+      // Two full columns end level on their own, with their "Show all" buttons level.
       const columns = page.locator("#team-panel section.panel").filter({ has: page.getByRole("button", { name: /^Show all/ }) });
       const [upcoming, results] = await columns.evaluateAll((els) => els.map((el) => el.getBoundingClientRect().height));
       expect(Math.abs(upcoming - results)).toBeLessThan(2);
       const buttons = await page.getByRole("button", { name: /^Show all/ }).evaluateAll((els) => els.map((el) => Math.round(el.getBoundingClientRect().top)));
       expect(new Set(buttons).size).toBe(1);
     }
+
+    // "Show all" sits straight under each list's last row.
+    const gaps = await page.locator("#team-panel section.panel").filter({ has: page.getByRole("button", { name: /^Show all/ }) }).evaluateAll((els) =>
+      els.map((el) => el.querySelector("button").getBoundingClientRect().top - el.querySelector("ul").getBoundingClientRect().bottom),
+    );
+    for (const gap of gaps) expect(gap).toBeLessThan(16);
+    // The result filter: in the heading row from 640px, on its own row under the heading below; each tab carries its count.
+    const filter = page.getByRole("tablist", { name: "Results filter" });
+    await expect(filter).toHaveCount(1);
+    await expect(filter.getByRole("tab")).toHaveText([/^All \d+$/, /^Wins \d+$/, /^Losses \d+$/]);
+    const inHeading = await filter.evaluate((el) => Boolean(el.closest(".panel-header")));
+    expect(inHeading).toBe(!phone);
+    // The next game is tinted without hovering.
+    const nextRow = page.locator("section.panel", { has: page.getByRole("heading", { name: "Next games" }) }).locator("ul a").first();
+    await expect(nextRow).toHaveClass(/bg-primary\/5/);
 
     // The strip's two badges: under the title below 640px, beside it from 640px; two are drawn (the other pair is display: none).
     await expect
@@ -176,7 +191,7 @@ test("the Games tab states fit a phone: few games, none played, none to come, no
   await page.unroute(GAMES_URL);
   await mockGames(page, gamesFor(team, rival, { played: 4, upcoming: 12 }));
   await openTab(page, slug, team.clubCode, "Games");
-  await page.getByRole("tab", { name: "Losses", exact: true }).click();
+  await page.getByRole("tab", { name: /^Losses \d+$/ }).click();
   await expect(page.getByRole("button", { name: /^Show all/ })).toBeVisible();
   await page.getByRole("button", { name: /^Show all/ }).click();
   await expect(page.getByRole("button", { name: "Show fewer" })).toBeVisible();

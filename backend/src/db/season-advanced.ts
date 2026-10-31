@@ -341,7 +341,8 @@ export async function getRoundStatRows(seasonCode: string, scope: string, round:
 }
 
 // The advanced figures of every player of one club after one round: the round table's row for the club (usage, shooting,
-// PIE, game score) with each player's PER and Win Shares from their own tables, joined on the player key.
+// rates, per-100 numbers, PIE, game score) with each player's PER and Win Shares from their own tables, the on/off for
+// this club in the scope, and the whole-season RAPM (its scope is always "all"), joined on the player key.
 export async function getClubPlayersAdvanced(seasonCode: string, scope: string, round: number, clubCode: string) {
   const stats = await catalogRead(() =>
     db.select({
@@ -351,6 +352,21 @@ export async function getClubPlayersAdvanced(seasonCode: string, scope: string, 
       secondsPlayed: playerRoundStats.secondsPlayed,
       usgPct: playerRoundStats.usgPct,
       tsPct: playerRoundStats.tsPct,
+      efgPct: playerRoundStats.efgPct,
+      astPct: playerRoundStats.astPct,
+      stlPct: playerRoundStats.stlPct,
+      blkPct: playerRoundStats.blkPct,
+      tovPct: playerRoundStats.tovPct,
+      orbPct: playerRoundStats.orbPct,
+      drbPct: playerRoundStats.drbPct,
+      trbPct: playerRoundStats.trbPct,
+      possessionsPlayed: playerRoundStats.possessionsPlayed,
+      pointsPer100: playerRoundStats.pointsPer100,
+      reboundsPer100: playerRoundStats.reboundsPer100,
+      assistsPer100: playerRoundStats.assistsPer100,
+      stealsPer100: playerRoundStats.stealsPer100,
+      blocksPer100: playerRoundStats.blocksPer100,
+      turnoversPer100: playerRoundStats.turnoversPer100,
       pie: playerRoundStats.pie,
       gameScoreAverage: playerRoundStats.gameScoreAverage,
     })
@@ -359,25 +375,58 @@ export async function getClubPlayersAdvanced(seasonCode: string, scope: string, 
   );
   if (stats.length === 0) return [];
   const keys = stats.map((row) => row.personKey);
-  const [ratings, shares] = await Promise.all([
+  const [ratings, shares, onOff, rapm] = await Promise.all([
     catalogRead(() =>
       db.select({ personKey: playerRoundRatings.personKey, per: playerRoundRatings.per })
         .from(playerRoundRatings)
         .where(and(...inScope(playerRoundRatings, seasonCode, scope), eq(playerRoundRatings.roundNumber, round), inArray(playerRoundRatings.personKey, keys))),
     ),
     catalogRead(() =>
-      db.select({ personKey: playerRoundWinShares.personKey, winShares: playerRoundWinShares.winShares, winSharesPer40: playerRoundWinShares.winSharesPer40 })
+      db.select({
+        personKey: playerRoundWinShares.personKey,
+        winShares: playerRoundWinShares.winShares,
+        offWinShares: playerRoundWinShares.offWinShares,
+        defWinShares: playerRoundWinShares.defWinShares,
+        winSharesPer40: playerRoundWinShares.winSharesPer40,
+      })
         .from(playerRoundWinShares)
         .where(and(...inScope(playerRoundWinShares, seasonCode, scope), eq(playerRoundWinShares.roundNumber, round), inArray(playerRoundWinShares.personKey, keys))),
+    ),
+    catalogRead(() =>
+      db.select({
+        personKey: playerOnOff.personKey,
+        onSeconds: playerOnOff.onSeconds,
+        onNetRating: playerOnOff.onNetRating,
+        offNetRating: playerOnOff.offNetRating,
+        netRatingDiff: playerOnOff.netRatingDiff,
+      })
+        .from(playerOnOff)
+        .where(and(...inScope(playerOnOff, seasonCode, scope), eq(playerOnOff.clubCode, clubCode), inArray(playerOnOff.personKey, keys))),
+    ),
+    catalogRead(() =>
+      db.select({ personKey: playerRapm.personKey, rapm: playerRapm.rapm, rapmOffense: playerRapm.offense, rapmDefense: playerRapm.defense })
+        .from(playerRapm)
+        .where(and(...inScope(playerRapm, seasonCode, "all"), inArray(playerRapm.personKey, keys))),
     ),
   ]);
   const perByKey = new Map(ratings.map((row) => [row.personKey, row.per]));
   const sharesByKey = new Map(shares.map((row) => [row.personKey, row]));
+  const onOffByKey = new Map(onOff.map((row) => [row.personKey, row]));
+  const rapmByKey = new Map(rapm.map((row) => [row.personKey, row]));
   return stats.map((row) => ({
     ...row,
     per: perByKey.get(row.personKey) ?? null,
     winShares: sharesByKey.get(row.personKey)?.winShares ?? null,
+    offWinShares: sharesByKey.get(row.personKey)?.offWinShares ?? null,
+    defWinShares: sharesByKey.get(row.personKey)?.defWinShares ?? null,
     winSharesPer40: sharesByKey.get(row.personKey)?.winSharesPer40 ?? null,
+    onSeconds: onOffByKey.get(row.personKey)?.onSeconds ?? null,
+    onNetRating: onOffByKey.get(row.personKey)?.onNetRating ?? null,
+    offNetRating: onOffByKey.get(row.personKey)?.offNetRating ?? null,
+    netRatingDiff: onOffByKey.get(row.personKey)?.netRatingDiff ?? null,
+    rapm: rapmByKey.get(row.personKey)?.rapm ?? null,
+    rapmOffense: rapmByKey.get(row.personKey)?.rapmOffense ?? null,
+    rapmDefense: rapmByKey.get(row.personKey)?.rapmDefense ?? null,
   }));
 }
 

@@ -712,6 +712,7 @@ export default function TeamPage() {
             rosterStatsQuery={rosterStatsQuery}
             coachesQuery={coachesQuery}
             seasonCode={seasonCode}
+            clubCode={clubCode}
           />
         ) : (
           <TeamGamesSection

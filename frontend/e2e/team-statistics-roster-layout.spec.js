@@ -290,11 +290,12 @@ test("the roster table pins a narrow player column below 640px, swipes inside it
     // The table's text is 12px on a phone and 14px from 640px; games played is a whole number ("3", not "3.0").
     expect(await box.locator("tbody td").first().evaluate((el) => getComputedStyle(el).fontSize)).toBe(phone ? "12px" : "14px");
     const gamesPlayed = await box.evaluate((el) => {
-      const column = [...el.querySelectorAll("thead th")].findIndex((th) => th.textContent.trim() === "GP");
+      // A header reads its short name, then its full name for screen readers ("GP (Games played)").
+      const column = [...el.querySelectorAll("thead th")].findIndex((th) => th.textContent.trim().startsWith("GP ("));
       return [...el.querySelectorAll("tbody tr")].map((row) => row.children[column].textContent.trim());
     });
     expect(gamesPlayed.length).toBeGreaterThan(5);
-    for (const value of gamesPlayed) expect(value).toMatch(/^(\d+|-)$/);
+    for (const value of gamesPlayed) expect(value).toMatch(/^(\d+|—)$/);
 
     // Scrolled up under the sticky bar, the pinned names go under it, not over it (a short window, so that the table is taller
     // than the screen at every width and the page can be scrolled until its first rows are behind the bar).
@@ -429,7 +430,139 @@ test("awkward rosters keep their cards and table tidy at 320px: a long name, no 
   const widest = await page.locator("#team-roster-panel tbody td:first-child").evaluateAll((els) => Math.max(...els.map((el) => el.getBoundingClientRect().width)));
   const panelWidth = (await page.locator("#team-roster-panel .panel").boundingBox()).width;
   expect(widest / panelWidth).toBeLessThan(0.5);
+  // A player without games shows the one missing mark in every number column (the position is text).
+  const benchCells = await rows.filter({ hasText: "BENCH" }).locator("td").allTextContents();
+  expect(benchCells.slice(2).every((text) => text.trim() === "—")).toBe(true);
   await expectNoSidewaysScroll(page);
+});
+
+const PLAYERS_ADVANCED_URL = (url) => /\/api\/seasons\/[^/]+\/teams\/[^/]+\/players-advanced$/.test(url.pathname);
+const tableHeaders = (page) =>
+  page.locator("#team-roster-panel thead th").evaluateAll((els) => els.map((el) => (el.querySelector("button")?.childNodes[0]?.textContent ?? el.textContent).trim()));
+const tableTab = (page, list, name) => page.getByRole("tablist", { name: list }).getByRole("tab", { name, exact: true });
+
+test("the roster table has every group of numbers, sorts both ways, and loads totals and advanced figures when chosen", async ({ page }) => {
+  const { slug, team } = await liveTeam(page);
+  await page.setViewportSize({ width: 1440, height: HEIGHT });
+  const requests = { totals: 0, advanced: 0 };
+  page.on("request", (request) => {
+    const url = new URL(request.url());
+    if (STATS_URL(url) && url.searchParams.get("mode") === "accumulated") requests.totals += 1;
+    if (PLAYERS_ADVANCED_URL(url)) requests.advanced += 1;
+  });
+  await openTab(page, slug, team.clubCode, "Roster");
+  await page.getByRole("tab", { name: "Table", exact: true }).click();
+  await expect(page.locator("#team-roster-panel tbody tr").first()).toBeVisible({ timeout: 30_000 });
+  // Neither the totals nor the advanced figures load until they are chosen.
+  expect(requests).toEqual({ totals: 0, advanced: 0 });
+
+  const groups = {
+    Traditional: {
+      Overview: ["Player", "Position", "GP", "GS", "MIN", "PTS", "REB", "AST", "STL", "BLK", "TO", "PIR"],
+      Scoring: ["Player", "PTS", "2PM", "2PA", "2P%", "3PM", "3PA", "3P%", "FTM", "FTA", "FT%"],
+      Rebounding: ["Player", "OREB", "DREB", "REB"],
+      Playmaking: ["Player", "AST", "TO", "AST/TO", "FD"],
+      Defense: ["Player", "STL", "BLK", "BLKA", "PF"],
+      Record: ["Player", "GP", "W", "L", "Win%", "DD", "TD"],
+    },
+    Advanced: {
+      Efficiency: ["Player", "eFG%", "TS%", "FTr", "USG%", "PER", "GmSc", "PIE"],
+      "Shot profile": ["Player", "2PT rate", "3PT rate", "PTS 2s", "PTS 3s", "PTS FT", "Team 2PA", "Team 3PA", "Team FTA", "Team 2PM", "Team 3PM", "Team FTM", "2PA ratio", "3PA ratio"],
+      Rebounding: ["Player", "OREB%", "DREB%", "REB%"],
+      Playmaking: ["Player", "AST%", "AST ratio", "TOV%", "TO ratio", "AST/TO"],
+      Defense: ["Player", "STL%", "BLK%", "DREB%", "DWS", "RAPM D"],
+      "Per 100": ["Player", "PTS", "REB", "AST", "STL", "BLK", "TO", "Poss"],
+      Impact: ["Player", "WS", "OWS", "DWS", "WS/40", "On", "Off", "On/off", "RAPM", "RAPM O"],
+    },
+  };
+  for (const [level, levelGroups] of Object.entries(groups)) {
+    await tableTab(page, "Table numbers", level).click();
+    for (const [name, headers] of Object.entries(levelGroups)) {
+      await tableTab(page, "Stat group", name).click();
+      await expect.poll(() => tableHeaders(page)).toEqual(headers);
+    }
+  }
+  // Requested once chosen (a busy server can make the client retry, so at least once).
+  expect(requests.advanced).toBeGreaterThan(0);
+  // Real numbers in the advanced columns once loaded.
+  await tableTab(page, "Stat group", "Impact").click();
+  await expect
+    .poll(() => page.locator("#team-roster-panel tbody tr").evaluateAll((rows) => rows.some((row) => /^-?\d+\.\d{2}$/.test(row.children[1].textContent.trim()))))
+    .toBe(true);
+
+  // Sorting: most first, then reversed, with aria-sort on the header; players without the number stay at the bottom.
+  const header = page.locator("#team-roster-panel thead th", { has: page.getByRole("button", { name: /^WS \(/ }) });
+  const column = async () =>
+    (await page.locator("#team-roster-panel tbody tr").evaluateAll((rows) => rows.map((row) => row.children[1].textContent.trim()))).filter((text) => text !== "—").map(Number);
+  await header.getByRole("button").click();
+  await expect(header).toHaveAttribute("aria-sort", "descending");
+  const down = await column();
+  expect(down).toEqual([...down].sort((a, b) => b - a));
+  await header.getByRole("button").click();
+  await expect(header).toHaveAttribute("aria-sort", "ascending");
+  const up = await column();
+  expect(up).toEqual([...up].sort((a, b) => a - b));
+  const last = await page.locator("#team-roster-panel tbody tr").last().locator("td").nth(1).textContent();
+  if (up.length < (await page.locator("#team-roster-panel tbody tr").count())) expect(last.trim()).toBe("—");
+  // A fewest-first column sorts the fewest first on its first click.
+  await tableTab(page, "Table numbers", "Traditional").click();
+  await tableTab(page, "Stat group", "Overview").click();
+  const turnovers = page.locator("#team-roster-panel thead th", { has: page.getByRole("button", { name: /^TO \(/ }) });
+  await turnovers.getByRole("button").click();
+  await expect(turnovers).toHaveAttribute("aria-sort", "ascending");
+
+  // Totals load when chosen, as whole numbers.
+  await tableTab(page, "Per game or totals", "Totals").click();
+  await expect.poll(() => requests.totals).toBeGreaterThan(0);
+  // Player, Position, GP, GS, MIN, then PTS.
+  await expect
+    .poll(() => page.locator("#team-roster-panel tbody tr").evaluateAll((rows) => rows.map((row) => row.children[5].textContent.trim())))
+    .toEqual(expect.arrayContaining([expect.stringMatching(/^\d+$/)]));
+  const points = await page.locator("#team-roster-panel tbody tr").evaluateAll((rows) => rows.map((row) => row.children[5].textContent.trim()));
+  for (const value of points) expect(value).toMatch(/^(\d+|—)$/);
+  await expectNoSidewaysScroll(page);
+});
+
+test("the roster table shows an error with Retry when the advanced figures fail, and keeps the league's numbers", async ({ page }) => {
+  const { slug, team } = await liveTeam(page);
+  await page.setViewportSize({ width: 390, height: HEIGHT });
+  await page.route(PLAYERS_ADVANCED_URL, failing);
+  await openTab(page, slug, team.clubCode, "Roster");
+  await page.getByRole("tab", { name: "Table", exact: true }).click();
+  await expect(page.locator("#team-roster-panel tbody tr").first()).toBeVisible({ timeout: 30_000 });
+  await tableTab(page, "Table numbers", "Advanced").click();
+  await expect(page.getByText("Could not load the advanced figures.")).toBeVisible({ timeout: 30_000 });
+  await expect(page.getByRole("button", { name: /retry/i })).toBeVisible();
+  // eFG% and TS% come from the league's feed and still show; usage waits on the failed request and shows the missing mark.
+  const efg = await page.locator("#team-roster-panel tbody tr").evaluateAll((rows) => rows.map((row) => row.children[1].textContent.trim()));
+  expect(efg.some((text) => /%$/.test(text))).toBe(true);
+  const usage = await page.locator("#team-roster-panel tbody tr").evaluateAll((rows) => rows.map((row) => row.children[4].textContent.trim()));
+  expect(usage.every((text) => text === "—")).toBe(true);
+  await expectNoSidewaysScroll(page);
+});
+
+test("a player who also played for another club is in the roster's numbers, and the table says so", async ({ page }) => {
+  const { slug, team } = await liveTeam(page);
+  await page.setViewportSize({ width: 1024, height: HEIGHT });
+  await page.route(ROSTER_URL, ROSTER([player("t1", "TRADED, TOM"), player("t2", "STAYED, SAM")]));
+  await page.route(STATS_URL, (route) =>
+    route.fulfill({
+      json: {
+        players: [
+          { clubCode: `OTH;${team.clubCode}`, personKey: "t1", playerName: "TRADED, TOM", qualified: true, traditional: { gamesPlayed: 20, minutesPlayed: 600, pointsScored: 8 } },
+          { clubCode: team.clubCode, personKey: "t2", playerName: "STAYED, SAM", qualified: true, traditional: { gamesPlayed: 12, minutesPlayed: 300, pointsScored: 4 } },
+        ],
+        pagination: { hasMore: false },
+      },
+    }),
+  );
+  await openTab(page, slug, team.clubCode, "Roster");
+  // Both have played, so both are cards and nobody is "Not played yet".
+  await expect(rosterParts(page).cards).toHaveCount(2, { timeout: 30_000 });
+  await expect(page.getByText("Not played yet:")).toHaveCount(0);
+  await page.getByRole("tab", { name: "Table", exact: true }).click();
+  await expect(page.locator("#team-roster-panel tbody tr", { hasText: "TRADED" }).locator("td").nth(2)).toHaveText("20");
+  await expect(page.getByText(/Tom Traded also played for another club this season/i)).toBeVisible();
 });
 
 test("the Roster states fit a phone: failing, empty, and the statistics failing", async ({ page }) => {

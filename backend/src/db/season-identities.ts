@@ -20,6 +20,9 @@ export type Team = {
 // A club as the API names it: the club's permanent code and, for the requested season, the TV code it goes by.
 export type TeamRef = Team & { tvCode: string };
 
+// A club in the season's teams list: also the city it plays in, as the feed writes it.
+export type TeamListItem = TeamRef & { city: string | null };
+
 export type Player = {
   personKey: string;
   name: string | null;
@@ -143,17 +146,17 @@ function withTvCode(team: Team, codes: ClubTvCodes): TeamRef {
   return { ...team, tvCode: tvCodeOf(codes, team.clubCode, team.abbreviatedName) ?? team.clubCode };
 }
 
-export async function getTeams(seasonCode: string): Promise<TeamRef[]> {
+export async function getTeams(seasonCode: string): Promise<TeamListItem[]> {
   const [rows, codes] = await Promise.all([
     catalogRead(() =>
-      db.select(teamFields)
+      db.select({ ...teamFields, city: clubs.city })
         .from(clubs)
         .where(and(eq(clubs.competitionCode, COMPETITION_CODE), eq(clubs.seasonCode, seasonCode)))
         .orderBy(asc(clubs.name), asc(clubs.clubCode)),
     ),
     getClubTvCodes(seasonCode),
   ]);
-  return rows.map((team) => withTvCode(team, codes));
+  return rows.map(({ city, ...team }) => ({ ...withTvCode(team, codes), city: city?.trim() || null }));
 }
 
 export async function getTeam(seasonCode: string, clubCode: string): Promise<Team | null> {

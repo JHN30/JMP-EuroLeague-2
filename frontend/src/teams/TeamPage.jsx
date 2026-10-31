@@ -22,7 +22,7 @@ import HomeAwayIcon from "../lib/HomeAwayIcon";
 import { barFill, cardHover, listContainer, listItem } from "../lib/motion";
 import Panel from "../lib/Panel";
 import PageHeader from "../lib/PageHeader";
-import { titleCase, withoutComma } from "../lib/playerName";
+import { readableName, withoutComma } from "../lib/playerName";
 import PanelHeader from "../lib/PanelHeader";
 import RevealImage from "../lib/RevealImage";
 import ShortLabel from "../lib/ShortLabel";
@@ -67,11 +67,6 @@ function statNumber(raw) {
   if (raw === null || raw === undefined) return null;
   const num = Number(raw);
   return Number.isNaN(num) ? null : num;
-}
-
-// The feed writes some names in capitals ("ATHENS") and some as they read ("Madrid"): only the capitals are recased.
-function readableName(name) {
-  return /[a-z]/.test(name) ? name : titleCase(name);
 }
 
 // A website the header can link to: only an http or https address, shown by its host without "www.".

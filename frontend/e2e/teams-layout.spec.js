@@ -126,3 +126,69 @@ test("the error and empty states fit a phone", async ({ page }) => {
   await expect(page.getByText("No teams available for this season.")).toBeVisible({ timeout: 30_000 });
   await expectNoSidewaysScroll(page);
 });
+
+test("the teams list carries each club's city, as text or null", async ({ page }) => {
+  const { teams } = await liveSeason(page);
+  expect(teams.length).toBeGreaterThan(0);
+  for (const club of teams) {
+    expect(club, club.clubCode).toHaveProperty("city");
+    if (club.city !== null) expect(club.city.trim().length, club.clubCode).toBeGreaterThan(0);
+  }
+});
+
+const STANDINGS = "**/api/seasons/*/phases/RS/standings";
+const standing = (clubCode, position, gamesWon, gamesLost, groupName = null) => ({ clubCode, groupName, basic: { position, gamesWon, gamesLost }, form: [] });
+// The second and third lines of a card: where the club is from, and its place and record (absent before its first game).
+const placeLine = (card) => card.locator("p.muted.text-sm");
+const recordLine = (card) => card.locator("p.muted.text-xs");
+
+test("each card shows the club's city with its country and its regular-season place and record", async ({ page }) => {
+  const { slug } = await liveSeason(page);
+  await mockTeams(page, [
+    team("AAA", { city: "ATHENS" }),
+    team("BBB", { city: "ROMA", countryCode: "ITA" }),
+    team("CCC", { city: null }),
+    team("DDD", { city: "Saint Petersburg", countryCode: "RUS" }),
+    team("EEE", { city: "Madrid", countryCode: null }),
+  ]);
+  await page.route(STANDINGS, (route) => route.fulfill({ json: { standings: [standing("AAA", 3, 22, 12), standing("BBB", 11, 2, 1), standing("CCC", 1, 0, 0)] } }));
+  await page.goto(`/${slug}/teams`);
+  await expect(cards(page)).toHaveCount(5);
+  await expect(recordLine(cards(page).nth(0))).toHaveText("3rd · 22-12");
+
+  // Capitals are recased, a known bad value is corrected, and a missing city or country leaves the other alone.
+  await expect(placeLine(cards(page).nth(0))).toHaveText("Athens · GRE");
+  await expect(placeLine(cards(page).nth(1))).toHaveText("Rome · ITA");
+  await expect(placeLine(cards(page).nth(2))).toHaveText("GRE");
+  await expect(placeLine(cards(page).nth(3))).toHaveText("Saint Petersburg · RUS");
+  await expect(placeLine(cards(page).nth(4))).toHaveText("Madrid");
+  // 11th, not 11st; a club at 0-0 and one without a standings row have no record line.
+  await expect(recordLine(cards(page).nth(1))).toHaveText("11th · 2-1");
+  await expect(recordLine(cards(page).nth(2))).toHaveCount(0);
+  await expect(recordLine(cards(page).nth(3))).toHaveCount(0);
+
+  await atWidths(page, [320, 390, 768, 1024], async () => {
+    expect(await holdsContent(cards(page))).toBe(true);
+    await expectNoSidewaysScroll(page);
+  });
+});
+
+test("in a regular season split into groups, the place is the club's place in its group", async ({ page }) => {
+  const { slug } = await liveSeason(page);
+  await mockTeams(page, [team("AAA"), team("BBB")]);
+  await page.route(STANDINGS, (route) => route.fulfill({ json: { standings: [standing("AAA", 2, 5, 1, "A"), standing("BBB", 1, 6, 0, "B")] } }));
+  await page.goto(`/${slug}/teams`);
+  await expect(recordLine(cards(page).nth(0))).toHaveText("Group A · 2nd · 5-1");
+  await expect(recordLine(cards(page).nth(1))).toHaveText("Group B · 1st · 6-0");
+});
+
+test("a failing standings request still shows every card, without record lines", async ({ page }) => {
+  const { slug } = await liveSeason(page);
+  await mockTeams(page, [team("AAA", { city: "Kaunas", countryCode: "LTU" }), team("BBB")]);
+  await page.route(STANDINGS, (route) => route.fulfill({ status: 500, json: { error: "Mocked failure" } }));
+  await page.goto(`/${slug}/teams`);
+  await expect(cards(page)).toHaveCount(2);
+  await expect(placeLine(cards(page).nth(0))).toHaveText("Kaunas · LTU");
+  await expect(page.locator("main ul p.muted.text-xs")).toHaveCount(0);
+  await expect(page.getByText(/could not load/i)).toHaveCount(0);
+});

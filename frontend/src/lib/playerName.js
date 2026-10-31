@@ -4,6 +4,11 @@ export function titleCase(text) {
   return (text ?? "").toLowerCase().replace(/(^|[\s-])(\p{L})/gu, (match, lead, letter) => lead + letter.toUpperCase());
 }
 
+// The feed writes some names in capitals ("ATHENS") and some as they read ("Madrid"): only the capitals are recased.
+export function readableName(name) {
+  return /[a-z]/.test(name) ? name : titleCase(name);
+}
+
 // "JONES, CARLIK" as it reads in a title or a sentence: "Carlik Jones".
 export function displayName(fullName) {
   const { last, first } = nameParts(fullName);

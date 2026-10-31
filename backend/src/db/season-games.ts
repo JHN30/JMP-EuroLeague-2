@@ -1,6 +1,7 @@
 import { and, asc, eq, inArray, isNotNull, isNull, or, sql } from "drizzle-orm";
-import { alias } from "drizzle-orm/pg-core";
+import { alias, type AnyPgColumn } from "drizzle-orm/pg-core";
 import { db } from "./client";
+import { gameTeamShotSplits } from "./season-advanced-schema";
 import { CatalogDatabaseError, catalogRead } from "./season-catalog";
 import { seasonFormat } from "./season-format-registry";
 import { type ClubTvCodes, getClubTvCodes, tvCodeOf } from "./season-identities";
@@ -749,11 +750,106 @@ function numericMeasures(row: { [key in MeasureKey]: string | null }): MeasureSu
   return measures;
 }
 
+// Scoring-context totals from the per-game shot splits, beside the box-score sums. `splitGames` counts the games that have
+// a split row (none before E2007); `contextGames` counts those with the fast-break, second-chance and off-turnover points,
+// which are recorded from E2015 only (null in a game with an unflagged shot), so their per-game averages divide by it.
+// Every field is null when the club has no split row.
+type SplitSums = {
+  splitGames: number | null;
+  contextGames: number | null;
+  fastBreakPoints: number | null;
+  secondChancePoints: number | null;
+  pointsOffTurnoverPoints: number | null;
+  splitFieldGoalsMade: number | null;
+  assistedFieldGoals: number | null;
+};
+type TeamSums = MeasureSums & SplitSums;
+
+const EMPTY_SPLITS: SplitSums = {
+  splitGames: null,
+  contextGames: null,
+  fastBreakPoints: null,
+  secondChancePoints: null,
+  pointsOffTurnoverPoints: null,
+  splitFieldGoalsMade: null,
+  assistedFieldGoals: null,
+};
+
+function splitNumber(raw: string | number | null): number | null {
+  if (raw === null) return null;
+  const value = Number(raw);
+  if (!Number.isFinite(value)) throw new CatalogDatabaseError();
+  return value;
+}
+
+function splitSums(row: { games: string | number; contextGames: string | number; fastBreak: string | null; secondChance: string | null; offTurnovers: string | null; made: string | null; assisted: string | null }): SplitSums {
+  const games = splitNumber(row.games);
+  if (!games) return EMPTY_SPLITS;
+  return {
+    splitGames: games,
+    contextGames: splitNumber(row.contextGames),
+    fastBreakPoints: splitNumber(row.fastBreak),
+    secondChancePoints: splitNumber(row.secondChance),
+    pointsOffTurnoverPoints: splitNumber(row.offTurnovers),
+    splitFieldGoalsMade: splitNumber(row.made),
+    assistedFieldGoals: splitNumber(row.assisted),
+  };
+}
+
+// Each club's own split totals in the phase's games and its opponents' (the other side of the same games), by club code.
+async function getSplitSums(seasonCode: string, phaseCode: string, clubCode?: string) {
+  const otherSide = alias(gameTeamShotSplits, "other_side");
+  const total = (column: AnyPgColumn) => sql<string | null>`sum(${column})`;
+  const rows = await catalogRead(() =>
+    db.select({
+      clubCode: gameTeamShotSplits.clubCode,
+      ownGames: sql<string>`count(*)`,
+      ownContextGames: sql<string>`count(${gameTeamShotSplits.fastBreakPoints})`,
+      ownFastBreak: total(gameTeamShotSplits.fastBreakPoints),
+      ownSecondChance: total(gameTeamShotSplits.secondChancePoints),
+      ownOffTurnovers: total(gameTeamShotSplits.pointsOffTurnoverPoints),
+      ownMade: total(gameTeamShotSplits.fieldGoalsMade),
+      ownAssisted: total(gameTeamShotSplits.assistedFieldGoals),
+      oppGames: sql<string>`count(${otherSide.gameCode})`,
+      oppContextGames: sql<string>`count(${otherSide.fastBreakPoints})`,
+      oppFastBreak: total(otherSide.fastBreakPoints),
+      oppSecondChance: total(otherSide.secondChancePoints),
+      oppOffTurnovers: total(otherSide.pointsOffTurnoverPoints),
+      oppMade: total(otherSide.fieldGoalsMade),
+      oppAssisted: total(otherSide.assistedFieldGoals),
+    })
+      .from(gameTeamShotSplits)
+      .innerJoin(games, and(
+        eq(games.competitionCode, gameTeamShotSplits.competitionCode),
+        eq(games.seasonCode, gameTeamShotSplits.seasonCode),
+        eq(games.gameCode, gameTeamShotSplits.gameCode),
+      ))
+      .leftJoin(otherSide, and(
+        eq(otherSide.competitionCode, gameTeamShotSplits.competitionCode),
+        eq(otherSide.seasonCode, gameTeamShotSplits.seasonCode),
+        eq(otherSide.gameCode, gameTeamShotSplits.gameCode),
+        sql`${otherSide.side} <> ${gameTeamShotSplits.side}`,
+      ))
+      .where(and(
+        eq(gameTeamShotSplits.competitionCode, COMPETITION_CODE),
+        eq(gameTeamShotSplits.seasonCode, seasonCode),
+        eq(games.phaseCode, phaseCode),
+        ...(clubCode ? [eq(gameTeamShotSplits.clubCode, clubCode)] : []),
+      ))
+      .groupBy(gameTeamShotSplits.clubCode),
+  );
+
+  return new Map(rows.map((row) => [row.clubCode, {
+    own: splitSums({ games: row.ownGames, contextGames: row.ownContextGames, fastBreak: row.ownFastBreak, secondChance: row.ownSecondChance, offTurnovers: row.ownOffTurnovers, made: row.ownMade, assisted: row.ownAssisted }),
+    opponent: splitSums({ games: row.oppGames, contextGames: row.oppContextGames, fastBreak: row.oppFastBreak, secondChance: row.oppSecondChance, offTurnovers: row.oppOffTurnovers, made: row.oppMade, assisted: row.oppAssisted }),
+  }]));
+}
+
 export type TeamStatsSummary = {
   phaseCode: string;
   gamesPlayed: number;
-  own: MeasureSums;
-  opponent: MeasureSums;
+  own: TeamSums;
+  opponent: TeamSums;
 };
 
 const teamStatsColumns = {
@@ -809,19 +905,22 @@ const teamStatsColumns = {
 // phase are left out.
 export type LeagueTeamStats = {
   phaseCode: string;
-  teams: Array<{ clubCode: string; gamesPlayed: number; own: MeasureSums; opponent: MeasureSums }>;
+  teams: Array<{ clubCode: string; gamesPlayed: number; own: TeamSums; opponent: TeamSums }>;
 };
 
 export async function getLeagueTeamStats(seasonCode: string, phaseCode: string): Promise<LeagueTeamStats> {
-  const rows = await catalogRead(() =>
-    db.select({ clubCode: teamSeasonStats.clubCode, ...teamStatsColumns })
-      .from(teamSeasonStats)
-      .where(and(
-        eq(teamSeasonStats.competitionCode, COMPETITION_CODE),
-        eq(teamSeasonStats.seasonCode, seasonCode),
-        eq(teamSeasonStats.phaseCode, phaseCode),
-      )),
-  );
+  const [rows, splits] = await Promise.all([
+    catalogRead(() =>
+      db.select({ clubCode: teamSeasonStats.clubCode, ...teamStatsColumns })
+        .from(teamSeasonStats)
+        .where(and(
+          eq(teamSeasonStats.competitionCode, COMPETITION_CODE),
+          eq(teamSeasonStats.seasonCode, seasonCode),
+          eq(teamSeasonStats.phaseCode, phaseCode),
+        )),
+    ),
+    getSplitSums(seasonCode, phaseCode),
+  ]);
 
   return {
     phaseCode,
@@ -830,8 +929,8 @@ export async function getLeagueTeamStats(seasonCode: string, phaseCode: string):
       .map((row) => ({
         clubCode: row.clubCode,
         gamesPlayed: row.gamesPlayed,
-        own: numericMeasures(row.own),
-        opponent: numericMeasures(row.opponent),
+        own: { ...numericMeasures(row.own), ...(splits.get(row.clubCode)?.own ?? EMPTY_SPLITS) },
+        opponent: { ...numericMeasures(row.opponent), ...(splits.get(row.clubCode)?.opponent ?? EMPTY_SPLITS) },
       })),
   };
 }
@@ -841,25 +940,29 @@ export async function getTeamStatsSummary(
   phaseCode: string,
   clubCode: string,
 ): Promise<TeamStatsSummary> {
-  const rows = await catalogRead(() =>
-    db.select(teamStatsColumns)
-      .from(teamSeasonStats)
-      .where(and(
-        eq(teamSeasonStats.competitionCode, COMPETITION_CODE),
-        eq(teamSeasonStats.seasonCode, seasonCode),
-        eq(teamSeasonStats.phaseCode, phaseCode),
-        eq(teamSeasonStats.clubCode, clubCode),
-      ))
-      .limit(1),
-  );
+  const [rows, splits] = await Promise.all([
+    catalogRead(() =>
+      db.select(teamStatsColumns)
+        .from(teamSeasonStats)
+        .where(and(
+          eq(teamSeasonStats.competitionCode, COMPETITION_CODE),
+          eq(teamSeasonStats.seasonCode, seasonCode),
+          eq(teamSeasonStats.phaseCode, phaseCode),
+          eq(teamSeasonStats.clubCode, clubCode),
+        ))
+        .limit(1),
+    ),
+    getSplitSums(seasonCode, phaseCode, clubCode),
+  ]);
 
   const row = rows[0];
-  if (!row) return { phaseCode, gamesPlayed: 0, own: emptySums(), opponent: emptySums() };
+  if (!row) return { phaseCode, gamesPlayed: 0, own: { ...emptySums(), ...EMPTY_SPLITS }, opponent: { ...emptySums(), ...EMPTY_SPLITS } };
+  const split = splits.get(clubCode);
   return {
     phaseCode: row.phaseCode,
     gamesPlayed: row.gamesPlayed,
-    own: numericMeasures(row.own),
-    opponent: numericMeasures(row.opponent),
+    own: { ...numericMeasures(row.own), ...(split?.own ?? EMPTY_SPLITS) },
+    opponent: { ...numericMeasures(row.opponent), ...(split?.opponent ?? EMPTY_SPLITS) },
   };
 }
 

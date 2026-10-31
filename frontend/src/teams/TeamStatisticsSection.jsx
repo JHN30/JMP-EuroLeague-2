@@ -12,12 +12,12 @@ import Panel from "../lib/Panel";
 import PanelHeader from "../lib/PanelHeader";
 import ShortLabel from "../lib/ShortLabel";
 import { ordinal, rankTier } from "./teamLeague";
-import { leagueRank, STAT_GROUPS } from "./teamStatDefs";
+import { hasScoringContext, leagueRank, STAT_GROUPS } from "./teamStatDefs";
 
 // Every row and every group header share this grid, so the columns line up down the whole tab. On a phone a row is two lines:
 // the stat name centred over the row with the club's rank at its left, then the two numbers with a bar each between them.
 const ROW_GRID =
-  "grid items-center gap-x-2 grid-cols-[3.25rem_1fr_1fr_3.25rem] sm:grid-cols-[8rem_3rem_3.5rem_1fr_1fr_3.5rem]";
+  "grid items-center gap-x-2 grid-cols-[3.25rem_1fr_1fr_3.25rem] sm:grid-cols-[8rem_3rem_3.5rem_1fr_1fr_3.5rem] lg:grid-cols-[10.5rem_3rem_3.5rem_1fr_1fr_3.5rem]";
 const LABEL_CELL = "col-span-4 sm:col-span-1";
 
 // One half of the butterfly: grows outwards from the middle.
@@ -44,7 +44,7 @@ function StatRow({ stat, own, opponent, gamesPlayed, standing }) {
         {stat.tip ? <HeaderTip tip={stat.tip}>{stat.label}</HeaderTip> : stat.label}
       </span>
       <span
-        className={`col-start-1 row-start-1 text-xs font-bold tabular-nums sm:col-auto sm:row-auto ${standing ? rankTier(standing).text : ""}`}
+        className={`col-start-1 row-start-1 text-xs font-bold tabular-nums sm:col-auto sm:row-auto ${standing ? (stat.style ? "muted" : rankTier(standing).text) : ""}`}
         title={standing ? `${ordinal(standing.rank)} of ${standing.of} clubs` : undefined}
       >
         {standing ? ordinal(standing.rank) : ""}
@@ -116,26 +116,35 @@ export default function TeamStatisticsSection({ seasonCode, phaseCode, stageName
 
   const teamName = team.abbreviatedName ?? team.name ?? clubCode;
   const leagueTeams = leagueQuery.data?.teams ?? [];
-  const [traditional, ...rest] = STAT_GROUPS;
+  // Rows from the per-game shot splits are left out when the club has none (older seasons), rather than shown as dashes.
+  const groups = STAT_GROUPS.map((group) => ({
+    ...group,
+    stats: group.stats.filter((stat) => !stat.needsSplits || stat.compute(own, opponent, gamesPlayed) !== null),
+  })).filter((group) => group.stats.length > 0);
+  const column = (side) => groups.filter((group) => group.column === side);
   // Over the club's numbers, below sm: its TV code, which fits a column of about 55px.
   const shared = { teamName, teamTag: teamCode(team), own, opponent, gamesPlayed, leagueTeams, clubCode };
+  const partialContext = hasScoringContext(own) && own.contextGames < own.splitGames;
 
   return (
     <Panel as="section" className="p-4">
       <PanelHeader compact kicker="STATISTICS" title={`Per game: ${teamName} against its opponents`} />
       <ForfeitStatsNote seasonCode={seasonCode} phaseCode={phaseCode} clubCodes={[clubCode]} className="muted mb-3 text-sm" />
+      {/* Two columns of about equal height from xl (scoring and efficiency on the left); one column in the same order below. */}
       <div className="grid gap-x-10 gap-y-6 xl:grid-cols-2">
-        <StatGroup key={`${phaseCode}-${traditional.title}`} group={traditional} {...shared} />
-        <div className="flex flex-col gap-6">
-          {rest.map((group) => (
-            <StatGroup key={`${phaseCode}-${group.title}`} group={group} {...shared} />
-          ))}
-        </div>
+        {["left", "right"].map((side) => (
+          <div key={side} className="flex flex-col gap-6">
+            {column(side).map((group) => (
+              <StatGroup key={`${phaseCode}-${group.title}`} group={group} {...shared} />
+            ))}
+          </div>
+        ))}
       </div>
       <p className="muted mt-4 text-sm">
         {leagueTeams.length > 0
-          ? `${teamName}'s rank among the ${leagueTeams.length} clubs that have played, on each number (green top third, red bottom third). 1st is best, so for turnovers and fouls the fewest ranks first. The grey bar is what opponents did against ${teamName}.`
+          ? `${teamName}'s rank among the ${leagueTeams.length} clubs that have played, on each number (green top third, red bottom third). 1st is best, so for turnovers, fouls and shots blocked the fewest ranks first; style numbers (attempt rate and where the points come from) rank the most first, without a colour. The grey bar is what opponents did against ${teamName}.`
           : `Left is ${teamName}'s own number, right is what its opponents put up against it.`}
+        {partialContext ? ` Fast-break, second-chance and off-turnover points are averaged over the ${own.contextGames} games that recorded them.` : ""}
       </p>
     </Panel>
   );

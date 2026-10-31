@@ -54,7 +54,7 @@ test("the Statistics heading is the club's TV code below 640px and its name from
   const { slug, team } = await liveTeam(page);
   await openTab(page, slug, team.clubCode, "Statistics");
   const panel = page.locator("#team-panel > section");
-  await expect(panel.locator("section[aria-label=Traditional]")).toBeVisible({ timeout: 30_000 });
+  await expect(panel.locator("section[aria-label=Scoring]")).toBeVisible({ timeout: 30_000 });
   const name = team.abbreviatedName ?? team.name;
   const tag = team.tvCode ?? name;
 
@@ -68,7 +68,7 @@ test("the Statistics heading is the club's TV code below 640px and its name from
         .filter((el) => el.querySelector(".relative"))
         .map((el) => [...el.querySelectorAll(".relative > span")].filter((s) => s.getBoundingClientRect().width > 1).map((s) => s.textContent.trim()).join("")),
     );
-    expect(shown).toHaveLength(3);
+    expect(shown).toHaveLength(6);
     for (const text of shown) expect(text).toBe(phone ? tag : name);
     // The heading is whole, not cut with an ellipsis.
     const cut = await panel.locator("span.truncate").evaluateAll((els) => els.filter((el) => el.scrollWidth > el.clientWidth + 1).length);
@@ -99,8 +99,97 @@ test("the Statistics states fit a phone: failing, no games, and no league ranks"
   await page.route(LEAGUE, failing);
   await openTab(page, slug, team.clubCode, "Statistics");
   await expect(page.getByText(/^Left is .*own number/)).toBeVisible({ timeout: 30_000 });
-  await expect(page.locator("section[aria-label=Traditional] li").first()).toBeVisible();
+  await expect(page.locator("section[aria-label=Scoring] li").first()).toBeVisible();
   await expectNoSidewaysScroll(page);
+});
+
+// In page order: the left column from 1280px (Scoring, Efficiency), then the right.
+const STAT_GROUP_TITLES = ["Scoring", "Efficiency", "Rebounding", "Playmaking", "Defense and fouls", "Scoring context"];
+const statGroup = (page, title) => page.locator(`#team-panel section[aria-label="${title}"]`);
+// A row by its stat name; a name with a hover tip also carries the tip for screen readers, in brackets.
+const escapeRegExp = (text) => text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+const statRow = (page, title, label) =>
+  statGroup(page, title).locator("li", { has: page.getByText(new RegExp(`^${escapeRegExp(label)}( \\(.*\\))?$`)) });
+
+test("the Statistics tab has every group, the new rows with ranks, style ranks without colour, and two columns from 1280px", async ({ page }) => {
+  const { slug, team } = await liveTeam(page);
+  await openTab(page, slug, team.clubCode, "Statistics");
+  await expect(statGroup(page, "Scoring")).toBeVisible({ timeout: 30_000 });
+  for (const title of STAT_GROUP_TITLES) await expect(statGroup(page, title)).toBeVisible();
+
+  // A row from each group, each with the club's rank once the league ranks are in.
+  const samples = [
+    ["Scoring", "Field goals attempted"],
+    ["Scoring", "3PT made"],
+    ["Rebounding", "Off. rebound %"],
+    ["Playmaking", "Assist ratio"],
+    ["Defense and fouls", "Fouls drawn"],
+    ["Efficiency", "3PT attempt rate"],
+    ["Scoring context", "PIR"],
+  ];
+  for (const [title, label] of samples) {
+    await expect(statRow(page, title, label)).toHaveCount(1);
+    await expect(statRow(page, title, label).locator(":scope > span").nth(1)).toHaveText(/^\d+(st|nd|rd|th)$/);
+  }
+  // Style rows never take the green or red tier colour; across the tab, rows with a direction do (a club is rarely mid-table
+  // on every number).
+  const rankClass = (title, label) => statRow(page, title, label).locator(":scope > span").nth(1).getAttribute("class");
+  for (const label of ["3PT attempt rate", "Points from 2s", "Points from 3s", "Points from free throws"]) {
+    expect(await rankClass("Efficiency", label)).not.toMatch(/text-(success|error)/);
+  }
+  const coloured = await page.locator("#team-panel section[aria-label] li > span:nth-child(2)").evaluateAll((els) =>
+    els.filter((el) => /text-(success|error)/.test(el.className)).length,
+  );
+  expect(coloured).toBeGreaterThan(0);
+
+  await atWidths(page, [1024, 1280, 1440], async (width) => {
+    const lefts = await Promise.all(STAT_GROUP_TITLES.map((title) => statGroup(page, title).boundingBox().then((box) => Math.round(box.x))));
+    // From 1280px Scoring and Efficiency sit in the left column, the rest in the right; below, one column.
+    expect(new Set(lefts).size).toBe(width >= 1280 ? 2 : 1);
+    if (width >= 1280) {
+      expect(lefts[0]).toBe(lefts[1]);
+      expect(lefts[2]).toBeGreaterThan(lefts[0]);
+      for (const left of lefts.slice(3)) expect(left).toBe(lefts[2]);
+      // The two columns end close together, so the left leaves no long empty stretch.
+      const bottom = (title) => statGroup(page, title).boundingBox().then((box) => box.y + box.height);
+      expect(Math.abs((await bottom("Efficiency")) - (await bottom("Scoring context")))).toBeLessThan(120);
+    }
+    // Every row is one line from 640px: no stat name wraps.
+    const tall = await page.locator("#team-panel section[aria-label] li").evaluateAll((els) => els.filter((el) => el.getBoundingClientRect().height > 40).length);
+    expect(tall).toBe(0);
+    await expectNoSidewaysScroll(page);
+  });
+});
+
+test("without shot splits the fast-break, second-chance, off-turnover and assisted rows are left out, and partial ones are explained", async ({ page }) => {
+  const { slug, team } = await liveTeam(page);
+  await page.setViewportSize({ width: 1440, height: HEIGHT });
+  const splitKeys = ["splitGames", "contextGames", "fastBreakPoints", "secondChancePoints", "pointsOffTurnoverPoints", "splitFieldGoalsMade", "assistedFieldGoals"];
+  const withSplits = (override) => async (route) => {
+    const body = await (await route.fetch()).json();
+    for (const side of ["own", "opponent"]) Object.assign(body[side], override(body[side]));
+    await route.fulfill({ json: body });
+  };
+
+  await page.route(SUMMARY, withSplits(() => Object.fromEntries(splitKeys.map((key) => [key, null]))));
+  await openTab(page, slug, team.clubCode, "Statistics");
+  await expect(statGroup(page, "Scoring")).toBeVisible({ timeout: 30_000 });
+  for (const label of ["Fast-break points", "Second-chance points", "Points off turnovers"]) await expect(statRow(page, "Scoring context", label)).toHaveCount(0);
+  await expect(statRow(page, "Playmaking", "Assisted FG %")).toHaveCount(0);
+  await expect(statRow(page, "Scoring context", "PIR")).toHaveCount(1);
+
+  // Points recorded in half the split games: the rows show, and the footnote says how many games they cover.
+  await page.unroute(SUMMARY);
+  await page.route(SUMMARY, withSplits((side) => ({ splitGames: 10, contextGames: 5, fastBreakPoints: side.fastBreakPoints ?? 40 })));
+  await openTab(page, slug, team.clubCode, "Statistics");
+  await expect(statRow(page, "Scoring context", "Fast-break points")).toHaveCount(1, { timeout: 30_000 });
+  await expect(page.getByText("averaged over the 5 games that recorded them", { exact: false })).toBeVisible();
+  // Recorded in fewer than half: left out.
+  await page.unroute(SUMMARY);
+  await page.route(SUMMARY, withSplits(() => ({ splitGames: 10, contextGames: 1 })));
+  await openTab(page, slug, team.clubCode, "Statistics");
+  await expect(statGroup(page, "Scoring")).toBeVisible({ timeout: 30_000 });
+  await expect(statRow(page, "Scoring context", "Fast-break points")).toHaveCount(0);
 });
 
 // The Roster tab's parts, live data: the facts panel, a player card, a coach card.
@@ -370,7 +459,7 @@ test("the Roster states fit a phone: failing, empty, and the statistics failing"
 test("on a phone a Statistics row is the stat name centred over the row with the rank at its left, then the numbers and bars", async ({ page }) => {
   const { slug, team } = await liveTeam(page);
   await openTab(page, slug, team.clubCode, "Statistics");
-  const group = page.locator("section[aria-label=Traditional]");
+  const group = page.locator("section[aria-label=Scoring]");
   const rows = group.locator("li");
   await expect(rows.first()).toBeVisible({ timeout: 30_000 });
   await expect.poll(() => rows.evaluateAll((els) => new Set(els.map((el) => Math.round(el.getBoundingClientRect().left))).size)).toBe(1);

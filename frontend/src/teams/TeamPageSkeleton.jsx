@@ -224,10 +224,15 @@ export function TeamStatisticsSkeleton() {
     <div aria-hidden="true" className="panel p-4">
       <SkeletonPanelHead title="w-72" />
       <div className="grid gap-x-10 gap-y-6 xl:grid-cols-2">
-        <StatGroupSkeleton rows={10} />
         <div className="flex flex-col gap-6">
-          <StatGroupSkeleton rows={3} />
-          <StatGroupSkeleton rows={6} />
+          <StatGroupSkeleton rows={13} />
+          <StatGroupSkeleton rows={7} />
+        </div>
+        <div className="flex flex-col gap-6">
+          <StatGroupSkeleton rows={5} />
+          <StatGroupSkeleton rows={5} />
+          <StatGroupSkeleton rows={5} />
+          <StatGroupSkeleton rows={4} />
         </div>
       </div>
       <div className="mt-4 flex flex-col gap-2">

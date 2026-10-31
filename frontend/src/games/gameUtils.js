@@ -45,3 +45,10 @@ export function periodNumberForMinute(minute) {
 export function compareByName(left, right) {
   return (left.personName ?? "").localeCompare(right.personName ?? "") || left.personKey.localeCompare(right.personKey);
 }
+
+// Made over attempted, in percent; null without attempts.
+export function shootingPercentage(made, attempted) {
+  const attemptedNum = Number(attempted);
+  if (!attemptedNum) return null;
+  return (Number(made) / attemptedNum) * 100;
+}

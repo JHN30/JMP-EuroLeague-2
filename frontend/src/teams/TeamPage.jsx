@@ -582,7 +582,7 @@ export default function TeamPage() {
   const teamStatsSummaryQuery = useQuery({
     queryKey: ["team-stats-summary", seasonCode, clubCode, phaseCode],
     queryFn: () => getTeamStatsSummary(seasonCode, clubCode, phaseCode),
-    enabled: teamQuery.isSuccess && Boolean(phaseCode) && (section === "statistics" || section === "overview"),
+    enabled: teamQuery.isSuccess && Boolean(phaseCode) && (section === "statistics" || section === "overview" || section === "shooting"),
   });
 
   const formatQuery = useSeasonFormat(seasonCode);
@@ -699,6 +699,7 @@ export default function TeamPage() {
             stageName={stageName}
             team={team}
             games={games}
+            teamStatsSummaryQuery={teamStatsSummaryQuery}
           />
         ) : section === "advanced" ? (
           <TeamAdvancedSection

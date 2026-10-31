@@ -217,14 +217,18 @@ function TeamPlayers({ team, shots, activePlayer, onSelectPlayer }) {
                 return (
                   <tr key={player.code} className={active ? "bg-primary/10" : undefined}>
                     <td>
-                      <button
-                        type="button"
-                        aria-pressed={active}
-                        className={`link text-left link-hover ${active ? "font-bold text-primary" : ""}`}
-                        onClick={() => onSelectPlayer(active ? "all" : player.code)}
-                      >
-                        {player.name}
-                      </button>
+                      {onSelectPlayer ? (
+                        <button
+                          type="button"
+                          aria-pressed={active}
+                          className={`link text-left link-hover ${active ? "font-bold text-primary" : ""}`}
+                          onClick={() => onSelectPlayer(active ? "all" : player.code)}
+                        >
+                          {player.name}
+                        </button>
+                      ) : (
+                        player.name
+                      )}
                     </td>
                     <td className="text-center tabular-nums">
                       {player.all.made}-{player.all.attempts}
@@ -245,23 +249,29 @@ function TeamPlayers({ team, shots, activePlayer, onSelectPlayer }) {
 }
 
 // Every player who took a shot, by team, most attempts first. A name picks that player in their team's player filter
-// (again: the whole team); `activePlayers` and `onSelectPlayer(teamIndex, code)` are per team, home first.
-export function PlayerShooting({ shots, localTeam, roadTeam, activePlayers, onSelectPlayer }) {
+// (again: the whole team); `activePlayers` and `onSelectPlayer(teamIndex, code)` are per team, home first. `teamIndexes`
+// (the team page's opponents side has no table) lists the sides that get one, and `selectableTeams` the sides whose names
+// pick a player (the team page has no player filter, so its names are plain text).
+export function PlayerShooting({ shots, localTeam, roadTeam, activePlayers, onSelectPlayer, teamIndexes = [0, 1], selectableTeams = [0, 1] }) {
+  const teams = [localTeam, roadTeam];
+  const selectable = teamIndexes.some((index) => selectableTeams.includes(index));
   return (
     <section>
       <PanelHeader kicker="PLAYERS" title="Each player's shooting" compact />
-      <div className="grid grid-cols-[minmax(0,1fr)] gap-4 lg:grid-cols-2">
-        {[localTeam, roadTeam].map((team, index) => (
+      <div className={`grid grid-cols-[minmax(0,1fr)] gap-4 ${teamIndexes.length > 1 ? "lg:grid-cols-2" : ""}`}>
+        {teamIndexes.map((index) => (
           <TeamPlayers
-            key={team?.clubCode ?? index}
-            team={team}
-            shots={shots.filter((shot) => shot.clubCode === team?.clubCode)}
+            key={teams[index]?.clubCode ?? index}
+            team={teams[index]}
+            shots={shots.filter((shot) => shot.clubCode === teams[index]?.clubCode)}
             activePlayer={activePlayers[index]}
-            onSelectPlayer={(code) => onSelectPlayer(index, code)}
+            onSelectPlayer={selectableTeams.includes(index) ? (code) => onSelectPlayer(index, code) : null}
           />
         ))}
       </div>
-      <p className="muted mt-2 text-xs">Choose a player to show only their shots on their team's court above; choose them again for the whole team.</p>
+      {selectable ? (
+        <p className="muted mt-2 text-xs">Choose a player to show only their shots on their team's court above; choose them again for the whole team.</p>
+      ) : null}
     </section>
   );
 }

@@ -327,103 +327,69 @@ async function openShooting(page, { team, rival, slug, payload = shotsFor([team.
   await openTab(page, slug, team.clubCode, "Shooting");
 }
 
-const panelOf = (page, title) => page.locator("#team-shooting-panel section.panel", { has: page.getByRole("heading", { name: title }) });
+// The studio's two courts: the club's and the opponents', labelled by side.
+const courtOf = (page, side) => page.getByRole("img", { name: new RegExp(`^(Shooting zones|Shot chart), ${side}`) });
+const courtPanels = (page) => page.locator("#shooting-presentation-panel .grid > .panel");
+const headerValue = (panel, label) => panel.locator("p.eyebrow", { hasText: new RegExp(`^${label}`) }).locator("xpath=following-sibling::p[1]");
 
-// Which of a panel's badges are drawn, and whether they are under its title or beside it.
-const badgesOf = (locator, take = 99) =>
-  locator.evaluate((el, count) => {
-    const title = el.querySelector("h2").getBoundingClientRect();
-    const shown = [...el.querySelectorAll(".stat-badge")].slice(0, count).map((badge) => badge.getBoundingClientRect()).filter((rect) => rect.width > 0);
-    return { count: shown.length, under: shown.every((rect) => rect.top >= title.bottom - 1), beside: shown.every((rect) => rect.left >= title.right - 1) };
-  }, take);
-
-test("the Shooting tab fits every width: the zones badges under their title, two controls visible and two behind Filters below 640px", async ({ page }) => {
+test("the Shooting tab is the shooting studio: the club and its opponents side by side, opening on the zones, at every width", async ({ page }) => {
   const { slug, team, rival } = await liveTeam(page);
   await openShooting(page, { team, rival, slug });
-  await expect(page.getByText("Where the shots come from")).toBeVisible({ timeout: 30_000 });
-  const zones = panelOf(page, "Where the shots come from");
-  const filters = page.getByRole("button", { name: /^Filters/ });
-  const segment = page.getByLabel("Game segment");
+  const name = team.abbreviatedName ?? team.name;
+  await expect(page.getByRole("heading", { name: `${name} and its opponents, Regular Season` })).toBeVisible({ timeout: 30_000 });
+  // Opens on the zones; the shot map is the other tab.
+  await expect(page.getByRole("tab", { name: "Shooting zones" })).toHaveAttribute("aria-selected", "true");
+  await expect(courtOf(page, team.name)).toBeVisible();
+  await expect(courtOf(page, "Opponents")).toBeVisible();
+  // Every opponent is one side: the zone and quarter tables compare the club with "Opponents", never the rival by name.
+  await expect(page.locator("table", { hasText: "Restricted area" }).first()).toContainText("Opponents");
+  await expect(page.locator("table", { hasText: "Restricted area" }).first()).not.toContainText(rival.name);
+  // The player table is the club's only.
+  const playerSection = page.locator("section", { has: page.getByRole("heading", { name: "Each player's shooting" }) });
+  await expect(playerSection).toContainText(team.name);
+  await expect(playerSection).not.toContainText("Opponents");
 
-  await atWidths(page, WIDTHS, async (width) => {
-    const phone = width < 640;
-    // There is no "games mapped" badge (the attempts are counted in the cards); the zones' badges are under the title on a phone and
-    // beside it from 640px (one copy is drawn).
-    await expect(page.getByText(/games mapped/)).toHaveCount(0);
-    await expect.poll(() => badgesOf(zones)).toEqual({ count: 2, under: phone, beside: !phone });
-
-    // The two main controls are always there; the segment select is behind the button below 640px and in the row from 640px.
-    await expect(page.getByRole("tab", { name: "Opponents", exact: true })).toBeVisible();
-    await expect(page.getByRole("tab", { name: "Every attempt", exact: true })).toBeVisible();
-    if (phone) {
-      await expect(filters).toBeVisible();
-      await expect(segment).toBeHidden();
-    } else {
-      await expect(filters).toBeHidden();
-      await expect(segment).toBeVisible();
-    }
-    expect(await holdsContent(page.locator("#team-panel section.panel"))).toBe(true);
+  await atWidths(page, WIDE, async (width) => {
+    const [club, opponents] = await courtPanels(page).evaluateAll((els) => els.map((el) => el.getBoundingClientRect().toJSON()));
+    // Side by side from 640px, stacked below.
+    if (width >= 640) expect(Math.abs(club.top - opponents.top)).toBeLessThan(2);
+    else expect(opponents.top).toBeGreaterThan(club.bottom - 1);
+    expect(await holdsContent(courtPanels(page))).toBe(true);
     await expectNoSidewaysScroll(page);
   });
 });
 
-test("the Filters button counts the segment and the result, opens the controls and filtering still works", async ({ page }) => {
+test("the studio's filters narrow both courts, with no player filter, and free throws come from the stage's totals", async ({ page }) => {
   const { slug, team, rival } = await liveTeam(page);
+  await page.setViewportSize({ width: 1440, height: HEIGHT });
   await openShooting(page, { team, rival, slug });
-  await expect(page.getByText("Where the shots come from")).toBeVisible({ timeout: 30_000 });
-  await page.setViewportSize({ width: 320, height: HEIGHT });
-  const filters = page.getByRole("button", { name: /^Filters/ });
-  const segment = page.getByLabel("Game segment");
-  const fieldGoals = page.locator("p.eyebrow", { hasText: "Field goals" }).locator("xpath=following-sibling::p[1]");
+  await expect(courtOf(page, team.name)).toBeVisible({ timeout: 30_000 });
+  await page.getByRole("tab", { name: "Shot map" }).click();
+  const [clubPanel, opponentsPanel] = [courtPanels(page).first(), courtPanels(page).last()];
 
-  await expect(filters).toHaveText(/^Filters\s*▾$/);
-  await expect(filters).toHaveAttribute("aria-expanded", "false");
-  const before = await fieldGoals.textContent();
-  await filters.click();
-  await expect(filters).toHaveAttribute("aria-expanded", "true");
-  await expect(segment).toBeVisible();
-  await expect(page.getByRole("tablist", { name: "Result" })).toHaveCount(0);
-  await segment.selectOption({ label: "Q1" });
-  await expect(filters).toContainText("Filters · 1 active");
-  await expect.poll(() => fieldGoals.textContent()).not.toBe(before);
+  // Both courts are whole teams: no player list for either side, and the player table's names pick nothing.
+  await expect(page.getByLabel(/ player$/)).toHaveCount(0);
+  const playerSection = page.locator("section", { has: page.getByRole("heading", { name: "Each player's shooting" }) });
+  await expect(playerSection.getByText("ONE, AL")).toBeVisible();
+  await expect(playerSection.getByRole("button")).toHaveCount(0);
+  await expect(playerSection).not.toContainText("Choose a player");
 
-  // The result strip exists only on "Every attempt"; both count.
-  await page.getByRole("tab", { name: "Every attempt", exact: true }).click();
-  await expect(page.getByRole("tablist", { name: "Result" })).toBeVisible();
-  await page.getByRole("tab", { name: "Made", exact: true }).click();
-  await expect(filters).toContainText("Filters · 2 active");
-  // Closing the button does not reset a filter.
-  await filters.click();
-  await expect(segment).toBeHidden();
-  await expect(filters).toContainText("Filters · 2 active");
+  // FT is the stage total for each side (or the missing mark when the live summary has none).
+  for (const panel of [clubPanel, opponentsPanel]) {
+    await expect(headerValue(panel, "FT")).toHaveText(/^(\d+-\d+ \(\d+\.\d%\)|—)$/);
+  }
+
+  // The period and play-context filters narrow both courts.
+  const opponentsBefore = await headerValue(opponentsPanel, "2PT").textContent();
+  await page.getByLabel("Period").selectOption({ label: "Q1" });
+  await expect.poll(() => headerValue(opponentsPanel, "2PT").textContent()).not.toBe(opponentsBefore);
+  await page.getByLabel("Play context").selectOption({ label: "Fast breaks" });
+  // One made fast-break two per side in each mocked game, and the same shots are served for each of the three played games.
+  await expect(headerValue(opponentsPanel, "2PT")).toHaveText(/^3-3 /);
   await expectNoSidewaysScroll(page);
 });
 
-test("the Shooting court and tables hold their content, with percentage-only chips on a narrow court", async ({ page }) => {
-  const { slug, team, rival } = await liveTeam(page);
-  await openShooting(page, { team, rival, slug });
-  await expect(page.getByText("Where the shots come from")).toBeVisible({ timeout: 30_000 });
-  const court = page.getByRole("img", { name: /shot locations/ });
-  await expect(court).toBeVisible();
-
-  await atWidths(page, WIDE, async (width) => {
-    // Every panel of the tab: its content inside it (the court, the legend, the two tables, the cards).
-    expect(await holdsContent(page.locator("#team-panel section.panel"))).toBe(true);
-    expect(await holdsContent(page.locator("#team-panel .rounded-field"))).toBe(true);
-    // The court's chips: "made/attempts" and a percentage, or the percentage alone when the court is drawn under 420px wide (the
-    // court is the page's width less its gutters, so that is a phone up to about 440px).
-    const narrow = width <= 390;
-    await expect
-      .poll(async () => {
-        const chips = await court.locator("text").allTextContents();
-        return { percentages: chips.some((text) => /%/.test(text)), fractions: chips.some((text) => /^\d+\/\d+$/.test(text.trim())) };
-      })
-      .toEqual({ percentages: true, fractions: !narrow });
-    await expectNoSidewaysScroll(page);
-  });
-});
-
-test("the Shooting states fit a phone: no games, loading failing, no attempts, nothing located", async ({ page }) => {
+test("the Shooting states fit a phone: no games, loading failing, no shots, nothing located", async ({ page }) => {
   const { slug, team, rival } = await liveTeam(page);
   await page.setViewportSize({ width: 320, height: HEIGHT });
 
@@ -440,20 +406,18 @@ test("the Shooting states fit a phone: no games, loading failing, no attempts, n
   await expect(page.getByRole("button", { name: /retry/i })).toBeVisible();
   await expectNoSidewaysScroll(page);
 
-  // Opponents' shots when the mocked attempts are all the club's: nothing to show.
   await page.unroute(SHOTS_URL);
-  await mockShots(page, shotsFor([team.clubCode]));
+  await mockShots(page, { shots: [] });
   await openTab(page, slug, team.clubCode, "Shooting");
-  await expect(page.getByText("Where the shots come from")).toBeVisible({ timeout: 30_000 });
-  await page.getByRole("tab", { name: "Opponents", exact: true }).click();
-  await expect(page.getByText("No attempts match these filters.")).toBeVisible();
+  await expect(page.getByText("No shot locations recorded in the Regular Season yet.")).toBeVisible({ timeout: 30_000 });
   await expectNoSidewaysScroll(page);
 
-  // Attempts without a location: counted, but there is nothing to place on the court or in the zones.
+  // Attempts without a location still fill the tables; the courts stay empty, and nothing breaks.
   await page.unroute(SHOTS_URL);
   await mockShots(page, shotsFor([team.clubCode, rival.clubCode], { located: false }));
   await openTab(page, slug, team.clubCode, "Shooting");
-  await expect(page.getByText("No located attempts.")).toBeVisible({ timeout: 30_000 });
+  await expect(page.getByRole("heading", { name: "Each player's shooting" })).toBeVisible({ timeout: 30_000 });
+  await expect(courtOf(page, "Opponents")).toBeVisible();
   await expectNoSidewaysScroll(page);
 });
 
@@ -474,54 +438,4 @@ test("long club and round names are truncated inside their rows and never widen 
     expect(await holdsContent(page.locator("#team-panel section.panel"))).toBe(true);
     await expectNoSidewaysScroll(page);
   });
-});
-
-test("the Zones and Style tables name their columns at every width, leave out Half court and keep a short note", async ({ page }) => {
-  const { slug, team, rival } = await liveTeam(page);
-  await openShooting(page, { team, rival, slug });
-  await expect(page.getByText("Where the shots come from")).toBeVisible({ timeout: 30_000 });
-  const zones = panelOf(page, "Where the shots come from");
-  const style = panelOf(page, /^How .* scores$/);
-
-  // The notes under the tables.
-  await expect(zones.locator("p.muted")).toHaveText("Hottest and coldest only count zones with a fair number of attempts.");
-  await expect(style.locator("p.muted")).toHaveText("A basket can be in more than one situation (a fast break off a turnover counts in both).");
-  // The rows: the three situations the feed marks; no "Half court". The percentage is the baskets' share of all the attempts.
-  await expect(style.locator("li")).toHaveCount(3);
-  await expect(style.getByText("Half court")).toHaveCount(0);
-  const attempts = Number(/-(\d+)/.exec(await page.locator("p.eyebrow", { hasText: "Field goals" }).locator("xpath=following-sibling::p[1]").textContent())[1]);
-  expect(attempts).toBeGreaterThan(50);
-  const figures = await style.locator("li").evaluateAll((rows) => rows.map((row) => [...row.children].slice(-3).map((el) => el.textContent.trim())));
-  expect(figures).toHaveLength(3);
-  for (const [percentage, baskets] of figures) expect(percentage).toBe(`${Math.round((Number(baskets) / attempts) * 100)}%`);
-
-  await atWidths(page, WIDE, async () => {
-    expect(await holdsContent(zones)).toBe(true);
-    expect(await holdsContent(style)).toBe(true);
-    for (const [panel, headings] of [[zones, ["Share", "Made", "FG%"]], [style, ["Of att.", "Baskets", "Points"]]]) {
-      // Every heading is drawn (display, not hidden), and each sits over its column: its right edge is the numbers' right edge.
-      const shown = await panel.locator("div[aria-hidden=true].border-b > span").evaluateAll((els) => els.filter((el) => el.getBoundingClientRect().width > 0 && el.textContent.trim()).map((el) => [el.textContent.trim(), el.getBoundingClientRect().right]));
-      // The first column has no heading: a zone and a situation name themselves.
-      expect(shown.map(([text]) => text)).not.toContain(panel === zones ? "Zone" : "Situation");
-      for (const heading of headings) expect(shown.map(([text]) => text), heading).toContain(heading);
-      const rights = await panel.locator("li").first().evaluate((li) => [...li.children].slice(-3).map((el) => el.getBoundingClientRect().right));
-      const headRights = headings.map((heading) => shown.find(([text]) => text === heading)[1]);
-      headRights.forEach((right, index) => expect(Math.abs(right - rights[index])).toBeLessThan(3));
-    }
-    expectNoSidewaysScroll(page);
-  });
-});
-
-test("the whole court is in view once scrolled to, and is not small", async ({ page }) => {
-  const { slug, team, rival } = await liveTeam(page);
-  await openShooting(page, { team, rival, slug });
-  await expect(page.getByText("Where the shots come from")).toBeVisible({ timeout: 30_000 });
-  const courtImage = page.getByRole("img", { name: /shot locations/ });
-  for (const [width, height] of [[1280, 800], [1440, 900], [1920, 1080]]) {
-    await page.setViewportSize({ width, height });
-    await courtImage.evaluate((el) => window.scrollBy(0, el.getBoundingClientRect().top - 96));
-    const court = await courtImage.boundingBox();
-    expect(court.y + court.height).toBeLessThanOrEqual(height);
-    expect(court.width).toBeGreaterThanOrEqual(Math.min(700, height - 160));
-  }
 });

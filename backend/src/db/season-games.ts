@@ -39,7 +39,12 @@ export type Game = {
   roadTeam: GameTeam | null;
   localScore: number | null;
   roadScore: number | null;
+  // Only with `cards` (the Games page's cards): each side's top scorer, and the periods played after the fourth.
+  topScorers?: { local: TopScorer | null; road: TopScorer | null };
+  overtimes?: number | null;
 };
+
+export type TopScorer = { personKey: string; personName: string | null; headshotUrl: string | null; points: number };
 
 const gameFields = {
   gameCode: games.gameCode,
@@ -146,6 +151,7 @@ export async function getGames(
   order: "asc" | "desc" = "asc",
   phaseCode?: string,
   round?: number,
+  cards = false,
 ) {
   const codes = await getClubTvCodes(seasonCode);
   const conditions = [eq(games.competitionCode, COMPETITION_CODE), eq(games.seasonCode, seasonCode)];
@@ -180,7 +186,60 @@ export async function getGames(
       db.select({ count: sql<number>`count(*)::int` }).from(games).where(and(...conditions)),
     ),
   ]);
-  return { items: rows.slice(0, limit).map((row) => toGame(row, codes)), hasMore: rows.length > limit, total: countRows[0]?.count ?? 0 };
+  const items = rows.slice(0, limit).map((row) => toGame(row, codes));
+  if (cards) await addCardDetails(seasonCode, items);
+  return { items, hasMore: rows.length > limit, total: countRows[0]?.count ?? 0 };
+}
+
+// The top scorer of each side of each played game (most points, then the higher PIR, then the name), and how many periods
+// each game played after the fourth (null for a game without period scores). One query each over all the games.
+async function addCardDetails(seasonCode: string, items: Game[]) {
+  const playedCodes = items.filter((game) => game.played).map((game) => game.gameCode);
+  const allCodes = items.map((game) => game.gameCode);
+  if (allCodes.length === 0) return;
+  const [scorers, periods] = await Promise.all([
+    playedCodes.length === 0 ? [] : catalogRead(() =>
+      db.selectDistinctOn([gamePlayerStats.gameCode, gamePlayerStats.side], {
+        gameCode: gamePlayerStats.gameCode,
+        side: gamePlayerStats.side,
+        personKey: gamePlayerStats.personKey,
+        personName: gamePlayerStats.personName,
+        headshotUrl: gamePlayerStats.headshotUrl,
+        points: gamePlayerStats.points,
+      }).from(gamePlayerStats).where(and(
+        eq(gamePlayerStats.competitionCode, COMPETITION_CODE),
+        eq(gamePlayerStats.seasonCode, seasonCode),
+        inArray(gamePlayerStats.gameCode, playedCodes),
+        isNotNull(gamePlayerStats.points),
+      )).orderBy(
+        asc(gamePlayerStats.gameCode),
+        asc(gamePlayerStats.side),
+        sql`${gamePlayerStats.points} DESC`,
+        sql`${gamePlayerStats.valuation} DESC NULLS LAST`,
+        asc(gamePlayerStats.personName),
+        asc(gamePlayerStats.personKey),
+      ),
+    ),
+    catalogRead(() =>
+      db.select({
+        gameCode: gamePeriodScores.gameCode,
+        overtimes: sql<number>`count(distinct ${gamePeriodScores.periodNumber}) filter (where ${gamePeriodScores.periodNumber} > 4)::int`,
+      }).from(gamePeriodScores).where(and(
+        eq(gamePeriodScores.competitionCode, COMPETITION_CODE),
+        eq(gamePeriodScores.seasonCode, seasonCode),
+        inArray(gamePeriodScores.gameCode, allCodes),
+      )).groupBy(gamePeriodScores.gameCode),
+    ),
+  ]);
+  const scorerOf = (gameCode: number, side: "local" | "road"): TopScorer | null => {
+    const row = scorers.find((entry) => entry.gameCode === gameCode && entry.side === side);
+    return row ? { personKey: row.personKey, personName: row.personName, headshotUrl: row.headshotUrl, points: Number(row.points) } : null;
+  };
+  const overtimesByGame = new Map(periods.map((row) => [row.gameCode, row.overtimes]));
+  for (const game of items) {
+    game.topScorers = { local: scorerOf(game.gameCode, "local"), road: scorerOf(game.gameCode, "road") };
+    game.overtimes = overtimesByGame.get(game.gameCode) ?? null;
+  }
 }
 
 export async function getTeamGames(

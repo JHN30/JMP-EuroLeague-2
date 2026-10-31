@@ -75,16 +75,16 @@ export default function FixturesPage() {
   const selectedIndex = rounds.findIndex((round) => round.number === selectedRound);
 
   const gamesQuery = useQuery({
-    queryKey: ["fixtures", seasonCode, phaseCode, selectedRound],
-    queryFn: () => getSeasonGames(seasonCode, { phase: phaseCode, round: selectedRound, limit: ROUND_GAME_LIMIT, order: "asc" }),
+    queryKey: ["fixtures", seasonCode, phaseCode, selectedRound, "cards"],
+    queryFn: () => getSeasonGames(seasonCode, { phase: phaseCode, round: selectedRound, limit: ROUND_GAME_LIMIT, order: "asc", cards: true }),
     enabled: Boolean(phaseCode) && selectedRound !== null,
   });
   // A grouped table stage (the regular season and Top 16 of E2012-E2015) shows each club's record in that stage and a group
   // filter; every other phase keeps the regular-season record under the clubs.
   const format = formatQuery.data ?? null;
   const stageGamesQuery = useQuery({
-    queryKey: ["fixtures-stages", seasonCode, phaseCode],
-    queryFn: () => getSeasonGames(seasonCode, { phase: phaseCode, limit: ROUND_GAME_LIMIT, order: "asc" }),
+    queryKey: ["fixtures-stages", seasonCode, phaseCode, "cards"],
+    queryFn: () => getSeasonGames(seasonCode, { phase: phaseCode, limit: ROUND_GAME_LIMIT, order: "asc", cards: true }),
     enabled: stageMode,
   });
   const stageGames = stageGamesQuery.data?.games ?? [];

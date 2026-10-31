@@ -1139,7 +1139,14 @@ seasonRouter.get("/:seasonCode/games", async (req, res) => {
     }
   }
 
-  const result = await getGames(season.seasonCode, page.limit, page.offset, status, order, phaseCode, round);
+  // `cards=true` adds what the Games page's cards show (top scorers, overtimes); every other caller leaves it out.
+  const cardsValue = req.query.cards;
+  if (cardsValue !== undefined && cardsValue !== "true") {
+    sendError(res, 400, "INVALID_CARDS", "Invalid cards");
+    return;
+  }
+
+  const result = await getGames(season.seasonCode, page.limit, page.offset, status, order, phaseCode, round, cardsValue === "true");
   res.json({ games: result.items, pagination: { ...page, hasMore: result.hasMore, total: result.total } });
 });
 

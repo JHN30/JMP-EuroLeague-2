@@ -2,13 +2,30 @@ import { motion } from "motion/react";
 import { Link } from "react-router";
 import { formatShortDate, formatTimeOfDay } from "../lib/format";
 import { centerPop, listItem, wideCardHover } from "../lib/motion";
+import PlayerPortrait from "../lib/PlayerPortrait";
+import { displayName, nameParts, titleCase } from "../lib/playerName";
 import ShortLabel from "../lib/ShortLabel";
 import { groupPositionLabel } from "../standings/standingsGroups";
 import { shortTeamName, teamCode } from "./gameUtils";
 
 const MotionLink = motion.create(Link);
 
-function FixtureTeam({ team, entry, won, showGroup }) {
+// A side's top scorer, as plain text: the card is already one link to the game. The surname alone below sm.
+function TopScorer({ scorer }) {
+  const full = displayName(scorer.personName ?? scorer.personKey);
+  const surname = titleCase(nameParts(scorer.personName ?? scorer.personKey).last) || full;
+  return (
+    <span className="fixture-scorer" title={`${full}, ${scorer.points} points`}>
+      <PlayerPortrait imageUrl={scorer.headshotUrl} className="fixture-scorer-photo" />
+      <span className="fixture-scorer-name">
+        <ShortLabel short={surname} full={full} />
+      </span>
+      <span className="fixture-scorer-points">{scorer.points} PTS</span>
+    </span>
+  );
+}
+
+function FixtureTeam({ team, entry, won, showGroup, scorer = null }) {
   const position = showGroup ? groupPositionLabel(entry) : null;
   return (
     <div className={`fixture-team${won ? " win" : ""}`}>
@@ -33,6 +50,7 @@ function FixtureTeam({ team, entry, won, showGroup }) {
           {position ? <span className="sr-only"> ({position})</span> : null}
         </span>
       ) : null}
+      {scorer ? <TopScorer scorer={scorer} /> : null}
     </div>
   );
 }
@@ -43,6 +61,8 @@ export default function GameCard({ game, seasonCode, standingByClubCode, cancell
   const hasScore = game.played && game.localScore != null && game.roadScore != null;
   const localWon = hasScore && game.localScore > game.roadScore;
   const roadWon = hasScore && game.roadScore > game.localScore;
+  const forfeit = game.gameStatus === "Walkover";
+  const overtime = game.overtimes > 1 ? `${game.overtimes}OT` : game.overtimes === 1 ? "OT" : null;
   const localEntry = game.localTeam?.clubCode ? standingByClubCode.get(game.localTeam.clubCode) : null;
   const roadEntry = game.roadTeam?.clubCode ? standingByClubCode.get(game.roadTeam.clubCode) : null;
 
@@ -50,15 +70,18 @@ export default function GameCard({ game, seasonCode, standingByClubCode, cancell
     <MotionLink to={`/${seasonCode}/games/${game.gameCode}`} className="fixture-card" variants={listItem} {...wideCardHover}>
       {caption ?? (showGroup ? game.groupName : null) ? <span className="muted block text-center text-xs font-semibold tracking-wide uppercase">{caption ?? game.groupName}</span> : null}
       <div className="fixture-card-body">
-        <FixtureTeam team={game.localTeam} entry={localEntry} won={localWon} showGroup={showGroup} />
+        <FixtureTeam team={game.localTeam} entry={localEntry} won={localWon} showGroup={showGroup} scorer={game.played ? game.topScorers?.local : null} />
         <motion.div className="fixture-center" variants={centerPop}>
           {game.played ? (
             <>
-              <span className="score-pill" aria-label={`${game.gameStatus === "Walkover" ? "Forfeit awarded" : "Final score"} ${game.localScore ?? "-"} to ${game.roadScore ?? "-"}`}>
+              <span
+                className="score-pill"
+                aria-label={`${forfeit ? "Forfeit awarded" : "Final score"} ${game.localScore ?? "-"} to ${game.roadScore ?? "-"}${overtime ? ` after ${overtime}` : ""}`}
+              >
                 <span className={localWon ? "win" : ""}>{game.localScore ?? "-"}</span>
                 <span className={roadWon ? "win" : ""}>{game.roadScore ?? "-"}</span>
               </span>
-              <span className="fixture-date">{game.gameStatus === "Walkover" ? "Forfeit" : "Final"} · {formatShortDate(game.scheduledAt)}</span>
+              <span className="fixture-date">{forfeit ? "Forfeit" : "Final"}{overtime ? ` · ${overtime}` : ""} · {formatShortDate(game.scheduledAt)}</span>
             </>
           ) : cancelled ? (
             <><span className="fixture-date">Not played</span><span className="text-xs">Season cancelled</span></>
@@ -69,7 +92,7 @@ export default function GameCard({ game, seasonCode, standingByClubCode, cancell
             </>
           )}
         </motion.div>
-        <FixtureTeam team={game.roadTeam} entry={roadEntry} won={roadWon} showGroup={showGroup} />
+        <FixtureTeam team={game.roadTeam} entry={roadEntry} won={roadWon} showGroup={showGroup} scorer={game.played ? game.topScorers?.road : null} />
       </div>
       <span className="fixture-cta">{game.played || cancelled ? "Overview" : "Preview"}</span>
     </MotionLink>

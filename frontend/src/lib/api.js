@@ -7,9 +7,10 @@ export async function getSeasons() {
   return { ...data, seasons: data.seasons.map((season) => ({ ...season, seasonCode: seasonSlug(season.seasonCode) })) };
 }
 
-export async function getSeasonGames(seasonCode, { limit, offset, status, order, phase, round } = {}) {
+// `cards: true` adds what the Games page's cards show: each side's top scorer and the overtime count.
+export async function getSeasonGames(seasonCode, { limit, offset, status, order, phase, round, cards } = {}) {
   const { data } = await api.get(`/seasons/${seasonCode}/games`, {
-    params: { limit, offset, status, order, phase, round },
+    params: { limit, offset, status, order, phase, round, cards: cards ? "true" : undefined },
   });
   return data;
 }

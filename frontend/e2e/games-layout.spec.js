@@ -72,7 +72,8 @@ for (const season of [undefined, "2025"]) {
       const padding = await roundTab(page).evaluate((el) => getComputedStyle(el).paddingLeft);
       expect(padding).toBe("8px");
       const heights = await page.locator(".fixture-card").evaluateAll((cards) => cards.map((card) => Math.round(card.getBoundingClientRect().height)));
-      expect(Math.max(...heights)).toBeLessThanOrEqual(130);
+      // A played card carries a top-scorer line under each club (40b), so it is a little taller than an upcoming one.
+      expect(Math.max(...heights)).toBeLessThanOrEqual(150);
       const crest = await page.locator(".fixture-crest").first().evaluate((el) => Math.round(el.getBoundingClientRect().width));
       expect(crest).toBe(32);
       // One column, and the margin under the round row is the small one.
@@ -167,3 +168,74 @@ for (const season of [undefined, "2013", "2019", "2000"]) {
     });
   });
 }
+
+// Feature 40b: the games list's opt-in `cards=true` fields, from the running backend and the local data.
+const API = "http://localhost:3000/api/seasons";
+
+test("cards=true adds top scorers and overtimes; without it the reply is as before; any other value is a 400", async ({ page }) => {
+  const plain = await (await page.request.get(`${API}/2025/games?phase=RS&round=1`)).json();
+  for (const game of plain.games) {
+    expect(game).not.toHaveProperty("topScorers");
+    expect(game).not.toHaveProperty("overtimes");
+  }
+  const bad = await page.request.get(`${API}/2025/games?phase=RS&round=1&cards=yes`);
+  expect(bad.status()).toBe(400);
+  expect((await bad.json()).error.code).toBe("INVALID_CARDS");
+
+  // A finished season's played games: each side's scorer is the side's real top scorer, and some game went to overtime.
+  let overtimeGames = 0;
+  for (let round = 1; round <= 34 && overtimeGames === 0; round += 1) {
+    const { games } = await (await page.request.get(`${API}/2024/games?phase=RS&round=${round}&cards=true`)).json();
+    for (const game of games) {
+      expect(game.overtimes === null || Number.isInteger(game.overtimes)).toBe(true);
+      if (game.overtimes >= 1) overtimeGames += 1;
+    }
+    if (round === 1) {
+      const game = games.find((entry) => entry.played);
+      const box = await (await page.request.get(`${API}/2024/games/${game.gameCode}/box-score`)).json();
+      const best = Math.max(...box.playerStats.filter((row) => row.side === "local" && row.points !== null).map((row) => row.points));
+      expect(game.topScorers.local.points).toBe(best);
+      expect(game.overtimes).toBe(0);
+    }
+  }
+  expect(overtimeGames).toBeGreaterThan(0);
+
+  // A game still to play has no scorers.
+  const { games: upcoming } = await (await page.request.get(`${API}/2026/games?status=scheduled&limit=1&cards=true`)).json();
+  if (upcoming.length > 0) expect(upcoming[0].topScorers).toEqual({ local: null, road: null });
+});
+
+test("played cards show each side's top scorer and an overtime marker; a forfeit and a missing scorer show nothing", async ({ page }) => {
+  const scorer = (name, points) => ({ personKey: `P${points}`, personName: name, headshotUrl: null, points });
+  await page.route(/\/api\/seasons\/[^/]+\/games\?.*round=\d+/, async (route) => {
+    const response = await route.fetch();
+    const body = await response.json();
+    const base = { ...body.games[0], played: true, gameStatus: "Result", scheduledAt: "2026-11-05T19:00:00Z" };
+    body.games = [
+      { ...base, gameCode: 9201, localScore: 88, roadScore: 76, overtimes: 0, topScorers: { local: scorer("VEZENKOV, SASHA", 24), road: scorer("NUNN, KENDRICK", 19) } },
+      { ...base, gameCode: 9202, localScore: 95, roadScore: 93, overtimes: 1, topScorers: { local: scorer("ANTETOKOUNMPO-SPRINGFIELD, ALEXANDROS", 31), road: null } },
+      { ...base, gameCode: 9203, localScore: 101, roadScore: 104, overtimes: 2, topScorers: { local: scorer("HEZONJA, MARIO", 28), road: scorer("LESSORT, MATHIAS", 26) } },
+      { ...base, gameCode: 9204, gameStatus: "Walkover", localScore: 20, roadScore: 0, overtimes: null, topScorers: { local: null, road: null } },
+    ];
+    await route.fulfill({ response, json: body });
+  });
+  await openGames(page);
+  const cards = page.locator(".fixture-card");
+  await expect(cards).toHaveCount(4);
+  await expect(cards.nth(0).locator(".fixture-scorer")).toHaveCount(2);
+  await expect(cards.nth(0).locator(".fixture-date")).not.toContainText("OT");
+  await expect(cards.nth(0).locator(".score-pill")).toHaveAttribute("aria-label", "Final score 88 to 76");
+  await expect(cards.nth(1).locator(".fixture-scorer")).toHaveCount(1);
+  await expect(cards.nth(1).locator(".fixture-date")).toContainText("Final · OT ·");
+  await expect(cards.nth(2).locator(".fixture-date")).toContainText("Final · 2OT ·");
+  await expect(cards.nth(3).locator(".fixture-scorer")).toHaveCount(0);
+  await expect(cards.nth(3).locator(".fixture-date")).toContainText("Forfeit");
+  // The card stays one link: nothing inside it is another link.
+  expect(await cards.locator("a").count()).toBe(0);
+  await atWidths(page, [320, 390, 768, 1024], async () => {
+    expect(await cardsHoldTheirContent(page)).toBe(true);
+    const clipped = await page.locator(".fixture-scorer").evaluateAll((els) => els.filter((el) => el.getBoundingClientRect().right > el.closest(".fixture-team").getBoundingClientRect().right + 1).length);
+    expect(clipped).toBe(0);
+    expect(await findPageOverflow(page)).toMatchObject({ offenders: [] });
+  });
+});

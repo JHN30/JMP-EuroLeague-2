@@ -260,10 +260,10 @@ Scaffolding, shared layout, design tokens, database connection setup, and deploy
   - [x] 39e. **Game page and Compare** - Every game tab, the Compare sections and the Head-to-head page.
     - [x] 39e-i. **Game page** - Every game tab and its panels, and the game page's own route-fallback skeleton.
     - [x] 39e-ii. **Compare sections and Head-to-head** - Every section of an opened team or player comparison, and the Head-to-head page.
-- [ ] 40. **Games page rework** - Rework `/:season/games` per direct user request, keeping its phase tabs, round strip, `E2000` stage tabs and group filter and their addresses. Each leaf works for every season format and is checked at 320, 390, 768 and 1024px.
+- [x] 40. **Games page rework** - Rework `/:season/games` per direct user request, keeping its phase tabs, round strip, `E2000` stage tabs and group filter and their addresses. Each leaf works for every season format and is checked at 320, 390, 768 and 1024px.
   - [x] 40a. **Games grouped by day** - Within a round (or an `E2000` stage), games sit under a header per calendar day (such as "Thursday 30 October"), in tip-off order, using the same time zone as the cards. A game without a date goes under "Date to be confirmed" at the end. Frontend only.
   - [x] 40b. **Richer result cards** - A finished game's card shows each team's top scorer (photo, name and points) and an overtime marker (OT, 2OT); the winning margin was dropped as the score already shows it. Top scorers come from an additive field on the games list read from the box score; a game without a box score (a forfeit, older gaps) shows no scorer, never an invented one.
-  - [ ] 40c. **Richer upcoming cards** - A game still to play shows both clubs' last five results (from the standings form the page already loads, where the phase has standings) and the arena name (an additive field on the games list from the venue columns 37b reads). A missing form or venue shows nothing.
+  - [x] 40c. **Richer upcoming cards** - A game still to play shows both clubs' last five results (from the standings form the page already loads, where the phase has standings) and the arena name (an additive field on the games list from the venue columns 37b reads). A missing form or venue shows nothing.
 
 ## Deferred for now
 

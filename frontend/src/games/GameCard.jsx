@@ -5,6 +5,7 @@ import { centerPop, listItem, wideCardHover } from "../lib/motion";
 import PlayerPortrait from "../lib/PlayerPortrait";
 import { displayName, nameParts, titleCase } from "../lib/playerName";
 import ShortLabel from "../lib/ShortLabel";
+import { FormCell } from "../standings/standingsCells";
 import { groupPositionLabel } from "../standings/standingsGroups";
 import { shortTeamName, teamCode } from "./gameUtils";
 
@@ -25,7 +26,18 @@ function TopScorer({ scorer }) {
   );
 }
 
-function FixtureTeam({ team, entry, won, showGroup, scorer = null }) {
+// A club's last five results, oldest first, as the standings table draws them; nothing without a form.
+function RecentForm({ entry }) {
+  const form = [...(entry?.form ?? [])].sort((a, b) => a.resultOrdinal - b.resultOrdinal).slice(-5);
+  if (form.length === 0) return null;
+  return (
+    <span className="fixture-form">
+      <FormCell form={form} />
+    </span>
+  );
+}
+
+function FixtureTeam({ team, entry, won, showGroup, scorer = null, showForm = false }) {
   const position = showGroup ? groupPositionLabel(entry) : null;
   return (
     <div className={`fixture-team${won ? " win" : ""}`}>
@@ -51,6 +63,7 @@ function FixtureTeam({ team, entry, won, showGroup, scorer = null }) {
         </span>
       ) : null}
       {scorer ? <TopScorer scorer={scorer} /> : null}
+      {showForm ? <RecentForm entry={entry} /> : null}
     </div>
   );
 }
@@ -65,12 +78,14 @@ export default function GameCard({ game, seasonCode, standingByClubCode, cancell
   const overtime = game.overtimes > 1 ? `${game.overtimes}OT` : game.overtimes === 1 ? "OT" : null;
   const localEntry = game.localTeam?.clubCode ? standingByClubCode.get(game.localTeam.clubCode) : null;
   const roadEntry = game.roadTeam?.clubCode ? standingByClubCode.get(game.roadTeam.clubCode) : null;
+  // A game still to play also shows both clubs' recent form and the arena.
+  const upcoming = !game.played && !cancelled;
 
   return (
     <MotionLink to={`/${seasonCode}/games/${game.gameCode}`} className="fixture-card" variants={listItem} {...wideCardHover}>
       {caption ?? (showGroup ? game.groupName : null) ? <span className="muted block text-center text-xs font-semibold tracking-wide uppercase">{caption ?? game.groupName}</span> : null}
       <div className="fixture-card-body">
-        <FixtureTeam team={game.localTeam} entry={localEntry} won={localWon} showGroup={showGroup} scorer={game.played ? game.topScorers?.local : null} />
+        <FixtureTeam team={game.localTeam} entry={localEntry} won={localWon} showGroup={showGroup} scorer={game.played ? game.topScorers?.local : null} showForm={upcoming} />
         <motion.div className="fixture-center" variants={centerPop}>
           {game.played ? (
             <>
@@ -92,8 +107,9 @@ export default function GameCard({ game, seasonCode, standingByClubCode, cancell
             </>
           )}
         </motion.div>
-        <FixtureTeam team={game.roadTeam} entry={roadEntry} won={roadWon} showGroup={showGroup} scorer={game.played ? game.topScorers?.road : null} />
+        <FixtureTeam team={game.roadTeam} entry={roadEntry} won={roadWon} showGroup={showGroup} scorer={game.played ? game.topScorers?.road : null} showForm={upcoming} />
       </div>
+      {upcoming && game.venueName ? <span className="fixture-venue" title={game.venueName}>{game.venueName}</span> : null}
       <span className="fixture-cta">{game.played || cancelled ? "Overview" : "Preview"}</span>
     </MotionLink>
   );

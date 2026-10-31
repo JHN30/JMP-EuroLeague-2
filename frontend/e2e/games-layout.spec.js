@@ -72,8 +72,8 @@ for (const season of [undefined, "2025"]) {
       const padding = await roundTab(page).evaluate((el) => getComputedStyle(el).paddingLeft);
       expect(padding).toBe("8px");
       const heights = await page.locator(".fixture-card").evaluateAll((cards) => cards.map((card) => Math.round(card.getBoundingClientRect().height)));
-      // A played card carries a top-scorer line under each club (40b), so it is a little taller than an upcoming one.
-      expect(Math.max(...heights)).toBeLessThanOrEqual(150);
+      // A played card carries a top-scorer line under each club (40b), an upcoming one each club's form and the arena (40c).
+      expect(Math.max(...heights)).toBeLessThanOrEqual(170);
       const crest = await page.locator(".fixture-crest").first().evaluate((el) => Math.round(el.getBoundingClientRect().width));
       expect(crest).toBe(32);
       // One column, and the margin under the round row is the small one.
@@ -236,6 +236,66 @@ test("played cards show each side's top scorer and an overtime marker; a forfeit
     expect(await cardsHoldTheirContent(page)).toBe(true);
     const clipped = await page.locator(".fixture-scorer").evaluateAll((els) => els.filter((el) => el.getBoundingClientRect().right > el.closest(".fixture-team").getBoundingClientRect().right + 1).length);
     expect(clipped).toBe(0);
+    expect(await findPageOverflow(page)).toMatchObject({ offenders: [] });
+  });
+});
+
+// Feature 40c: upcoming cards carry both clubs' recent form (from the standings the page loads) and the arena.
+test("cards=true carries the arena; without it there is none", async ({ page }) => {
+  const plain = await (await page.request.get(`${API}/2025/games?phase=RS&round=1`)).json();
+  for (const game of plain.games) expect(game).not.toHaveProperty("venueName");
+  const { games } = await (await page.request.get(`${API}/2025/games?phase=RS&round=1&cards=true`)).json();
+  expect(games.length).toBeGreaterThan(0);
+  for (const game of games) expect(game.venueName === null || (typeof game.venueName === "string" && game.venueName.trim() !== "")).toBe(true);
+  expect(games.some((game) => typeof game.venueName === "string")).toBe(true);
+});
+
+test("upcoming cards show both clubs' last five results and the arena; a missing form or arena shows nothing", async ({ page }) => {
+  const club = (code, name) => ({ clubCode: code, name, abbreviatedName: name, tvCode: code, crestUrl: null });
+  const form = (results) => results.map((result, index) => ({ resultOrdinal: index + 1, result }));
+  await page.route(/\/api\/seasons\/[^/]+\/phases\/[^/]+\/standings/, async (route) => {
+    const response = await route.fetch();
+    const body = await response.json();
+    const base = body.standings[0];
+    body.standings = [
+      { ...base, clubCode: "AAA", groupName: null, form: form(["L", "W", "W", "L", "W", "W", "W"]) },
+      { ...base, clubCode: "BBB", groupName: null, form: form(["W", "L"]) },
+      { ...base, clubCode: "CCC", groupName: null, form: [] },
+    ];
+    await route.fulfill({ response, json: body });
+  });
+  await page.route(/\/api\/seasons\/[^/]+\/games\?.*round=\d+/, async (route) => {
+    const response = await route.fetch();
+    const body = await response.json();
+    const base = { ...body.games[0], played: false, localScore: null, roadScore: null, gameStatus: null, scheduledAt: "2026-11-05T19:00:00Z", topScorers: { local: null, road: null }, overtimes: null };
+    body.games = [
+      { ...base, gameCode: 9301, localTeam: club("AAA", "Alpha"), roadTeam: club("BBB", "Beta"), venueName: "Palacio de los Deportes Bilbao Arena Miribilla Long Name" },
+      { ...base, gameCode: 9302, localTeam: club("CCC", "Gamma"), roadTeam: club("DDD", "Delta"), venueName: null },
+    ];
+    await route.fulfill({ response, json: body });
+  });
+  await openGames(page);
+  const cards = page.locator(".fixture-card");
+  await expect(cards).toHaveCount(2);
+  // The last five of seven, oldest first, with the standings table's label; two results when that is all there is.
+  await expect(cards.nth(0).locator(".fixture-form")).toHaveCount(2);
+  await expect(cards.nth(0).locator(".fixture-form").nth(0).locator(".badge")).toHaveText(["W", "L", "W", "W", "W"]);
+  await expect(cards.nth(0).locator(".fixture-form").nth(0).locator("[aria-label]")).toHaveAttribute("aria-label", "Last 5: win, loss, win, win, win");
+  await expect(cards.nth(0).locator(".fixture-form").nth(1).locator(".badge")).toHaveCount(2);
+  await expect(cards.nth(0).locator(".fixture-venue")).toHaveAttribute("title", "Palacio de los Deportes Bilbao Arena Miribilla Long Name");
+  // No form (an empty one, a club without a standings row) and no arena: nothing at all.
+  await expect(cards.nth(1).locator(".fixture-form")).toHaveCount(0);
+  await expect(cards.nth(1).locator(".fixture-venue")).toHaveCount(0);
+  expect(await cards.locator("a").count()).toBe(0);
+  await atWidths(page, [320, 390, 768, 1024], async () => {
+    expect(await cardsHoldTheirContent(page)).toBe(true);
+    const outside = await page.locator(".fixture-form, .fixture-venue").evaluateAll((els) =>
+      els.filter((el) => {
+        const box = el.getBoundingClientRect();
+        const card = el.closest(".fixture-card").getBoundingClientRect();
+        return box.left < card.left - 1 || box.right > card.right + 1;
+      }).length);
+    expect(outside).toBe(0);
     expect(await findPageOverflow(page)).toMatchObject({ offenders: [] });
   });
 });

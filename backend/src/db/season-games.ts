@@ -39,9 +39,10 @@ export type Game = {
   roadTeam: GameTeam | null;
   localScore: number | null;
   roadScore: number | null;
-  // Only with `cards` (the Games page's cards): each side's top scorer, and the periods played after the fourth.
+  // Only with `cards` (the Games page's cards): each side's top scorer, the periods played after the fourth, and the arena.
   topScorers?: { local: TopScorer | null; road: TopScorer | null };
   overtimes?: number | null;
+  venueName?: string | null;
 };
 
 export type TopScorer = { personKey: string; personName: string | null; headshotUrl: string | null; points: number };
@@ -162,7 +163,7 @@ export async function getGames(
 
   const [rows, countRows] = await Promise.all([
     catalogRead(() =>
-      db.select(gameFields)
+      db.select({ ...gameFields, venueName: games.venueName })
         .from(games)
         .leftJoin(localClubs, and(
           eq(localClubs.competitionCode, games.competitionCode),
@@ -186,8 +187,14 @@ export async function getGames(
       db.select({ count: sql<number>`count(*)::int` }).from(games).where(and(...conditions)),
     ),
   ]);
-  const items = rows.slice(0, limit).map((row) => toGame(row, codes));
-  if (cards) await addCardDetails(seasonCode, items);
+  const pageRows = rows.slice(0, limit);
+  const items = pageRows.map((row) => toGame(row, codes));
+  if (cards) {
+    pageRows.forEach((row, index) => {
+      items[index].venueName = row.venueName?.trim() || null;
+    });
+    await addCardDetails(seasonCode, items);
+  }
   return { items, hasMore: rows.length > limit, total: countRows[0]?.count ?? 0 };
 }
 

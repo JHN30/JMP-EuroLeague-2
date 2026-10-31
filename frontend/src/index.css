@@ -1045,6 +1045,28 @@ button {
   font-weight: 800;
   font-variant-numeric: tabular-nums;
 }
+/* A game still to play: each club's recent form under it, and the arena on a line of its own. */
+.fixture-form {
+  display: flex;
+  justify-content: center;
+  margin-top: 0.3rem;
+}
+/* Five badges have to fit a club's column also with two cards side by side (768px), so they are compact at every width. */
+.fixture-form .flex {
+  gap: 0.125rem;
+}
+.fixture-form .badge {
+  padding-inline: 0.2rem;
+  font-size: 0.6rem;
+}
+.fixture-venue {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-align: center;
+  font-size: 0.72rem;
+  color: color-mix(in srgb, var(--color-base-content) 65%, transparent);
+}
 .fixture-date {
   font-size: 0.72rem;
   font-weight: 700;
@@ -1133,6 +1155,12 @@ button {
   .fixture-scorer-photo {
     width: 1.125rem;
     height: 1.125rem;
+  }
+  .fixture-form {
+    margin-top: 0.15rem;
+  }
+  .fixture-venue {
+    font-size: 0.68rem;
   }
   .fixture-date {
     max-width: 5rem;

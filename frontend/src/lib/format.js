@@ -83,6 +83,19 @@ export function formatShortDate(scheduledAt) {
   return new Date(scheduledAt).toLocaleDateString(undefined, { weekday: "short", day: "numeric", month: "short" });
 }
 
+// The viewer's local calendar day of a timestamp ("2026-10-30"), the day formatShortDate shows; null without a date.
+export function localDayKey(scheduledAt) {
+  if (!scheduledAt) return null;
+  const date = new Date(scheduledAt);
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+}
+
+// A day heading such as "Thursday 30 October" (in the viewer's locale).
+export function formatDayHeading(scheduledAt) {
+  if (!scheduledAt) return "Date to be confirmed";
+  return new Date(scheduledAt).toLocaleDateString(undefined, { weekday: "long", day: "numeric", month: "long" });
+}
+
 export function formatTimeOfDay(scheduledAt) {
   if (!scheduledAt) return "TBD";
   return new Date(scheduledAt).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" });

@@ -11,6 +11,7 @@ export function FixturesSkeleton() {
   return (
     <div aria-hidden="true" className="fixture-box">
       <div className="skeleton mb-3 h-3 w-64 max-w-full" />
+      <div className="skeleton mb-2.5 h-4 w-44 max-w-full" />
       <div className="fixture-grid">
         {Array.from({ length: ROUND_GAMES }, (_, index) => <div key={index} className="skeleton h-32 rounded-field" />)}
       </div>

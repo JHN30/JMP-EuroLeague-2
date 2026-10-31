@@ -131,3 +131,39 @@ test("cards with long names, three-digit scores and a club still to be set hold 
     expect(await findPageOverflow(page)).toMatchObject({ offenders: [] });
   });
 });
+
+test("a round's games sit under one heading per day, in tip-off order, with undated games last", async ({ page }) => {
+  const days = ["2026-11-05T12:00:00Z", "2026-11-05T13:30:00Z", "2026-11-06T12:00:00Z", null];
+  await page.route(/\/api\/seasons\/[^/]+\/games\?.*round=\d+/, async (route) => {
+    const response = await route.fetch();
+    const body = await response.json();
+    const base = body.games[0];
+    body.games = days.map((scheduledAt, index) => ({ ...base, gameCode: 9100 + index, played: false, localScore: null, roadScore: null, scheduledAt }));
+    await route.fulfill({ response, json: body });
+  });
+  await openGames(page);
+  const expected = await page.evaluate(
+    (dates) => dates.map((date) => new Date(date).toLocaleDateString(undefined, { weekday: "long", day: "numeric", month: "long" })),
+    days.slice(0, 3),
+  );
+  const headings = page.locator(".fixture-day-heading");
+  await expect(headings).toHaveCount(3);
+  await expect(headings.nth(0)).toHaveText(`${expected[0]}2 games`);
+  await expect(headings.nth(1)).toHaveText(`${expected[2]}1 game`);
+  await expect(headings.nth(2)).toHaveText("Date to be confirmed1 game");
+  await expect(page.getByRole("heading", { level: 2, name: new RegExp(expected[0]) })).toBeVisible();
+  // Each day's cards, in order, under their own heading.
+  const perDay = await page.locator(".fixture-days > section").evaluateAll((sections) => sections.map((section) => section.querySelectorAll(".fixture-card").length));
+  expect(perDay).toEqual([2, 1, 1]);
+});
+
+for (const season of [undefined, "2013", "2019", "2000"]) {
+  test(`${season ?? "live"} season: every game card sits under a day heading, and nothing overflows at 320px`, async ({ page }) => {
+    await openGames(page, season);
+    const orphans = await page.locator(".fixture-card").evaluateAll((cards) => cards.filter((card) => !card.closest("section")?.querySelector(":scope > h2.fixture-day-heading")).length);
+    expect(orphans).toBe(0);
+    await atWidths(page, [320, 1024], async () => {
+      expect(await findPageOverflow(page)).toMatchObject({ offenders: [] });
+    });
+  });
+}

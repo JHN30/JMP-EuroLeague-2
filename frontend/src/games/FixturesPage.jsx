@@ -12,6 +12,7 @@ import LabelledSelect from "../lib/LabelledSelect";
 import PageHeader from "../lib/PageHeader";
 import { useCentredSelection } from "../lib/useCentredSelection";
 import { useDocumentTitle } from "../lib/useDocumentTitle";
+import { formatDayHeading, localDayKey } from "../lib/format";
 import { listContainer } from "../lib/motion";
 import { usePhaseParam } from "../lib/usePhaseParam";
 import { useSeasonFormat } from "../lib/useSeasonFormat";
@@ -23,6 +24,20 @@ import GameCard from "./GameCard";
 
 // A round never holds more than a handful of games; this is the API's page cap.
 const ROUND_GAME_LIMIT = 100;
+
+// The games of a round or stage by the viewer's calendar day, in the order they come (tip-off order), with undated games
+// last under one "Date to be confirmed" day.
+function gamesByDay(games) {
+  const days = new Map();
+  for (const game of games) {
+    const key = localDayKey(game.scheduledAt) ?? "tbc";
+    if (!days.has(key)) days.set(key, { key, games: [] });
+    days.get(key).games.push(game);
+  }
+  const undated = days.get("tbc");
+  days.delete("tbc");
+  return undated ? [...days.values(), undated] : [...days.values()];
+}
 
 export default function FixturesPage() {
   useDocumentTitle("Games");
@@ -112,6 +127,7 @@ export default function FixturesPage() {
 
   const allGames = stageMode ? (stages.find((stage) => stage.key === selectedStage)?.games ?? []) : (gamesQuery.data?.games ?? []);
   const games = groupName === null ? allGames : allGames.filter((game) => game.groupName === groupLabel(groupName));
+  const days = gamesByDay(games);
   const isResolvingRound = formatQuery.isLoading || (stageMode ? stageGamesQuery.isLoading : roundsQuery.isLoading || nextGameQuery.isLoading);
 
   // Keep the selected round visible in the scrolling strip, also when the strip changes width (a phone turned sideways).
@@ -280,22 +296,32 @@ export default function FixturesPage() {
               </p>
             ) : null}
             <motion.div
-              key={`${phaseCode}-${stageMode ? selectedStage : selectedRound}`}
-              className="fixture-grid"
+              key={`${phaseCode}-${stageMode ? selectedStage : selectedRound}-${groupName ?? ""}`}
+              className="fixture-days"
               variants={listContainer}
               initial="hidden"
               animate="show"
             >
-              {games.map((game) => (
-                <GameCard
-                  key={game.gameCode}
-                  game={game}
-                  seasonCode={seasonCode}
-                  cancelled={format?.status === "cancelled"}
-                  showGroup={groupedPhase}
-                  caption={stageMode ? eliminationStageLabel(format, game) : null}
-                  standingByClubCode={standingByClubCode}
-                />
+              {days.map((day) => (
+                <section key={day.key} aria-labelledby={`fixture-day-${day.key}`}>
+                  <h2 id={`fixture-day-${day.key}`} className="fixture-day-heading">
+                    {formatDayHeading(day.games[0].scheduledAt)}
+                    <span className="fixture-day-count">{day.games.length === 1 ? "1 game" : `${day.games.length} games`}</span>
+                  </h2>
+                  <motion.div className="fixture-grid" variants={listContainer}>
+                    {day.games.map((game) => (
+                      <GameCard
+                        key={game.gameCode}
+                        game={game}
+                        seasonCode={seasonCode}
+                        cancelled={format?.status === "cancelled"}
+                        showGroup={groupedPhase}
+                        caption={stageMode ? eliminationStageLabel(format, game) : null}
+                        standingByClubCode={standingByClubCode}
+                      />
+                    ))}
+                  </motion.div>
+                </section>
               ))}
             </motion.div>
           </div>

@@ -487,10 +487,24 @@ export async function getTeamPbpStats(seasonCode: string, scope: string, clubCod
 
 export type GameFlowRow = Pick<
   TeamPbpStatsRow,
-  "clubCode" | "games" | "timeLeadingSeconds" | "timeTrailingSeconds" | "timeTiedSeconds" | "leadChangesPerGame" | "largestLead"
+  | "clubCode"
+  | "games"
+  | "timeLeadingSeconds"
+  | "timeTrailingSeconds"
+  | "timeTiedSeconds"
+  | "leadChangesPerGame"
+  | "largestLead"
+  | "tiesPerGame"
+  | "longestRun"
+  | "runs6Plus"
+  | "clutchSeconds"
+  | "clutchPointsFor"
+  | "clutchPointsAgainst"
+  | "assistedFgPct"
+  | "avgPossessionSeconds"
 >;
 
-// Time spent leading, tied and trailing for every club in a scope (play-by-play based).
+// Every club's play-by-play game flow in a scope: time leading, tied and trailing, lead changes, runs and clutch time.
 export async function getGameFlow(seasonCode: string, scope: string): Promise<GameFlowRow[]> {
   return catalogRead(() =>
     db.select({
@@ -501,6 +515,14 @@ export async function getGameFlow(seasonCode: string, scope: string): Promise<Ga
       timeTiedSeconds: teamPbpStats.timeTiedSeconds,
       leadChangesPerGame: teamPbpStats.leadChangesPerGame,
       largestLead: teamPbpStats.largestLead,
+      tiesPerGame: teamPbpStats.tiesPerGame,
+      longestRun: teamPbpStats.longestRun,
+      runs6Plus: teamPbpStats.runs6Plus,
+      clutchSeconds: teamPbpStats.clutchSeconds,
+      clutchPointsFor: teamPbpStats.clutchPointsFor,
+      clutchPointsAgainst: teamPbpStats.clutchPointsAgainst,
+      assistedFgPct: teamPbpStats.assistedFgPct,
+      avgPossessionSeconds: teamPbpStats.avgPossessionSeconds,
     })
       .from(teamPbpStats)
       .where(and(...inScope(teamPbpStats, seasonCode, scope)))

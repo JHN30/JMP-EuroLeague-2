@@ -178,6 +178,8 @@ test("the Ratings title has the panel's width below 640px with the badge under i
 });
 
 test("the chart's dots shrink as the rounds grow, and a short season has no chart", async ({ page }) => {
+  // Six page loads, each with the league standings, game flow and player impact beside the mocked answers.
+  test.setTimeout(90_000);
   const { slug, team } = await liveTeam(page);
   await page.setViewportSize({ width: 320, height: HEIGHT });
 
@@ -195,32 +197,106 @@ test("the chart's dots shrink as the rounds grow, and a short season has no char
   await expectNoSidewaysScroll(page);
 });
 
+// ---- Strength and four factors (the live league standings) ----
+
+const STANDINGS_URL = (url) => /\/api\/seasons\/[^/]+\/advanced\/standings$/.test(url.pathname);
+const PLAYERS_URL = (url) => /\/api\/seasons\/[^/]+\/teams\/[^/]+\/players-advanced$/.test(url.pathname);
+const RANK = /^\d+(st|nd|rd|th) of \d+$/;
+
+test("the strength tiles and tables and the four factors show each value with its league rank and average, at every width", async ({ page }) => {
+  const { slug, team } = await liveTeam(page);
+  await openAdvanced(page, { slug, team });
+  const strength = block(page, "How strong the team is");
+  const tiles = strength.locator(".grid > .panel");
+  await expect(tiles).toHaveCount(4, { timeout: 30_000 });
+  // (Each label carries its tip for screen readers, so the labels are matched by how they start.)
+  await expect(tiles.locator(".eyebrow")).toHaveText([/^Net rating/, /^Adjusted net/, /^SRS/, /^Schedule/]);
+  // Every table row has a value, a rank and the league average.
+  const tableRows = strength.locator("tbody tr");
+  await expect(tableRows).toHaveCount(17);
+  await expect(tableRows.filter({ hasText: "Offensive rating" }).first().locator("td").nth(2)).toHaveText(RANK);
+  // A figure that measures clubs against each other averages zero, said with its reason; the league's best is beside it.
+  const net = tableRows.filter({ hasText: /^Net rating/ });
+  await expect(net.locator("td").nth(3)).toHaveText(/^0 \(Zero for the league as a whole/);
+  await expect(net.locator("td").nth(4)).toHaveText(/^[+-]\d+\.\d$/);
+  await expect(strength.getByText(/After round \d+, against the \d+ clubs of the stage/)).toBeVisible();
+
+  const factors = block(page, "What wins possessions, at both ends");
+  await expect(factors.locator("li")).toHaveCount(10);
+  await expect(factors.locator("li").filter({ hasText: "League" })).toHaveCount(10);
+
+  await atWidths(page, [...WIDTHS, 1440], async (width) => {
+    const boxes = await tiles.evaluateAll((els) => els.map((el) => el.getBoundingClientRect().toJSON()));
+    // Two by two below lg, one row of four from lg.
+    expect(new Set(boxes.map((box) => Math.round(box.top))).size).toBe(width >= 1024 ? 1 : 2);
+    // (The sections slide in and the bars grow, so the checks wait for them to settle.)
+    await expect.poll(() => holdsContent(strength)).toBe(true);
+    await expect.poll(() => holdsContent(factors.locator("li"))).toBe(true);
+    await expectNoSidewaysScroll(page);
+  });
+});
+
+test("before the schedule links every club, the schedule figures are blank with a note", async ({ page }) => {
+  const { slug, team } = await liveTeam(page);
+  await page.setViewportSize({ width: 390, height: HEIGHT });
+  await page.route(STANDINGS_URL, async (route) => {
+    const live = await (await route.fetch()).json();
+    await route.fulfill({ json: { ...live, standings: live.standings.map((row) => ({ ...row, connected: false })) } });
+  });
+  await openAdvanced(page, { slug, team });
+  const strength = block(page, "How strong the team is");
+  await expect(strength.getByText(/appear once the games played link every club/)).toBeVisible({ timeout: 30_000 });
+  const srs = strength.locator("tbody tr").filter({ hasText: /^SRS/ });
+  await expect(srs.locator("td").nth(1)).toHaveText("—");
+  await expect(srs.locator("td").nth(2)).toHaveText("—");
+  // The ratings that don't depend on the schedule keep their ranks.
+  await expect(strength.locator("tbody tr").filter({ hasText: "Offensive rating" }).first().locator("td").nth(2)).toHaveText(RANK);
+  await expectNoSidewaysScroll(page);
+});
+
+test("when the league comparison fails, strength and four factors offer a retry and the rest of the tab stays", async ({ page }) => {
+  const { slug, team } = await liveTeam(page);
+  await page.setViewportSize({ width: 320, height: HEIGHT });
+  await page.route(STANDINGS_URL, failing);
+  await openAdvanced(page, { slug, team });
+  await expect(page.getByText("Could not load the league comparison.")).toHaveCount(2, { timeout: 30_000 });
+  await expect(block(page, "Offense and defense through the season")).toBeVisible();
+  // The splits table without its season row.
+  await expect(block(page, "Home, away and recent form").locator("tbody tr")).toHaveCount(4);
+  await expectNoSidewaysScroll(page);
+});
+
 // ---- Splits and Play by play ----
 
-test("the Splits are two by two below 640px and two columns from 640px, and the facts are a tidy grid", async ({ page }) => {
+test("the Splits are one table under the season row, and the facts are a tidy grid with league ranks", async ({ page }) => {
   const { slug, team } = await liveTeam(page);
   await openAdvanced(page, { slug, team });
   const splits = block(page, "Home, away and recent form");
-  await expect(splits.locator(".panel")).toHaveCount(4, { timeout: 30_000 });
+  const rows = splits.locator("tbody tr");
+  await expect(rows).toHaveCount(5, { timeout: 30_000 });
+  await expect(rows.first()).toContainText("Season");
+  await expect(rows.nth(1)).toContainText("vs season");
+  // Every column says what it is.
+  await expect(splits.locator("th", { hasText: "ORtg" })).toContainText("points scored per 100 possessions");
+  await expect(splits.locator("th", { hasText: "MOV" })).toContainText("Margin of victory");
   const flow = block(page, "How games unfold");
   const facts = flow.locator("div.border-t > div");
-  await expect(facts).toHaveCount(8);
+  await expect(facts).toHaveCount(9);
+  await expect(facts.filter({ hasText: "Clutch margin" })).toContainText("+2");
+  await expect(facts.getByText(RANK).first()).toBeVisible();
 
   await atWidths(page, WIDTHS, async (width) => {
     const phone = width < 640;
-    // Two columns either way (four from xl, not reached here); on a phone the block is short.
-    const cards = await splits.locator(".panel").evaluateAll((els) => els.map((el) => el.getBoundingClientRect().toJSON()));
-    expect(new Set(cards.map((card) => Math.round(card.left))).size).toBe(2);
-    expect(new Set(cards.map((card) => Math.round(card.top))).size).toBe(2);
-    if (phone) expect((await splits.boundingBox()).height).toBeLessThan(600);
-    expect(await holdsContent(splits.locator(".panel"))).toBe(true);
+    // The four ratings columns from 640px; below it they sit under each split's name.
+    await expect(splits.locator("th", { hasText: "ORtg" })).toBeVisible({ visible: !phone });
+    await expect(rows.nth(1).locator("td").first().locator("span.block")).toBeVisible({ visible: phone });
     expect(await holdsContent(splits)).toBe(true);
 
-    // The eight facts: four rows of two on a phone, the wrapping row it was from 640px.
+    // The nine facts: two columns on a phone, the wrapping row it was from 640px.
     const rects = await facts.evaluateAll((els) => els.map((el) => el.getBoundingClientRect().toJSON()));
     if (phone) {
       expect(new Set(rects.map((rect) => Math.round(rect.left))).size).toBe(2);
-      expect(new Set(rects.map((rect) => Math.round(rect.top))).size).toBe(4);
+      expect(new Set(rects.map((rect) => Math.round(rect.top))).size).toBe(5);
     } else {
       expect(await flow.locator("div.border-t").evaluate((el) => getComputedStyle(el).display)).toBe("flex");
     }
@@ -238,10 +314,13 @@ test("a split with one game or none, and a game flow without clutch or timed gam
   });
   await openAdvanced(page, { slug, team, payload });
   const splits = block(page, "Home, away and recent form");
-  await expect(splits.locator(".panel")).toHaveCount(4, { timeout: 30_000 });
-  await expect(splits.getByText("1 game", { exact: true }).first()).toBeVisible();
-  await expect(splits.getByText("—")).toHaveCount(1);
+  const away = splits.locator("tbody tr").filter({ hasText: "Away" });
+  await expect(away).toBeVisible({ timeout: 30_000 });
+  await expect(away.locator("td").nth(1)).toHaveText("0");
+  await expect(away.getByText("—").first()).toBeVisible();
+  await expect(splits.locator("tbody tr").filter({ hasText: "Home" })).toContainText("1-0");
   await expect(page.getByText("No clutch minutes yet.")).toBeVisible();
+  await expect(block(page, "How games unfold").locator("div.border-t > div").filter({ hasText: "Clutch margin" })).toContainText("—");
   expect(await holdsContent(splits)).toBe(true);
   expect(await holdsContent(block(page, "How games unfold"))).toBe(true);
   await expectNoSidewaysScroll(page);
@@ -371,5 +450,73 @@ test("the Advanced states fit a phone: failing, nothing yet, lineups failing, an
   // No Shooting pointer panel: the Shooting tab is next to this one.
   await expect(page.getByRole("button", { name: "Open Shooting →" })).toHaveCount(0);
   await expect(page.getByText("Shot zones, the court map")).toHaveCount(0);
+  await expectNoSidewaysScroll(page);
+});
+
+// ---- Player impact ----
+
+function impactPlayer(index, overrides = {}) {
+  return {
+    personKey: `P${index}`,
+    playerName: `${SURNAMES[index % SURNAMES.length].toUpperCase()}, ${["ISAAC", "DYLAN", "STERLING", "BRUNO", "CAMERON"][index % 5]}`,
+    secondsPlayed: 30_000 - index * 1_000,
+    onSeconds: 30_000 - index * 1_000,
+    onNetRating: 4 - index,
+    offNetRating: -2 + index,
+    netRatingDiff: 6 - index * 2,
+    rapm: 0.5 - index * 0.2,
+    rapmOffense: 0.3,
+    rapmDefense: 0.2 - index * 0.2,
+    winShares: 1 + index * 0.4,
+    offWinShares: 0.5 + index * 0.2,
+    defWinShares: 0.5 + index * 0.2,
+    ...overrides,
+  };
+}
+
+test("the player impact charts are sorted, leave out short samples, link the players and fit every width", async ({ page }) => {
+  const { slug, team } = await liveTeam(page);
+  const players = [...Array.from({ length: 6 }, (_, index) => impactPlayer(index)), impactPlayer(6, { secondsPlayed: 3_000, onSeconds: 3_000, netRatingDiff: 40, winShares: 9 })];
+  await page.route(PLAYERS_URL, (route) => route.fulfill({ json: { scope: "RS", round: 38, earlySeason: false, players } }));
+  await openAdvanced(page, { slug, team });
+  const impact = block(page, "Who drives the results");
+  const onOff = impact.getByRole("list", { name: "On/off net rating" }).locator("li");
+  const shares = impact.getByRole("list", { name: "Win shares" }).locator("li");
+  // The player under 100 minutes is in neither chart.
+  await expect(onOff).toHaveCount(6, { timeout: 30_000 });
+  await expect(shares).toHaveCount(6);
+  // On/off from the best difference; win shares from the most.
+  await expect(onOff.first()).toContainText("+6.0");
+  await expect(onOff.last()).toContainText("-4.0");
+  await expect(shares.first()).toContainText("3.0");
+  await expect(onOff.first().getByRole("link")).toHaveAttribute("href", `/${slug}/players/P0`);
+  await expect(impact.getByText(/Team total/)).toContainText("Team total");
+
+  await atWidths(page, [...WIDTHS, 1440], async (width) => {
+    const [left, right] = await impact.locator(".grid > .panel").evaluateAll((els) => els.map((el) => el.getBoundingClientRect().toJSON()));
+    // Side by side from lg, stacked below.
+    if (width >= 1024) expect(Math.abs(left.top - right.top)).toBeLessThan(2);
+    else expect(right.top).toBeGreaterThan(left.bottom - 1);
+    expect(await holdsContent(impact.locator("li"))).toBe(true);
+    await expectNoSidewaysScroll(page);
+  });
+});
+
+test("the player impact states fit a phone: nobody with enough minutes, and failing", async ({ page }) => {
+  const { slug, team } = await liveTeam(page);
+  await page.setViewportSize({ width: 320, height: HEIGHT });
+  const short = [impactPlayer(0, { secondsPlayed: 600, onSeconds: 600 })];
+  await page.route(PLAYERS_URL, (route) => route.fulfill({ json: { scope: "RS", round: 2, earlySeason: true, players: short } }));
+  await openAdvanced(page, { slug, team });
+  await expect(page.getByText("No player has 100 on-court minutes in this stage yet.")).toBeVisible({ timeout: 30_000 });
+  await expect(page.getByText("No player has 100 minutes in this stage yet.")).toBeVisible();
+  await expectNoSidewaysScroll(page);
+
+  await page.unroute(PLAYERS_URL);
+  await page.route(PLAYERS_URL, failing);
+  await page.reload();
+  await page.getByRole("tab", { name: "Advanced", exact: true }).click();
+  await expect(page.getByText("Could not load player impact.")).toBeVisible({ timeout: 30_000 });
+  await expect(block(page, "Who drives the results").getByRole("button", { name: /retry/i })).toBeVisible();
   await expectNoSidewaysScroll(page);
 });

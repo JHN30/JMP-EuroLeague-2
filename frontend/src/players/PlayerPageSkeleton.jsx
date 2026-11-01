@@ -65,22 +65,26 @@ function PlayerTopSkeleton() {
       <div className="panel relative mb-6 grid overflow-hidden sm:grid-cols-[11rem_1fr]">
         <div className="absolute inset-x-0 top-0 z-10 h-0.5 bg-primary" />
         <div className="skeleton rounded-none max-sm:mx-auto max-sm:mt-5 max-sm:aspect-4/5 max-sm:w-36 max-sm:rounded-box sm:row-span-2 sm:w-full" />
-        <div className="flex min-w-0 flex-col items-center gap-1 p-3 pb-0 sm:flex-row sm:items-start sm:justify-between sm:gap-3 sm:p-6 sm:pb-0">
+        <div className="flex min-w-0 flex-col items-center gap-1 p-3 pb-0 sm:flex-row sm:items-start sm:justify-between sm:gap-3 sm:p-5 sm:pb-0">
           <div className="flex flex-col gap-2 max-sm:items-center">
             <div className="skeleton h-3 w-32" />
             <div className="skeleton h-3.5 w-20" />
-            <div className="skeleton h-8 w-56 max-w-full lg:h-12" />
+            <div className="skeleton h-8 w-56 max-w-full lg:h-10" />
           </div>
           <div className="skeleton h-8 w-14 sm:h-14 sm:w-20" />
         </div>
-        <div className="flex min-w-0 flex-col gap-4 p-3 max-sm:items-center sm:px-6 sm:pt-4 sm:pb-6">
-          <div className="skeleton h-8 w-44" />
+        <div className="flex min-w-0 flex-col gap-3 p-3 max-sm:items-center sm:px-5 sm:pt-3 sm:pb-5">
+          {/* The club, with the Compare button on its right from sm (under the facts below sm, as the hero has it). */}
+          <div className="flex w-full items-center justify-center gap-3 sm:justify-between">
+            <div className="skeleton h-8 w-44" />
+            <div className="skeleton h-8 w-52 max-sm:hidden" />
+          </div>
           <div className="flex flex-wrap justify-center gap-x-8 gap-y-3 sm:justify-start">
-            {range(5).map((index) => (
+            {range(6).map((index) => (
               <FactSkeleton key={index} />
             ))}
           </div>
-          <div className="skeleton h-8 w-52 max-sm:w-full" />
+          <div className="skeleton h-8 w-full sm:hidden" />
         </div>
       </div>
       <div className="skeleton mb-4 h-11 w-[38rem] max-w-full" />
@@ -92,12 +96,12 @@ function PlayerTopSkeleton() {
 export function FormBodySkeleton() {
   return (
     <div aria-hidden="true">
-      <div className="mb-4 flex flex-wrap gap-x-8 gap-y-2">
+      <div className="mb-3 flex flex-wrap gap-x-8 gap-y-2">
         {range(4).map((index) => (
           <FactSkeleton key={index} value="h-6 w-10" />
         ))}
       </div>
-      <div className="flex h-44 items-end gap-3">
+      <div className="flex h-36 items-end gap-3">
         {[45, 80, 45, 15, 30, 15, 60].map((height, index) => (
           <div key={index} className="flex h-full flex-1 flex-col items-center justify-end gap-2">
             <div className="skeleton w-full max-w-8 rounded-sm" style={{ height: `${height}%` }} />
@@ -105,7 +109,7 @@ export function FormBodySkeleton() {
           </div>
         ))}
       </div>
-      <div className="skeleton mt-4 h-10 w-full" />
+      <div className="skeleton mt-3 h-10 w-full" />
     </div>
   );
 }
@@ -118,7 +122,7 @@ export function PlayerOverviewSkeleton() {
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <div className="panel p-4">
           <SkeletonPanelHead title="w-20" />
-          <div className="skeleton mx-auto aspect-square w-full max-w-64 rounded-full" />
+          <div className="skeleton mx-auto aspect-square w-full max-w-52 rounded-full" />
           <div className="mt-3 flex flex-wrap gap-2">
             <div className="skeleton h-6 w-60 max-w-full" />
             <div className="skeleton h-6 w-56 max-w-full" />
@@ -129,8 +133,8 @@ export function PlayerOverviewSkeleton() {
           <FormBodySkeleton />
         </div>
       </div>
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        <div className="panel p-4">
+      <div className="panel grid grid-cols-1 gap-x-10 gap-y-5 p-4 lg:grid-cols-2">
+        <div>
           <SkeletonPanelHead title="w-24" />
           <div className="flex flex-col gap-3">
             {range(3).map((index) => (
@@ -147,7 +151,7 @@ export function PlayerOverviewSkeleton() {
             ))}
           </div>
         </div>
-        <div className="panel p-4">
+        <div className="max-lg:border-t max-lg:border-base-300 max-lg:pt-5 lg:border-l lg:border-base-300 lg:pl-10">
           <SkeletonPanelHead title="w-52" />
           <div className="skeleton h-5 w-full rounded-full" />
           <div className="mt-4 grid grid-cols-3 gap-3">

@@ -27,13 +27,10 @@ function RankedStat({ stat, ranking, minGames }) {
   const fill = rank && of > 1 ? ((of - rank) / (of - 1)) * 100 : 0;
 
   return (
-    <motion.div className="rounded-box border border-base-300 bg-base-100 p-3" variants={listItem} title={stat.title}>
-      <div className="flex items-center justify-between gap-2">
-        <span className="muted text-xs font-bold uppercase tracking-wide">{stat.label}</span>
-        {rank ? <span className={`text-xs font-bold tabular-nums ${tier.text}`}>#{rank}</span> : null}
-      </div>
-      <p className="mt-1 text-3xl font-black leading-none tabular-nums">{formatPerGame(value)}</p>
-      <div aria-hidden="true" className="mt-3 h-1 overflow-hidden rounded-full bg-base-300">
+    <motion.div className="rounded-box border border-base-300 bg-base-100 px-3 py-2" variants={listItem} title={stat.title}>
+      <span className="muted text-xs font-bold uppercase tracking-wide">{stat.label}</span>
+      <p className="mt-0.5 text-2xl font-black leading-none tabular-nums">{formatPerGame(value)}</p>
+      <div aria-hidden="true" className="mt-2 h-1 overflow-hidden rounded-full bg-base-300">
         {rank ? (
           <motion.div
             className={`h-full rounded-full ${tier.bar}`}
@@ -42,7 +39,7 @@ function RankedStat({ stat, ranking, minGames }) {
           />
         ) : null}
       </div>
-      <p className="muted mt-1 text-xs">
+      <p className={`mt-1 text-xs ${rank ? `font-semibold ${tier.text}` : "muted"}`}>
         {rank ? `${ordinal(rank)} of ${of}` : unqualified ? `Not ranked: under ${minGames} games` : "No recorded stats"}
       </p>
     </motion.div>
@@ -115,14 +112,49 @@ function ProfileRadar({ axes }) {
   }, [axes, theme]);
 
   return (
-    <div className="relative h-64 w-full">
+    <div className="relative h-52 w-full">
       <canvas ref={canvasRef} role="img" aria-label={`Percentile radar across ${axes.map((axis) => axis.label).join(", ")}`} />
     </div>
   );
 }
 
-function ProfilePanel({ players, personKey }) {
-  const axes = PROFILE_AXES.map((axis) => ({ ...axis, ...rankPlayer(players, personKey, axis, { qualifiedOnly: true }) }));
+// The six axes with the player's percentile on each (null where the player isn't ranked).
+function profileAxes(players, personKey) {
+  return PROFILE_AXES.map((axis) => ({ ...axis, ...rankPlayer(players, personKey, axis, { qualifiedOnly: true }) }));
+}
+
+// Each axis as a bar of its percentile, coloured by third, with the per-game value (or TS%) and the percentile beside it.
+function PercentileBars({ axes }) {
+  return (
+    <ul className="flex flex-col gap-2.5" aria-label="Percentiles">
+      {axes.map((axis) => {
+        const tier = axis.percentile === null ? null : rankTier({ rank: axis.rank, of: axis.of });
+        const value = axis.field === "trueShootingPercentage" ? formatPercentage(axis.value) : formatPerGame(axis.value);
+        return (
+          <li key={axis.key} className="grid grid-cols-[minmax(0,1fr)_auto] items-baseline gap-x-2 text-sm">
+            <span className="flex min-w-0 items-baseline gap-1.5">
+              <span className="truncate font-semibold">{axis.label}</span>
+              <span className="muted text-xs tabular-nums whitespace-nowrap">
+                {value} {axis.unit}
+              </span>
+            </span>
+            <span className={`text-xs font-bold tabular-nums ${tier?.text ?? "muted"}`}>
+              {axis.percentile === null ? "—" : ordinal(axis.percentile)}
+            </span>
+            <div aria-hidden="true" className="col-span-2 h-1.5 overflow-hidden rounded-full bg-base-300">
+              {axis.percentile === null ? null : (
+                <motion.div className={`h-full rounded-full ${tier.bar}`} style={{ width: `${Math.max(axis.percentile, 3)}%`, transformOrigin: "left" }} {...barFill} />
+              )}
+            </div>
+          </li>
+        );
+      })}
+    </ul>
+  );
+}
+
+// Shown only for a player with at least one percentile; the tab leaves it out otherwise.
+function ProfilePanel({ axes }) {
   const ranked = axes.filter((axis) => axis.percentile !== null).sort((a, b) => b.percentile - a.percentile);
   const best = ranked[0];
   const weakest = ranked.length > 1 ? ranked[ranked.length - 1] : null;
@@ -130,23 +162,21 @@ function ProfilePanel({ players, personKey }) {
   return (
     <Panel className="p-4">
       <PanelHeader kicker="PERCENTILE 0-100" title="Profile" />
-      {ranked.length === 0 ? (
-        <p className="muted text-sm">Not enough recorded stats yet to chart percentiles.</p>
-      ) : (
-        <>
-          <ProfileRadar axes={axes} />
-          <div className="mt-3 flex flex-wrap gap-2 text-sm">
-            <span className="badge badge-success badge-outline">
-              Strongest: {best.label} · {ordinal(best.percentile)} percentile
-            </span>
-            {weakest ? (
-              <span className="badge badge-error badge-outline">
-                Weakest: {weakest.label} · {ordinal(weakest.percentile)} percentile
-              </span>
-            ) : null}
-          </div>
-        </>
-      )}
+      {/* The radar's shape, and beside it (under it on a phone) the same six axes as bars with the number behind each. */}
+      <div className="grid grid-cols-1 items-center gap-4 sm:grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)]">
+        <ProfileRadar axes={axes} />
+        <PercentileBars axes={axes} />
+      </div>
+      <div className="mt-3 flex flex-wrap gap-2 text-sm">
+        <span className="badge badge-success badge-outline">
+          Strongest: {best.label} · {ordinal(best.percentile)} percentile
+        </span>
+        {weakest ? (
+          <span className="badge badge-error badge-outline">
+            Weakest: {weakest.label} · {ordinal(weakest.percentile)} percentile
+          </span>
+        ) : null}
+      </div>
     </Panel>
   );
 }
@@ -213,7 +243,7 @@ function FormBar({ game, seasonCode, height }) {
         className="group flex h-full flex-col items-center gap-1.5 rounded-field px-0.5 pb-1 hover:bg-base-200"
       >
         <span className="text-sm font-bold tabular-nums">{points}</span>
-        <div className="flex h-28 w-full items-end justify-center">
+        <div className="flex h-20 w-full items-end justify-center">
           <motion.div
             className={`w-full max-w-7 rounded-t-field ${tone}`}
             style={{ height: `${height}%`, transformOrigin: "bottom" }}
@@ -256,7 +286,7 @@ function FormPanel({ gamesQuery, own, seasonCode }) {
 
       body = (
         <>
-          <div className="mb-4 flex flex-wrap gap-x-8 gap-y-2">
+          <div className="mb-3 flex flex-wrap gap-x-8 gap-y-2">
             <FormDelta label="PTS" recent={averageOf(recent, "points")} season={statNumber(season?.pointsScored)} compare={compare} />
             <FormDelta label="REB" recent={averageOf(recent, "totalRebounds")} season={statNumber(season?.totalRebounds)} compare={compare} />
             <FormDelta label="AST" recent={averageOf(recent, "assistances")} season={statNumber(season?.assists)} compare={compare} />
@@ -269,7 +299,7 @@ function FormPanel({ gamesQuery, own, seasonCode }) {
           </motion.ol>
           <Link
             to={`/${seasonCode}/games/${best.gameCode}`}
-            className="mt-4 flex flex-wrap items-baseline gap-x-2 rounded-field border border-base-300 px-3 py-2 text-sm hover:border-primary"
+            className="mt-3 flex flex-wrap items-baseline gap-x-2 rounded-field border border-base-300 px-3 py-2 text-sm hover:border-primary"
           >
             <span className="muted text-xs font-bold uppercase tracking-wide">Best game</span>
             <span className="font-semibold tabular-nums">
@@ -340,9 +370,10 @@ function ShootingPanel({ own, players, personKey }) {
   const sources = POINT_SOURCES.map((source) => ({ ...source, value: statNumber(own?.scoring?.[source.key]) }));
   const hasSources = sources.some((source) => source.value !== null && source.value > 0);
 
+  // One panel: the shots and their efficiency on the left, where the points come from on the right (stacked below lg).
   return (
-    <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-      <Panel className="p-4">
+    <Panel className="grid grid-cols-1 gap-x-10 gap-y-5 p-4 lg:grid-cols-2">
+      <div>
         <PanelHeader kicker="PER GAME" title="Shooting" />
         <ul className="flex flex-col gap-3">
           <ShotRow label="2PT" made={traditional?.twoPointersMade} attempted={traditional?.twoPointersAttempted} percentage={traditional?.twoPointersPercentage} />
@@ -353,9 +384,9 @@ function ShootingPanel({ own, players, personKey }) {
           <EfficiencyChip label="TS%" title="True shooting: points per shooting possession, counting free throws and threes" ranking={trueShooting} field="trueShootingPercentage" />
           <EfficiencyChip label="eFG%" title="Effective field goal percentage: field goals with threes weighted 1.5" ranking={effective} field="effectiveFieldGoalPercentage" />
         </div>
-      </Panel>
+      </div>
 
-      <Panel className="p-4">
+      <div className="max-lg:border-t max-lg:border-base-300 max-lg:pt-5 lg:border-l lg:border-base-300 lg:pl-10">
         <PanelHeader kicker="SHARE OF POINTS" title="Where the points come from" />
         {hasSources ? (
           <>
@@ -385,8 +416,8 @@ function ShootingPanel({ own, players, personKey }) {
         ) : (
           <p className="muted text-sm">No scoring recorded yet.</p>
         )}
-      </Panel>
-    </div>
+      </div>
+    </Panel>
   );
 }
 
@@ -400,6 +431,9 @@ export default function PlayerOverviewSection({ leaderboardQuery, gamesQuery, pe
   const players = leaderboardQuery.data;
   const own = players.find((player) => player.personKey === personKey);
   if (!own) return <EmptyText>No recorded stats for this player in this phase yet.</EmptyText>;
+  const axes = profileAxes(players, personKey);
+  // A player who can't be ranked yet has no radar to draw, so recent form takes the whole row.
+  const hasProfile = axes.some((axis) => axis.percentile !== null);
 
   return (
     <motion.div className="flex flex-col gap-6" variants={sectionContainer} initial="hidden" animate="show">
@@ -412,8 +446,8 @@ export default function PlayerOverviewSection({ leaderboardQuery, gamesQuery, pe
         ) : null}
         <SeasonLine players={players} personKey={personKey} minGames={own.minGames} />
       </motion.section>
-      <motion.section className="grid grid-cols-1 gap-4 lg:grid-cols-2" variants={sectionItem} aria-label="Profile and form">
-        <ProfilePanel players={players} personKey={personKey} />
+      <motion.section className={`grid grid-cols-1 gap-4 ${hasProfile ? "lg:grid-cols-2" : ""}`} variants={sectionItem} aria-label="Profile and form">
+        {hasProfile ? <ProfilePanel axes={axes} /> : null}
         <FormPanel gamesQuery={gamesQuery} own={own} seasonCode={seasonCode} />
       </motion.section>
       <motion.section variants={sectionItem} aria-label="Shooting">

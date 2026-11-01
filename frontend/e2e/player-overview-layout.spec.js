@@ -10,6 +10,7 @@ const LONG_NAME = "LARENTZAKIS-PAPADOPOULOS, KONSTANTINOS";
 const PLAYER = /\/api\/seasons\/[^/]+\/players\/[^/]+$/;
 const REGISTRATIONS = /\/api\/seasons\/[^/]+\/players\/[^/]+\/registrations$/;
 const GAMES = /\/api\/seasons\/[^/]+\/players\/[^/]+\/games(\?|$)/;
+const LEADERBOARD = /\/api\/seasons\/[^/]+\/season-stats/;
 
 // Answers a request with the live response after `patch` has changed its JSON.
 async function patched(page, pattern, patch) {
@@ -111,10 +112,10 @@ test("the hero keeps a long surname whole, with the number under it and the club
     const clubName = (await chips.first().textContent()).trim();
     if (width < 640) expect(visible.some((text) => text.length <= 4 && clubName.includes(text))).toBe(true);
 
-    // The Compare button is a full-width row on a phone and its own size from 640px.
+    // The Compare button is a full-width row on a phone and its own size from 640px (the copy for the other width is hidden).
     const widths = await panel.evaluate((el) => ({
       panel: el.getBoundingClientRect().width,
-      button: el.querySelector("a.btn").getBoundingClientRect().width,
+      button: [...el.querySelectorAll("a.btn")].map((link) => link.getBoundingClientRect().width).find((size) => size > 0),
     }));
     if (width < 640) expect(widths.button / widths.panel).toBeGreaterThan(0.85);
     else expect(widths.button / widths.panel).toBeLessThan(0.5);
@@ -168,7 +169,7 @@ test("the six tabs are one row that scrolls on its own below 1024px and the arro
 test("a player without a photo, a number, a club or a height, and a traded player, keep the hero tidy", async ({ page }) => {
   const { href } = await firstPlayer(page);
   await patched(page, PLAYER, (json) => {
-    Object.assign(json.player, { imageUrl: null, dorsal: null, heightCm: null, clubCode: null, clubName: null, clubTvCode: null, crestUrl: null });
+    Object.assign(json.player, { imageUrl: null, dorsal: null, heightCm: null, weightKg: null, birthDate: null, clubCode: null, clubName: null, clubTvCode: null, crestUrl: null });
   });
   await patched(page, REGISTRATIONS, (json) => {
     json.registrations = [];
@@ -180,6 +181,9 @@ test("a player without a photo, a number, a club or a height, and a traded playe
     const portrait = await hero(page).locator("> div").nth(1).evaluate((el) => Math.round(el.getBoundingClientRect().width));
     expect(portrait).toBe(width < 640 ? 144 : 176);
     await expect(hero(page)).not.toContainText("#");
+    // No weight is no Weight fact at all, and no birth date is no "born" line.
+    await expect(hero(page)).not.toContainText(/weight/i);
+    await expect(hero(page)).not.toContainText("born");
     await expectNoSidewaysScroll(page);
   });
 
@@ -231,6 +235,112 @@ test("every Overview panel holds its content, the radar its labels and the form 
     expect(bars).toBe(true);
     // The points mix keeps its three cells whole words.
     expect(await findBrokenWords(page.locator("#player-detail-panel li > span.flex"))).toEqual([]);
+    await expectNoSidewaysScroll(page);
+  });
+});
+
+test("the hero shows the weight and the birth date under the age", async ({ page }) => {
+  const { href } = await firstPlayer(page);
+  await patched(page, PLAYER, (json) => {
+    Object.assign(json.player, { weightKg: 95, birthDate: "1995-12-15" });
+  });
+  await openPlayer(page, href);
+  const weight = hero(page).locator("div", { has: page.getByText("Weight", { exact: true }) }).last();
+  await expect(weight).toContainText("95 kg");
+  // The date as written, never the day before (a bare date read as UTC midnight would be the 14th west of UTC).
+  const age = hero(page).locator("div", { has: page.getByText("Age", { exact: true }) }).last();
+  await expect(age).toContainText(/born .*15.*1995|born .*1995.*15/);
+  await atWidths(page, [320, 390, 640, 1024], async () => {
+    expect(await holdsContent(hero(page))).toBe(true);
+    await expectNoSidewaysScroll(page);
+  });
+});
+
+test("the Compare button shares the club row from 640px and is the last full-width row below it", async ({ page }) => {
+  const { href } = await firstPlayer(page);
+  await openPlayer(page, href);
+  await atWidths(page, [320, 390, 639, 640, 1024, 1280], async (width) => {
+    // One Compare link at a time, whatever the width.
+    const compare = hero(page).getByRole("link", { name: "Compare with another player" });
+    await expect(compare).toHaveCount(1);
+    const [button, club, facts] = await Promise.all([
+      compare.boundingBox(),
+      hero(page).locator('a[href*="/teams/"]').first().boundingBox(),
+      hero(page).getByText("Country", { exact: true }).boundingBox(),
+    ]);
+    if (width >= 640) {
+      // Beside the club, on the right, above the facts.
+      expect(Math.abs(button.y + button.height / 2 - (club.y + club.height / 2))).toBeLessThan(8);
+      expect(button.x).toBeGreaterThan(club.x + club.width);
+      expect(button.y).toBeLessThan(facts.y);
+    } else {
+      expect(button.y).toBeGreaterThan(facts.y);
+    }
+    expect(await holdsContent(hero(page))).toBe(true);
+    await expectNoSidewaysScroll(page);
+  });
+});
+
+test("the profile shows the six percentiles as bars with their values, beside the radar from 640px", async ({ page }) => {
+  const { href } = await firstPlayer(page);
+  await openPlayer(page, href);
+  const bars = page.getByRole("list", { name: "Percentiles" }).locator("li");
+  await expect(bars).toHaveCount(6, { timeout: 30_000 });
+  await expect(bars.first()).toContainText(/^Scoring\s*[\d.]+ pts/);
+  await expect(bars.last()).toContainText(/Shooting\s*[\d.]+% TS/);
+  // A ranked player has a percentile on every bar.
+  for (const text of await bars.allTextContents()) expect(text).toMatch(/\d+(st|nd|rd|th)$/);
+
+  await atWidths(page, [320, 390, 640, 1024, 1280], async (width) => {
+    const [radar, list] = await Promise.all([page.locator("#player-detail-panel canvas").boundingBox(), page.getByRole("list", { name: "Percentiles" }).boundingBox()]);
+    if (width >= 640) expect(list.x).toBeGreaterThan(radar.x + radar.width - 1);
+    else expect(list.y).toBeGreaterThan(radar.y + radar.height - 1);
+    await expect.poll(() => holdsContent(page.locator("#player-detail-panel .panel").first())).toBe(true);
+    await expectNoSidewaysScroll(page);
+  });
+});
+
+test("each season tile shows one rank, and shooting is one panel, two columns from 1024px", async ({ page }) => {
+  const { href } = await firstPlayer(page);
+  await openPlayer(page, href);
+  const seasonLine = page.locator('section[aria-label="Season line"]');
+  await expect(seasonLine).toBeVisible({ timeout: 30_000 });
+  // The rank is "Nth of M" under the bar only; no "#N" badge repeats it.
+  await expect(seasonLine).not.toContainText(/#\d/);
+  const shooting = page.locator('section[aria-label="Shooting"]');
+  await expect(shooting.locator(".panel")).toHaveCount(1);
+
+  await atWidths(page, [...WIDTHS, 1280], async (width) => {
+    const [shots, points] = await Promise.all(
+      [shooting.getByRole("heading", { name: "Shooting" }), shooting.getByRole("heading", { name: "Where the points come from" })].map((heading) => heading.boundingBox()),
+    );
+    if (width >= 1024) {
+      expect(Math.abs(shots.y - points.y)).toBeLessThan(2);
+      expect(points.x).toBeGreaterThan(shots.x + shots.width);
+    } else {
+      expect(points.y).toBeGreaterThan(shots.y + shots.height);
+    }
+    expect(await holdsContent(shooting.locator(".panel"))).toBe(true);
+    await expectNoSidewaysScroll(page);
+  });
+});
+
+test("a player who can't be ranked yet has no empty profile panel: recent form takes the row", async ({ page }) => {
+  const { href } = await firstPlayer(page);
+  // Nobody meets the games minimum, so nobody has a percentile.
+  await patched(page, LEADERBOARD, (json) => {
+    for (const player of json.players ?? []) player.qualified = false;
+  });
+  await openPlayer(page, href);
+  await expect(page.getByText("Recent form")).toBeVisible({ timeout: 30_000 });
+  await expect(page.getByText("Not ranked yet:")).toBeVisible();
+  await expect(page.getByText("PERCENTILE 0-100")).toHaveCount(0);
+  await expect(page.locator("#player-detail-panel canvas")).toHaveCount(0);
+
+  await atWidths(page, [390, 1024, 1280], async () => {
+    const row = page.locator('section[aria-label="Profile and form"]');
+    const [section, form] = await Promise.all([row.boundingBox(), row.locator(".panel").first().boundingBox()]);
+    expect(Math.abs(section.width - form.width)).toBeLessThan(2);
     await expectNoSidewaysScroll(page);
   });
 });

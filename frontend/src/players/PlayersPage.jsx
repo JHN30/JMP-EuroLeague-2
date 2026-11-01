@@ -15,21 +15,13 @@ import RevealImage from "../lib/RevealImage";
 import SearchField from "../lib/SearchField";
 import ShortLabel from "../lib/ShortLabel";
 import { useDocumentTitle } from "../lib/useDocumentTitle";
+import { ageAtSeasonStart } from "../lib/playerAge";
 
 const MotionLink = motion.create(Link);
 
 // Divisible by 2, 3, 4 and 5, so every row of the grid is full at every width.
 const PAGE_SIZE = 60;
 const POSITIONS = ["Guard", "Forward", "Center"];
-
-// The player's age when the season started (1 October of its first year), so a past season shows how old the player was then.
-function ageAtSeasonStart(birthDate, seasonCode) {
-  const startYear = Number(String(seasonCode).replace(/\D/g, ""));
-  if (!birthDate || !startYear) return null;
-  const [year, month, day] = birthDate.split("-").map(Number);
-  const beforeBirthday = month > 10 || (month === 10 && day > 1);
-  return startYear - year - (beforeBirthday ? 1 : 0);
-}
 
 function PlayerCard({ player, seasonCode }) {
   const { last, first } = nameParts(player.name ?? player.jerseyName ?? player.personKey);

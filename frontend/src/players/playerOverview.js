@@ -17,14 +17,14 @@ export const SEASON_LINE = [
   { label: "MIN", title: "Minutes per game", group: "traditional", field: "minutesPlayed" },
 ];
 
-// The six axes of the percentile radar.
+// The six axes of the percentile radar, each with the unit its value is shown in beside it.
 export const PROFILE_AXES = [
-  { key: "scoring", label: "Scoring", group: "traditional", field: "pointsScored" },
-  { key: "valuation", label: "Valuation", group: "traditional", field: "pir" },
-  { key: "rebounding", label: "Rebounding", group: "traditional", field: "totalRebounds" },
-  { key: "playmaking", label: "Playmaking", group: "traditional", field: "assists" },
-  { key: "steals", label: "Steals", group: "traditional", field: "steals" },
-  { key: "shooting", label: "Shooting", group: "advanced", field: "trueShootingPercentage" },
+  { key: "scoring", label: "Scoring", unit: "pts", group: "traditional", field: "pointsScored" },
+  { key: "valuation", label: "Valuation", unit: "PIR", group: "traditional", field: "pir" },
+  { key: "rebounding", label: "Rebounding", unit: "reb", group: "traditional", field: "totalRebounds" },
+  { key: "playmaking", label: "Playmaking", unit: "ast", group: "traditional", field: "assists" },
+  { key: "steals", label: "Steals", unit: "stl", group: "traditional", field: "steals" },
+  { key: "shooting", label: "Shooting", unit: "TS", group: "advanced", field: "trueShootingPercentage" },
 ];
 
 // Competition ranking (1, 2, 2, 4) of one player on one stat, highest first (lowest first when `lowerIsBetter`).

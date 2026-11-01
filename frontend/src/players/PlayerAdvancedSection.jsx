@@ -1,10 +1,9 @@
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { motion } from "motion/react";
 import { getPlayerAdvanced } from "../lib/api";
 import AsyncState from "../lib/AsyncState";
 import { PlayerAdvancedSkeleton } from "./PlayerPageSkeleton";
-import ComparisonRow from "../lib/ComparisonRow";
 import EmptyText from "../lib/EmptyText";
 import { formatDecimal, formatFractionPercent, formatSignedDecimal } from "../lib/format";
 import HeaderTip from "../lib/HeaderTip";
@@ -13,7 +12,6 @@ import Panel from "../lib/Panel";
 import PanelHeader from "../lib/PanelHeader";
 import RevealImage from "../lib/RevealImage";
 import { TabPanel, TabStrip } from "../lib/TabStrip";
-import TrendChart from "../comparisons/TrendChart";
 import { ordinal, rankTier } from "../teams/teamLeague";
 import AdvancedGauge, { VerdictPill } from "./AdvancedGauge";
 import { verdictFor } from "./advancedVerdict";
@@ -61,7 +59,7 @@ function SmallSampleLine({ seconds }) {
   );
 }
 
-// ---- Scorecard: every stat with a verdict, a gauge against the league and what it means ----
+// ---- Scorecard: every stat with a verdict and a gauge against the league; what it means is in its tip ----
 
 // How each number is written, what it measures, and how to read it. `neutral` stats describe a role, not a quality.
 const STATS = {
@@ -111,23 +109,23 @@ function ScoreCard({ statKey, value, rank, hint, caution }) {
   const verdict = ranked ? verdictFor(ranked.percentile, stat.neutral) : null;
 
   return (
-    <motion.div className="flex flex-col rounded-box border border-base-300 bg-base-100 p-4" variants={listItem}>
+    <motion.div className="flex min-w-0 flex-col rounded-box border border-base-300 bg-base-100 p-3" variants={listItem}>
       <div className="flex items-center justify-between gap-2">
         <span className="muted text-xs font-bold uppercase tracking-wide">
-          <HeaderTip tip={stat.tip}>{stat.label}</HeaderTip>
+          <HeaderTip tip={`${stat.tip}. ${stat.what}`}>{stat.label}</HeaderTip>
         </span>
         {ranked ? <VerdictPill percentile={ranked.percentile} neutral={stat.neutral} /> : null}
       </div>
-      <p className="mt-1 text-4xl font-black leading-none tabular-nums">{value === null || value === undefined ? EM_DASH : stat.format(value)}</p>
+      <p className="mt-1 text-3xl font-black leading-none tabular-nums">{value === null || value === undefined ? EM_DASH : stat.format(value)}</p>
       {ranked ? (
         <>
           <AdvancedGauge percentile={ranked.percentile} spread={ranked.spread} format={stat.format} neutral={stat.neutral} label={stat.label} />
-          <p className="mt-1 text-sm">
+          <p className="mt-1 text-xs">
             <span className="font-semibold">{verdict.label}</span>
             <span className="muted">
               {" "}
               · {ordinal(ranked.rank)} of {ranked.of}
-              {ranked.spread ? ` · league median ${stat.format(ranked.spread.p50)}` : ""}
+              {ranked.spread ? ` · median ${stat.format(ranked.spread.p50)}` : ""}
             </span>
           </p>
         </>
@@ -135,7 +133,6 @@ function ScoreCard({ statKey, value, rank, hint, caution }) {
         <p className="muted mt-3 text-sm">{rank ? `Not ranked: under ${rank.minMinutes} minutes played.` : (hint ?? "")}</p>
       )}
       {caution ? <div className="mt-2">{caution}</div> : null}
-      <p className="muted mt-3 text-xs leading-snug">{stat.what}</p>
     </motion.div>
   );
 }
@@ -214,7 +211,7 @@ function Scorecard({ rounds, ranks, rapm, onOff }) {
     <section className="flex flex-col gap-3">
       <PanelHeader kicker="SCORECARD" title={`After round ${latest.round}`} />
       <ScorecardSummary ranks={ranks} />
-      <motion.div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3" variants={listContainer} initial="hidden" animate="show">
+      <motion.div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6" variants={listContainer} initial="hidden" animate="show">
         {SCORECARD.map((key) => (
           <ScoreCard
             key={key}
@@ -227,38 +224,177 @@ function Scorecard({ rounds, ranks, rapm, onOff }) {
         ))}
       </motion.div>
       <p className="muted text-xs">
-        {latest.gamesPlayed} games, {formatDecimal(minutes(latest.secondsPlayed), 0)} minutes.
+        {latest.gamesPlayed} games, {formatDecimal(minutes(latest.secondsPlayed), 0)} minutes. Hover or tap a name for what it measures.
       </p>
       <ReadingGuide minMinutes={ranks?.per?.minMinutes ?? 100} />
     </section>
   );
 }
 
-// ---- Trend: how a rating built up round by round ----
+// ---- Trend: how a rating built up round by round, against today's league median ----
 
-function RoundTrend({ rounds }) {
+// How many round labels the x axis can hold before it thins them out.
+const MAX_ROUND_LABELS = 12;
+
+function TrendFact({ label, value, sub, tone }) {
+  return (
+    <div className="min-w-0">
+      <p className="muted text-xs font-bold uppercase tracking-wide">{label}</p>
+      <p className={`text-xl font-black leading-tight tabular-nums ${tone ?? ""}`}>{value}</p>
+      <p className="muted truncate text-xs">{sub}</p>
+    </div>
+  );
+}
+
+// The rounds since which the latest side of the median (above or below) has held, as "R7".
+function sideSince(points, median) {
+  const last = points[points.length - 1];
+  const above = last.value >= median;
+  let start = points.length - 1;
+  while (start > 0 && points[start - 1].value >= median === above) start -= 1;
+  return { above, round: points[start].round };
+}
+
+// The player's running value per round as a line, shaded green where it is above the league median and red where it
+// is below, with every round on the axis (thinned when there are many) and the latest value called out. Drawn in SVG
+// stretched to the box, so the line keeps its width (`non-scaling-stroke`, which is why it fades in rather than drawing
+// itself: a drawn-in dash is measured in the stretched units) and the dots and labels are HTML on top.
+function RoundChart({ points, median, metric }) {
+  const values = points.map((point) => point.value);
+  const all = median === null ? values : [...values, median];
+  const low = Math.min(...all);
+  const high = Math.max(...all);
+  const pad = (high - low || Math.abs(high) || 1) * 0.12;
+  // A rating that never goes below zero keeps its scale at zero rather than padding into negatives.
+  const [bottom, top] = [low >= 0 ? Math.max(0, low - pad) : low - pad, high + pad];
+  const x = (index) => (points.length === 1 ? 50 : (index / (points.length - 1)) * 100);
+  const y = (value) => 100 - ((value - bottom) / (top - bottom)) * 100;
+  const line = points.map((point, index) => `${index === 0 ? "M" : "L"}${x(index)} ${y(point.value)}`).join("");
+  const medianY = median === null ? null : y(median);
+  const area = medianY === null ? null : `${line}L${x(points.length - 1)} ${medianY}L${x(0)} ${medianY}Z`;
+  const every = Math.ceil(points.length / MAX_ROUND_LABELS);
+  const format = (value) => `${formatDecimal(value, metric.digits)}${metric.percent ? "%" : ""}`;
+  const last = points[points.length - 1];
+
+  return (
+    <div className="grid grid-cols-[2.75rem_1fr] gap-x-2">
+      {/* The y axis: the top, middle and bottom of the scale. */}
+      <div aria-hidden="true" className="muted relative h-44 text-[0.65rem] tabular-nums">
+        {[top, (top + bottom) / 2, bottom].map((value, index) => (
+          <span key={index} className="absolute right-0 -translate-y-1/2" style={{ top: `${index * 50}%` }}>
+            {formatDecimal(value, metric.digits > 1 ? 2 : 1)}
+          </span>
+        ))}
+      </div>
+      <div className="relative h-44">
+        <svg aria-hidden="true" viewBox="0 0 100 100" preserveAspectRatio="none" className="absolute inset-0 h-full w-full overflow-visible">
+          <defs>
+            {medianY === null ? null : (
+              <>
+                <clipPath id="trend-above">
+                  <rect x="0" y="0" width="100" height={medianY} />
+                </clipPath>
+                <clipPath id="trend-below">
+                  <rect x="0" y={medianY} width="100" height={100 - medianY} />
+                </clipPath>
+              </>
+            )}
+          </defs>
+          {[0, 50, 100].map((at) => (
+            <line key={at} x1="0" x2="100" y1={at} y2={at} className="text-base-300" stroke="currentColor" strokeWidth="1" vectorEffect="non-scaling-stroke" />
+          ))}
+          {area ? (
+            <>
+              <path d={area} clipPath="url(#trend-above)" className="text-success" fill="currentColor" fillOpacity="0.18" />
+              <path d={area} clipPath="url(#trend-below)" className="text-error" fill="currentColor" fillOpacity="0.15" />
+              <line x1="0" x2="100" y1={medianY} y2={medianY} className="text-base-content/50" stroke="currentColor" strokeWidth="1.5" strokeDasharray="5 4" vectorEffect="non-scaling-stroke" />
+            </>
+          ) : null}
+          <motion.path
+            d={line}
+            className="text-primary"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2.5"
+            strokeLinejoin="round"
+            strokeLinecap="round"
+            vectorEffect="non-scaling-stroke"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.5, ease: "easeOut" }}
+          />
+        </svg>
+        {medianY === null ? null : (
+          <span
+            className="muted absolute right-0 -translate-y-full rounded bg-base-100/80 px-1 text-[0.65rem] font-semibold tabular-nums"
+            style={{ top: `${medianY}%` }}
+          >
+            League median {format(median)}
+          </span>
+        )}
+        {points.map((point, index) => (
+          <span
+            key={point.round}
+            title={`Round ${point.round}: ${format(point.value)}`}
+            className={`absolute -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-base-100 bg-primary ${point === last ? "h-3.5 w-3.5" : "h-2 w-2"}`}
+            style={{ left: `${x(index)}%`, top: `${y(point.value)}%` }}
+          />
+        ))}
+        <span
+          className="absolute -translate-x-full -translate-y-[160%] rounded bg-primary px-1.5 py-0.5 text-xs font-bold text-primary-content tabular-nums"
+          style={{ left: `${x(points.length - 1)}%`, top: `${y(last.value)}%` }}
+        >
+          {format(last.value)}
+        </span>
+      </div>
+      <span />
+      <div aria-hidden="true" className="muted relative mt-1 h-4 text-[0.65rem] tabular-nums">
+        {points.map((point, index) =>
+          index % every === 0 || index === points.length - 1 ? (
+            <span key={point.round} className="absolute -translate-x-1/2" style={{ left: `${x(index)}%` }}>
+              R{point.round}
+            </span>
+          ) : null,
+        )}
+      </div>
+    </div>
+  );
+}
+
+function RoundTrend({ rounds, ranks }) {
   const [metricKey, setMetricKey] = useState("per");
   const metric = TREND_METRICS.find((entry) => entry.key === metricKey);
+  const scaled = (value) => (value === null || value === undefined ? null : metric.percent ? value * 100 : value);
+  const median = scaled(ranks?.[metric.key]?.spread?.p50 ?? null);
+  const points = rounds.map((point) => ({ round: point.round, value: scaled(point[metric.key]) })).filter((point) => point.value !== null);
+  const format = (value) => `${formatDecimal(value, metric.digits)}${metric.percent ? "%" : ""}`;
 
-  const labels = useMemo(() => rounds.map((point) => `R${point.round}`), [rounds]);
-  const series = useMemo(
-    () => [
-      {
-        label: metric.label,
-        points: rounds.map((point) => {
-          const value = point[metric.key];
-          if (value === null) return null;
-          return Number((metric.percent ? value * 100 : value).toFixed(metric.digits));
-        }),
-      },
-    ],
-    [rounds, metric],
-  );
+  let facts = null;
+  if (points.length >= 2) {
+    const last = points[points.length - 1];
+    const peak = points.reduce((best, point) => (point.value > best.value ? point : best));
+    const lowest = points.reduce((worst, point) => (point.value < worst.value ? point : worst));
+    const gap = median === null ? null : last.value - median;
+    const since = median === null ? null : sideSince(points, median);
+    facts = (
+      <div className="mb-3 grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <TrendFact label={`Now, round ${last.round}`} value={format(last.value)} sub={metric.label} />
+        <TrendFact
+          label="Against the median"
+          value={gap === null ? EM_DASH : `${gap >= 0 ? "+" : ""}${formatDecimal(gap, metric.digits)}`}
+          tone={gap === null ? null : gap >= 0 ? "text-success" : "text-error"}
+          sub={since === null ? "no league median" : `${since.above ? "above" : "below"} it since R${since.round}`}
+        />
+        <TrendFact label="Peak" value={format(peak.value)} sub={`after round ${peak.round}`} />
+        <TrendFact label="Low" value={format(lowest.value)} sub={`after round ${lowest.round}`} />
+      </div>
+    );
+  }
 
   return (
     <section className="flex flex-col gap-3">
       <PanelHeader kicker="ROUND BY ROUND" title="How the ratings built up" />
-      {rounds.length < 2 ? (
+      {points.length < 2 ? (
         <EmptyText>Not enough rounds yet to chart a trend.</EmptyText>
       ) : (
         <>
@@ -274,42 +410,97 @@ function RoundTrend({ rounds }) {
             />
             <p className="muted text-xs">Running value through each round, never a single round.</p>
           </div>
-          <div id="player-advanced-trend">
-            <TrendChart title={metric.label} labels={labels} series={series} collapseTable />
-          </div>
+          <Panel id="player-advanced-trend" className="p-4">
+            {facts}
+            <div
+              role="img"
+              aria-label={`${metric.label} round by round, from ${format(points[0].value)} after round ${points[0].round} to ${format(points[points.length - 1].value)} after round ${points[points.length - 1].round}${median === null ? "" : `, against a league median of ${format(median)}`}`}
+            >
+              <RoundChart key={metric.key} points={points} median={median} metric={metric} />
+            </div>
+            <details className="mt-3">
+              <summary className="cursor-pointer text-sm font-semibold">Show the round-by-round numbers</summary>
+              <div className="mt-2 overflow-x-auto overscroll-x-contain">
+                <table className="table table-sm">
+                  <thead>
+                    <tr>
+                      <th>Round</th>
+                      <th className="text-right">{metric.label}</th>
+                      {median === null ? null : <th className="text-right">Against the median</th>}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {points.map((point) => (
+                      <tr key={point.round}>
+                        <td>R{point.round}</td>
+                        <td className="text-right tabular-nums">{format(point.value)}</td>
+                        {median === null ? null : (
+                          <td className={`text-right tabular-nums ${point.value >= median ? "text-success" : "text-error"}`}>
+                            {point.value - median >= 0 ? "+" : ""}
+                            {formatDecimal(point.value - median, metric.digits)}
+                          </td>
+                        )}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </details>
+          </Panel>
         </>
       )}
     </section>
   );
 }
 
-// ---- On / off: the team's rating with the player on the floor and off it ----
+// ---- Impact: on / off (the team's rating with the player on the floor and off it) beside RAPM ----
+
+// The ratings in the on/off table. `higher` says which way helps the team, for the colour of the difference.
+const ON_OFF_ROWS = [
+  { label: "Offensive rating", tip: "Points the team scores per 100 possessions", on: "onOrtg", off: "offOrtg", diff: "ortgDiff", higher: true },
+  { label: "Defensive rating", tip: "Points the team allows per 100 possessions; lower is better", on: "onDrtg", off: "offDrtg", diff: "drtgDiff", higher: false },
+  { label: "Net rating", tip: "Points scored minus points allowed per 100 possessions", on: "onNetRating", off: "offNetRating", diff: "netRatingDiff", higher: true },
+];
+
+function MinutesSplit({ onSeconds, offSeconds }) {
+  const on = onSeconds ?? 0;
+  const total = on + (offSeconds ?? 0);
+  const share = total > 0 ? (on / total) * 100 : 0;
+  return (
+    <div className="mb-3">
+      <div aria-hidden="true" className="flex h-2 overflow-hidden rounded-full bg-base-content/20">
+        <motion.div className="h-full bg-primary" style={{ width: `${share}%`, transformOrigin: "left" }} {...barFill} />
+      </div>
+      <p className="muted mt-1 flex justify-between gap-2 text-xs tabular-nums">
+        <span>
+          <span className="font-semibold text-base-content">On court</span> {Math.round(minutes(onSeconds) ?? 0).toLocaleString()} min
+        </span>
+        <span>
+          <span className="font-semibold text-base-content">Off court</span> {Math.round(minutes(offSeconds) ?? 0).toLocaleString()} min
+        </span>
+      </p>
+    </div>
+  );
+}
 
 function OnOffCard({ row, rank, isMain }) {
-  const onMinutes = minutes(row.onSeconds);
-  const offMinutes = minutes(row.offSeconds);
   const heading = row.clubName ?? row.clubCode;
-  const crest = row.crestUrl ? <RevealImage src={row.crestUrl} className="h-7 w-7 flex-none object-contain" /> : null;
-
   const net = row.netRatingDiff;
-  const better = net !== null && net > 0;
   return (
     <Panel className="p-4">
-      <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
-        <h3 className="flex items-center gap-2 font-semibold">
-          {crest}
-          {heading}
-        </h3>
+      <div className="mb-3 flex flex-wrap items-start justify-between gap-3">
+        <h4 className="flex min-w-0 items-center gap-2 font-semibold">
+          {row.crestUrl ? <RevealImage src={row.crestUrl} className="h-7 w-7 flex-none object-contain" /> : null}
+          <span className="truncate">{heading}</span>
+        </h4>
         <div className="text-left sm:text-right">
-          <span className={`text-3xl font-black tabular-nums ${net === null ? "" : better ? "text-success" : "text-error"}`}>
-            {formatSignedDecimal(net)}
-          </span>
+          <span className={`text-3xl font-black tabular-nums ${net === null ? "" : net > 0 ? "text-success" : "text-error"}`}>{formatSignedDecimal(net)}</span>
           {isMain && rank?.rank ? (
             <span className="ml-2 align-middle">
               <VerdictPill percentile={rank.percentile} />
             </span>
           ) : null}
-          <p className="muted text-xs">net rating with him on court, per 100 possessions</p>
+          <p className="muted text-xs">net rating difference, per 100 possessions</p>
         </div>
       </div>
       {isSmallOnCourtSample(row.onSeconds) ? (
@@ -317,39 +508,47 @@ function OnOffCard({ row, rank, isMain }) {
           <SmallSampleLine seconds={row.onSeconds} />
         </div>
       ) : null}
-      <p className="muted mb-1 grid grid-cols-2 gap-4 text-center text-xs font-bold tracking-wide uppercase">
-        <span>On court · {formatDecimal(onMinutes, 0)} min</span>
-        <span>Off court · {formatDecimal(offMinutes, 0)} min</span>
-      </p>
-      <motion.div className="flex flex-col" variants={listContainer} initial="hidden" animate="show">
-        <ComparisonRow
-          label="Offensive rating"
-          tip="Points the team scores per 100 possessions"
-          direction="higher"
-          inline
-          animated
-          rawA={row.onOrtg}
-          rawB={row.offOrtg}
-          displayA={formatDecimal(row.onOrtg)}
-          displayB={formatDecimal(row.offOrtg)}
-        />
-        <ComparisonRow
-          label="Defensive rating"
-          tip="Points the team allows per 100 possessions"
-          direction="lower"
-          inline
-          animated
-          rawA={row.onDrtg}
-          rawB={row.offDrtg}
-          displayA={formatDecimal(row.onDrtg)}
-          displayB={formatDecimal(row.offDrtg)}
-        />
-      </motion.div>
-      <p className="muted mt-2 text-xs">
-        With him on the court the offense is {formatSignedDecimal(row.ortgDiff)} ({row.ortgDiff >= 0 ? "better" : "worse"}) and the defense is{" "}
-        {formatSignedDecimal(row.drtgDiff)} ({row.drtgDiff <= 0 ? "better, fewer points allowed" : "worse, more points allowed"}), against the
-        club&apos;s stints without him.
-      </p>
+      <MinutesSplit onSeconds={row.onSeconds} offSeconds={row.offSeconds} />
+      <div className="overflow-x-auto overscroll-x-contain">
+        <table className="table table-sm" aria-label={`${heading}: ratings with him on and off the court`}>
+          <thead>
+            <tr>
+              <th />
+              {/* Short headings on a phone, so the four columns fit the card. */}
+              <th className="text-right">
+                <span className="sm:hidden">On</span>
+                <span className="max-sm:hidden">On court</span>
+              </th>
+              <th className="text-right">
+                <span className="sm:hidden">Off</span>
+                <span className="max-sm:hidden">Off court</span>
+              </th>
+              <th className="text-right">
+                <span className="sm:hidden">Diff.</span>
+                <span className="max-sm:hidden">Difference</span>
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            {ON_OFF_ROWS.map((entry) => {
+              const diff = row[entry.diff];
+              const helps = diff === null || diff === undefined || diff === 0 ? null : entry.higher ? diff > 0 : diff < 0;
+              return (
+                <tr key={entry.label}>
+                  <th className="font-medium">
+                    <HeaderTip tip={entry.tip}>{entry.label}</HeaderTip>
+                  </th>
+                  <td className="text-right tabular-nums">{formatDecimal(row[entry.on])}</td>
+                  <td className="text-right tabular-nums">{formatDecimal(row[entry.off])}</td>
+                  <td className={`text-right font-bold tabular-nums ${helps === null ? "" : helps ? "text-success" : "text-error"}`}>
+                    {formatSignedDecimal(diff)}
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
     </Panel>
   );
 }
@@ -359,35 +558,31 @@ function OnOffSection({ onOff, rank }) {
   const rows = onOff.filter((row) => (row.onSeconds ?? 0) > 0);
   const mainClub = [...rows].sort((x, y) => (y.onSeconds ?? 0) - (x.onSeconds ?? 0))[0]?.clubCode;
   return (
-    <section className="flex flex-col gap-3">
-      <PanelHeader kicker="ON / OFF" title="Team rating with and without him" />
+    <section aria-label="On / off" className="flex min-w-0 flex-col gap-3">
+      <h3 className="font-semibold">
+        <HeaderTip tip="The team's ratings with the player on the court and off it">On / off</HeaderTip>
+      </h3>
       {rows.length === 0 ? (
         <EmptyText>No on/off data for this scope.</EmptyText>
       ) : (
-        <>
-          <div className={`grid grid-cols-1 gap-3 ${rows.length > 1 ? "xl:grid-cols-2" : ""}`}>
-            {rows.map((row) => (
-              <OnOffCard key={row.clubCode} row={row} rank={rank} isMain={row.clubCode === mainClub} />
-            ))}
-          </div>
-          <p className="muted text-xs">
-            Points per 100 possessions. The off-court side is the club&apos;s other stints in this scope, so a star on a deep team can look
-            worse than he is. A traded player has one card per club.
-          </p>
-        </>
+        // The cards share the column's height, so the column ends level with RAPM beside it.
+        <div className="flex flex-1 flex-col gap-3 *:flex-1">
+          {rows.map((row) => (
+            <OnOffCard key={row.clubCode} row={row} rank={rank} isMain={row.clubCode === mainClub} />
+          ))}
+        </div>
       )}
     </section>
   );
 }
 
-// ---- RAPM: his estimated effect, drawn from the middle outwards ----
-
+// His estimated effect, drawn from the middle outwards.
 function ImpactBar({ label, tip, value }) {
   const clamped = Math.max(-RAPM_SCALE, Math.min(RAPM_SCALE, value ?? 0));
   const half = (Math.abs(clamped) / RAPM_SCALE) * 50;
   const positive = clamped >= 0;
   return (
-    <div className="grid grid-cols-[4.5rem_1fr_3.25rem] items-center gap-3 py-2 sm:grid-cols-[6rem_1fr_4rem]">
+    <div className="grid grid-cols-[4.5rem_1fr_3.25rem] items-center gap-3 py-1.5 sm:grid-cols-[6rem_1fr_4rem]">
       <span className="text-sm font-medium">{tip ? <HeaderTip tip={tip}>{label}</HeaderTip> : label}</span>
       <div aria-hidden="true" className="relative h-2.5 rounded-full bg-base-300">
         <span className="absolute top-[-3px] bottom-[-3px] left-1/2 w-px bg-base-content/40" />
@@ -416,52 +611,84 @@ function RapmSection({ rapm, rank }) {
     );
   } else {
     body = (
-      <>
-        <Panel className="p-4">
-          <div className="mb-2 flex flex-wrap items-baseline justify-between gap-2">
-            <span className="muted text-xs font-bold tracking-wide uppercase">Points per 100 possessions against an average player</span>
-            {rank?.rank ? (
-              <span className="flex items-center gap-2 text-sm font-bold tabular-nums">
-                <VerdictPill percentile={rank.percentile} />
-                <span className={rankTier({ rank: rank.rank, of: rank.of }).text}>
-                  {ordinal(rank.rank)} of {rank.of} players
-                </span>
-              </span>
-            ) : rank ? (
-              <span className="muted text-sm">Not ranked: under {rank.minMinutes} minutes</span>
-            ) : null}
-          </div>
-          <ImpactBar label="Overall" tip="Regularized adjusted plus-minus: his estimated effect on the team's scoring margin" value={rapm.rapm} />
-          <ImpactBar label="Offense" value={rapm.offense} />
-          <ImpactBar label="Defense" tip="Positive means fewer points allowed" value={rapm.defense} />
-          <div aria-hidden="true" className="muted grid grid-cols-[4.5rem_1fr_3.25rem] gap-3 text-[0.65rem] tabular-nums sm:grid-cols-[6rem_1fr_4rem]">
-            <span />
-            <span className="flex justify-between">
-              <span>
-                −{RAPM_SCALE}
-                <span className="max-sm:hidden"> worse</span>
-              </span>
-              <span>0</span>
-              <span>
-                <span className="max-sm:hidden">better </span>+{RAPM_SCALE}
-              </span>
+      <Panel className="flex flex-1 flex-col p-4">
+        <p className="muted mb-1 text-xs font-bold tracking-wide uppercase">Points per 100 possessions against an average player</p>
+        <ImpactBar label="Overall" tip="Regularized adjusted plus-minus: his estimated effect on the team's scoring margin" value={rapm.rapm} />
+        <ImpactBar label="Offense" value={rapm.offense} />
+        <ImpactBar label="Defense" tip="Positive means fewer points allowed" value={rapm.defense} />
+        <div aria-hidden="true" className="muted grid grid-cols-[4.5rem_1fr_3.25rem] gap-3 text-[0.65rem] tabular-nums sm:grid-cols-[6rem_1fr_4rem]">
+          <span />
+          <span className="flex justify-between">
+            <span>
+              −{RAPM_SCALE}
+              <span className="max-sm:hidden"> worse</span>
             </span>
-            <span />
+            <span>0</span>
+            <span>
+              <span className="max-sm:hidden">better </span>+{RAPM_SCALE}
+            </span>
+          </span>
+          <span />
+        </div>
+        {/* Where the overall estimate sits among the league's ranked players, on the scorecard's gauge. */}
+        {rank?.rank ? (
+          <div className="mt-4 border-t border-base-300 pt-3">
+            <p className="flex flex-wrap items-baseline justify-between gap-x-3 text-sm">
+              <span className="font-semibold">Among the league</span>
+              <span className="muted text-xs">
+                {ordinal(rank.rank)} of {rank.of} with at least {rank.minMinutes} minutes
+                {rank.spread ? ` · median ${STATS.rapm.format(rank.spread.p50)}` : ""}
+              </span>
+            </p>
+            <AdvancedGauge percentile={rank.percentile} spread={rank.spread} format={STATS.rapm.format} label="RAPM" />
           </div>
-          <p className="muted mt-3 text-xs">
-            {formatDecimal(minutes(rapm.seconds), 0)} minutes tracked over {rapm.possessionsOffense ?? EM_DASH} offensive and{" "}
-            {rapm.possessionsDefense ?? EM_DASH} defensive possessions. An estimate, not a measurement: whole season, shrunk toward zero.
-            Differences of a few tenths mean little.
-          </p>
-        </Panel>
-      </>
+        ) : null}
+        <p className="muted mt-auto pt-3 text-xs">
+          {formatDecimal(minutes(rapm.seconds), 0)} minutes tracked over {rapm.possessionsOffense ?? EM_DASH} offensive and{" "}
+          {rapm.possessionsDefense ?? EM_DASH} defensive possessions. An estimate, not a measurement: whole season, shrunk toward zero.
+          Differences of a few tenths mean little.
+        </p>
+      </Panel>
     );
   }
 
   return (
-    <section className="flex flex-col gap-3">
-      <PanelHeader kicker="RAPM" title="Regularized adjusted plus-minus" />
+    <section aria-label="RAPM" className="flex min-w-0 flex-col gap-3">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <h3 className="font-semibold">
+          <HeaderTip tip="Regularized adjusted plus-minus">RAPM</HeaderTip>
+        </h3>
+        {rank?.rank ? (
+          <span className="flex items-center gap-2 text-sm font-bold tabular-nums">
+            <VerdictPill percentile={rank.percentile} />
+            <span className={rankTier({ rank: rank.rank, of: rank.of }).text}>
+              {ordinal(rank.rank)} of {rank.of} players
+            </span>
+          </span>
+        ) : rank ? (
+          <span className="muted text-sm">Not ranked: under {rank.minMinutes} minutes</span>
+        ) : null}
+      </div>
       {body}
+    </section>
+  );
+}
+
+function ImpactSection({ onOff, rapm, ranks }) {
+  return (
+    <section className="flex flex-col gap-3">
+      <PanelHeader kicker="IMPACT" title="The team with him on the floor" />
+      {/* Side by side from xl, both columns the height of the taller one. */}
+      <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
+        <OnOffSection onOff={onOff} rank={ranks?.onOffNet} />
+        <RapmSection rapm={rapm} rank={ranks?.rapm} />
+      </div>
+      {onOff.some((row) => (row.onSeconds ?? 0) > 0) ? (
+        <p className="muted text-xs">
+          On / off is in points per 100 possessions. The off-court side is the club&apos;s other stints in this scope, so a star on a deep
+          team can look worse than he is. A traded player has one card per club.
+        </p>
+      ) : null}
     </section>
   );
 }
@@ -511,13 +738,10 @@ export default function PlayerAdvancedSection({ seasonCode, personKey }) {
             <Scorecard rounds={rounds} ranks={ranks} rapm={rapm} onOff={onOff} />
           </motion.div>
           <motion.div variants={sectionItem}>
-            <RoundTrend key={activeScope} rounds={rounds} />
+            <RoundTrend key={activeScope} rounds={rounds} ranks={ranks} />
           </motion.div>
           <motion.div variants={sectionItem}>
-            <OnOffSection onOff={onOff} rank={ranks?.onOffNet} />
-          </motion.div>
-          <motion.div variants={sectionItem}>
-            <RapmSection rapm={rapm} rank={ranks?.rapm} />
+            <ImpactSection onOff={onOff} rapm={rapm} ranks={ranks} />
           </motion.div>
         </motion.div>
       </TabPanel>

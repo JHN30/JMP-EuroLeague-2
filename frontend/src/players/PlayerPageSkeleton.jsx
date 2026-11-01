@@ -286,7 +286,7 @@ export function PlayerStatisticsSkeleton() {
 }
 
 // The Advanced tab, as `PlayerAdvancedSection` lays it out: the scope tabs, then the scorecard (a summary over six rated
-// cards), the round-by-round chart, on and off the floor, and the adjusted plus-minus.
+// cards in one row from xl), the round-by-round chart, and the impact row (on and off the floor beside the adjusted plus-minus).
 export function PlayerAdvancedSkeleton() {
   return (
     <div aria-hidden="true" className="flex flex-col gap-6">
@@ -295,9 +295,9 @@ export function PlayerAdvancedSkeleton() {
         <div>
           <SkeletonPanelHead title="w-28" />
           <div className="skeleton mb-3 h-14 w-full rounded-box" />
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
             {range(6).map((index) => (
-              <div key={index} className="skeleton h-60 rounded-box" />
+              <div key={index} className="skeleton h-36 rounded-box" />
             ))}
           </div>
           <div className="skeleton mt-3 h-3 w-28" />
@@ -307,18 +307,32 @@ export function PlayerAdvancedSkeleton() {
           <SkeletonPanelHead title="w-48" />
           <div className="skeleton mb-3 h-9 w-[30rem] max-w-full" />
           <div className="panel p-4">
-            <div className="skeleton h-72 w-full" />
-            <div className="skeleton mt-4 h-5 w-56" />
+            <div className="mb-3 grid grid-cols-2 gap-3 sm:grid-cols-4">
+              {range(4).map((index) => (
+                <div key={index} className="flex flex-col gap-1.5">
+                  <div className="skeleton h-3 w-20" />
+                  <div className="skeleton h-6 w-14" />
+                  <div className="skeleton h-3 w-16" />
+                </div>
+              ))}
+            </div>
+            <div className="skeleton h-48 w-full" />
+            <div className="skeleton mt-3 h-5 w-56" />
           </div>
         </div>
         <div>
           <SkeletonPanelHead title="w-60" />
-          <div className="skeleton h-72 w-full rounded-box max-sm:h-96" />
-          <div className="skeleton mt-3 h-3 w-3/4" />
-        </div>
-        <div>
-          <SkeletonPanelHead title="w-64" />
-          <div className="skeleton h-60 w-full rounded-box max-sm:h-72" />
+          <div className="grid grid-cols-1 items-start gap-6 xl:grid-cols-2">
+            <div>
+              <div className="skeleton mb-3 h-5 w-20" />
+              <div className="skeleton h-64 w-full rounded-box" />
+              <div className="skeleton mt-3 h-3 w-3/4" />
+            </div>
+            <div>
+              <div className="skeleton mb-3 h-5 w-16" />
+              <div className="skeleton h-48 w-full rounded-box" />
+            </div>
+          </div>
         </div>
       </div>
     </div>

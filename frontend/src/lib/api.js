@@ -191,9 +191,9 @@ export async function getTeamLineups(seasonCode, clubCode, { scope, size, minPos
   return data;
 }
 
-export async function getSeasonPlayers(seasonCode, { search, limit, offset } = {}) {
+export async function getSeasonPlayers(seasonCode, { search, club, position, limit, offset } = {}) {
   const { data } = await api.get(`/seasons/${seasonCode}/players`, {
-    params: { search, limit, offset },
+    params: { search, club, position, limit, offset },
   });
   return data;
 }

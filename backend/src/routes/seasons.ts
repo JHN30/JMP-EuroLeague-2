@@ -14,6 +14,7 @@ import {
   getPlayerRegistrations,
   getPlayerImages,
   getPlayers,
+  PLAYER_POSITIONS,
   getTeam,
   getTeamCoaches,
   getTeamRef,
@@ -832,7 +833,20 @@ seasonRouter.get("/:seasonCode/players", async (req, res) => {
   if (!page) return;
   const search = requestedSearch(req, res);
   if (search === null) return;
-  const result = await getPlayers(season.seasonCode, page.limit, page.offset, search);
+  const { club, position } = req.query;
+  if (club !== undefined && !validIdentity(club)) {
+    sendError(res, 400, "INVALID_CLUB_FILTER", "Invalid club filter");
+    return;
+  }
+  if (position !== undefined && !PLAYER_POSITIONS.includes(position as (typeof PLAYER_POSITIONS)[number])) {
+    sendError(res, 400, "INVALID_POSITION_FILTER", "Invalid position filter");
+    return;
+  }
+  const result = await getPlayers(season.seasonCode, page.limit, page.offset, {
+    search,
+    clubCode: club,
+    position: position as string | undefined,
+  });
   res.json({ players: result.items, pagination: { ...page, hasMore: result.hasMore, total: result.total } });
 });
 

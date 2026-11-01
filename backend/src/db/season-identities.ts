@@ -29,6 +29,9 @@ export type Player = {
   jerseyName: string | null;
   countryCode: string | null;
   heightCm: number | null;
+  weightKg: number | null;
+  // The birth date as YYYY-MM-DD.
+  birthDate: string | null;
 };
 
 // A directory entry: the player plus what the card shows beside the name. The photo exists only for a player who has
@@ -72,6 +75,8 @@ const playerFields = {
   jerseyName: people.jerseyName,
   countryCode: people.countryCode,
   heightCm: people.heightCm,
+  weightKg: people.weightKg,
+  birthDate: sql<string | null>`to_char(${people.birthAt}, 'YYYY-MM-DD')`,
 };
 
 const registrationFields = {
@@ -234,15 +239,31 @@ export async function getClubDetails(seasonCode: string, clubCode: string): Prom
   };
 }
 
+// The positions a player registration can name, as the feed writes them.
+export const PLAYER_POSITIONS = ["Guard", "Forward", "Center"] as const;
+export type PlayerListFilters = { search?: string; clubCode?: string; position?: string };
+
 export async function getPlayers(
   seasonCode: string,
   limit: number,
   offset: number,
-  search?: string,
+  { search, clubCode, position }: PlayerListFilters = {},
 ): Promise<CountedPage<PlayerListEntry>> {
-  const scope = search
-    ? and(playerScope(seasonCode), or(ilike(people.name, `%${search}%`), ilike(people.jerseyName, `%${search}%`))!)
-    : playerScope(seasonCode);
+  const conditions = [playerScope(seasonCode)];
+  if (search) conditions.push(or(ilike(people.name, `%${search}%`), ilike(people.jerseyName, `%${search}%`))!);
+  // A club or a position matches a player registration of the season, so a player who changed clubs is under each club,
+  // with the position that registration names.
+  if (clubCode || position) {
+    conditions.push(exists(db.select({ one: sql`1` }).from(registrations).where(and(
+      eq(registrations.competitionCode, COMPETITION_CODE),
+      eq(registrations.seasonCode, seasonCode),
+      eq(registrations.personKey, people.personKey),
+      eq(registrations.roleCode, PLAYER_ROLE_CODE),
+      clubCode ? eq(registrations.clubCode, clubCode) : undefined,
+      position ? eq(registrations.positionName, position) : undefined,
+    ))));
+  }
+  const scope = and(...conditions);
   const [pageRows, countRows] = await Promise.all([
     catalogRead(() =>
       db.select(playerFields)

@@ -98,6 +98,8 @@ export const people = pgTable(
     jerseyName: text("jersey_name"),
     countryCode: text("country_code"),
     heightCm: integer("height_cm"),
+    weightKg: integer("weight_kg"),
+    birthAt: timestamp("birth_at", { mode: "string" }),
     isReferee: boolean("is_referee"),
   },
   (table) => [primaryKey({ columns: [table.competitionCode, table.seasonCode, table.personKey] })],

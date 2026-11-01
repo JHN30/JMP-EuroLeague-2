@@ -603,14 +603,14 @@ test.describe("Player page", () => {
     await expectLoaded(page);
   });
 
-  test("the profile by season shows a radar block while every season's rankings load", async ({ page }) => {
+  test("the profile by season shows a radar block while the picked seasons' rankings load", async ({ page }) => {
     await page.goto(playerPath);
     await expectLoaded(page);
     await page.getByRole("tab", { name: "Season by season", exact: true }).click();
     await expectLoaded(page);
     const release = await hold(page, api("season-stats"));
     await page.getByRole("button", { name: "Compare the profile by season" }).click();
-    await expectSkeleton(page, "Loading league rankings for every season");
+    await expectSkeleton(page, "Loading league rankings for the seasons picked");
     await release();
     await expectLoaded(page);
   });

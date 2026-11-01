@@ -171,24 +171,35 @@ export function CareerRadarSkeleton() {
   return <div aria-hidden="true" className="skeleton mx-auto aspect-square w-full max-w-md rounded-full" />;
 }
 
-// The Season by season tab, as `PlayerCareerSection` lays it out: the career summary, the season table, the trend cards, the
-// highs beside the profile by season, the role table and the clubs.
+// The Season by season tab, as `PlayerCareerSection` lays it out: the All games / Regular season switch, the career summary,
+// the season table, the trend chart, the highs beside the profile by season, and the clubs.
 export function PlayerCareerSkeleton() {
   return (
     <div aria-hidden="true" className="flex flex-col gap-6">
+      <div className="skeleton -mb-2 h-9 w-60" />
       <StatCards />
       <div>
-        <TableSkeleton rows={6} />
+        <TableSkeleton rows={6} title="w-32" />
         <div className="skeleton mt-2 h-3 w-3/4" />
       </div>
       <div className="panel p-4">
         <SkeletonPanelHead title="w-20" />
-        <div className="grid grid-cols-2 gap-3 xl:grid-cols-3">
-          {range(12).map((index) => (
-            <div key={index} className="skeleton h-34 rounded-box max-sm:h-40" />
+        <div className="skeleton mb-4 h-8 w-full max-w-2xl" />
+        <div className="mb-4 grid grid-cols-3 gap-3">
+          {range(3).map((index) => (
+            <div key={index} className="flex flex-col gap-1.5">
+              <div className="skeleton h-3 w-16" />
+              <div className="skeleton h-7 w-14" />
+              <div className="skeleton h-3 w-20" />
+            </div>
           ))}
         </div>
-        <div className="skeleton mt-3 h-3 w-1/2" />
+        <div className="flex h-48 items-end gap-1.5 pt-5">
+          {[55, 70, 62, 80, 74, 90, 68, 60].map((height, index) => (
+            <div key={index} className="skeleton flex-1 rounded-t-sm rounded-b-none" style={{ height: `${height}%` }} />
+          ))}
+        </div>
+        <div className="skeleton mt-2 h-3 w-full" />
       </div>
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
         <div className="panel p-4">
@@ -206,7 +217,6 @@ export function PlayerCareerSkeleton() {
           <div className="skeleton mt-3 h-4 w-3/4" />
         </div>
       </div>
-      <TableSkeleton rows={5} title="w-44" />
       <div className="panel p-4">
         <SkeletonPanelHead title="w-36" />
         <div className="flex flex-wrap gap-x-8 gap-y-4">

@@ -9,7 +9,7 @@ const WIDTHS = [320, 390, 639, 640, 768, 1023, 1024];
 async function openCareer(page, href) {
   await page.goto(href);
   await page.getByRole("tab", { name: "Season by season" }).click();
-  await expect(page.getByRole("region", { name: "Regular seasons, per game" })).toBeVisible({ timeout: 60_000 });
+  await expect(page.getByRole("region", { name: "Season by season table" })).toBeVisible({ timeout: 60_000 });
 }
 
 async function atWidths(page, widths, check) {
@@ -25,13 +25,13 @@ const expectNoSidewaysScroll = (page) =>
   expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
 
 // Whether everything inside each panel sits inside it. Text that a `truncate` element cuts with an ellipsis, a box that scrolls on its
-// own and a chart canvas that is still redrawing after a resize are left to their own checks.
+// own (a region or a scrolling tab strip) and a chart canvas that is still redrawing after a resize are left to their own checks.
 const holdsContent = (locator) =>
   locator.evaluateAll((els) =>
     els.every((el) => {
       const box = el.getBoundingClientRect();
       return [...el.querySelectorAll("*")].every((child) => {
-        if (child.parentElement.closest(".truncate, [role=region], canvas")) return true;
+        if (child.parentElement.closest(".truncate, [role=region], .tabs-scroll, canvas")) return true;
         const rect = child.getBoundingClientRect();
         return rect.width === 0 || (rect.left >= box.left - 1 && rect.right <= box.right + 1);
       });
@@ -44,7 +44,7 @@ test("the summary, the season table and the trends fit, and the table scrolls on
   const { href } = await veteranPlayer(page);
   await openCareer(page, href);
   const summary = page.locator('section[aria-label="Career summary"]');
-  const tableRegion = page.getByRole("region", { name: "Regular seasons, per game" });
+  const tableRegion = page.getByRole("region", { name: "Season by season table" });
   const trends = page.locator('section[aria-label="Trends"]');
   await expect(trends.locator(".panel")).toBeVisible();
 
@@ -97,25 +97,40 @@ test("the summary, the season table and the trends fit, and the table scrolls on
       expect(placement).toBe(width < 640 ? "under" : "beside");
     }
 
-    // Trends: two cards to a row below 640px, three from 640px.
-    expect(await columns(trends.locator("div.grid > div"))).toBe(width < 640 ? 2 : 3);
-    // Twelve trends, so the last row is full at two and at three to a row.
-    await expect(trends.locator("div.grid > div")).toHaveCount(12);
+    // Trends: one chart, a bar column per season in the table, scrolling in its own region when the seasons don't fit.
+    const chart = trends.getByRole("region", { name: "Points by season" });
+    await expect(chart).toHaveAttribute("tabindex", "0");
+    expect(await chart.locator("div.flex-1[title]").count()).toBe(await tableRegion.locator("tbody tr").count());
     expect(await holdsContent(trends.locator(".panel"))).toBe(true);
-    // The labels are whole words ("Valuation (PIR)" and "True shooting %" wrap, they are not cut).
-    const cutLabels = await trends.locator("div.grid > div span.uppercase").evaluateAll((labels) => labels.filter((label) => label.scrollWidth > label.clientWidth + 1).map((label) => label.textContent));
-    expect(cutLabels).toEqual([]);
+    // The three facts over the chart are side by side and their numbers are not cut.
+    const facts = trends.locator("div.grid-cols-3 > div");
+    expect(await columns(facts)).toBe(3);
+    expect(await facts.locator("p.text-2xl").evaluateAll((els) => els.every((el) => el.scrollWidth <= el.clientWidth + 1))).toBe(true);
   });
 });
 
-test("the highs, the opened profile, the role table and the clubs fit", async ({ page }) => {
+test("the trend chart switches between the twelve stats", async ({ page }) => {
+  const { href } = await veteranPlayer(page);
+  await openCareer(page, href);
+  const trends = page.locator('section[aria-label="Trends"]');
+  const stats = trends.getByRole("tablist", { name: "Trend stat" }).getByRole("tab");
+  await expect(stats).toHaveCount(12);
+  await expect(trends.getByRole("region", { name: "Points by season" })).toBeVisible();
+  await stats.filter({ hasText: "Rebounds" }).click();
+  await expect(trends.getByRole("region", { name: "Rebounds by season" })).toBeVisible();
+  await expect(trends).toContainText("Best season");
+  await stats.filter({ hasText: "Win shares" }).click();
+  await expect(trends).toContainText("Career total");
+});
+
+test("the highs, the opened profile, the table views and the clubs fit", async ({ page }) => {
   test.setTimeout(120_000);
   const { href } = await veteranPlayer(page);
   await openCareer(page, href);
   const highsAndProfile = page.locator('section[aria-label="Highs and profile"]');
   await highsAndProfile.getByRole("button", { name: "Compare the profile by season" }).click();
   await expect(highsAndProfile.locator("canvas")).toBeVisible({ timeout: 60_000 });
-  const role = page.getByRole("region", { name: "How the role changed, by season" });
+  const table = page.getByRole("region", { name: "Season by season table" });
   const clubs = page.getByRole("region", { name: "Clubs by season" });
 
   await atWidths(page, WIDTHS, async (width) => {
@@ -134,21 +149,125 @@ test("the highs, the opened profile, the role table and the clubs fit", async ({
     // Eight highs, so the last row is full at two and at four to a row (a player without a game for one stat shows seven or fewer).
     expect(await highsAndProfile.locator('a[href*="/games/"]').count()).toBeLessThanOrEqual(8);
 
-    // The role table scrolls in its own region with the season pinned; the clubs row scrolls in its own region.
-    await expect(role).toHaveAttribute("tabindex", "0");
+    // Each table view keeps the season pinned while its region scrolls, and the view tabs stay on one line inside the panel.
+    for (const view of ["Totals", "Role", "Per game"]) {
+      await page.getByRole("tab", { name: view, exact: true }).click();
+      const pinned = await table.evaluate((el) => {
+        el.scrollLeft = 0;
+        const cell = el.querySelector("tbody td:first-child");
+        const before = cell.getBoundingClientRect().left;
+        el.scrollLeft = 60;
+        const after = cell.getBoundingClientRect().left;
+        el.scrollLeft = 0;
+        return { scrolls: el.scrollWidth > el.clientWidth, moved: Math.abs(after - before) };
+      });
+      if (pinned.scrolls) expect(pinned.moved).toBeLessThan(1);
+    }
+    const viewTabs = page.getByRole("tablist", { name: "Table view" }).getByRole("tab");
+    expect(await viewTabs.evaluateAll((tabs) => new Set(tabs.map((tab) => Math.round(tab.getBoundingClientRect().top))).size)).toBe(1);
+    expect(await holdsContent(page.locator('section[aria-label="Seasons"] .panel, section[aria-label="Teams"] .panel'))).toBe(true);
+    // The clubs row scrolls in its own region.
     await expect(clubs).toHaveAttribute("tabindex", "0");
-    const rolePinned = await role.evaluate((el) => {
-      el.scrollLeft = 0;
-      const cell = el.querySelector("tbody td:first-child");
-      const before = cell.getBoundingClientRect().left;
-      el.scrollLeft = 60;
-      const after = cell.getBoundingClientRect().left;
-      el.scrollLeft = 0;
-      return { scrolls: el.scrollWidth > el.clientWidth, moved: Math.abs(after - before) };
-    });
-    if (rolePinned.scrolls) expect(rolePinned.moved).toBeLessThan(1);
-    expect(await holdsContent(page.locator('section[aria-label="Role"] .panel, section[aria-label="Teams"] .panel'))).toBe(true);
   });
+});
+
+// Sergio Llull: Real Madrid since 2007-08, with old 10-game regular seasons, a 2017-18 of playoff games only, and a
+// registered 2026-27 without games so far. Isaac Bonga: Bayern, Partizan and Panathinaikos.
+const LLULL = "/2025-26/players/TGB";
+const BONGA = "/2025-26/players/006760";
+
+const seasonLinks = (page) => page.getByRole("region", { name: "Season by season table" }).locator("tbody td:first-child a");
+// A season's GP cell: the fourth, after the season, the team and the age. The total is its first line; the games after
+// the regular season are listed under it.
+const gamesCell = (page, season) =>
+  page.getByRole("region", { name: "Season by season table" }).locator("tbody tr").filter({ has: page.getByRole("link", { name: season, exact: true }) }).locator("td").nth(3);
+const gamesOf = async (page, season) => Number((await gamesCell(page, season).innerText()).split("\n")[0]);
+
+test("the tab opens on all games, and the regular season drops the seasons without regular-season games", async ({ page }) => {
+  test.setTimeout(120_000);
+  await openCareer(page, LLULL);
+  const phases = page.getByRole("tablist", { name: "Games counted" });
+  await expect(phases.getByRole("tab", { name: "All games" })).toHaveAttribute("aria-selected", "true");
+  const summary = page.locator('section[aria-label="Career summary"]');
+  await expect(summary).toContainText("every phase");
+
+  // Every phase: 30 games in 2014-15, the 4 playoff games of 2017-18, and no row for 2026-27 (no games yet).
+  expect(await gamesOf(page, "2014-15")).toBe(30);
+  // Under the total, the games after the regular season: 10 + 14 Top 16 + 6 postseason.
+  await expect(gamesCell(page, "2014-15")).toContainText("14 Top 16");
+  await expect(gamesCell(page, "2014-15")).toContainText("6 postseason");
+  expect(await gamesOf(page, "2017-18")).toBe(4);
+  await expect(gamesCell(page, "2017-18")).toContainText("4 postseason");
+  await expect(seasonLinks(page).filter({ hasText: "2026-27" })).toHaveCount(0);
+  const games = () => summary.locator("p").nth(1).innerText().then((text) => Number(text.replace(/\D/g, "")));
+  expect(await games()).toBeGreaterThan(326);
+
+  // The regular season: 10 games in 2014-15, and 2017-18 leaves the table and the season count.
+  await phases.getByRole("tab", { name: "Regular season" }).click();
+  await expect(summary).toContainText("regular season");
+  expect(await gamesOf(page, "2014-15")).toBe(10);
+  await expect(gamesCell(page, "2014-15")).not.toContainText("postseason");
+  await expect(seasonLinks(page).filter({ hasText: "2017-18" })).toHaveCount(0);
+  expect(await games()).toBe(326);
+  await expect(summary.locator("p").first()).toHaveText(String(await seasonLinks(page).count()));
+});
+
+test("the table shows per game, totals and role, each with its career row", async ({ page }) => {
+  test.setTimeout(120_000);
+  await openCareer(page, BONGA);
+  const table = page.getByRole("region", { name: "Season by season table" });
+  const headers = () => table.locator("thead th").allInnerTexts();
+
+  expect(await headers()).toEqual(expect.arrayContaining(["GP", "PTS", "TS%"]));
+  await expect(table.locator("tfoot")).toContainText("Career");
+
+  await page.getByRole("tab", { name: "Totals", exact: true }).click();
+  expect(await headers()).toEqual(expect.arrayContaining(["GP", "PTS", "2PM-A", "3PM-A", "FTM-A"]));
+  // The career row is the sum of the seasons (PTS is the sixth column).
+  const points = await table.locator("tbody tr").evaluateAll((rows) => rows.map((row) => Number(row.children[5].textContent.replace(/\D/g, ""))));
+  const careerPoints = Number((await table.locator("tfoot td").nth(5).innerText()).replace(/\D/g, ""));
+  expect(careerPoints).toBe(points.reduce((sum, value) => sum + value, 0));
+
+  await page.getByRole("tab", { name: "Role", exact: true }).click();
+  expect(await headers()).toEqual(expect.arrayContaining(["Started", "USG%", "Pts from 2s"]));
+  await expect(table.locator("tbody tr").first().locator("td").nth(3)).toHaveText(/^\d+\/\d+$/);
+  // The separate role table is gone.
+  await expect(page.getByText("How the role changed")).toHaveCount(0);
+});
+
+test("the clubs are stints, and the radar starts on the last three seasons and keeps at least one", async ({ page }) => {
+  test.setTimeout(120_000);
+  await openCareer(page, LLULL);
+  const stints = page.locator('section[aria-label="Teams"] li');
+  await expect(stints).toHaveCount(1);
+  await expect(stints.first()).toContainText("2007-08 to 2026-27");
+  await expect(stints.first()).toContainText("Real Madrid");
+  await expect(stints.first()).toContainText("20 seasons");
+
+  const profile = page.locator('section[aria-label="Highs and profile"]');
+  await profile.getByRole("button", { name: "Compare the profile by season" }).click();
+  const chips = profile.getByRole("group", { name: "Seasons on the radar" }).getByRole("button");
+  await expect(chips).toHaveCount(await seasonLinks(page).count());
+  const pressed = profile.locator("[aria-pressed=true]");
+  await expect(pressed).toHaveText(["2023-24", "2024-25", "2025-26"]);
+  await expect(profile.locator("canvas")).toBeVisible({ timeout: 60_000 });
+
+  // Turning seasons off stops at the last one; turning one on adds it.
+  for (const season of ["2023-24", "2024-25"]) await chips.filter({ hasText: season }).click();
+  const lastOn = chips.filter({ hasText: "2025-26" });
+  await expect(lastOn).toBeDisabled();
+  await lastOn.click({ force: true });
+  await expect(pressed).toHaveText(["2025-26"]);
+  await chips.filter({ hasText: "2014-15" }).click();
+  await expect(pressed).toHaveText(["2014-15", "2025-26"]);
+  await expect(profile.locator("canvas")).toBeVisible({ timeout: 60_000 });
+
+  await openCareer(page, BONGA);
+  await expect(stints).toHaveCount(3);
+  await expect(stints.nth(0)).toContainText("Bayern");
+  await expect(stints.nth(0)).toContainText("2022-23 to 2023-24");
+  await expect(stints.nth(1)).toContainText("Partizan");
+  await expect(stints.nth(2)).toContainText("Panathinaikos");
 });
 
 // Answers the career requests: the first request for the player's own page is live, later ones follow `answer`.
@@ -171,7 +290,7 @@ test("a player with one season, no seasons, or a failing history keeps the tab t
   // One season: only the current one answers, so the table has no Career row and the radar one outline.
   await shapeCareer(page, (isCurrent) => (isCurrent ? "live" : 404));
   await openCareer(page, href);
-  await expect(page.getByRole("region", { name: "Regular seasons, per game" }).locator("tfoot")).toHaveCount(0);
+  await expect(page.getByRole("region", { name: "Season by season table" }).locator("tfoot")).toHaveCount(0);
   await expectNoSidewaysScroll(page);
   expect(await holdsContent(page.locator('#player-detail-panel section[aria-label="Career summary"] div.grid > div, #player-detail-panel section[aria-label="Trends"] .panel'))).toBe(true);
   await page.unroute(/\/api\/seasons\/[^/]+\/players\/[^/?]+$/);

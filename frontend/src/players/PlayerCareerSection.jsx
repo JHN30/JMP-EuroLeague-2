@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { motion } from "motion/react";
 import { Link } from "react-router";
@@ -6,17 +6,24 @@ import { getSeasons } from "../lib/api";
 import AsyncState from "../lib/AsyncState";
 import { PlayerCareerSkeleton } from "./PlayerPageSkeleton";
 import EmptyText from "../lib/EmptyText";
-import { formatDecimal, formatSignedDecimal } from "../lib/format";
+import { formatDecimal } from "../lib/format";
 import HomeAwayIcon from "../lib/HomeAwayIcon";
 import { listContainer, listItem, sectionContainer, sectionItem } from "../lib/motion";
 import Panel from "../lib/Panel";
 import PanelHeader from "../lib/PanelHeader";
 import RevealImage from "../lib/RevealImage";
 import ShortLabel from "../lib/ShortLabel";
+import { TabPanel, TabStrip } from "../lib/TabStrip";
 import { ProfileComparison, TrendGrid } from "./PlayerCareerCharts";
-import { careerAverages, careerHighs, careerTotals, changeFrom, fetchPlayerCareer, seasonLine } from "./careerData";
+import { CAREER_PHASES, careerAverages, careerHighs, careerTotals, clubStints, fetchPlayerCareer, seasonLine } from "./careerData";
 
-// ---- Career summary: weighted averages and exact totals over the regular seasons ----
+const PANEL_ID = "player-career-panel";
+const TABLE_ID = "player-career-table";
+
+// What the note under each section says the numbers count.
+const PHASE_TEXT = { all: "Every phase", RS: "Regular season" };
+
+// ---- Career summary: weighted averages and exact totals over the seasons in the view ----
 
 function SummaryStat({ label, value, sub }) {
   return (
@@ -28,14 +35,14 @@ function SummaryStat({ label, value, sub }) {
   );
 }
 
-function CareerSummary({ averages, totals, seasonCount }) {
+function CareerSummary({ averages, totals, seasonCount, phase }) {
   const each = (key) => (averages[key] === null ? "—" : formatDecimal(averages[key]));
   return (
     <motion.div className="grid grid-cols-2 gap-3 sm:grid-cols-4 xl:grid-cols-8" variants={listContainer} initial="hidden" animate="show">
       <SummaryStat label="Seasons" value={seasonCount} />
-      <SummaryStat label="Games" value={totals.games} sub="regular season" />
-      <SummaryStat label="Minutes" value={totals.minutes.toLocaleString()} sub="played" />
-      <SummaryStat label="Points" value={totals.points.toLocaleString()} sub="scored" />
+      <SummaryStat label="Games" value={totals.gp.toLocaleString()} sub={phase === "all" ? "every phase" : "regular season"} />
+      <SummaryStat label="Minutes" value={totals.min.toLocaleString()} sub="played" />
+      <SummaryStat label="Points" value={Math.round(totals.pts).toLocaleString()} sub="scored" />
       <SummaryStat label="PTS" value={each("pts")} sub="career per game" />
       <SummaryStat label="REB" value={each("reb")} sub="career per game" />
       <SummaryStat label="AST" value={each("ast")} sub="career per game" />
@@ -44,30 +51,117 @@ function CareerSummary({ averages, totals, seasonCount }) {
   );
 }
 
-// ---- Season table: every season in a row, with the change from the season before ----
+// ---- Season table: every season in a row, as per-game numbers, totals or the role ----
 
-const TABLE_COLUMNS = [
-  { key: "min", label: "MIN", change: true },
-  { key: "pts", label: "PTS", change: true },
-  { key: "reb", label: "REB", change: true },
-  { key: "ast", label: "AST", change: true },
-  { key: "stl", label: "STL" },
-  { key: "blk", label: "BLK" },
-  { key: "pir", label: "PIR", change: true },
-  { key: "p2", label: "2P%" },
-  { key: "p3", label: "3P%" },
-  { key: "ft", label: "FT%" },
-  { key: "ts", label: "TS%", change: true },
-];
+const decimal = (value) => (value === null ? "—" : formatDecimal(value));
+const percent = (value) => (value === null ? "—" : `${formatDecimal(value)}%`);
+const whole = (value) => Math.round(value).toLocaleString();
 
-function Change({ value }) {
-  if (value === null || value === 0) return null;
+// Each column says how to show a season (`cell`) and the career row (`career`, from the averages and the totals).
+const perGameColumn = (key, label, format) => ({
+  key,
+  label,
+  cell: (line) => format(line[key]),
+  career: ({ averages }) => format(averages[key]),
+});
+
+// Under GP, how many of the games came after the regular season (only in the All games view, where they are counted).
+function StageSplit({ stages }) {
+  if (!stages || (stages.topSixteen === 0 && stages.postseason === 0)) return null;
   return (
-    <span className={`ml-1 text-[0.7rem] font-semibold ${value > 0 ? "text-success" : "text-error"}`} title="Against the season before">
-      {value > 0 ? "▲" : "▼"}
-      {formatSignedDecimal(value).replace(/^[+-]/, "")}
+    <span className="muted block text-[0.65rem] font-normal leading-tight">
+      {stages.topSixteen > 0 ? <span className="block">{stages.topSixteen} Top 16</span> : null}
+      {stages.postseason > 0 ? <span className="block">{stages.postseason} postseason</span> : null}
     </span>
   );
+}
+
+const gamesColumn = (gamesOf, careerGames) => ({
+  key: "gp",
+  label: "GP",
+  title: "Games played. In All games, the games after the regular season are listed under the total.",
+  cell: (line) => (
+    <>
+      {gamesOf(line) ?? "—"}
+      <StageSplit stages={line.stages} />
+    </>
+  ),
+  career: (career) => (
+    <>
+      {careerGames(career)}
+      <StageSplit stages={career.totals.stages} />
+    </>
+  ),
+});
+
+const PER_GAME_COLUMNS = [
+  gamesColumn((line) => line.gp, ({ averages }) => averages.gp),
+  perGameColumn("min", "MIN", decimal),
+  perGameColumn("pts", "PTS", decimal),
+  perGameColumn("reb", "REB", decimal),
+  perGameColumn("ast", "AST", decimal),
+  perGameColumn("stl", "STL", decimal),
+  perGameColumn("blk", "BLK", decimal),
+  perGameColumn("pir", "PIR", decimal),
+  perGameColumn("p2", "2P%", decimal),
+  perGameColumn("p3", "3P%", decimal),
+  perGameColumn("ft", "FT%", decimal),
+  perGameColumn("ts", "TS%", decimal),
+];
+
+const totalColumn = (key, label) => ({ key, label, cell: (line) => whole(line.totals[key]), career: ({ totals }) => whole(totals[key]) });
+const shotsColumn = (made, attempted, label) => ({
+  key: made,
+  label,
+  cell: (line) => `${whole(line.totals[made])}-${whole(line.totals[attempted])}`,
+  career: ({ totals }) => `${whole(totals[made])}-${whole(totals[attempted])}`,
+});
+
+const TOTAL_COLUMNS = [
+  gamesColumn((line) => whole(line.totals.gp), ({ totals }) => whole(totals.gp)),
+  totalColumn("min", "MIN"),
+  totalColumn("pts", "PTS"),
+  totalColumn("reb", "REB"),
+  totalColumn("ast", "AST"),
+  totalColumn("stl", "STL"),
+  totalColumn("blk", "BLK"),
+  totalColumn("pir", "PIR"),
+  shotsColumn("m2", "a2", "2PM-A"),
+  shotsColumn("m3", "a3", "3PM-A"),
+  shotsColumn("mft", "aft", "FTM-A"),
+];
+
+// Where the points came from, as the share of the season's points from twos, threes and free throws.
+const mixColumn = (key, label, title) => ({ key, label, title, cell: (line) => percent(line[key]), career: () => "" });
+
+const ROLE_COLUMNS = [
+  {
+    key: "gs",
+    label: "Started",
+    title: "Games started out of games played",
+    cell: (line) => (line.gs === null ? <span className="muted">—</span> : `${line.gs}/${line.gp ?? 0}`),
+    career: () => "",
+  },
+  perGameColumn("min", "MIN", decimal),
+  { ...perGameColumn("usg", "USG%", percent), title: "Share of the team's possessions the player used while on the floor" },
+  mixColumn("mixTwos", "Pts from 2s", "Share of the points scored from two-pointers"),
+  mixColumn("mixThrees", "Pts from 3s", "Share of the points scored from three-pointers"),
+  mixColumn("mixFt", "Pts from FT", "Share of the points scored from free throws"),
+];
+
+const TABLE_VIEWS = [
+  { key: "perGame", label: "Per game", columns: PER_GAME_COLUMNS },
+  { key: "totals", label: "Totals", columns: TOTAL_COLUMNS },
+  { key: "role", label: "Role", columns: ROLE_COLUMNS },
+];
+
+function tableNote(view, phase) {
+  const counted = PHASE_TEXT[phase];
+  if (view === "totals") return `${counted}, totals added up from the game logs. The career row is the sum.`;
+  if (view === "role") {
+    return `${counted}. Started is games started out of games played, USG% the share of the team's possessions used while on the floor, and the last three columns split the points by where they came from. The career row weights minutes and usage by games.`;
+  }
+  return `${counted}, per game. The career row weights each season by its games (shooting percentages by minutes played).`;
 }
 
 function ClubCrests({ registrations }) {
@@ -88,78 +182,94 @@ function ClubCrests({ registrations }) {
   );
 }
 
-function SeasonTable({ cards, lines, averages, currentSeasonCode, personKey }) {
+function SeasonTable({ lines, cardsByCode, averages, totals, phase, currentSeasonCode, personKey }) {
+  const [view, setView] = useState("perGame");
+  const { columns } = TABLE_VIEWS.find((entry) => entry.key === view);
   return (
-    <Panel className="overflow-x-auto overscroll-x-contain" role="region" aria-label="Regular seasons, per game" tabIndex={0}>
-      <table className="data-table-sticky table max-sm:table-sm">
-        <thead>
-          <tr>
-            <th>Season</th>
-            <th>Team</th>
-            <th>Age</th>
-            <th>GP</th>
-            {TABLE_COLUMNS.map((column) => (
-              <th key={column.key}>{column.label}</th>
-            ))}
-          </tr>
-        </thead>
-        <motion.tbody variants={listContainer} initial="hidden" animate="show">
-          {lines.map((line, index) => {
-            const card = cards[index];
-            const previous = index > 0 ? lines[index - 1] : null;
-            return (
-              <motion.tr key={line.seasonCode} variants={listItem} className={line.seasonCode === currentSeasonCode ? "bg-base-200/60" : ""}>
-                <td className="whitespace-nowrap font-semibold">
-                  <Link to={`/${line.seasonCode}/players/${personKey}`} className="link link-hover">
-                    {line.label}
-                  </Link>
-                  {/* Below sm the badges sit under the season, so the pinned column stays about a season label wide. */}
-                  {line.small || line.calculated ? (
-                    <span className="mt-1 flex flex-col items-start gap-1 sm:ml-2 sm:mt-0 sm:inline-flex sm:flex-row">
-                      {line.small ? <span className="badge badge-ghost badge-sm" title="Fewer than 10 games: not compared">small sample</span> : null}
-                      {line.calculated ? (
-                        <span
-                          className="badge badge-ghost badge-sm"
-                          title="The league lists per-game numbers from a minimum of games, so these are worked out from this player's season totals"
-                        >
-                          calculated
+    <>
+      <Panel className="p-4">
+        {/* The view tabs wrap under the title when the two don't fit side by side. */}
+        <div className="flex flex-wrap items-start justify-between gap-x-4">
+          <PanelHeader kicker="SEASON BY SEASON" title="Every season" />
+          <TabStrip
+            ariaLabel="Table view"
+            panelId={TABLE_ID}
+            activeKey={view}
+            onChange={setView}
+            className="mb-4 w-fit"
+            tabs={TABLE_VIEWS.map(({ key, label }) => ({ key, label }))}
+          />
+        </div>
+        <div id={TABLE_ID} className="overflow-x-auto overscroll-x-contain" role="region" aria-label="Season by season table" tabIndex={0}>
+          <table className="data-table-sticky table max-sm:table-sm">
+            <thead>
+              <tr>
+                <th>Season</th>
+                <th>Team</th>
+                <th>Age</th>
+                {columns.map((column) => (
+                  <th key={column.key} title={column.title}>
+                    {column.label}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <motion.tbody key={view} variants={listContainer} initial="hidden" animate="show">
+              {lines.map((line) => {
+                const calculated = line.calculated && view !== "totals";
+                return (
+                  <motion.tr key={line.seasonCode} variants={listItem} className={line.seasonCode === currentSeasonCode ? "bg-base-200/60" : ""}>
+                    <td className="whitespace-nowrap font-semibold">
+                      <Link to={`/${line.seasonCode}/players/${personKey}`} className="link link-hover">
+                        {line.label}
+                      </Link>
+                      {/* Below sm the badges sit under the season, so the pinned column stays about a season label wide. */}
+                      {line.small || calculated ? (
+                        <span className="mt-1 flex flex-col items-start gap-1 sm:ml-2 sm:mt-0 sm:inline-flex sm:flex-row">
+                          {line.small ? <span className="badge badge-ghost badge-sm" title="Fewer than 10 games, so read these numbers with care">small sample</span> : null}
+                          {calculated ? (
+                            <span
+                              className="badge badge-ghost badge-sm"
+                              title="The league lists per-game numbers from a minimum of games, so these are worked out from this player's season totals"
+                            >
+                              calculated
+                            </span>
+                          ) : null}
                         </span>
                       ) : null}
-                    </span>
-                  ) : null}
-                </td>
-                <td>
-                  <ClubCrests registrations={card.registrations} />
-                </td>
-                <td className="tabular-nums">{line.age ?? "—"}</td>
-                <td className="tabular-nums">{line.gp ?? "—"}</td>
-                {TABLE_COLUMNS.map((column) => (
-                  <td key={column.key} className="whitespace-nowrap tabular-nums">
-                    {line[column.key] === null ? "—" : formatDecimal(line[column.key])}
-                    {column.change ? <Change value={changeFrom(previous, line, column.key)} /> : null}
-                  </td>
-                ))}
-              </motion.tr>
-            );
-          })}
-        </motion.tbody>
-        {lines.length > 1 ? (
-          <tfoot>
-            <tr className="font-bold">
-              <td>Career</td>
-              <td />
-              <td />
-              <td className="tabular-nums">{averages.gp}</td>
-              {TABLE_COLUMNS.map((column) => (
-                <td key={column.key} className="tabular-nums">
-                  {averages[column.key] === null ? "—" : formatDecimal(averages[column.key])}
-                </td>
-              ))}
-            </tr>
-          </tfoot>
-        ) : null}
-      </table>
-    </Panel>
+                    </td>
+                    <td>
+                      <ClubCrests registrations={cardsByCode.get(line.seasonCode).registrations} />
+                    </td>
+                    <td className="tabular-nums">{line.age ?? "—"}</td>
+                    {columns.map((column) => (
+                      <td key={column.key} className="whitespace-nowrap tabular-nums">
+                        {column.cell(line)}
+                      </td>
+                    ))}
+                  </motion.tr>
+                );
+              })}
+            </motion.tbody>
+            {lines.length > 1 ? (
+              <tfoot>
+                <tr className="font-bold">
+                  <td>Career</td>
+                  <td />
+                  <td />
+                  {columns.map((column) => (
+                    <td key={column.key} className="whitespace-nowrap tabular-nums">
+                      {column.career({ averages, totals })}
+                    </td>
+                  ))}
+                </tr>
+              </tfoot>
+            ) : null}
+          </table>
+        </div>
+      </Panel>
+      <p className="muted mt-2 text-xs">{tableNote(view, phase)}</p>
+    </>
   );
 }
 
@@ -206,97 +316,41 @@ function CareerHighs({ highs }) {
   );
 }
 
-// ---- Role: how much the player played and started, how much of the offence they used, and where the points came from ----
+// ---- Teams: the clubs, one stop per stint ----
 
-// Where the points came from, as the share of the season's points from twos, threes and free throws.
-const POINT_MIX = [
-  { key: "mixTwos", label: "Pts from 2s", title: "Share of the points scored from two-pointers" },
-  { key: "mixThrees", label: "Pts from 3s", title: "Share of the points scored from three-pointers" },
-  { key: "mixFt", label: "Pts from FT", title: "Share of the points scored from free throws" },
-];
-
-function RoleTable({ lines }) {
-  return (
-    <Panel className="p-4">
-      <PanelHeader kicker="ROLE" title="How the role changed" />
-      <div className="overflow-x-auto overscroll-x-contain" role="region" aria-label="How the role changed, by season" tabIndex={0}>
-        <table className="data-table-sticky table max-sm:table-sm">
-          <thead>
-            <tr>
-              <th>Season</th>
-              <th>Started</th>
-              <th>MIN</th>
-              <th>USG%</th>
-              {POINT_MIX.map((part) => (
-                <th key={part.key} title={part.title}>
-                  {part.label}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {lines.map((line) => (
-              <tr key={line.seasonCode}>
-                <td className="whitespace-nowrap font-semibold">{line.label}</td>
-                <td className="whitespace-nowrap tabular-nums" title={line.gs === null ? "Starts are not in the game log" : `Started ${line.gs} of ${line.gp ?? 0} games`}>
-                  {line.gs === null ? <span className="muted">—</span> : `${line.gs}/${line.gp ?? 0}`}
-                </td>
-                <td className="tabular-nums">{line.min === null ? "—" : formatDecimal(line.min)}</td>
-                <td className="tabular-nums">{line.usg === null ? "—" : `${formatDecimal(line.usg)}%`}</td>
-                {POINT_MIX.map((part) => (
-                  <td key={part.key} className="whitespace-nowrap tabular-nums">
-                    {line[part.key] === null ? "—" : `${formatDecimal(line[part.key])}%`}
-                  </td>
-                ))}
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </Panel>
-  );
-}
-
-// ---- Teams: the clubs, season by season ----
-
-function TeamsTimeline({ cards, currentSeasonCode }) {
+function TeamsTimeline({ stints, currentSeasonCode }) {
   return (
     <Panel className="p-4">
       <PanelHeader kicker="CLUBS" title="Teams by season" />
       <div className="overflow-x-auto overscroll-x-contain pb-2" role="region" aria-label="Clubs by season" tabIndex={0}>
         <motion.ol className="flex gap-6" variants={listContainer} initial="hidden" animate="show">
-          {cards.map((card) => (
-            <motion.li key={card.seasonCode} className="min-w-44 flex-none" variants={listItem}>
-              <div className="relative mb-3 flex items-center">
-                <span
-                  aria-hidden="true"
-                  className={`z-10 h-3 w-3 flex-none rounded-full ${card.seasonCode === currentSeasonCode ? "bg-primary" : "border-2 border-primary bg-base-100"}`}
-                />
-                <span aria-hidden="true" className="absolute left-3 right-[-1.5rem] h-0.5 bg-base-300" />
-                <span className="z-10 ml-2 bg-base-100 pr-2 text-sm font-bold tabular-nums">{card.label}</span>
-              </div>
-              <div className="flex flex-col gap-2">
-                {card.registrations.length === 0 ? <span className="muted text-sm">No team recorded.</span> : null}
-                {card.registrations.map((registration) => (
-                  <Link
-                    key={registration.registrationKey}
-                    to={`/${card.seasonCode}/teams/${registration.team?.clubCode ?? registration.clubCode}`}
-                    className="flex min-w-0 items-center gap-2 hover:text-primary"
-                  >
-                    {registration.team?.crestUrl ? <RevealImage src={registration.team.crestUrl} className="h-7 w-7 flex-none object-contain" /> : null}
-                    <span className="truncate text-sm font-semibold">{registration.team?.name ?? registration.clubCode}</span>
-                    {registration.active === false ? <span className="badge badge-ghost badge-xs">Former</span> : null}
-                  </Link>
-                ))}
-                {card.registrations[0]?.positionName ? (
-                  <span className="muted text-xs">
-                    {card.registrations[0].positionName}
-                    {card.registrations[0].dorsal ? ` · #${card.registrations[0].dorsal}` : ""}
+          {stints.map((stint) => {
+            const first = stint.seasons[0];
+            const last = stint.seasons[stint.seasons.length - 1];
+            const current = stint.seasons.some((card) => card.seasonCode === currentSeasonCode);
+            return (
+              <motion.li key={stint.key} className="min-w-44 flex-none" variants={listItem}>
+                <div className="relative mb-3 flex items-center">
+                  <span aria-hidden="true" className={`z-10 h-3 w-3 flex-none rounded-full ${current ? "bg-primary" : "border-2 border-primary bg-base-100"}`} />
+                  <span aria-hidden="true" className="absolute left-3 right-[-1.5rem] h-0.5 bg-base-300" />
+                  <span className="z-10 ml-2 bg-base-100 pr-2 text-sm font-bold tabular-nums">
+                    {first === last ? first.label : `${first.label} to ${last.label}`}
                   </span>
-                ) : null}
-              </div>
-            </motion.li>
-          ))}
+                </div>
+                <div className="flex flex-col gap-1">
+                  <Link to={`/${last.seasonCode}/teams/${stint.team?.clubCode ?? stint.clubCode}`} className="flex min-w-0 items-center gap-2 hover:text-primary">
+                    {stint.team?.crestUrl ? <RevealImage src={stint.team.crestUrl} className="h-7 w-7 flex-none object-contain" /> : null}
+                    <span className="truncate text-sm font-semibold">{stint.team?.name ?? stint.clubCode}</span>
+                    {stint.former ? <span className="badge badge-ghost badge-xs">Former</span> : null}
+                  </Link>
+                  <span className="muted text-xs">
+                    {stint.seasons.length} {stint.seasons.length === 1 ? "season" : "seasons"}
+                    {stint.roles.length > 0 ? ` · ${stint.roles.join(", ")}` : ""}
+                  </span>
+                </div>
+              </motion.li>
+            );
+          })}
         </motion.ol>
       </div>
     </Panel>
@@ -306,6 +360,7 @@ function TeamsTimeline({ cards, currentSeasonCode }) {
 // ---- The tab ----
 
 export default function PlayerCareerSection({ personKey, seasonCode }) {
+  const [phase, setPhase] = useState("all");
   const seasonsQuery = useQuery({ queryKey: ["seasons"], queryFn: () => getSeasons() });
   const seasons = seasonsQuery.data?.seasons;
   const careerQuery = useQuery({
@@ -315,11 +370,17 @@ export default function PlayerCareerSection({ personKey, seasonCode }) {
   });
 
   const cards = careerQuery.data;
+  // Highs and clubs cover every game and season; the rest follows the view.
+  const career = useMemo(() => {
+    if (!cards) return null;
+    return { highs: careerHighs(cards), stints: clubStints(cards), cardsByCode: new Map(cards.map((card) => [card.seasonCode, card])) };
+  }, [cards]);
   const derived = useMemo(() => {
     if (!cards) return null;
-    const lines = cards.map(seasonLine);
-    return { lines, averages: careerAverages(lines), totals: careerTotals(cards), highs: careerHighs(cards) };
-  }, [cards]);
+    // A season with no games in the view leaves the table, the trends, the radar and the count.
+    const lines = cards.map((card) => seasonLine(card, phase)).filter((line) => line.played);
+    return { lines, averages: careerAverages(lines), totals: careerTotals(lines) };
+  }, [cards, phase]);
 
   if (seasonsQuery.isError) {
     return <AsyncState status="error" message="Could not load the seasons." onRetry={() => seasonsQuery.refetch()} />;
@@ -333,31 +394,46 @@ export default function PlayerCareerSection({ personKey, seasonCode }) {
   }
   if (cards.length === 0) return <EmptyText>No archived seasons found for this player.</EmptyText>;
 
+  const { lines } = derived;
   return (
-    <motion.div className="flex flex-col gap-6" variants={sectionContainer} initial="hidden" animate="show">
-      <motion.section variants={sectionItem} aria-label="Career summary">
-        <CareerSummary averages={derived.averages} totals={derived.totals} seasonCount={cards.length} />
-      </motion.section>
-      <motion.section variants={sectionItem} aria-label="Regular seasons">
-        <SeasonTable cards={cards} lines={derived.lines} averages={derived.averages} currentSeasonCode={seasonCode} personKey={personKey} />
-        <p className="muted mt-2 text-xs">
-          Regular season, per game. ▲ and ▼ show the change from the season before; a season with fewer than 10 games is not compared. The career
-          row weights each season by its games (shooting percentages by minutes played).
-        </p>
-      </motion.section>
-      <motion.section variants={sectionItem} aria-label="Trends">
-        <TrendGrid lines={derived.lines} />
-      </motion.section>
-      <motion.section className="grid grid-cols-1 gap-4 xl:grid-cols-2" variants={sectionItem} aria-label="Highs and profile">
-        <CareerHighs highs={derived.highs} />
-        <ProfileComparison cards={cards} personKey={personKey} />
-      </motion.section>
-      <motion.section variants={sectionItem} aria-label="Role">
-        <RoleTable lines={derived.lines} />
-      </motion.section>
-      <motion.section variants={sectionItem} aria-label="Teams">
-        <TeamsTimeline cards={cards} currentSeasonCode={seasonCode} />
-      </motion.section>
-    </motion.div>
+    <>
+      <TabStrip ariaLabel="Games counted" level={2} panelId={PANEL_ID} activeKey={phase} onChange={setPhase} className="mb-4 w-fit" tabs={CAREER_PHASES} />
+      <TabPanel id={PANEL_ID} focusKey={phase} scroll={false}>
+        <motion.div className="flex flex-col gap-6" variants={sectionContainer} initial="hidden" animate="show">
+          {lines.length === 0 ? (
+            <motion.div variants={sectionItem}>
+              <EmptyText>{phase === "RS" ? "No regular-season games recorded." : "No games recorded."}</EmptyText>
+            </motion.div>
+          ) : (
+            <>
+              <motion.section variants={sectionItem} aria-label="Career summary">
+                <CareerSummary averages={derived.averages} totals={derived.totals} seasonCount={lines.length} phase={phase} />
+              </motion.section>
+              <motion.section variants={sectionItem} aria-label="Seasons">
+                <SeasonTable
+                  lines={lines}
+                  cardsByCode={career.cardsByCode}
+                  averages={derived.averages}
+                  totals={derived.totals}
+                  phase={phase}
+                  currentSeasonCode={seasonCode}
+                  personKey={personKey}
+                />
+              </motion.section>
+              <motion.section variants={sectionItem} aria-label="Trends">
+                <TrendGrid lines={lines} />
+              </motion.section>
+            </>
+          )}
+          <motion.section className="grid grid-cols-1 gap-4 xl:grid-cols-2" variants={sectionItem} aria-label="Highs and profile">
+            <CareerHighs highs={career.highs} />
+            {lines.length > 0 ? <ProfileComparison lines={lines} personKey={personKey} phase={phase} /> : null}
+          </motion.section>
+          <motion.section variants={sectionItem} aria-label="Teams">
+            <TeamsTimeline stints={career.stints} currentSeasonCode={seasonCode} />
+          </motion.section>
+        </motion.div>
+      </TabPanel>
+    </>
   );
 }

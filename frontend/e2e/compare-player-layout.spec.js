@@ -226,7 +226,7 @@ test.describe("on a phone", () => {
     await expectHeader(header);
     // The Statistics tab carries no note about the tips: the rows are named in full.
     await expect(page.getByText("Hover or tap a name for what it means.")).toHaveCount(0);
-    await expect(page.getByText(/^Team wins when playing/).first()).toBeAttached();
+    await expect(page.getByText(/^Team wins/).first()).toBeAttached();
     for (const label of ["Double-doubles", "Triple-doubles", "Possessions"]) {
       await expect(page.locator(".header-tip-label", { hasText: label }).first()).toBeAttached();
     }

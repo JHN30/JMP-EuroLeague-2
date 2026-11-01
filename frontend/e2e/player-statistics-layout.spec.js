@@ -36,11 +36,12 @@ const holdsContent = (locator) =>
 async function openStatistics(page, href) {
   await page.goto(href);
   await page.getByRole("tab", { name: "Statistics" }).click();
-  await expect(page.locator("#player-stats-panel section[aria-label=Traditional]")).toBeVisible({ timeout: 60_000 });
+  await expect(page.locator("#player-stats-panel section[aria-label=Scoring]")).toBeVisible({ timeout: 60_000 });
 }
 
-// The league ranks arrive on their own, a moment after the numbers.
-const ranksLoaded = (page) => expect(page.locator("#player-stats-panel li span.text-xs", { hasText: " of " }).first()).toBeVisible({ timeout: 60_000 });
+// The league ranks arrive on their own, a moment after the numbers: a rank says "of N players" in its title.
+const rankCells = (page) => page.locator('#player-stats-panel li span[title*=" of "]');
+const ranksLoaded = (page) => expect(rankCells(page).first()).toBeVisible({ timeout: 60_000 });
 
 test("the strips, the chips and the stat rows fit at every width", async ({ page }) => {
   const { href } = await veteranPlayer(page);
@@ -80,16 +81,16 @@ test("the strips, the chips and the stat rows fit at every width", async ({ page
     const chipRows = await page.locator("#player-stats-panel span.badge-success").evaluateAll((chips) => new Set(chips.map((chip) => Math.round(chip.getBoundingClientRect().top))).size);
     if (width < 640) expect(chipRows).toBeLessThanOrEqual(3);
 
-    // Every stat row: the label whole, and the bar and rank on a second line below 640px, on the same line from 640px.
+    // Every stat row: the label whole, and the numbers and bars on a second line below 640px, on the same line from 640px.
     const rows = page.locator("#player-stats-panel li");
-    expect(await rows.count()).toBeGreaterThan(30);
+    expect(await rows.count()).toBeGreaterThan(50);
     const cut = await rows.evaluateAll((items) => items.map((li) => li.querySelector("span.truncate")).filter((label) => label.scrollWidth > label.clientWidth + 1).map((label) => label.textContent));
     expect(cut).toEqual([]);
     const layout = await rows.evaluateAll((items) => {
-      const ranked = items.find((li) => li.querySelector("span.text-xs")?.textContent.includes("of "));
+      const ranked = items.find((li) => li.querySelector('span[title*=" of "]'));
       const label = ranked.querySelector("span.truncate").getBoundingClientRect();
-      const rank = ranked.querySelector("span.text-xs").getBoundingClientRect();
-      return rank.top >= label.bottom - 1 ? "second line" : "same line";
+      const value = ranked.querySelector("span.text-right").getBoundingClientRect();
+      return value.top >= label.bottom - 1 ? "second line" : "same line";
     });
     expect(layout).toBe(width < 640 ? "second line" : "same line");
     expect(await holdsContent(page.locator("#player-stats-panel section.panel, #player-stats-panel .panel"))).toBe(true);
@@ -113,6 +114,40 @@ test("the strips, the chips and the stat rows fit at every width", async ({ page
   expect(box.x + box.width).toBeLessThanOrEqual(320);
 });
 
+test("every group sets the player against the league average, and totals are ranked among everyone who played", async ({ page }) => {
+  const { href } = await veteranPlayer(page);
+  await openStatistics(page, href);
+  await ranksLoaded(page);
+  const panel = page.locator("#player-stats-panel");
+  const groups = ["Games and impact", "Scoring", "Efficiency", "Rebounding", "Playmaking", "Defense and fouls", "Shot and point mix", "Share of the team"];
+  for (const title of groups) await expect(panel.locator(`section[aria-label="${title}"]`)).toBeVisible();
+  // Each group's heading names the league average column.
+  await expect(panel.getByText("League avg")).toHaveCount(groups.length);
+
+  // A compared row has two bars and the league average; games played has its number only.
+  // A label with a tip also holds the tip's text for screen readers, so the label is matched from its start.
+  const row = (label) =>
+    panel
+      .locator("li")
+      .filter({ has: page.locator("span.truncate", { hasText: new RegExp(`^${label.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}`) }) })
+      .first();
+  await expect(row("Points").locator("div.rounded-full.bg-base-300")).toHaveCount(2);
+  await expect(row("Points").locator("span.muted.text-left")).toHaveText(/^\d+\.\d$/);
+  await expect(row("Games played").locator("div.rounded-full.bg-base-300")).toHaveCount(0);
+  // The feed's attempts, shots blocked and team shares are all there.
+  for (const label of ["2PT attempted", "3PT attempted", "Free throws attempted", "Shots blocked", "3PT att. per 100 poss."]) await expect(row(label)).toBeVisible();
+
+  // Free throw rate is attempts, not makes.
+  await row("Free throw rate").locator("[tabindex='0']").hover();
+  await expect(page.getByRole("tooltip")).toHaveText(/Free throw attempts per field goal attempt/);
+
+  // Season totals: whole numbers, ranked among everyone who played.
+  await page.getByRole("tablist", { name: "Stats mode" }).getByRole("tab", { name: "Accumulated" }).click();
+  await expect(panel.getByText(/Totals are ranked and averaged among all \d+ players who played/)).toBeVisible({ timeout: 60_000 });
+  await expect(row("Points").locator("span.text-right")).toHaveText(/^[\d,]+$/);
+  await expect(row("Points").locator('span[title*=" of "]')).toBeVisible();
+});
+
 test("the not-ranked notice, the loading ranks, the empty state and the error fit a phone", async ({ page }) => {
   test.setTimeout(120_000);
   const { href } = await veteranPlayer(page);
@@ -131,6 +166,8 @@ test("the not-ranked notice, the loading ranks, the empty state and the error fi
   });
   await openStatistics(page, href);
   await expect(page.getByText("Not ranked per game:")).toBeVisible();
+  // Once the league has loaded, ranked rows show a dash that says why.
+  await expect(page.locator('#player-stats-panel li span[title="Too few games to be ranked"]').first()).toBeVisible({ timeout: 60_000 });
   expect(await holdsContent(page.locator("#player-stats-panel .panel"))).toBe(true);
   await expectNoSidewaysScroll(page);
   await page.unroute(STATS);

@@ -233,19 +233,22 @@ export function PlayerCareerSkeleton() {
   );
 }
 
-// One stat group of the Statistics tab: its heading row, then label, number, bar and league rank on each row.
+// One stat group of the Statistics tab: its heading row, then on each row the name, the rank, the player's number, the
+// two bars and the league average (the name on its own line on a phone).
 function StatGroupSkeleton({ rows }) {
   return (
     <div>
-      <div className="flex h-11 items-center border-b border-base-300">
+      <div className="flex h-7 items-center border-b border-base-300 pb-1">
         <div className="skeleton h-4 w-24" />
       </div>
       {range(rows).map((index) => (
-        <div key={index} className="flex h-11 items-center gap-3 border-b border-base-300 last:border-0 max-sm:h-13">
-          <div className="skeleton h-3.5 w-28" />
+        <div key={index} className="flex h-7 items-center gap-2 border-b border-base-300 last:border-0 max-sm:h-13 max-sm:flex-wrap max-sm:content-center">
+          <div className="skeleton h-3.5 w-32 max-sm:mx-auto" />
+          <div className="skeleton h-3 w-8 max-sm:hidden" />
           <div className="skeleton h-4 w-10" />
           <div className="skeleton h-2 flex-1 rounded-full" />
-          <div className="skeleton h-3.5 w-16" />
+          <div className="skeleton h-2 flex-1 rounded-full" />
+          <div className="skeleton h-4 w-10" />
         </div>
       ))}
     </div>
@@ -253,25 +256,28 @@ function StatGroupSkeleton({ rows }) {
 }
 
 // The Statistics tab's panel while the season's numbers load: the heading, the league highlights, then the stat groups in two
-// columns from xl.
+// columns from xl (games, scoring and efficiency; rebounding, playmaking, defense, shot mix and share of the team).
 export function PlayerStatisticsSkeleton() {
   return (
     <div aria-hidden="true" className="panel p-4">
-      <SkeletonPanelHead title="w-56" />
-      <div className="mb-5 flex flex-wrap gap-2">
+      <SkeletonPanelHead title="w-72" />
+      <div className="mb-4 flex flex-wrap gap-2">
         <div className="skeleton h-7 w-36" />
         <div className="skeleton h-7 w-28" />
         <div className="skeleton h-7 w-40" />
       </div>
-      <div className="grid gap-x-10 gap-y-6 xl:grid-cols-2">
-        <div className="flex flex-col gap-6">
-          <StatGroupSkeleton rows={13} />
-          <StatGroupSkeleton rows={7} />
-        </div>
-        <div className="flex flex-col gap-6">
+      <div className="grid gap-x-10 gap-y-4 xl:grid-cols-2">
+        <div className="flex flex-col gap-4">
           <StatGroupSkeleton rows={9} />
+          <StatGroupSkeleton rows={13} />
           <StatGroupSkeleton rows={5} />
-          <StatGroupSkeleton rows={4} />
+        </div>
+        <div className="flex flex-col gap-4">
+          <StatGroupSkeleton rows={6} />
+          <StatGroupSkeleton rows={6} />
+          <StatGroupSkeleton rows={5} />
+          <StatGroupSkeleton rows={5} />
+          <StatGroupSkeleton rows={6} />
         </div>
       </div>
       <div className="skeleton mt-4 h-4 w-3/4" />

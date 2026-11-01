@@ -12,8 +12,8 @@ import PanelHeader from "../lib/PanelHeader";
 import { TabPanel, TabStrip } from "../lib/TabStrip";
 import { ordinal, rankTier } from "../teams/teamLeague";
 import { fetchLeagueLeaderboard, leaderboardQueryKey } from "./leagueLeaderboard";
-import { STAT_GROUPS } from "./playerStatDefs";
-import { rankPlayer, statNumber } from "./playerOverview";
+import { leagueStanding, STAT_GROUPS, statValue } from "./playerStatDefs";
+import { statNumber } from "./playerOverview";
 
 const PANEL_ID = "player-stats-panel";
 const MODES = [
@@ -23,101 +23,132 @@ const MODES = [
 const TOP_RANK = 10;
 const HIGHLIGHT_COUNT = 5;
 
-// The two columns of the sheet (by group title): 24 and 23 lines, so both sides end at about the same height.
-const COLUMNS = [["Traditional", "Advanced"], ["Shooting", "Shot and point mix", "Record and milestones"]];
-
-// Every row and group header share this grid, so the columns line up down the whole tab. On a phone the bar and rank
-// drop to a second line under the name and value. At the two-column width every row, group header and the gap between
-// groups is one fixed line (h-11), so a row on the left sits level with its neighbour on the right.
-const ROW_GRID = "grid grid-cols-[1fr_auto] items-center gap-x-3 sm:grid-cols-[11rem_4.5rem_1fr_7rem]";
-
-// The player's rank on one row, or null when there is none to show. Per game, and any percentage or ratio, is ranked
-// among the players who meet the phase's minimum games; season totals of a count among everyone who played.
-function rankedStanding(league, personKey, stat, mode, entry) {
-  if (!league || stat.rank === false) return null;
-  const value = statNumber(entry[stat.group]?.[stat.field]);
-  if (value === 0 && !stat.lowerIsBetter) return null;
-  const qualifiedOnly = mode === "perGame" || stat.kind === "percent" || stat.kind === "decimal";
-  return rankPlayer(league, personKey, stat, { qualifiedOnly });
-}
+// Every row and group header share this grid, as on the team Statistics tab: the name, the rank, the player's number,
+// the player's bar and the league's (growing out from the middle), and the league average. On a phone a row is two
+// lines: the name centred over the row with the rank at its left, then the two numbers with their bars between them.
+const ROW_GRID =
+  "grid items-center gap-x-2 grid-cols-[3.25rem_1fr_1fr_3.25rem] sm:grid-cols-[9.5rem_2.75rem_3.75rem_1fr_1fr_3.75rem] lg:grid-cols-[11rem_2.75rem_3.75rem_1fr_1fr_3.75rem]";
+const LABEL_CELL = "col-span-4 sm:col-span-1";
 
 function formatValue(stat, value, mode) {
-  if (value === null) return "—";
+  if (value === null || value === undefined) return "—";
   if (stat.kind === "percent") return `${value.toFixed(1)}%`;
   if (stat.kind === "games") return String(Math.round(value));
   if (stat.kind === "count" && mode === "accumulated") return Math.round(value).toLocaleString();
   return value.toFixed(1);
 }
 
+// An average of whole games (double-doubles) keeps a decimal.
+function formatAverage(stat, value, mode) {
+  return stat.kind === "games" && value !== null ? value.toFixed(1) : formatValue(stat, value, mode);
+}
+
+// One half of the butterfly: grows outwards from the middle.
+function HalfBar({ share, side, fillClass }) {
+  return (
+    <div aria-hidden="true" className="h-2 min-w-0 overflow-hidden rounded-full bg-base-300">
+      <motion.div
+        className={`h-full rounded-full ${fillClass} ${side === "player" ? "ml-auto" : ""}`}
+        style={{ width: `${Math.min(100, Math.max(0, share))}%`, originX: side === "player" ? 1 : 0 }}
+        {...barFill}
+      />
+    </div>
+  );
+}
+
+function StatRank({ stat, standing }) {
+  if (!standing) return <span className="col-start-1 row-start-1 sm:col-auto sm:row-auto" />;
+  if (!standing.rank) {
+    return (
+      <span className="muted col-start-1 row-start-1 text-xs sm:col-auto sm:row-auto" title={standing.unqualified ? "Too few games to be ranked" : undefined}>
+        {standing.unqualified ? "–" : ""}
+      </span>
+    );
+  }
+  const tier = stat.direction === "style" ? null : rankTier({ rank: standing.rank, of: standing.of });
+  return (
+    <span
+      className={`col-start-1 row-start-1 text-xs font-bold tabular-nums sm:col-auto sm:row-auto ${tier ? tier.text : "muted"}`}
+      title={`${ordinal(standing.rank)} of ${standing.of} players`}
+    >
+      {ordinal(standing.rank)}
+    </span>
+  );
+}
+
 function StatRow({ stat, mode }) {
   const { value, standing } = stat;
-  const tier = standing?.rank ? rankTier({ rank: standing.rank, of: standing.of }) : null;
-  // A ranked row fills by percentile; a share (points from threes) fills by the share itself.
-  const fill = standing?.rank ? Math.max(standing.percentile ?? 0, 4) : stat.rank === false && stat.kind === "percent" && value !== null ? value : null;
+  const compared = stat.direction !== "none";
+  const average = standing?.average ?? null;
+  const biggest = Math.max(value ?? 0, average ?? 0) || 1;
 
   return (
-    <motion.li variants={listItem} className={`${ROW_GRID} gap-y-1 border-b border-base-300 py-2 text-sm last:border-0 xl:h-11 xl:py-0`}>
-      <span className="min-w-0 truncate font-medium">{stat.tip ? <HeaderTip tip={stat.tip}>{stat.label}</HeaderTip> : stat.label}</span>
-      <span className="text-right font-bold tabular-nums sm:text-left">{formatValue(stat, value, mode)}</span>
-      <div className="col-span-2 flex items-center gap-2 sm:contents">
-        <div aria-hidden="true" className={`h-2 min-w-0 flex-1 overflow-hidden rounded-full bg-base-300 ${fill === null ? "invisible" : ""}`}>
-          {fill !== null ? (
-            <motion.div
-              className={`h-full rounded-full ${tier ? tier.bar : "bg-primary"}`}
-              style={{ width: `${Math.min(100, fill)}%`, transformOrigin: "left" }}
-              {...barFill}
-            />
-          ) : null}
-        </div>
-        <span
-          className={`w-24 flex-none text-right text-xs font-bold tabular-nums sm:w-auto ${tier ? tier.text : "muted font-medium"}`}
-          title={standing?.rank ? `${ordinal(standing.rank)} of ${standing.of} players` : undefined}
-        >
-          {standing?.rank ? `${ordinal(standing.rank)} of ${standing.of}` : standing && value !== null ? "too few games" : ""}
-        </span>
-      </div>
+    <motion.li variants={listItem} className={`${ROW_GRID} gap-y-0.5 border-b border-base-300 py-1 text-sm last:border-0`}>
+      <span
+        className={`${LABEL_CELL} col-start-1 row-start-1 truncate text-center text-xs font-bold tracking-wide uppercase sm:col-auto sm:row-auto sm:text-left sm:text-sm sm:font-medium sm:normal-case sm:tracking-normal`}
+      >
+        {stat.tip ? <HeaderTip tip={stat.tip}>{stat.label}</HeaderTip> : stat.label}
+      </span>
+      <StatRank stat={stat} standing={standing} />
+      <span className="text-right font-semibold tabular-nums">{formatValue(stat, value, mode)}</span>
+      {compared && standing ? (
+        <>
+          <HalfBar share={((value ?? 0) / biggest) * 100} side="player" fillClass="bg-primary" />
+          <HalfBar share={((average ?? 0) / biggest) * 100} side="league" fillClass="bg-base-content/45" />
+          <span className="muted text-left tabular-nums">{formatAverage(stat, average, mode)}</span>
+        </>
+      ) : (
+        <span className="col-span-3" />
+      )}
     </motion.li>
   );
 }
 
-function StatGroup({ group, mode, hasRanks }) {
-  // A group of shares and records has nothing to rank, so it has no rank caption either.
-  const showRanks = hasRanks && group.stats.some((stat) => stat.rank !== false);
+function StatGroup({ group, mode, playerTag }) {
   return (
-    <section aria-label={group.title} className="mt-6 first:mt-0 xl:mt-11 xl:first:mt-0">
-      <div aria-hidden="true" className={`${ROW_GRID} muted border-b border-base-300 pb-1 text-xs font-bold tracking-wide uppercase xl:h-11 xl:pb-0`}>
-        <h3 className="text-base-content text-sm normal-case tracking-normal">{group.title}</h3>
-        <span className="hidden text-left sm:block">{mode === "perGame" ? "Per game" : "Total"}</span>
-        <span className="hidden sm:block" />
-        <span className="hidden text-right sm:block">{showRanks ? "League rank" : ""}</span>
+    <section aria-label={group.title}>
+      <div aria-hidden="true" className={`${ROW_GRID} muted border-b border-base-300 pb-1 text-xs font-bold tracking-wide uppercase`}>
+        <h3 className={`${LABEL_CELL} text-base-content text-sm normal-case tracking-normal`}>{group.title}</h3>
+        {/* The rank column has no heading: "15th" says what it is. Below sm this cell sits over the player's number. */}
+        <span />
+        <span className="max-sm:hidden" />
+        <span className="truncate text-center">{playerTag}</span>
+        <span className="truncate text-center">League avg</span>
+        <span className="max-sm:hidden" />
       </div>
       <motion.ul variants={denseListContainer} initial="hidden" animate="show">
         {group.stats.map((stat) => (
-          <StatRow key={`${stat.group}-${stat.field}`} stat={stat} mode={mode} />
+          <StatRow key={stat.key} stat={stat} mode={mode} />
         ))}
       </motion.ul>
     </section>
   );
 }
 
-// The ranks a player is best at, as chips above the sheet.
+// The ranks a player is best at, as chips above the sheet (style numbers are not "best" at anything).
 function Highlights({ groups }) {
   const best = groups
     .flatMap((group) => group.stats)
-    .filter((stat) => stat.standing?.rank && stat.standing.rank <= TOP_RANK)
+    .filter((stat) => stat.direction !== "style" && stat.standing?.rank && stat.standing.rank <= TOP_RANK)
     .sort((a, b) => a.standing.rank - b.standing.rank)
     .slice(0, HIGHLIGHT_COUNT);
   if (best.length === 0) return null;
   return (
-    <div className="mb-5 flex flex-wrap items-center gap-1.5 sm:gap-2">
+    <div className="mb-4 flex flex-wrap items-center gap-1.5 sm:gap-2">
       <span className="muted text-xs font-bold tracking-wide uppercase">Top {TOP_RANK} in the league</span>
       {best.map((stat) => (
-        <span key={`${stat.group}-${stat.field}`} className="badge badge-success badge-outline h-auto gap-1 py-0.5 max-sm:badge-sm">
+        <span key={stat.key} className="badge badge-success badge-outline h-auto gap-1 py-0.5 max-sm:badge-sm">
           <b className="tabular-nums">{ordinal(stat.standing.rank)}</b> {stat.label}
         </span>
       ))}
     </div>
   );
+}
+
+// The surname from the feed's "SURNAME, NAME", as the column heading over the player's numbers.
+function surname(playerName) {
+  const last = (playerName ?? "").split(",")[0].trim();
+  return last ? last.charAt(0) + last.slice(1).toLowerCase() : "Player";
 }
 
 export default function PlayerStatisticsSection({ seasonCode, personKey, phases, phaseCode, onPhaseChange }) {
@@ -128,7 +159,7 @@ export default function PlayerStatisticsSection({ seasonCode, personKey, phases,
     queryFn: () => getPlayerSeasonStats(seasonCode, personKey, { phase: phaseCode, mode }),
     enabled: Boolean(phaseCode),
   });
-  // The ranks load on their own: without them the numbers still show.
+  // The ranks and averages load on their own: without them the numbers still show.
   const leaderboardQuery = useQuery({
     queryKey: leaderboardQueryKey(seasonCode, phaseCode, mode),
     queryFn: () => fetchLeagueLeaderboard(seasonCode, phaseCode, mode),
@@ -143,11 +174,11 @@ export default function PlayerStatisticsSection({ seasonCode, personKey, phases,
       ...group,
       stats: group.stats.map((stat) => ({
         ...stat,
-        value: statNumber(entry[stat.group]?.[stat.field]),
-        standing: rankedStanding(league, personKey, stat, mode, entry),
+        value: statValue(stat, entry, mode),
+        standing: leagueStanding(stat, league, entry, mode),
       })),
     }));
-  }, [entry, league, personKey, mode]);
+  }, [entry, league, mode]);
 
   const phaseName = phases.find((phase) => phase.code === phaseCode)?.name ?? phaseCode;
 
@@ -162,32 +193,38 @@ export default function PlayerStatisticsSection({ seasonCode, personKey, phases,
     const hasRanks = Boolean(league);
     const qualifiedCount = league ? league.filter((player) => player.qualified !== false).length : 0;
     const minGames = entry.minGames;
+    const playerTag = surname(entry.playerName);
     body = (
       <Panel as="section" className="p-4">
-        <PanelHeader kicker="STATISTICS" title={`${phaseName}, ${mode === "perGame" ? "per game" : "season totals"}`} />
+        <PanelHeader compact kicker="STATISTICS" title={`${phaseName}, ${mode === "perGame" ? "per game" : "season totals"}, against the league average`} />
         {entry.qualified === false ? (
-          <p className="mb-4 rounded-field border border-base-300 bg-base-100 px-3 py-2 text-sm">
+          <p className="mb-3 rounded-field border border-base-300 bg-base-100 px-3 py-2 text-sm">
             <span className="font-semibold">Not ranked per game:</span> {statNumber(entry.traditional?.gamesPlayed)} games played, and the league
             ranks players from {minGames} games in this phase.
             {entry.isCalculated && mode === "perGame" ? " These per-game numbers are worked out from the player's season totals." : ""}
           </p>
         ) : null}
         {hasRanks ? <Highlights groups={groups} /> : null}
-        <div className="grid gap-x-10 gap-y-6 xl:grid-cols-2">
-          {COLUMNS.map((titles) => (
-            <div key={titles.join()} className="flex flex-col">
+        {/* Two columns of about equal height from xl; one column in the same order below. */}
+        <div className="grid gap-x-10 gap-y-4 xl:grid-cols-2">
+          {["left", "right"].map((side) => (
+            <div key={side} className="flex flex-col gap-4">
               {groups
-                .filter((group) => titles.includes(group.title))
+                .filter((group) => group.column === side)
                 .map((group) => (
-                  <StatGroup key={`${phaseCode}-${mode}-${group.title}`} group={group} mode={mode} hasRanks={hasRanks} />
+                  <StatGroup key={`${phaseCode}-${mode}-${group.title}`} group={group} mode={mode} playerTag={playerTag} />
                 ))}
             </div>
           ))}
         </div>
         <p className="muted mt-4 text-sm">
           {hasRanks
-            ? `${mode === "perGame" ? `Ranked among the ${qualifiedCount} players with at least ${minGames} games in this phase` : `Totals are ranked among all ${league.length} players who played; percentages and ratios among the ${qualifiedCount} with at least ${minGames} games`} (green top third, red bottom third). 1st is best, so for turnovers and fouls the fewest ranks first.`
-            : "League ranks are loading."}
+            ? `${
+                mode === "perGame"
+                  ? `Ranks and the league average are among the ${qualifiedCount} players with at least ${minGames} games in this phase`
+                  : `Totals are ranked and averaged among all ${league.length} players who played; percentages and ratios among the ${qualifiedCount} with at least ${minGames} games`
+              } (green top third, red bottom third). 1st is best, so for turnovers, fouls and shots blocked the fewest ranks first; style numbers (shot mix, attempts per 100 possessions) rank the most first, without a colour. The grey bar is the league average.`
+            : "League ranks and averages are loading."}
         </p>
       </Panel>
     );

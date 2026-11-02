@@ -64,15 +64,15 @@ test("keeps missing team-stat measures distinct from valid zeroes", async ({ pag
   await page.goto(`/${SEASON}/teams/${CLUB}?phase=RS`);
   await page.getByRole("tab", { name: "Statistics", exact: true }).click();
 
-  // The Statistics tab groups its rows in labelled regions. Assists are missing (null), so they show a dash; 160 points in
-  // two games is a real 80.0; 0 threes made of 4 is a real 0.0%, while twos with no makes recorded are missing.
-  const traditional = page.getByRole("region", { name: "Traditional" });
-  await expect(traditional.getByText("80.0", { exact: true }).first()).toBeVisible();
-  await expect(traditional.getByText("—", { exact: true }).first()).toBeVisible();
+  // The Statistics tab groups its rows in labelled regions. 160 points in two games is a real 80.0; 0 threes made of 4 is a real
+  // 0.0%, while twos with no makes recorded are missing (a dash). Assists are missing too.
+  const scoring = page.getByRole("region", { name: "Scoring" });
+  await expect(scoring.getByText("80.0", { exact: true }).first()).toBeVisible();
+  await expect(scoring.getByText("0.0%", { exact: true }).first()).toBeVisible();
+  await expect(scoring.getByText("—", { exact: true }).first()).toBeVisible();
 
-  const shooting = page.getByRole("region", { name: "Shooting" });
-  await expect(shooting.getByText("0.0%", { exact: true }).first()).toBeVisible();
-  await expect(shooting.getByText("—", { exact: true }).first()).toBeVisible();
+  const playmaking = page.getByRole("region", { name: "Playmaking" });
+  await expect(playmaking.getByText("—", { exact: true }).first()).toBeVisible();
 
   // The Shooting tab maps real shots from played games; this club has no games, so it says so.
   await page.getByRole("tab", { name: "Shooting", exact: true }).click();

@@ -3,10 +3,8 @@ import { test, expect } from "@playwright/test";
 // Home's data requests (standings, games, leaders, team totals) held back until `release`, so the skeletons stay on screen.
 const HOME_DATA = /\/api\/seasons\/[^/]+\/(phases\/[^/]+\/standings|games|season-stats|stats|teams|team-stats|league)/;
 
-async function holdHomeData(page) {
-  await page.route(HOME_DATA, () => {});
-  // Removing the route lets the held requests through.
-  return () => page.unroute(HOME_DATA);
+function holdHomeData(page) {
+  return hold(page, HOME_DATA);
 }
 
 const panel = (page, title) => page.locator("section", { has: page.getByRole("heading", { name: title, exact: true }) });
@@ -55,7 +53,7 @@ test("a page whose code is still loading shows a page skeleton inside the shell"
   await page.goto("/2026/home");
   await expect(page.getByRole("heading", { name: "Upcoming games" })).toBeVisible({ timeout: 30_000 });
 
-  await page.route(/\/src\/records\/RecordsPage\.jsx/, () => {});
+  const release = await hold(page, /\/src\/records\/RecordsPage\.jsx/);
   await page.getByRole("navigation", { name: "Sections" }).getByRole("link", { name: "Records", exact: true }).click();
 
   const fallback = page.getByRole("status", { name: "Loading page" });
@@ -64,13 +62,13 @@ test("a page whose code is still loading shows a page skeleton inside the shell"
   await expect(fallback.locator(".skeleton").first()).toBeVisible();
   await expect(page.getByRole("navigation", { name: "Sections" })).toBeVisible();
 
-  await page.unroute(/\/src\/records\/RecordsPage\.jsx/);
+  await release();
   await expect(fallback).toHaveCount(0, { timeout: 30_000 });
 });
 
 test("Home's own page skeleton shows while Home's code loads", async ({ page }) => {
   const DASHBOARD = /\/src\/dashboard\/Dashboard\.jsx/;
-  await page.route(DASHBOARD, () => {});
+  const release = await hold(page, DASHBOARD);
   await page.goto("/2026/home");
   const fallback = page.getByRole("status", { name: "Loading page" });
   await expect(fallback).toBeVisible({ timeout: 30_000 });
@@ -79,20 +77,25 @@ test("Home's own page skeleton shows while Home's code loads", async ({ page }) 
   await expect(fallback.locator(".games-list")).toHaveCount(1);
   await expect(fallback.locator(".kpi-strip-4 .kpi-chip")).toHaveCount(4);
   await expect(fallback.locator(".leaders-row .kpi-chip")).toHaveCount(4);
-  await page.unroute(DASHBOARD);
+  await release();
   await expect(page.getByRole("heading", { name: "Upcoming games" })).toBeVisible({ timeout: 30_000 });
   await expect(fallback).toHaveCount(0);
 });
 
 
-// Holds back the API requests matching `pattern` until `release`, so the skeleton they feed stays on screen.
+// Holds back the requests matching `pattern` (API data or a page's code) until the returned release is called, so the skeleton they
+// feed stays on screen, then lets them, and any later ones, through. Each request waits in its own handler and continues once:
+// unrouting with requests still held could leave one of a burst (a player's season history asks for every season) pending for good.
 async function hold(page, pattern) {
-  const held = [];
-  await page.route(pattern, (route) => held.push(route));
-  return async () => {
-    await page.unroute(pattern);
-    await Promise.all(held.map((route) => route.continue().catch(() => {})));
-  };
+  let release;
+  const released = new Promise((resolve) => {
+    release = resolve;
+  });
+  await page.route(pattern, async (route) => {
+    await released;
+    await route.continue();
+  });
+  return async () => release();
 }
 
 // A loading status showing a skeleton and no spinner.
@@ -104,10 +107,11 @@ async function expectSkeleton(page, label) {
   await expect(page.locator("main .loading")).toHaveCount(0);
 }
 
-// Every skeleton gone once the data is in.
+// Every skeleton gone once the data is in. Both wait: right after a navigation there is no busy status yet, so the first check can
+// pass before the page's loading states appear.
 async function expectLoaded(page) {
   await expect(page.locator('main [aria-busy="true"]')).toHaveCount(0, { timeout: 30_000 });
-  await expect(page.locator("main .skeleton")).toHaveCount(0);
+  await expect(page.locator("main .skeleton")).toHaveCount(0, { timeout: 30_000 });
 }
 
 test.describe("Standings", () => {
@@ -499,7 +503,13 @@ test.describe("Game page", () => {
     await page.goto(GAME);
     await expectSkeleton(page, "Loading the overview");
     await releaseBox();
-    await expectSkeleton(page, "Loading the best players");
+    // Each team's card has its own best player.
+    const best = page.getByRole("status", { name: "Loading the best player", exact: true });
+    await expect(best).toHaveCount(2, { timeout: 30_000 });
+    for (const status of await best.all()) {
+      await expect(status).toHaveAttribute("aria-busy", "true");
+      await expect(status.locator(".skeleton").first()).toBeVisible();
+    }
     await expectSkeleton(page, "Loading the score flow");
     await releasePanels();
     await expectLoaded(page);

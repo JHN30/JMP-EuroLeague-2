@@ -5,7 +5,8 @@ import { HEIGHT, seasonSlug } from "./support/layout";
 // sight themselves: the app's ScrollToTop only runs when the path changes.
 const WIDTHS = [390, 1280];
 const scrollY = (page) => page.evaluate(() => Math.round(window.scrollY));
-const categoryButtons = (page) => page.locator("main button.btn-ghost.justify-between");
+// Each card's way to its full board (at the card's foot below 1024px, beside its title from 1024px).
+const categoryButtons = (page) => page.getByRole("main").getByRole("button", { name: "See the full leaderboard" });
 
 for (const width of WIDTHS) {
   test.describe(`${width}px wide`, () => {

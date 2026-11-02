@@ -215,14 +215,14 @@ test("all existing archive pages keep real data, RS scopes and loaded-season his
   await visit("teams/IST");
   await expect(context(page)).toContainText("positions at suspension");
   await page.getByRole("tab", { name: "Statistics", exact: true }).click();
-  await expect(page.getByRole("region", { name: "Traditional", exact: true })).toBeVisible();
+  await expect(page.getByRole("region", { name: "Scoring", exact: true })).toBeVisible();
   await visit("players");
   await expect(page.locator("main a[href*='/players/']").first()).toBeVisible();
   await visit(`players/${person.personKey}`);
   await page.getByRole("tab", { name: "Season by season", exact: true }).click();
   await expect(page.locator("main table").first()).toBeVisible();
   await page.getByRole("tab", { name: "Statistics", exact: true }).click();
-  await expect(page.getByText(/Ranked among the .* players with at least 15 games/)).toBeVisible();
+  await expect(page.getByText(/among the .* players with at least 15 games/)).toBeVisible();
   await visit("leaders?scope=players&phase=RS");
   await expect(page.getByText("Shane Larkin", { exact: true }).first()).toBeVisible();
   await visit("compare?teamA=IST&teamB=MAD");

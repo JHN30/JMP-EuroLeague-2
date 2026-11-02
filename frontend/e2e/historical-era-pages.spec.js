@@ -87,7 +87,7 @@ for (const { season, clubs, rsGames } of DIRECT_EIGHT_SEASONS) {
       await visit(`teams/${a.clubCode}?phase=PO`);
       await expect(page.getByRole("heading", { name: a.name, exact: true })).toBeVisible();
       await page.getByRole("tab", { name: "Statistics", exact: true }).click();
-      await expect(page.getByRole("region", { name: "Traditional", exact: true })).toBeVisible();
+      await expect(page.getByRole("region", { name: "Scoring", exact: true })).toBeVisible();
       await visit("players");
       await expect(page.locator("main a[href*='/players/']").first()).toBeVisible();
       await visit(`players/${person.personKey}?phase=PO`);
@@ -96,7 +96,7 @@ for (const { season, clubs, rsGames } of DIRECT_EIGHT_SEASONS) {
       await expect(page.locator("main table").first()).toBeVisible();
       await page.getByRole("tab", { name: "Statistics", exact: true }).click();
       await expect(page.getByRole("heading", { name: "Season statistics", exact: true })).toBeVisible();
-      await expect(page.getByText(/Ranked among the .* players with at least .* games in this phase/)).toBeVisible();
+      await expect(page.getByText(/among the .* players with at least .* games in this phase/)).toBeVisible();
     });
     await test.step("Leaders, Compare, head-to-head and Records", async () => {
       await visit("leaders?scope=teams&phase=PO");

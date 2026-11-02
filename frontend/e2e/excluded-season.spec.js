@@ -146,7 +146,7 @@ test("statistics, comparisons, player logs and Records stay available without re
   };
   await visit("teams/CSK?phase=RS");
   await page.getByRole("tab", { name: "Statistics", exact: true }).click();
-  await expect(page.getByRole("region", { name: "Traditional", exact: true })).toBeVisible();
+  await expect(page.getByRole("region", { name: "Scoring", exact: true })).toBeVisible();
   await visit(`players/${player.personKey}`);
   await page.getByRole("tab", { name: "Games", exact: true }).click();
   await expect(page.locator("main a[href*='/games/']").first()).toBeVisible();

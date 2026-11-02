@@ -4,22 +4,22 @@ import { SkeletonPageHeader, SkeletonRankedRows, SkeletonTabs } from "../lib/Ske
 // two always match. This file imports none of the page's code, so the page skeleton stays out of its bundle.
 
 // A category card's top five, as `CategoryCard` draws them: a rank, a photo or crest, the name over the team, the value and
-// the share bar under it.
+// the share bar under it (from lg one line for the name and team, the bar under them).
 export function CategoryRowsSkeleton() {
   return (
     <ol aria-hidden="true" className="flex flex-1 flex-col">
       {Array.from({ length: 5 }, (_, index) => (
-        <li key={index} className="border-b border-base-300 py-2 last:border-0">
-          <div className="flex items-center gap-2 sm:gap-3">
+        <li key={index} className="border-b border-base-300 py-2 last:border-0 lg:py-1">
+          <div className="flex items-center gap-2 sm:gap-3 lg:gap-2">
             <div className="skeleton size-6 flex-none rounded-full" />
-            <div className="skeleton size-10 flex-none rounded-full" />
+            <div className="skeleton size-10 flex-none rounded-full lg:size-8" />
             <div className="flex min-w-0 flex-1 flex-col gap-1.5">
               <div className="skeleton h-3.5 w-3/4" />
-              <div className="skeleton h-3 w-1/3" />
+              <div className="skeleton h-3 w-1/3 lg:hidden" />
             </div>
-            <div className="skeleton h-6 w-12 flex-none" />
+            <div className="skeleton h-6 w-12 flex-none lg:h-5" />
           </div>
-          <div className="skeleton mt-1.5 ml-10 h-1" />
+          <div className="skeleton mt-1.5 ml-10 h-1 lg:hidden" />
         </li>
       ))}
     </ol>
@@ -29,13 +29,15 @@ export function CategoryRowsSkeleton() {
 // A grid of `cards` category cards, as `CardGrid` lays them out.
 function CardGridSkeleton({ cards }) {
   return (
-    <div className="grid grid-cols-[minmax(0,1fr)] gap-4 lg:grid-cols-2 xl:grid-cols-3">
+    <div className="grid grid-cols-[minmax(0,1fr)] gap-4 lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
       {Array.from({ length: cards }, (_, index) => (
-        <div key={index} className="panel flex flex-col p-4">
-          <div className="skeleton mb-1.5 h-3 w-16" />
-          <div className="skeleton mb-3 h-5 w-40 max-w-full" />
+        <div key={index} className="panel flex flex-col p-4 lg:p-3">
+          <div className="mb-3 flex items-center justify-between gap-2 lg:mb-1">
+            <div className="skeleton h-5 w-40 max-w-full" />
+            <div className="skeleton hidden h-6 w-28 lg:block" />
+          </div>
           <CategoryRowsSkeleton />
-          <div className="skeleton mt-3 h-8 w-full" />
+          <div className="skeleton mt-3 h-8 w-full lg:hidden" />
         </div>
       ))}
     </div>
@@ -45,12 +47,12 @@ function CardGridSkeleton({ cards }) {
 // The category cards under their toolbar and family title, as each tab's landing lays them out.
 export function LandingSkeleton() {
   return (
-    <div aria-hidden="true" className="flex flex-col gap-8">
+    <div aria-hidden="true" className="flex flex-col gap-8 lg:gap-5">
       <div className="flex flex-col gap-1">
         <div className="skeleton h-3 w-10" />
         <div className="skeleton h-10 w-44" />
       </div>
-      <div className="flex flex-col gap-4">
+      <div className="flex flex-col gap-4 lg:gap-3">
         <div className="skeleton h-5 w-40" />
         <CardGridSkeleton cards={6} />
       </div>
@@ -63,7 +65,7 @@ export function BoardSkeleton() {
   return (
     <div aria-hidden="true" className="panel p-2 sm:p-3">
       <div className="skeleton mx-2 mb-3 h-3.5 w-48" />
-      <SkeletonRankedRows rows={12} columns={3} rowClassName="h-14" />
+      <SkeletonRankedRows rows={12} columns={3} rowClassName="h-14 lg:h-11" />
     </div>
   );
 }

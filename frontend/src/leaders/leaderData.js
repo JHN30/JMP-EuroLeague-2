@@ -9,9 +9,11 @@ export function statNumber(raw) {
 const PAGE_LIMIT = 100;
 
 // Every qualified player's line for one season, phase and mode, in the API's order (its tie-break when it sorts), so the landing
-// ranks all its cards from one pool: the first page says how many there are, and the rest are read together.
-export async function fetchQualifiedPool(seasonCode, phaseCode, mode) {
-  const page = (offset) => getLeaderStats(seasonCode, { phase: phaseCode, mode, qualified: true, limit: PAGE_LIMIT, offset });
+// ranks all its cards from one pool: the first page says how many there are, and the rest are read together. `minGames` (half the
+// rounds played, useRankingRule) replaces the feed's own minimum when the stage has rounds.
+export async function fetchQualifiedPool(seasonCode, phaseCode, mode, minGames = null) {
+  const filter = minGames ? { minGames } : { qualified: true };
+  const page = (offset) => getLeaderStats(seasonCode, { phase: phaseCode, mode, ...filter, limit: PAGE_LIMIT, offset });
   const first = await page(0);
   const offsets = [];
   for (let offset = PAGE_LIMIT; offset < first.pagination.total; offset += PAGE_LIMIT) offsets.push(offset);
@@ -46,14 +48,27 @@ export function formatPlayerValue(stat, value, mode) {
   return value.toFixed(1);
 }
 
-// True when a player has enough volume to be ranked on a stat (3P% needs three-point attempts, and so on).
-export function hasVolume(player, stat, mode) {
+// True when a player has enough volume to be ranked on a stat (3P% needs three-point attempts, and so on). `rule` (useVolumeRule):
+// with `rounds`, the stage's rounds played, the player needs `min` times the rounds over the season, so missed games count against
+// him; his season totals come from `totals` (by person) in the per-game view, whose numbers are rounded. Without rounds (a stage
+// with no standings) he needs `min` a game over the games he played.
+export function hasVolume(player, stat, mode, rule = {}) {
   if (!stat.volume) return true;
   const { group, fields, min } = stat.volume;
-  const total = fields.reduce((sum, field) => sum + (statNumber(player[group]?.[field]) ?? 0), 0);
+  const sum = (line) => fields.reduce((total, field) => total + (statNumber(line?.[group]?.[field]) ?? 0), 0);
   const games = statNumber(player.traditional?.gamesPlayed) ?? 0;
-  const perGame = mode === "accumulated" ? (games ? total / games : 0) : total;
+  if (rule.rounds) {
+    const totals = mode === "accumulated" ? player : rule.totals?.get(player.personKey);
+    return (totals ? sum(totals) : sum(player) * games) >= min * rule.rounds;
+  }
+  const perGame = mode === "accumulated" ? (games ? sum(player) / games : 0) : sum(player);
   return perGame >= min;
+}
+
+// What a stat's volume asks for, as the cards and boards say it: the season total with rounds ("45+ field goal attempts"), or
+// "5+ field goal attempts a game" without them.
+export function volumeText(volume, rounds) {
+  return rounds ? `${volume.min * rounds}+ ${volume.noun}` : `${volume.min}+ ${volume.noun} a game`;
 }
 
 export function formatAdvancedValue(stat, value) {

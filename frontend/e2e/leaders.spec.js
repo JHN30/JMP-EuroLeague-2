@@ -1,24 +1,45 @@
 import { fileURLToPath } from "node:url";
 import { test, expect } from "@playwright/test";
 
+// The rounds a stage has played (its latest standings round), which the volume minimums are multiplied by.
+async function roundsPlayed(request, api, phase) {
+  const response = await request.get(api.replace("/season-stats", `/phases/${phase}/standings`));
+  return Number((await response.json()).round);
+}
+// Every player's season three-point attempts in a stage, by person.
+async function seasonAttempts(request, api, phase) {
+  const attempts = new Map();
+  for (let offset = 0; ; offset += 100) {
+    const data = await (await request.get(api, { params: { phase, mode: "accumulated", limit: 100, offset } })).json();
+    for (const player of data.players) attempts.set(player.personKey, Number(player.traditional.threePointersAttempted));
+    if (offset + 100 >= data.pagination.total) return attempts;
+  }
+}
+
 test("the player cards rank one shared pool, in the order the API ranks each statistic", async ({ page, request }) => {
   const pages = [];
   page.on("request", (req) => {
     if (req.url().includes("/season-stats")) pages.push(req.url());
   });
-  await page.goto("/2025/leaders");
+  // The regular season, which has rounds (the season opens on its last stage).
+  await page.goto("/2025/leaders?phase=RS");
   await expect(page.getByRole("heading", { name: "Points", exact: true })).toBeVisible({ timeout: 30_000 });
-  await expect(page.locator("main ol").first().locator("li")).toHaveCount(5);
-  // One pool for every card: a few pages of the qualified players, not a request per card.
-  expect(pages.length).toBeGreaterThan(0);
-  expect(pages.length).toBeLessThanOrEqual(3);
+  // The players' links, not the loading rows (the pool waits for the standings).
+  await expect(page.locator("main ol").first().locator("li a")).toHaveCount(5, { timeout: 30_000 });
+  // One pool for every card: a few pages of the qualified players (half the rounds played in games), not a request per card (the
+  // season totals for the volume minimums are read once besides).
+  const poolPages = pages.filter((url) => new URL(url).searchParams.has("minGames"));
+  expect(poolPages.length).toBeGreaterThan(0);
+  expect(poolPages.length).toBeLessThanOrEqual(3);
 
   // The API the page called, asked directly for each statistic's own ranking.
-  const pool = new URL(pages[0]);
+  const pool = new URL(poolPages[0]);
   const api = `${pool.origin}${pool.pathname}`;
   const phase = pool.searchParams.get("phase");
+  const qualifying = Math.ceil((await roundsPlayed(request, api, phase)) / 2);
+  expect(pool.searchParams.get("minGames")).toBe(String(qualifying));
   const topOf = async (sort, order, limit) => {
-    const response = await request.get(api, { params: { phase, mode: "perGame", sort, order, limit, qualified: "true" } });
+    const response = await request.get(api, { params: { phase, mode: "perGame", sort, order, limit, minGames: qualifying } });
     return (await response.json()).players;
   };
   // The players a card links to, in its order.
@@ -33,9 +54,11 @@ test("the player cards rank one shared pool, in the order the API ranks each sta
   for (const [title, sort] of [["Points", "pointsScored"], ["Assists", "assists"], ["Turnovers", "turnovers"]]) {
     await expectSame(title, await topOf(sort, "desc", 5));
   }
-  // 3-point %: the API's 60 best, then 1+ three-point attempt a game, as the cards read it before.
-  const threes = (await topOf("threePointersPercentage", "desc", 60)).filter(
-    (player) => player.traditional.threePointersPercentage !== null && Number(player.traditional.threePointersAttempted) >= 1,
+  // 3-point %: the API's 100 best, then 2 three-point attempts a game over the rounds played, from the season totals.
+  const minimum = 2 * (await roundsPlayed(request, api, phase));
+  const attempts = await seasonAttempts(request, api, phase);
+  const threes = (await topOf("threePointersPercentage", "desc", 100)).filter(
+    (player) => player.traditional.threePointersPercentage !== null && attempts.get(player.personKey) >= minimum,
   );
   await expectSame("3-point %", threes.slice(0, 5));
 });
@@ -50,7 +73,7 @@ test("the player board sorts the shared league list as the API sorts each statis
     return hrefs.map((href) => href.split("/").at(-1));
   };
   const open = async (query) => {
-    await page.goto(`/2025/leaders?${query}`);
+    await page.goto(`/2025/leaders?phase=RS&${query}`);
     await expect(page.getByText(/Showing 1-25 of \d+ players/)).toBeVisible({ timeout: 30_000 });
   };
 
@@ -59,8 +82,10 @@ test("the player board sorts the shared league list as the API sorts each statis
   const list = new URL(calls[0]);
   const api = `${list.origin}${list.pathname}`;
   const phase = list.searchParams.get("phase");
+  // Qualified: half the rounds played in games, rounded up.
+  const qualifying = Math.ceil((await roundsPlayed(request, api, phase)) / 2);
   const sortedBy = async (sort, order, limit) => {
-    const response = await request.get(api, { params: { phase, mode: "perGame", sort, order, limit, qualified: "true" } });
+    const response = await request.get(api, { params: { phase, mode: "perGame", sort, order, limit, minGames: qualifying } });
     return (await response.json()).players;
   };
   const keys = (players) => players.slice(0, 25).map((player) => player.personKey);
@@ -78,10 +103,12 @@ test("the player board sorts the shared league list as the API sorts each statis
   await open("metric=turnovers&direction=asc");
   expect(await boardKeys()).toEqual(keys(await sortedBy("turnovers", "asc", 25)));
 
-  // 3-point %: among players with 1+ three-point attempt a game.
+  // 3-point %: among players with 2 three-point attempts a game over the rounds played, from the season totals.
   await open("metric=threePointersPercentage");
+  const minimum = 2 * (await roundsPlayed(request, api, phase));
+  const attempts = await seasonAttempts(request, api, phase);
   const threes = (await sortedBy("threePointersPercentage", "desc", 100)).filter(
-    (player) => player.traditional.threePointersPercentage !== null && Number(player.traditional.threePointersAttempted) >= 1,
+    (player) => player.traditional.threePointersPercentage !== null && attempts.get(player.personKey) >= minimum,
   );
   expect(await boardKeys()).toEqual(keys(threes));
 });

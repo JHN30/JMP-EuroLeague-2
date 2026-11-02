@@ -132,6 +132,7 @@ export function useTeamRows(seasonCode, phaseCode) {
     return {
       clubCode: stats.clubCode,
       name: info?.name ?? info?.abbreviatedName ?? stats.clubCode,
+      shortName: info?.abbreviatedName ?? info?.name ?? stats.clubCode,
       crestUrl: info?.crestUrl ?? null,
       gp: Number(stats.gamesPlayed) || 0,
       stats,

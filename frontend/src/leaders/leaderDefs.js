@@ -6,9 +6,10 @@
 
 export const PLAYER_FAMILIES = ["Scoring", "Playmaking", "Rebounding", "Defense", "Overall"];
 
-// `volume`: the player must average at least `min` of `field` per game to be ranked on this stat.
-const FIELD_GOALS = { group: "traditional", fields: ["twoPointersAttempted", "threePointersAttempted"], min: 4, label: "4+ field goal attempts a game" };
-const MINUTES = { group: "traditional", fields: ["minutesPlayed"], min: 10, label: "10+ minutes a game" };
+// `volume`: what a player needs to be ranked on this stat, `min` of `fields` a game (`noun` names them). In a stage with standings
+// it is a season total, `min` times the rounds played; otherwise an average over the games he played (leaderData's hasVolume).
+const FIELD_GOALS = { group: "traditional", fields: ["twoPointersAttempted", "threePointersAttempted"], min: 5, noun: "field goal attempts" };
+const MINUTES = { group: "traditional", fields: ["minutesPlayed"], min: 10, noun: "minutes" };
 
 export const PLAYER_STATS = [
   { key: "pointsScored", family: "Scoring", label: "Points", short: "PTS", group: "traditional", kind: "count" },
@@ -17,13 +18,13 @@ export const PLAYER_STATS = [
   { key: "threePointersMade", family: "Scoring", label: "3-pointers made", short: "3PM", group: "traditional", kind: "count" },
   { key: "threePointersAttempted", family: "Scoring", label: "3-pointers attempted", short: "3PA", group: "traditional", kind: "count" },
   { key: "threePointersPercentage", family: "Scoring", label: "3-point %", short: "3P%", group: "traditional", kind: "percent",
-    volume: { group: "traditional", fields: ["threePointersAttempted"], min: 1, label: "1+ three-point attempt a game" } },
+    volume: { group: "traditional", fields: ["threePointersAttempted"], min: 2, noun: "three-point attempts" } },
   { key: "twoPointersPercentage", family: "Scoring", label: "2-point %", short: "2P%", group: "traditional", kind: "percent",
-    volume: { group: "traditional", fields: ["twoPointersAttempted"], min: 2, label: "2+ two-point attempts a game" } },
+    volume: { group: "traditional", fields: ["twoPointersAttempted"], min: 3, noun: "two-point attempts" } },
   { key: "freeThrowsMade", family: "Scoring", label: "Free throws made", short: "FTM", group: "traditional", kind: "count" },
   { key: "freeThrowsAttempted", family: "Scoring", label: "Free throws attempted", short: "FTA", group: "traditional", kind: "count" },
   { key: "freeThrowsPercentage", family: "Scoring", label: "Free throw %", short: "FT%", group: "traditional", kind: "percent",
-    volume: { group: "traditional", fields: ["freeThrowsAttempted"], min: 1, label: "1+ free throw attempt a game" } },
+    volume: { group: "traditional", fields: ["freeThrowsAttempted"], min: 4, noun: "free throw attempts" } },
   { key: "effectiveFieldGoalPercentage", family: "Scoring", label: "Effective FG%", short: "eFG%", group: "advanced", kind: "percent", volume: FIELD_GOALS,
     tip: "Field goal percentage with threes weighted 1.5" },
   { key: "trueShootingPercentage", family: "Scoring", label: "True shooting %", short: "TS%", group: "advanced", kind: "percent", volume: FIELD_GOALS,

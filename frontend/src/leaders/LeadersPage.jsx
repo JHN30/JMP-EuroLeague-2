@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { motion } from "motion/react";
 import { useParams } from "react-router";
@@ -10,6 +11,7 @@ import { useDocumentTitle } from "../lib/useDocumentTitle";
 import { useLiveSearchParams } from "../lib/useLiveSearchParams";
 import { usePhaseParam } from "../lib/usePhaseParam";
 import { StageSelect } from "./LeaderParts";
+import { ToolbarSlot } from "./toolbarSlot";
 import AdvancedLeaders from "./AdvancedLeaders";
 import PlayersLeaders from "./PlayersLeaders";
 import TeamsLeaders from "./TeamsLeaders";
@@ -37,6 +39,8 @@ export default function LeadersPage() {
   const phasesQuery = useQuery({ queryKey: ["phases", seasonCode], queryFn: () => getPhases(seasonCode) });
   const phases = phasesQuery.data?.phases ?? [];
   const [phaseCode] = usePhaseParam(phases);
+  // The node beside the scope tabs that each view's toolbar goes into.
+  const [toolbarSlot, setToolbarSlot] = useState(null);
 
   // An open board has `?metric=`; its way back is the shared back link (above the header from sm, in the sticky bar below). Going back swaps
   // the view on one path, so ScrollToTop does not run and the page goes to the top by itself.
@@ -81,17 +85,23 @@ export default function LeadersPage() {
       {params.get("metric") ? <BackLink to={`/${seasonCode}/leaders${cardsQuery ? `?${cardsQuery}` : ""}`} label="Categories" onBack={backToCards} /> : null}
       <PageHeader kicker="LEADERBOARDS" title="Leaders" />
 
-      <TabStrip scrolling ariaLabel="Leaderboard scope" level={1} panelId="leaders-panel" activeKey={scope} onChange={chooseScope} className="mb-6 w-fit" tabs={SCOPES} />
+      {/* The scope tabs, then the view's choices: under them below lg, on their right from lg (wrapping when they do not fit). */}
+      <div className="mb-6 flex flex-wrap items-end justify-between gap-x-6 gap-y-6 lg:mb-4 lg:gap-y-3">
+        <TabStrip scrolling ariaLabel="Leaderboard scope" level={1} panelId="leaders-panel" activeKey={scope} onChange={chooseScope} className="w-fit" tabs={SCOPES} />
+        <div ref={setToolbarSlot} className="flex w-full flex-wrap items-end gap-3 empty:hidden lg:w-auto" />
+      </div>
 
-      <motion.div id="leaders-panel" key={scope} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3, ease: EASE_OUT }}>
-        {scope === "players" ? (
-          <PlayersLeaders seasonCode={seasonCode} phaseCode={phaseCode} stage={stage} params={params} setParams={setParams} />
-        ) : scope === "teams" ? (
-          <TeamsLeaders seasonCode={seasonCode} phaseCode={phaseCode} stage={stage} params={params} setParams={setParams} />
-        ) : (
-          <AdvancedLeaders seasonCode={seasonCode} params={params} setParams={setParams} />
-        )}
-      </motion.div>
+      <ToolbarSlot.Provider value={toolbarSlot}>
+        <motion.div id="leaders-panel" key={scope} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3, ease: EASE_OUT }}>
+          {scope === "players" ? (
+            <PlayersLeaders seasonCode={seasonCode} phaseCode={phaseCode} stage={stage} params={params} setParams={setParams} />
+          ) : scope === "teams" ? (
+            <TeamsLeaders seasonCode={seasonCode} phaseCode={phaseCode} stage={stage} params={params} setParams={setParams} />
+          ) : (
+            <AdvancedLeaders seasonCode={seasonCode} params={params} setParams={setParams} />
+          )}
+        </motion.div>
+      </ToolbarSlot.Provider>
     </div>
   );
 }

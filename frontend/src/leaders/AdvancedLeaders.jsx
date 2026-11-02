@@ -11,7 +11,7 @@ import { listContainer } from "../lib/motion";
 import Panel from "../lib/Panel";
 import PanelHeader from "../lib/PanelHeader";
 import { nameParts, titleCase } from "../lib/playerName";
-import { Avatar, BoardHeader, BoardRow, BoardTopLine, CardGrid, CategoryCard, LeadersToolbar, StageSelect, StatSelect, TeamTag } from "./LeaderParts";
+import { Avatar, BOARD_AVATAR, BoardControls, BoardHeader, BoardRow, BoardTopLine, CardGrid, CategoryCard, LeadersToolbar, StageSelect, StatSelect, TeamTag } from "./LeaderParts";
 import { barShare, formatAdvancedValue } from "./leaderData";
 import { ADVANCED_FAMILIES, ADVANCED_SCOPES, ADVANCED_STATS } from "./leaderDefs";
 
@@ -39,7 +39,6 @@ function AdvancedCard({ stat, seasonCode, scope, onOpen }) {
   const worst = entries.length ? Number(entries[entries.length - 1].value) : 0;
   return (
     <CategoryCard
-      kicker={stat.family.toUpperCase()}
       title={stat.label}
       tip={stat.tip}
       isLoading={query.isLoading}
@@ -120,26 +119,28 @@ function AdvancedBoard({ seasonCode, scope, stage, metric, params, setParams }) 
         {stage}
         <StatSelect families={ADVANCED_FAMILIES} stats={ADVANCED_STATS} activeKey={stat.key} onChoose={chooseStat} />
       </LeadersToolbar>
-      <BoardTopLine>
-        <p className="muted text-sm">{stat.tip ?? stat.label}</p>
-        {pageQuery.data?.earlySeason ? <span className="badge badge-warning badge-outline">Early season: small samples</span> : null}
-      </BoardTopLine>
-      <div className="grid grid-cols-2 items-end gap-3 max-sm:[&_select]:w-full sm:flex sm:flex-wrap">
-        <LabelledSelect label="Order" ariaLabel="Advanced sort direction" value={direction} onChange={(event) => update({ direction: event.target.value, offset: undefined })} disabled={["rapm", "onOff", "per", "winShares", "offWinShares", "defWinShares", "winSharesPer40"].includes(stat.key)}>
-          <option value="desc">Highest first</option>
-          <option value="asc">Lowest first</option>
-        </LabelledSelect>
-        <FilterDisclosure activeCount={minutesParam ? 1 : 0} className="col-span-2 sm:contents" gridClassName="sm:contents">
-          <LabelledSelect label="Minimum minutes" ariaLabel="Minimum minutes played" value={minutesParam ?? ""} onChange={(event) => update({ minMinutes: event.target.value, offset: undefined })}>
-            <option value="">{defaultMinutes !== null ? `Default (${defaultMinutes}+ min)` : "Default"}</option>
-            {MINUTE_OPTIONS.map((value) => (
-              <option key={value} value={value}>
-                {value === 0 ? "No minimum" : `${value}+ minutes`}
-              </option>
-            ))}
+      <BoardControls>
+        <BoardTopLine>
+          <p className="muted text-sm">{stat.tip ?? stat.label}</p>
+          {pageQuery.data?.earlySeason ? <span className="badge badge-warning badge-outline">Early season: small samples</span> : null}
+        </BoardTopLine>
+        <div className="grid grid-cols-2 items-end gap-3 max-sm:[&_select]:w-full sm:flex sm:flex-wrap lg:flex-1">
+          <LabelledSelect label="Order" ariaLabel="Advanced sort direction" value={direction} onChange={(event) => update({ direction: event.target.value, offset: undefined })} disabled={["rapm", "onOff", "per", "winShares", "offWinShares", "defWinShares", "winSharesPer40"].includes(stat.key)}>
+            <option value="desc">Highest first</option>
+            <option value="asc">Lowest first</option>
           </LabelledSelect>
-        </FilterDisclosure>
-      </div>
+          <FilterDisclosure activeCount={minutesParam ? 1 : 0} className="col-span-2 sm:contents" gridClassName="sm:contents">
+            <LabelledSelect label="Minimum minutes" ariaLabel="Minimum minutes played" value={minutesParam ?? ""} onChange={(event) => update({ minMinutes: event.target.value, offset: undefined })}>
+              <option value="">{defaultMinutes !== null ? `Default (${defaultMinutes}+ min)` : "Default"}</option>
+              {MINUTE_OPTIONS.map((value) => (
+                <option key={value} value={value}>
+                  {value === 0 ? "No minimum" : `${value}+ minutes`}
+                </option>
+              ))}
+            </LabelledSelect>
+          </FilterDisclosure>
+        </div>
+      </BoardControls>
 
       {pageQuery.isLoading ? (
         <AsyncState status="loading" label="Loading the advanced leaderboard" skeleton={<BoardSkeleton />} />
@@ -158,7 +159,7 @@ function AdvancedBoard({ seasonCode, scope, stage, metric, params, setParams }) 
               <BoardRow
                 key={`${entry.personKey}-${entry.clubCode}`}
                 rank={offset + index + 1}
-                avatar={<Avatar optimize imageUrl={entry.imageUrl} />}
+                avatar={<Avatar optimize imageUrl={entry.imageUrl} size={BOARD_AVATAR} />}
                 name={displayName(entry)}
                 sub={<TeamTag {...teamOf(entry)} />}
                 columns={[
@@ -225,11 +226,11 @@ export default function AdvancedLeaders({ seasonCode, params, setParams }) {
         {metric ? (
           <AdvancedBoard seasonCode={seasonCode} scope={scope} stage={stage} metric={metric} params={params} setParams={setParams} />
         ) : (
-          <div className="flex flex-col gap-8">
+          <div className="flex flex-col gap-8 lg:gap-5">
             <LeadersToolbar>{stage}</LeadersToolbar>
             {ADVANCED_FAMILIES.map((family) => (
-              <section key={family} className="flex flex-col gap-4" aria-label={family}>
-                <PanelHeader title={family} />
+              <section key={family} className="flex flex-col gap-4 lg:gap-3" aria-label={family}>
+                <PanelHeader compact title={family} />
                 <CardGrid>
                   {ADVANCED_STATS.filter((stat) => stat.family === family).map((stat) => (
                     <AdvancedCard key={stat.key} stat={stat} seasonCode={seasonCode} scope={scope} onOpen={() => openMetric(stat.key)} />

@@ -2,7 +2,7 @@ import { useMemo, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { motion } from "motion/react";
 import { Link } from "react-router";
-import { getLeaderForm, getSeasonGames } from "../lib/api";
+import { getLeaderForm, getSeasonGames, getSeasonStandings } from "../lib/api";
 import AsyncState from "../lib/AsyncState";
 import { BoardSkeleton, FormSkeleton } from "./LeadersSkeleton";
 import EmptyText from "../lib/EmptyText";
@@ -15,8 +15,8 @@ import PanelHeader from "../lib/PanelHeader";
 import { nameParts, titleCase } from "../lib/playerName";
 import SearchField from "../lib/SearchField";
 import { TabStrip } from "../lib/TabStrip";
-import { Avatar, BoardHeader, BoardRow, BoardTopLine, CardGrid, CategoryCard, LeadersToolbar, ModeToggle, RankBadge, StatSelect, TeamTag } from "./LeaderParts";
-import { barShare, fetchQualifiedPool, formatPlayerValue, hasVolume, playerValue, rankRows, statNumber } from "./leaderData";
+import { Avatar, BOARD_AVATAR, BoardControls, BoardHeader, BoardRow, BoardTopLine, CardGrid, CategoryCard, LeadersToolbar, ModeToggle, RankBadge, StatSelect, TeamTag } from "./LeaderParts";
+import { barShare, fetchQualifiedPool, formatPlayerValue, hasVolume, playerValue, rankRows, statNumber, volumeText } from "./leaderData";
 import { FORM_STATS, PLAYER_CARDS, PLAYER_FAMILIES, PLAYER_STATS, PLAYER_TOTAL_CARDS } from "./leaderDefs";
 import { fetchLeagueLeaderboard, leaderboardQueryKey } from "../players/leagueLeaderboard";
 
@@ -37,19 +37,54 @@ const displayName = (player) => {
 };
 const teamOf = (player) => ({ code: player.clubCode, name: player.clubName, tvCode: player.clubTvCodes, crestUrl: player.clubImageUrl });
 
+// Who the players' boards rank. A stage with standings has rounds: the round of its latest standings, so a postponed game does not
+// lower the bar; `behind` are the clubs that have played fewer games. A player is ranked from half the rounds in games (rounded up:
+// 5 after 9 rounds), and the volume minimums are totals over the rounds (hasVolume), measured on the season totals since the
+// per-game view's numbers are rounded. A stage without standings (the postseason) has no rounds and keeps the feed's minimum.
+function useRankingRule(seasonCode, phaseCode, mode) {
+  const standingsQuery = useQuery({ queryKey: ["standings", seasonCode, phaseCode], queryFn: () => getSeasonStandings(seasonCode, phaseCode), enabled: Boolean(phaseCode) });
+  const rounds = standingsQuery.data?.standings?.length ? (statNumber(standingsQuery.data.round) ?? 0) : 0;
+  const needsTotals = rounds > 0 && mode === "perGame";
+  const totalsQuery = useQuery({
+    queryKey: leaderboardQueryKey(seasonCode, phaseCode, "accumulated"),
+    queryFn: () => fetchLeagueLeaderboard(seasonCode, phaseCode, "accumulated"),
+    enabled: Boolean(phaseCode) && needsTotals,
+  });
+  const isLoading = standingsQuery.isLoading || (needsTotals && totalsQuery.isLoading);
+  // One object while nothing changes, so the cards do not re-rank on every render.
+  return useMemo(() => {
+    const behind = (standingsQuery.data?.standings ?? [])
+      .map((row) => ({ name: row.clubName ?? row.clubCode, games: (statNumber(row.basic?.gamesWon) ?? 0) + (statNumber(row.basic?.gamesLost) ?? 0) }))
+      .filter((club) => club.games < rounds);
+    const totals = new Map((totalsQuery.data ?? []).map((player) => [player.personKey, player]));
+    return { rounds: rounds || null, minGames: rounds ? Math.ceil(rounds / 2) : null, totals, behind, isLoading, standingsLoading: standingsQuery.isLoading };
+  }, [standingsQuery.data, standingsQuery.isLoading, rounds, totalsQuery.data, isLoading]);
+}
+
+// The clubs that have played fewer games than the rounds played, when there are any: their players are held to the same totals.
+function BehindNote({ rule, className = "muted text-sm" }) {
+  const { behind, rounds } = rule;
+  if (!rounds || behind.length === 0) return null;
+  const text =
+    behind.length === 1
+      ? `${behind[0].name} has played ${behind[0].games} of ${rounds} rounds (a postponed game); its players need the same totals.`
+      : `${behind.map((club) => club.name).join(", ")} have played fewer than ${rounds} rounds (postponed games); their players need the same totals.`;
+  return <p className={className}>{text}</p>;
+}
+
 // ---- Landing: a card per category, then who is hot and who has moved ----
 
 // `query` is the landing's one pool of qualified players. The card keeps those with a value and the stat's volume, and sorts them
 // the way the API would (a stable sort, so equal values keep the pool's order, the API's tie-break).
-function PlayerCard({ stat, seasonCode, mode, query, onOpen }) {
+function PlayerCard({ stat, seasonCode, mode, query, rule, onOpen }) {
   const lowerFirst = stat.lowerIsBetter && !stat.showMost;
   const players = useMemo(
     () =>
       (query.data ?? [])
-        .filter((player) => playerValue(player, stat) !== null && hasVolume(player, stat, mode))
+        .filter((player) => playerValue(player, stat) !== null && hasVolume(player, stat, mode, rule))
         .sort((a, b) => (lowerFirst ? playerValue(a, stat) - playerValue(b, stat) : playerValue(b, stat) - playerValue(a, stat)))
         .slice(0, 5),
-    [query.data, stat, mode, lowerFirst],
+    [query.data, stat, mode, lowerFirst, rule],
   );
   const ranked = rankRows(players, (player) => playerValue(player, stat));
   const best = ranked[0]?.value ?? null;
@@ -57,14 +92,13 @@ function PlayerCard({ stat, seasonCode, mode, query, onOpen }) {
 
   return (
     <CategoryCard
-      kicker={stat.family.toUpperCase()}
       title={stat.label}
       tip={stat.tip}
-      isLoading={query.isLoading}
+      isLoading={query.isLoading || rule.isLoading}
       isError={query.isError}
       onRetry={() => query.refetch()}
       onOpen={onOpen}
-      footnote={stat.volume ? `Needs ${stat.volume.label}.` : stat.showMost ? "Most first." : null}
+      footnote={stat.volume ? `Needs ${volumeText(stat.volume, rule.rounds)}.` : stat.showMost ? "Most first." : null}
       entries={ranked.map(({ row, rank, value }) => ({
         key: row.personKey,
         rank,
@@ -110,9 +144,9 @@ function FormSection({ seasonCode, phaseCode, openMetric }) {
   }
 
   return (
-    <section className="flex flex-col gap-4" aria-label="Player form">
+    <section className="flex flex-col gap-4 lg:gap-3" aria-label="Player form">
       <div className="flex flex-wrap items-end justify-between gap-3">
-        <PanelHeader kicker={live ? "FORM" : "THE CLOSING STRETCH"} title={live ? "Hot right now" : "Strong finish"} />
+        <PanelHeader compact kicker={live ? "FORM" : "THE CLOSING STRETCH"} title={live ? "Hot right now" : "Strong finish"} />
         <TabStrip
           scrolling
           ariaLabel="Form statistic"
@@ -124,24 +158,24 @@ function FormSection({ seasonCode, phaseCode, openMetric }) {
         />
       </div>
       <div id="leaders-form-panel" className="grid grid-cols-[minmax(0,1fr)] gap-4 xl:grid-cols-[3fr_2fr]">
-        <Panel className="p-4">
-          <h3 className="mb-1 text-lg font-bold">{stat.label}: the last {FORM_GAMES} games</h3>
-          <p className="muted mb-3 text-sm">Per game over their last {FORM_GAMES} games, against their season average.</p>
+        <Panel className="p-4 lg:p-3">
+          <h3 className="mb-1 text-lg font-bold lg:mb-0 lg:text-base">{stat.label}: the last {FORM_GAMES} games</h3>
+          <p className="muted mb-3 text-sm lg:mb-1">Last {FORM_GAMES} games, against the season average.</p>
           <motion.ol className="flex flex-col" variants={listContainer} initial="hidden" animate="show" key={`${statKey}-${phaseCode}`}>
             {hot.map((player, index) => {
               const recent = player.recent[statKey];
               const difference = recent - player.season[statKey];
               return (
                 <li key={player.personKey} className="border-b border-base-300 last:border-0">
-                  <Link to={`/${seasonCode}/players/${player.personKey}`} className="board-row-link flex items-center gap-2 py-2 sm:gap-3">
-                      <RankBadge rank={index + 1} />
-                    <Avatar optimize imageUrl={player.imageUrl} />
+                  <Link to={`/${seasonCode}/players/${player.personKey}`} className="board-row-link flex items-center gap-2 py-2 sm:gap-3 lg:py-1">
+                    <RankBadge rank={index + 1} compact />
+                    <Avatar optimize imageUrl={player.imageUrl} size={BOARD_AVATAR} />
                     <div className="min-w-0 flex-1">
                       <p className="font-semibold max-sm:line-clamp-2 max-sm:wrap-break-word sm:truncate">{displayName({ playerName: player.playerName, personKey: player.personKey })}</p>
                       <TeamTag code={player.clubCode} name={player.clubName} tvCode={player.clubTvCode} crestUrl={player.crestUrl} />
                     </div>
                     <div className="flex-none text-right">
-                      <p className="text-xl font-black tabular-nums">{recent.toFixed(1)}</p>
+                      <p className="text-xl font-black tabular-nums lg:text-lg lg:leading-tight">{recent.toFixed(1)}</p>
                       <p className={`text-xs tabular-nums ${difference >= 0 ? "text-success" : "text-error"}`} title="Against their season average">
                         {formatSignedDecimal(difference)} vs {player.season[statKey].toFixed(1)}
                       </p>
@@ -152,21 +186,21 @@ function FormSection({ seasonCode, phaseCode, openMetric }) {
             })}
           </motion.ol>
         </Panel>
-        <Panel className="p-4">
-          <h3 className="mb-1 text-lg font-bold">{stat.label}: who has moved</h3>
-          <p className="muted mb-3 text-sm">Places gained or lost on the per-game {stat.label.toLowerCase()} board since before the latest round.</p>
+        <Panel className="p-4 lg:p-3">
+          <h3 className="mb-1 text-lg font-bold lg:mb-0 lg:text-base">{stat.label}: who has moved</h3>
+          <p className="muted mb-3 text-sm lg:mb-1">Places on the per-game board since before the latest round.</p>
           {climbers.length + fallers.length === 0 ? (
             <EmptyText>No one has changed place.</EmptyText>
           ) : (
             <ul className="flex flex-col">
               {[...climbers, ...fallers].map(({ player, change }) => (
                 <li key={player.personKey} className="border-b border-base-300 last:border-0">
-                  <Link to={`/${seasonCode}/players/${player.personKey}`} className="board-row-link flex items-center gap-2 py-2 sm:gap-3">
+                  <Link to={`/${seasonCode}/players/${player.personKey}`} className="board-row-link flex items-center gap-2 py-2 sm:gap-3 lg:py-1">
                     <span className={`w-10 text-sm font-bold tabular-nums ${change > 0 ? "text-success" : "text-error"}`}>
                       {change > 0 ? "▲" : "▼"}
                       {Math.abs(change)}
                     </span>
-                    <Avatar optimize imageUrl={player.imageUrl} size="h-9 w-9" />
+                    <Avatar optimize imageUrl={player.imageUrl} size="h-9 w-9 lg:h-8 lg:w-8" />
                     <div className="min-w-0 flex-1">
                       <p className="text-sm font-semibold max-sm:line-clamp-2 max-sm:wrap-break-word sm:truncate">{displayName({ playerName: player.playerName, personKey: player.personKey })}</p>
                       <p className="muted text-xs tabular-nums">
@@ -178,7 +212,7 @@ function FormSection({ seasonCode, phaseCode, openMetric }) {
               ))}
             </ul>
           )}
-          <button type="button" className="btn btn-ghost btn-sm mt-3" onClick={() => openMetric(stat.field)}>
+          <button type="button" className="btn btn-ghost btn-sm mt-3 lg:mt-2" onClick={() => openMetric(stat.field)}>
             See the full {stat.label.toLowerCase()} leaderboard →
           </button>
         </Panel>
@@ -189,10 +223,12 @@ function FormSection({ seasonCode, phaseCode, openMetric }) {
 
 function PlayersLanding({ seasonCode, phaseCode, stage, params, setParams, openMetric }) {
   const mode = params.get("mode") === "accumulated" ? "accumulated" : "perGame";
+  const rule = useRankingRule(seasonCode, phaseCode, mode);
+  // The pool waits for the standings, which say how many games qualify.
   const poolQuery = useQuery({
-    queryKey: ["leaders-card-pool", seasonCode, phaseCode, mode],
-    queryFn: () => fetchQualifiedPool(seasonCode, phaseCode, mode),
-    enabled: Boolean(phaseCode),
+    queryKey: ["leaders-card-pool", seasonCode, phaseCode, mode, rule.minGames],
+    queryFn: () => fetchQualifiedPool(seasonCode, phaseCode, mode, rule.minGames),
+    enabled: Boolean(phaseCode) && !rule.standingsLoading,
   });
   const setMode = (key) =>
     setParams((current) => {
@@ -202,20 +238,21 @@ function PlayersLanding({ seasonCode, phaseCode, stage, params, setParams, openM
       return next;
     });
   return (
-    <div className="flex flex-col gap-8">
+    <div className="flex flex-col gap-8 lg:gap-5">
       <LeadersToolbar>
         {stage}
         <ModeToggle ariaLabel="Player statistics mode" mode={mode} onChange={setMode} />
       </LeadersToolbar>
+      <BehindNote rule={rule} />
       {PLAYER_FAMILIES.map((family) => {
         const keys = (mode === "accumulated" ? PLAYER_TOTAL_CARDS : PLAYER_CARDS).filter((key) => statByKey(key).family === family);
         if (keys.length === 0) return null;
         return (
-          <section key={family} className="flex flex-col gap-4" aria-label={family}>
-            <PanelHeader title={family} />
+          <section key={family} className="flex flex-col gap-4 lg:gap-3" aria-label={family}>
+            <PanelHeader compact title={family} />
             <CardGrid>
               {keys.map((key) => (
-                <PlayerCard key={key} stat={statByKey(key)} seasonCode={seasonCode} mode={mode} query={poolQuery} onOpen={() => openMetric(key, statByKey(key).showMost ? "desc" : undefined)} />
+                <PlayerCard key={key} stat={statByKey(key)} seasonCode={seasonCode} mode={mode} query={poolQuery} rule={rule} onOpen={() => openMetric(key, statByKey(key).showMost ? "desc" : undefined)} />
               ))}
             </CardGrid>
           </section>
@@ -255,6 +292,7 @@ function PlayersBoard({ seasonCode, phaseCode, stage, metric, params, setParams 
       return direction === "asc" ? x - y : y - x;
     });
   }, [boardQuery.data, stat, direction]);
+  const rule = useRankingRule(seasonCode, phaseCode, mode);
   // Rank movement is the per-game board's, and only for the six stats the form endpoint covers.
   const formStat = FORM_STATS.find((entry) => entry.field === stat.key);
   const formQuery = useQuery({
@@ -268,14 +306,19 @@ function PlayersBoard({ seasonCode, phaseCode, stage, metric, params, setParams 
   }, [formQuery.data, formStat, mode]);
 
   const all = sorted;
-  const phaseMinGames = all[0]?.minGames ?? null;
+  // The games a qualified player needs: half the rounds played, or the feed's minimum in a stage without rounds.
+  const phaseMinGames = rule.minGames ?? all[0]?.minGames ?? null;
   // The ranked pool: qualified players (or at least N games) with enough volume for the stat. Team, position and search only
   // narrow what is shown, so a row keeps its true rank.
   const pool = all.filter(
     (player) =>
-      (minGames > 0 ? (statNumber(player.traditional?.gamesPlayed) ?? 0) >= minGames : player.qualified !== false) &&
+      (minGames > 0
+        ? (statNumber(player.traditional?.gamesPlayed) ?? 0) >= minGames
+        : rule.minGames
+          ? (statNumber(player.traditional?.gamesPlayed) ?? 0) >= rule.minGames
+          : player.qualified !== false) &&
       playerValue(player, stat) !== null &&
-      hasVolume(player, stat, mode),
+      hasVolume(player, stat, mode, rule),
   );
   const ranked = rankRows(pool, (player) => playerValue(player, stat));
   const teams = [...new Map(pool.filter((p) => p.clubCode).map((p) => [p.clubCode, p.clubName ?? p.clubCode])).entries()].sort((a, b) => a[1].localeCompare(b[1]));
@@ -320,48 +363,51 @@ function PlayersBoard({ seasonCode, phaseCode, stage, metric, params, setParams 
         <StatSelect families={PLAYER_FAMILIES} stats={PLAYER_STATS} activeKey={stat.key} onChoose={chooseStat} />
         <ModeToggle ariaLabel="Player statistics mode" mode={mode} onChange={setMode} />
       </LeadersToolbar>
-      <BoardTopLine>
-        <p className="muted text-sm">
-          {mode === "perGame" ? "Per game" : "Season totals"} · {phaseMinGames && minGames === 0 ? `qualified players (${phaseMinGames}+ games)` : minGames > 1 ? `${minGames}+ games` : "all players"}
-        </p>
-      </BoardTopLine>
+      <BoardControls>
+        <BoardTopLine>
+          <p className="muted text-sm">
+            {mode === "perGame" ? "Per game" : "Season totals"} · {phaseMinGames && minGames === 0 ? `qualified players (${phaseMinGames}+ games)` : minGames > 1 ? `${minGames}+ games` : "all players"}
+          </p>
+        </BoardTopLine>
 
-      <div className="grid grid-cols-2 items-end gap-3 max-sm:[&_select]:w-full sm:flex sm:flex-wrap">
-        <LabelledSelect label="Order" ariaLabel="Player sort direction" value={direction} onChange={(event) => update({ direction: event.target.value, offset: undefined })}>
-          <option value="desc">Highest first</option>
-          <option value="asc">Lowest first</option>
-        </LabelledSelect>
-        <FilterDisclosure activeCount={activeFilters} className="col-span-2 sm:contents" gridClassName="sm:contents">
-          <LabelledSelect label="Minimum games" ariaLabel="Minimum games played" value={String(minGames)} onChange={(event) => update({ minGames: Number(event.target.value) || undefined, offset: undefined })}>
-            <option value="0">{phaseMinGames ? `Qualified (${phaseMinGames}+ games)` : "Qualified players"}</option>
-            {MIN_GAMES_OPTIONS.map((value) => (
-              <option key={value} value={value}>
-                {value === 1 ? "All players" : `${value}+ games`}
-              </option>
-            ))}
+        <div className="grid grid-cols-2 items-end gap-3 max-sm:[&_select]:w-full sm:flex sm:flex-wrap lg:flex-1">
+          <LabelledSelect label="Order" ariaLabel="Player sort direction" value={direction} onChange={(event) => update({ direction: event.target.value, offset: undefined })}>
+            <option value="desc">Highest first</option>
+            <option value="asc">Lowest first</option>
           </LabelledSelect>
-          <LabelledSelect label="Team" ariaLabel="Team" value={team} onChange={(event) => update({ team: event.target.value || undefined, offset: undefined })}>
-            <option value="">All teams</option>
-            {teams.map(([code, name]) => (
-              <option key={code} value={code}>
-                {name}
-              </option>
-            ))}
-          </LabelledSelect>
-          <LabelledSelect label="Position" ariaLabel="Position" value={position} onChange={(event) => update({ position: event.target.value || undefined, offset: undefined })}>
-            <option value="">All positions</option>
-            {positions.map((value) => (
-              <option key={value} value={value}>
-                {value}
-              </option>
-            ))}
-          </LabelledSelect>
-          <SearchField label="Search players by name" placeholder="Search players..." value={search} onChange={(event) => update({ search: event.target.value || undefined, offset: undefined })} />
-        </FilterDisclosure>
-      </div>
-      {stat.volume ? <p className="muted text-sm">Ranked among players with {stat.volume.label}.</p> : null}
+          <FilterDisclosure activeCount={activeFilters} className="col-span-2 sm:contents" gridClassName="sm:contents">
+            <LabelledSelect label="Minimum games" ariaLabel="Minimum games played" value={String(minGames)} onChange={(event) => update({ minGames: Number(event.target.value) || undefined, offset: undefined })}>
+              <option value="0">{phaseMinGames ? `Qualified (${phaseMinGames}+ games)` : "Qualified players"}</option>
+              {MIN_GAMES_OPTIONS.map((value) => (
+                <option key={value} value={value}>
+                  {value === 1 ? "All players" : `${value}+ games`}
+                </option>
+              ))}
+            </LabelledSelect>
+            <LabelledSelect label="Team" ariaLabel="Team" value={team} onChange={(event) => update({ team: event.target.value || undefined, offset: undefined })}>
+              <option value="">All teams</option>
+              {teams.map(([code, name]) => (
+                <option key={code} value={code}>
+                  {name}
+                </option>
+              ))}
+            </LabelledSelect>
+            <LabelledSelect label="Position" ariaLabel="Position" value={position} onChange={(event) => update({ position: event.target.value || undefined, offset: undefined })}>
+              <option value="">All positions</option>
+              {positions.map((value) => (
+                <option key={value} value={value}>
+                  {value}
+                </option>
+              ))}
+            </LabelledSelect>
+            <SearchField label="Search players by name" placeholder="Search players..." value={search} onChange={(event) => update({ search: event.target.value || undefined, offset: undefined })} />
+          </FilterDisclosure>
+        </div>
+        {stat.volume ? <p className="muted text-sm lg:w-full">Ranked among players with {volumeText(stat.volume, rule.rounds)}.</p> : null}
+        {stat.volume ? <BehindNote rule={rule} className="muted text-sm lg:w-full" /> : null}
+      </BoardControls>
 
-      {boardQuery.isLoading ? (
+      {boardQuery.isLoading || rule.isLoading ? (
         <AsyncState status="loading" label="Loading the player leaderboard" skeleton={<BoardSkeleton />} />
       ) : boardQuery.isError ? (
         <AsyncState status="error" message="Could not load the player leaderboard." onRetry={() => boardQuery.refetch()} />
@@ -381,7 +427,7 @@ function PlayersBoard({ seasonCode, phaseCode, stage, metric, params, setParams 
                   key={row.personKey}
                   rank={rank}
                   change={move && move.before !== null ? move.before - move.now : null}
-                  avatar={<Avatar optimize imageUrl={row.playerImageUrl} />}
+                  avatar={<Avatar optimize imageUrl={row.playerImageUrl} size={BOARD_AVATAR} />}
                   name={displayName(row)}
                   sub={
                     <span className="flex min-w-0 flex-wrap items-center gap-x-2">

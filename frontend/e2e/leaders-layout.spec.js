@@ -4,7 +4,7 @@ import { HEIGHT, findBrokenWords, seasonSlug } from "./support/layout";
 // The Leaders page at every width: the category cards and one full board in each scope. Each test loads its view once and
 // resizes the window: the layout depends on the viewport only.
 const WIDTHS = [320, 390, 639, 640, 768, 1023, 1024, 1280];
-// Category cards per row: one below 1024px, two from lg, three from xl.
+// Category cards per row: one below 1024px, two from lg, three from xl (four from 2xl, wider than these widths).
 const cardsPerRowAt = (width) => (width >= 1280 ? 3 : width >= 1024 ? 2 : 1);
 
 const VIEWS = [
@@ -77,13 +77,14 @@ for (const view of VIEWS) {
       if (width < 640) expect(await namesFitTwoLines(page)).toBe(true);
       expect(await findBrokenWords(names(page))).toEqual([]);
       if (view.name !== "Teams") {
-        // The club label is the short TV code below 640px and the full name from 640px.
+        // The club label is the short TV code below 640px and the full name from 640px; the cards go back to the TV code from
+        // 1024px, where the club sits beside the player's name (the form lists keep the full name).
         const short = await shown(page.locator("#leaders-panel .relative > span[aria-hidden=true]"));
         const full = await shown(page.locator("#leaders-panel .relative > span:not([aria-hidden=true])"));
-        if (width < 640) {
+        if (width < 640 || width >= 1024) {
           expect(short.length).toBeGreaterThan(5);
           for (const code of short) expect(code, code).toMatch(/^[A-Z0-9]{2,4}(\/[A-Z0-9]{2,4})*$/);
-          expect(full).toEqual([]);
+          if (width < 640) expect(full).toEqual([]);
         } else {
           expect(short).toEqual([]);
           expect(full.length).toBeGreaterThan(5);

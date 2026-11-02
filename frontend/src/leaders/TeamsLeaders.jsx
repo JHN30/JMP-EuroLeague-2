@@ -8,7 +8,7 @@ import { listContainer } from "../lib/motion";
 import Panel from "../lib/Panel";
 import PanelHeader from "../lib/PanelHeader";
 import SearchField from "../lib/SearchField";
-import { Avatar, BoardHeader, BoardRow, BoardTopLine, CardGrid, CategoryCard, LeadersToolbar, ModeToggle, StatSelect } from "./LeaderParts";
+import { Avatar, BOARD_AVATAR, BoardControls, BoardHeader, BoardRow, BoardTopLine, CardGrid, CategoryCard, LeadersToolbar, ModeToggle, StatSelect } from "./LeaderParts";
 import { advancedScopeForPhase } from "../teams/teamLeague";
 import { barShare, rankRows } from "./leaderData";
 import ForfeitStatsNote from "../lib/ForfeitStatsNote";
@@ -25,7 +25,6 @@ function TeamCard({ stat, seasonCode, rows, mode, onOpen, isLoading, isError, on
   const worst = ranked.length ? ranked[ranked.length - 1].value : 0;
   return (
     <CategoryCard
-      kicker={stat.family.toUpperCase()}
       title={stat.label}
       tip={stat.tip}
       isLoading={isLoading}
@@ -37,6 +36,7 @@ function TeamCard({ stat, seasonCode, rows, mode, onOpen, isLoading, isError, on
         key: row.clubCode,
         rank,
         name: row.name,
+        shortName: row.shortName,
         imageUrl: row.crestUrl,
         crest: true,
         to: `/${seasonCode}/teams/${row.clubCode}`,
@@ -91,20 +91,23 @@ function TeamsBoard({ seasonCode, phaseCode, stage, metric, source, params, setP
         <StatSelect families={families} stats={LEADER_STATS.filter((entry) => usable(entry, source))} activeKey={stat.key} onChoose={chooseStat} />
         {hasMode ? <ModeToggle ariaLabel="Team statistics mode" mode={mode} onChange={setMode} /> : null}
       </LeadersToolbar>
-      <BoardTopLine>
-        <p className="muted text-sm">{hasMode ? (mode === "perGame" ? "Per game" : "Season totals") : "Whole phase"} · overtime counted</p>
-      </BoardTopLine>
-      {source.unadjusted ? <p className="muted text-sm">{UNADJUSTED_NOTE}</p> : null}
-      <ForfeitStatsNote seasonCode={seasonCode} phaseCode={phaseCode} />
-      <div className="grid grid-cols-2 items-end gap-3 max-sm:[&_select]:w-full sm:flex sm:flex-wrap">
-        <LabelledSelect label="Order" ariaLabel="Team sort direction" value={direction} onChange={(event) => update({ direction: event.target.value })}>
-          <option value="desc">Highest first</option>
-          <option value="asc">Lowest first</option>
-        </LabelledSelect>
-        <FilterDisclosure activeCount={search ? 1 : 0} className="col-span-2 sm:contents" gridClassName="sm:contents">
-          <SearchField label="Search teams by name" placeholder="Search teams..." value={search} onChange={(event) => update({ search: event.target.value || undefined })} />
-        </FilterDisclosure>
-      </div>
+      <BoardControls>
+        <BoardTopLine>
+          <p className="muted text-sm">{hasMode ? (mode === "perGame" ? "Per game" : "Season totals") : "Whole phase"} · overtime counted</p>
+        </BoardTopLine>
+        {/* The notes keep their place under the line below lg, and go under the row from lg. */}
+        {source.unadjusted ? <p className="muted text-sm lg:order-last lg:w-full">{UNADJUSTED_NOTE}</p> : null}
+        <ForfeitStatsNote seasonCode={seasonCode} phaseCode={phaseCode} className="muted text-sm lg:order-last lg:w-full" />
+        <div className="grid grid-cols-2 items-end gap-3 max-sm:[&_select]:w-full sm:flex sm:flex-wrap lg:flex-1">
+          <LabelledSelect label="Order" ariaLabel="Team sort direction" value={direction} onChange={(event) => update({ direction: event.target.value })}>
+            <option value="desc">Highest first</option>
+            <option value="asc">Lowest first</option>
+          </LabelledSelect>
+          <FilterDisclosure activeCount={search ? 1 : 0} className="col-span-2 sm:contents" gridClassName="sm:contents">
+            <SearchField label="Search teams by name" placeholder="Search teams..." value={search} onChange={(event) => update({ search: event.target.value || undefined })} />
+          </FilterDisclosure>
+        </div>
+      </BoardControls>
       {source.isLoading ? (
         <AsyncState status="loading" label="Loading the team leaderboard" skeleton={<BoardSkeleton />} />
       ) : source.isError ? (
@@ -121,7 +124,7 @@ function TeamsBoard({ seasonCode, phaseCode, stage, metric, source, params, setP
               <BoardRow
                 key={row.clubCode}
                 rank={rank}
-                avatar={<Avatar optimize imageUrl={row.crestUrl} crest />}
+                avatar={<Avatar optimize imageUrl={row.crestUrl} crest size={BOARD_AVATAR} />}
                 name={row.name}
                 columns={[
                   { label: "Games played", value: row.gp },
@@ -164,7 +167,7 @@ export default function TeamsLeaders({ seasonCode, phaseCode, stage, params, set
   if (metric) return <TeamsBoard seasonCode={seasonCode} phaseCode={phaseCode} stage={stage} metric={metric} source={source} params={params} setParams={setParams} />;
   if (source.isError) return <AsyncState status="error" message="Could not load the team leaderboard." onRetry={source.refetch} />;
   return (
-    <div className="flex flex-col gap-8">
+    <div className="flex flex-col gap-8 lg:gap-5">
       <LeadersToolbar>
         {stage}
         <ModeToggle ariaLabel="Team statistics mode" mode={mode} onChange={setMode} />
@@ -178,8 +181,8 @@ export default function TeamsLeaders({ seasonCode, phaseCode, stage, params, set
         const stats = (mode === "accumulated" ? TEAM_TOTAL_CARDS : TEAM_CARDS).map((key) => leaderStatByKey(key)).filter((stat) => stat.family === family && usable(stat, source));
         if (stats.length === 0) return null;
         return (
-          <section key={family} className="flex flex-col gap-4" aria-label={family}>
-            <PanelHeader title={family} />
+          <section key={family} className="flex flex-col gap-4 lg:gap-3" aria-label={family}>
+            <PanelHeader compact title={family} />
             <CardGrid>
               {stats.map((stat) => (
                 <TeamCard key={stat.key} stat={stat} seasonCode={seasonCode} rows={source.rows} mode={mode} isLoading={source.isLoading} isError={false} onOpen={() => openMetric(stat.key)} emptyText={isUnratedSrs(stat, source) ? SRS_UNAVAILABLE : undefined} />

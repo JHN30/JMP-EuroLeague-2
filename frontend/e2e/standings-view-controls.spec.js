@@ -135,10 +135,16 @@ test("the Advanced tab has a Scope and Round row and one View select below 640px
   const scopes = await optionTexts(scope);
   expect(scopes.length).toBeGreaterThan(0);
   if (scopes.length > 1) {
+    const before = await round.locator("option").evaluateAll((options) => options.map((option) => option.value).join());
     await scope.selectOption({ index: 1 });
     await expect(page.locator("#advanced-standings-panel table").first()).toBeVisible();
-    const rounds = await round.locator("option").evaluateAll((options) => options.map((option) => option.value));
-    await expect(round).toHaveValue(rounds[rounds.length - 1]);
+    // The round resets to the new scope's latest. Read the options once they are the new scope's: right after the switch they can
+    // still be the old scope's.
+    await expect
+      .poll(() =>
+        round.evaluate((select, old) => [...select.options].map((option) => option.value).join() !== old && select.value === select.options[select.options.length - 1].value, before),
+      )
+      .toBe(true);
     await scope.selectOption({ index: 0 });
   }
 

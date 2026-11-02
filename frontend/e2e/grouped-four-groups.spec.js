@@ -97,7 +97,9 @@ for (const season of SEASONS) {
       await expect(page.getByText(/in the postseason · defeated 3 opponents/)).toBeVisible();
       await expect(page.locator("main")).not.toContainText("League leader");
       await page.goto(`/${season}/leaders?scope=teams&phase=TS`);
-      await expect(page.getByText(/played in separate groups/)).toBeVisible({ timeout: 30_000 });
+      // The page's note, and the Net rating card that cannot rank clubs across groups.
+      await expect(page.getByText(/^Clubs in this phase played in separate groups/)).toBeVisible({ timeout: 30_000 });
+      await expect(page.getByText(/^Not available for this phase: the clubs played in separate groups/)).toBeVisible();
       const { standings } = await load(request, season);
       const [a, b] = ["E", "F"].map((name) => standings.find((row) => row.groupName === name && row.basic.position === 1));
       await page.goto(`/${season}/compare?teamA=${a.clubCode}&teamB=${b.clubCode}&phase=TS`);

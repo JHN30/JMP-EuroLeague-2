@@ -18,7 +18,7 @@ function leaderboardRows(offset, limit) {
   }));
 }
 
-test("loads a player game log once for the Overview form and the Games tab, and requests player pages in blocks of 36", async ({ page }) => {
+test("loads a player game log once for the Overview form and the Games tab, and requests player pages in blocks of 60", async ({ page }) => {
   let gameLogRequests = 0;
   let roundRequests = 0;
   const playerPageRequests = [];
@@ -136,7 +136,7 @@ test("loads a player game log once for the Overview form and the Games tab, and 
       await route.fulfill({
         json: {
           players: playerRows(offset, limit),
-          pagination: { total: 72, hasMore: offset + limit < 72 },
+          pagination: { total: 120, hasMore: offset + limit < 120 },
         },
       });
       return;
@@ -155,12 +155,12 @@ test("loads a player game log once for the Overview form and the Games tab, and 
   expect(gameLogRequests).toBe(1);
 
   await page.goto(`/${SEASON}/players`);
-  await expect(page.getByText("Showing 1-36 of 72 players")).toBeVisible();
-  expect(playerPageRequests.at(-1)).toEqual({ offset: 0, limit: 36 });
+  await expect(page.getByText("Showing 1-60 of 120 players")).toBeVisible();
+  expect(playerPageRequests.at(-1)).toEqual({ offset: 0, limit: 60 });
 
   await page.getByRole("button", { name: "Next page" }).click();
-  await expect(page.getByText("Showing 37-72 of 72 players")).toBeVisible();
-  expect(playerPageRequests.at(-1)).toEqual({ offset: 36, limit: 36 });
+  await expect(page.getByText("Showing 61-120 of 120 players")).toBeVisible();
+  expect(playerPageRequests.at(-1)).toEqual({ offset: 60, limit: 60 });
 
   // The player page's league comparison also reads the leaderboard; count only the Statistics page's requests.
   leaderboardRequests.length = 0;

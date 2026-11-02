@@ -204,7 +204,18 @@ test("where the chart cannot fit, the page follows the focused team while the ra
 
   // The club last at the latest round, shown at the bottom of the chart.
   await focus.selectOption({ index: await focus.locator("option").count() - 1 });
+  const slider = page.getByRole("slider", { name: "Round shown in the race" });
+  const latest = Number(await slider.inputValue());
   await page.getByRole("button", { name: /^(Play|Replay) season$/ }).click();
+  // Play goes back to the season start, where every crest is drawn but hidden, and the page follows the crest from the rounds it
+  // shows. Under load the first rounds can take longer than one check, so the checks start once the replay has two rounds on
+  // the chart (the slider sat at the latest round before Play).
+  await expect
+    .poll(async () => {
+      const shown = Number(await slider.inputValue());
+      return shown >= 2 && shown < latest;
+    }, { timeout: 15_000 })
+    .toBe(true);
   for (let check = 0; check < 6; check++) {
     await page.waitForTimeout(1300);
     expect(await crestOnScreen()).toBe(true);

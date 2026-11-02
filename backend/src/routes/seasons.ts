@@ -43,6 +43,7 @@ import {
   type RoundStatMetric,
   getUsageLeaders,
   getPlayerClubs,
+  getPlayerGames,
   getPlayerOnOff,
   getPlayerRapm,
   getPlayerRoundRatings,
@@ -380,11 +381,16 @@ const ADVANCED_LEADER_METRICS = ["per", ...WIN_SHARE_METRICS, "rapm", "onOff", .
 const LEADER_DEFAULT_MIN_MINUTES: Record<string, number> = { per: 100, winSharesPer40: 100, rapm: 500, onOff: 300 };
 const EARLY_SEASON_MIN_MINUTES = 20;
 const LEADERS_EVERYONE = 1000;
+// The minimum games on the leaderboards, as shares of the games played so far (`num` / `den`, rounded up). Half is the default.
+const LEADER_GAME_SHARES: Record<string, [number, number]> = { "25": [1, 4], "50": [1, 2], "67": [2, 3], "75": [3, 4], "90": [9, 10], "100": [1, 1] };
+const DEFAULT_GAME_SHARE = "50";
 
 // One leaderboard of the advanced player metrics. PER, Win Shares and the round-table rates (per-100 figures, usage,
 // shooting and rebounding percentages, PIE, game score) read each player's cumulative row at the scope's latest round;
-// on/off reads the scope; RAPM is a whole-season table, so its scope is always "all". `total` is how many players qualify, and
-// `offset` and `limit` page through them; `order=asc` ranks the lowest first (fewest turnovers).
+// on/off reads the scope; RAPM is a whole-season table, so its scope is always "all". A player is ranked from a share of the games
+// played so far (`games`: 25, 50 (default), 67, 75, 90 or 100 percent, or "all"), where the games played so far are the most any
+// player has in the board's rows. `total` is how many players qualify, and `offset` and `limit` page through them; `order=asc`
+// ranks the lowest first (fewest turnovers).
 seasonRouter.get("/:seasonCode/advanced/leaders", async (req, res) => {
   const season = await requestedSeason(req, res);
   if (!season) return;
@@ -408,23 +414,31 @@ seasonRouter.get("/:seasonCode/advanced/leaders", async (req, res) => {
   ]);
   const scopes = seasonScopes(season.seasonCode).filter((code) => available.includes(code));
   const earlySeason = allRounds.length < EARLY_SEASON_ROUNDS;
-  const defaultMinMinutes = earlySeason ? EARLY_SEASON_MIN_MINUTES : (LEADER_DEFAULT_MIN_MINUTES[metric] ?? LEADER_DEFAULT_MIN_MINUTES.per);
-  const minMinutes = pageParameter(req.query.minMinutes, defaultMinMinutes, 0, 3000);
+  const games = req.query.games === undefined ? DEFAULT_GAME_SHARE : req.query.games;
   const limit = pageParameter(req.query.limit, 50, 1, 100);
   const offset = pageParameter(req.query.offset, 0, 0, 900);
-  if (minMinutes === null || limit === null || offset === null) {
+  if (typeof games !== "string" || (games !== "all" && !(games in LEADER_GAME_SHARES)) || limit === null || offset === null) {
     sendError(res, 400, "INVALID_QUERY", "Invalid leaderboard filter");
     return;
   }
 
   const scope = metric === "rapm" ? "all" : (scopeValue ?? scopes[0]);
-  const base = { metric, scopes, earlySeason, roundsPlayed: allRounds.length, minMinutes, defaultMinMinutes };
+  const base = { metric, scopes, earlySeason, roundsPlayed: allRounds.length, games };
   if (scope === undefined || !available.includes(scope)) {
-    res.json({ ...base, scope: scope ?? null, round: null, total: 0, entries: [] });
+    res.json({ ...base, scope: scope ?? null, round: null, gamesPlayed: 0, minGames: 0, total: 0, entries: [] });
     return;
   }
 
-  const minSeconds = minMinutes * 60;
+  // Everyone is read, then kept from the share of the games played so far.
+  const minSeconds = 0;
+  let gamesPlayed = 0;
+  let minGames = 0;
+  const qualify = <T,>(rows: T[], gamesOf: (row: T) => number) => {
+    gamesPlayed = rows.reduce((most, row) => Math.max(most, gamesOf(row)), 0);
+    const share = LEADER_GAME_SHARES[games];
+    minGames = share ? Math.ceil((gamesPlayed * share[0]) / share[1]) : 0;
+    return rows.filter((row) => gamesOf(row) >= minGames);
+  };
   const clubs = new Map(teams.map((team) => [team.clubCode, team]));
   const club = (clubCode: string | null) => ({
     clubCode,
@@ -438,19 +452,22 @@ seasonRouter.get("/:seasonCode/advanced/leaders", async (req, res) => {
   let total = 0;
   let entries: Record<string, unknown>[];
   if (metric === "rapm") {
-    const rows = await getRapmLeaders(season.seasonCode, minSeconds, LEADERS_EVERYONE);
+    // The RAPM table has no games, so each player's come from the season's latest round.
+    const all = await getRapmLeaders(season.seasonCode, minSeconds, LEADERS_EVERYONE);
+    const lastRound = allRounds[allRounds.length - 1];
+    const playerGames = lastRound === undefined ? new Map<string, number>() : await getPlayerGames(season.seasonCode, "all", lastRound, all.map((row) => row.personKey));
+    const rows = qualify(all, (row) => playerGames.get(row.personKey) ?? 0);
     total = rows.length;
     const shown = page(rows);
-    const lastRound = allRounds[allRounds.length - 1];
     const playerClubs = lastRound === undefined
       ? new Map<string, string | null>()
       : await getPlayerClubs(season.seasonCode, "all", lastRound, shown.map((row) => row.personKey));
     entries = shown.map((row) => ({
       personKey: row.personKey, playerName: row.playerName, ...club(playerClubs.get(row.personKey) ?? null),
-      games: null, seconds: row.seconds, value: row.rapm, offense: row.offense, defense: row.defense,
+      games: playerGames.get(row.personKey) ?? null, seconds: row.seconds, value: row.rapm, offense: row.offense, defense: row.defense,
     }));
   } else if (metric === "onOff") {
-    const rows = await getOnOffLeaders(season.seasonCode, scope, minSeconds, LEADERS_EVERYONE);
+    const rows = qualify(await getOnOffLeaders(season.seasonCode, scope, minSeconds, LEADERS_EVERYONE), (row) => Number(row.games) || 0);
     total = rows.length;
     entries = page(rows).map((row) => ({
       personKey: row.personKey, playerName: row.playerName, ...club(row.clubCode),
@@ -462,18 +479,18 @@ seasonRouter.get("/:seasonCode/advanced/leaders", async (req, res) => {
     const rounds = await getStatsRounds(season.seasonCode, scope);
     round = rounds[rounds.length - 1] ?? null;
     if (round === null) {
-      res.json({ ...base, scope, round, total: 0, entries: [] });
+      res.json({ ...base, scope, round, gamesPlayed: 0, minGames: 0, total: 0, entries: [] });
       return;
     }
     if (metric === "per") {
-      const rows = await getPerLeaders(season.seasonCode, scope, round, minSeconds, LEADERS_EVERYONE);
+      const rows = qualify(await getPerLeaders(season.seasonCode, scope, round, minSeconds, LEADERS_EVERYONE), (row) => Number(row.gamesPlayed) || 0);
       total = rows.length;
       entries = page(rows).map((row) => ({
         personKey: row.personKey, playerName: row.playerName, ...club(row.clubCode),
         games: row.gamesPlayed, seconds: row.secondsPlayed, value: row.per,
       }));
     } else if ((WIN_SHARE_METRICS as readonly string[]).includes(metric)) {
-      const rows = await getWinShareLeaders(season.seasonCode, scope, round, minSeconds, LEADERS_EVERYONE);
+      const rows = qualify(await getWinShareLeaders(season.seasonCode, scope, round, minSeconds, LEADERS_EVERYONE), (row) => Number(row.gamesPlayed) || 0);
       const shareKey = metric as (typeof WIN_SHARE_METRICS)[number];
       if (shareKey !== "winSharesPer40") rows.sort((x, y) => Number(y[shareKey] ?? -Infinity) - Number(x[shareKey] ?? -Infinity));
       total = rows.length;
@@ -484,7 +501,10 @@ seasonRouter.get("/:seasonCode/advanced/leaders", async (req, res) => {
         winShares: row.winShares, winSharesPer40: row.winSharesPer40,
       }));
     } else {
-      const rows = await getRoundStatLeaders(season.seasonCode, scope, round, metric as RoundStatMetric | RoundPer100Metric, minSeconds, order === "asc", LEADERS_EVERYONE);
+      const rows = qualify(
+        await getRoundStatLeaders(season.seasonCode, scope, round, metric as RoundStatMetric | RoundPer100Metric, minSeconds, order === "asc", LEADERS_EVERYONE),
+        (row) => Number(row.gamesPlayed) || 0,
+      );
       total = rows.length;
       entries = page(rows).map((row) => ({
         personKey: row.personKey, playerName: row.playerName, ...club(row.clubCode),
@@ -494,7 +514,7 @@ seasonRouter.get("/:seasonCode/advanced/leaders", async (req, res) => {
   }
   // The advanced tables carry no photo, so each entry gets the one from the season statistics.
   const images = await getPlayerImages(season.seasonCode, entries.map((entry) => String(entry.personKey)));
-  res.json({ ...base, scope, round, total, offset, entries: entries.map((entry) => ({ ...entry, imageUrl: images.get(String(entry.personKey)) ?? null })) });
+  res.json({ ...base, scope, round, gamesPlayed, minGames, total, offset, entries: entries.map((entry) => ({ ...entry, imageUrl: images.get(String(entry.personKey)) ?? null })) });
 });
 
 function requestedPersonKeyFilter(req: Request, res: Response): string | undefined | null {

@@ -475,6 +475,21 @@ export async function getPlayerClubs(seasonCode: string, scope: string, round: n
   return new Map(rows.map((row) => [row.personKey, row.clubCode]));
 }
 
+// Each player's games in a scope after one round, for a table that has none of its own (RAPM).
+export async function getPlayerGames(seasonCode: string, scope: string, round: number, personKeys: string[]): Promise<Map<string, number>> {
+  if (personKeys.length === 0) return new Map();
+  const rows = await catalogRead(() =>
+    db.select({ personKey: playerRoundStats.personKey, gamesPlayed: playerRoundStats.gamesPlayed })
+      .from(playerRoundStats)
+      .where(and(
+        ...inScope(playerRoundStats, seasonCode, scope),
+        eq(playerRoundStats.roundNumber, round),
+        inArray(playerRoundStats.personKey, personKeys),
+      )),
+  );
+  return new Map(rows.map((row) => [row.personKey, Number(row.gamesPlayed) || 0]));
+}
+
 export async function getTeamPbpStats(seasonCode: string, scope: string, clubCode: string): Promise<TeamPbpStatsRow | null> {
   const rows = await catalogRead(() =>
     db.select()

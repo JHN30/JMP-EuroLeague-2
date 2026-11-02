@@ -250,3 +250,21 @@ test("a player board ranks from a share of the games played, sorts from its valu
   await expect(page).toHaveURL(/[?&]direction=asc/);
   await expect(page.getByRole("button", { name: "Reset", exact: true })).toHaveCount(0);
 });
+
+test("an advanced board ranks from the same share of the games played, and the API keeps to it", async ({ page, request }) => {
+  await page.goto("/2026/leaders?scope=advanced&metric=per");
+  const games = page.getByRole("combobox", { name: "Minimum games played" });
+  const rounds = Number((await (await request.get("http://localhost:3000/api/seasons/2026/phases/RS/standings")).json()).round);
+  await expect(games.locator("option:checked")).toHaveText(`Games: 50% · ${Math.ceil(rounds / 2)}+`, { timeout: 30_000 });
+  await games.selectOption("100");
+  await expect(page).toHaveURL(/[?&]games=100/);
+  await expect(page.locator("main .board-row-link").first()).toBeVisible({ timeout: 30_000 });
+
+  // The API ranks only players with the share's games, RAPM too (its games come from the season statistics).
+  for (const metric of ["per", "rapm", "usgPct"]) {
+    const data = await (await request.get("http://localhost:3000/api/seasons/2026/advanced/leaders", { params: { metric, games: "100", limit: 100 } })).json();
+    expect(data.minGames).toBe(data.gamesPlayed);
+    expect(data.entries.every((entry) => entry.games >= data.minGames)).toBe(true);
+  }
+  expect((await request.get("http://localhost:3000/api/seasons/2026/advanced/leaders", { params: { metric: "per", games: "33" } })).status()).toBe(400);
+});

@@ -110,9 +110,9 @@ export async function getAdvancedStandings(seasonCode, { scope, round } = {}) {
 
 // `offset` and `limit` page through the players who qualify (the response carries their `total`); `order: "asc"` ranks the
 // lowest first, for the stats where less is better.
-export async function getAdvancedLeaders(seasonCode, { metric, scope, minMinutes, limit, offset, order } = {}) {
+export async function getAdvancedLeaders(seasonCode, { metric, scope, games, limit, offset, order } = {}) {
   const { data } = await api.get(`/seasons/${seasonCode}/advanced/leaders`, {
-    params: { metric, scope, minMinutes, limit, offset, order },
+    params: { metric, scope, games, limit, offset, order },
   });
   return data;
 }

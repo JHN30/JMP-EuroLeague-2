@@ -11,10 +11,9 @@ import PanelHeader from "../lib/PanelHeader";
 import { nameParts, titleCase } from "../lib/playerName";
 import { Avatar, BarSelect, BOARD_AVATAR, BoardBar, BoardHeader, BoardPager, BoardRow, CardGrid, CategoryCard, LeadersToolbar, StageSelect, StatSelect, TeamTag } from "./LeaderParts";
 import { barShare, formatAdvancedValue } from "./leaderData";
-import { ADVANCED_FAMILIES, ADVANCED_SCOPES, ADVANCED_STATS } from "./leaderDefs";
+import { ADVANCED_FAMILIES, ADVANCED_SCOPES, ADVANCED_STATS, DEFAULT_SHARE, GAME_SHARES, gameShareFrom, gameShareLabel } from "./leaderDefs";
 
 const PAGE_SIZE = 25;
-const MINUTE_OPTIONS = [0, 100, 200, 300, 500, 800];
 
 const statByKey = (key) => ADVANCED_STATS.find((stat) => stat.key === key);
 const displayName = (entry) => {
@@ -64,26 +63,26 @@ function AdvancedCard({ stat, seasonCode, scope, onOpen }) {
 function AdvancedBoard({ seasonCode, scope, stage, metric, params, setParams }) {
   const stat = statByKey(metric) ?? ADVANCED_STATS[0];
   const offset = Number(params.get("offset")) || 0;
-  const minutesParam = params.get("minMinutes");
+  const share = gameShareFrom(params.get("games"));
   const direction = params.get("direction") ?? order(stat);
 
   const pageQuery = useQuery({
-    queryKey: ["leaders-advanced-board", seasonCode, scope, stat.key, direction, minutesParam, offset],
-    queryFn: () =>
-      getAdvancedLeaders(seasonCode, { metric: stat.key, scope, limit: PAGE_SIZE, offset, order: direction, minMinutes: minutesParam ?? undefined }),
+    queryKey: ["leaders-advanced-board", seasonCode, scope, stat.key, direction, share, offset],
+    queryFn: () => getAdvancedLeaders(seasonCode, { metric: stat.key, scope, limit: PAGE_SIZE, offset, order: direction, games: share }),
     enabled: Boolean(scope),
   });
   // The best value, for the bars: the first row of the first page.
   const topQuery = useQuery({
-    queryKey: ["leaders-advanced-top", seasonCode, scope, stat.key, direction, minutesParam],
-    queryFn: () => getAdvancedLeaders(seasonCode, { metric: stat.key, scope, limit: 1, order: direction, minMinutes: minutesParam ?? undefined }),
+    queryKey: ["leaders-advanced-top", seasonCode, scope, stat.key, direction, share],
+    queryFn: () => getAdvancedLeaders(seasonCode, { metric: stat.key, scope, limit: 1, order: direction, games: share }),
     enabled: Boolean(scope),
   });
   const entries = pageQuery.data?.entries ?? [];
   const total = pageQuery.data?.total ?? 0;
   const top = topQuery.data?.entries[0] ? Number(topQuery.data.entries[0].value) : null;
   const lowestFirst = direction === "asc";
-  const defaultMinutes = pageQuery.data?.defaultMinMinutes ?? null;
+  // The games played so far in this scope, for the share choices' labels.
+  const gamesSoFar = pageQuery.data?.gamesPlayed ?? 0;
 
   function update(patch) {
     setParams((current) => {
@@ -135,16 +134,16 @@ function AdvancedBoard({ seasonCode, scope, stage, metric, params, setParams }) 
                     {pageQuery.data?.earlySeason ? <span className="badge badge-warning badge-outline badge-sm">Early season: small samples</span> : null}
               </>
             }
-            activeCount={minutesParam ? 1 : 0}
-            onReset={() => update({ minMinutes: undefined, offset: undefined })}
+            activeCount={share !== DEFAULT_SHARE ? 1 : 0}
+            onReset={() => update({ games: undefined, offset: undefined })}
           >
-            <BarSelect label="Minimum minutes played" value={minutesParam ?? ""} onChange={(value) => update({ minMinutes: value, offset: undefined })}>
-              <option value="">{defaultMinutes !== null ? `Minutes: default (${defaultMinutes}+)` : "Minutes: default"}</option>
-              {MINUTE_OPTIONS.map((value) => (
-                <option key={value} value={value}>
-                  {value === 0 ? "Minutes: no minimum" : `Minutes: ${value}+`}
+            <BarSelect label="Minimum games played" value={share} onChange={(value) => update({ games: value === DEFAULT_SHARE ? undefined : value, offset: undefined })}>
+              {GAME_SHARES.map((entry) => (
+                <option key={entry.key} value={entry.key}>
+                  {gameShareLabel(gamesSoFar, entry)}
                 </option>
               ))}
+              <option value="all">Games: all players</option>
             </BarSelect>
           </BoardBar>
           {entries.length === 0 ? (
@@ -152,7 +151,7 @@ function AdvancedBoard({ seasonCode, scope, stage, metric, params, setParams }) 
           ) : (
             <>
           <BoardHeader columns={["GP", "MIN"]} valueLabel={stat.label.length > 8 ? "VALUE" : stat.label} sort={sortable ? { direction, onToggle: toggleOrder } : undefined} />
-          <motion.ol variants={listContainer} initial="hidden" animate="show" key={`${stat.key}-${direction}-${offset}-${minutesParam}-${scope}`}>
+          <motion.ol variants={listContainer} initial="hidden" animate="show" key={`${stat.key}-${direction}-${offset}-${share}-${scope}`}>
             {entries.map((entry, index) => (
               <BoardRow
                 key={`${entry.personKey}-${entry.clubCode}`}

@@ -14,7 +14,7 @@ import { nameParts, titleCase } from "../lib/playerName";
 import { TabStrip } from "../lib/TabStrip";
 import { Avatar, BarSearch, BarSelect, BOARD_AVATAR, BoardBar, BoardHeader, BoardPager, BoardRow, CardGrid, CategoryCard, LeadersToolbar, ModeToggle, RankBadge, StatSelect, TeamTag } from "./LeaderParts";
 import { barShare, fetchQualifiedPool, formatPlayerValue, hasVolume, playerValue, rankRows, statNumber, volumeText } from "./leaderData";
-import { FORM_STATS, PLAYER_CARDS, PLAYER_FAMILIES, PLAYER_STATS, PLAYER_TOTAL_CARDS } from "./leaderDefs";
+import { DEFAULT_SHARE, FORM_STATS, GAME_SHARES, gameShareFrom, gameShareLabel, gamesNeeded, PLAYER_CARDS, PLAYER_FAMILIES, PLAYER_STATS, PLAYER_TOTAL_CARDS } from "./leaderDefs";
 import { fetchLeagueLeaderboard, leaderboardQueryKey } from "../players/leagueLeaderboard";
 
 const PAGE_SIZE = 25;
@@ -262,23 +262,12 @@ function PlayersLanding({ seasonCode, phaseCode, stage, params, setParams, openM
 
 // ---- The full board for one stat ----
 
-// The minimum games as shares of the games played so far (`num` / `den`), rounded up: half is the default. In the address as
-// `?games=` (the share's key; "all" for every player, nothing for half).
-const GAME_SHARES = [
-  { key: "25", num: 1, den: 4 },
-  { key: "50", num: 1, den: 2 },
-  { key: "67", num: 2, den: 3 },
-  { key: "75", num: 3, den: 4 },
-  { key: "90", num: 9, den: 10 },
-  { key: "100", num: 1, den: 1 },
-];
-const DEFAULT_SHARE = "50";
 
 function PlayersBoard({ seasonCode, phaseCode, stage, metric, params, setParams }) {
   const stat = statByKey(metric) ?? PLAYER_STATS[0];
   const mode = params.get("mode") === "accumulated" ? "accumulated" : "perGame";
   const direction = params.get("direction") ?? (stat.lowerIsBetter ? "asc" : "desc");
-  const share = params.get("games") === "all" || GAME_SHARES.some((entry) => entry.key === params.get("games")) ? params.get("games") : DEFAULT_SHARE;
+  const share = gameShareFrom(params.get("games"));
   const team = params.get("team") ?? "";
   const position = params.get("position") ?? "";
   const search = params.get("search") ?? "";
@@ -316,9 +305,8 @@ function PlayersBoard({ seasonCode, phaseCode, stage, metric, params, setParams 
   const gamesOf = (player) => statNumber(player.traditional?.gamesPlayed) ?? 0;
   // The games played so far: the stage's rounds, or in a stage without them (the postseason) the most games any player has.
   const gamesSoFar = rule.rounds ?? all.reduce((most, player) => Math.max(most, gamesOf(player)), 0);
-  const needFor = (entry) => Math.ceil((gamesSoFar * entry.num) / entry.den);
   const shareEntry = GAME_SHARES.find((entry) => entry.key === share);
-  const minGames = shareEntry ? needFor(shareEntry) : 0;
+  const minGames = shareEntry ? gamesNeeded(gamesSoFar, shareEntry) : 0;
   // The ranked pool: players with the chosen share of the games and enough volume for the stat. Team, position and search only
   // narrow what is shown, so a row keeps its true rank.
   const pool = all.filter((player) => gamesOf(player) >= minGames && playerValue(player, stat) !== null && hasVolume(player, stat, mode, rule));
@@ -394,8 +382,7 @@ function PlayersBoard({ seasonCode, phaseCode, stage, metric, params, setParams 
             <BarSelect label="Minimum games played" value={share} onChange={(value) => update({ games: value === DEFAULT_SHARE ? undefined : value, offset: undefined })}>
               {GAME_SHARES.map((entry) => (
                 <option key={entry.key} value={entry.key}>
-                  Games: {entry.key}% · {needFor(entry)}
-                  {entry.key === "100" ? "" : "+"}
+                  {gameShareLabel(gamesSoFar, entry)}
                 </option>
               ))}
               <option value="all">Games: all players</option>

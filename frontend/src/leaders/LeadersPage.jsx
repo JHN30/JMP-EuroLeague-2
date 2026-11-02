@@ -22,7 +22,7 @@ const SCOPES = [
   { key: "advanced", label: "Advanced" },
 ];
 // What belongs to one scope's view and must not leak into another's when the scope changes.
-const SCOPE_PARAMS = ["metric", "mode", "direction", "minGames", "minMinutes", "team", "position", "search", "offset", "ascope"];
+const SCOPE_PARAMS = ["metric", "mode", "direction", "games", "team", "position", "search", "offset", "ascope"];
 // What an open board adds to the address; the scope, the phase, the totals choice and the advanced scope stay when going back to the cards.
 const BOARD_PARAMS = SCOPE_PARAMS.filter((name) => name !== "ascope" && name !== "mode");
 
@@ -72,7 +72,7 @@ export default function LeadersPage() {
     setParams((current) => {
       const next = new URLSearchParams(current);
       next.set("phase", code);
-      for (const name of ["offset", "team", "position", "search", "minGames"]) next.delete(name);
+      for (const name of ["offset", "team", "position", "search"]) next.delete(name);
       return next;
     });
   }

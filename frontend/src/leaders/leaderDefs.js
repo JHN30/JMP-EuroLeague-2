@@ -6,10 +6,26 @@
 
 export const PLAYER_FAMILIES = ["Scoring", "Playmaking", "Rebounding", "Defense", "Overall"];
 
+// The minimum games on the full boards, as shares of the games played so far (`num` / `den`, rounded up): half is the default,
+// and the cards use it. In the address as `?games=` (the share's key; "all" for every player, nothing for half). The API's
+// advanced leaderboard takes the same keys.
+export const GAME_SHARES = [
+  { key: "25", num: 1, den: 4 },
+  { key: "50", num: 1, den: 2 },
+  { key: "67", num: 2, den: 3 },
+  { key: "75", num: 3, den: 4 },
+  { key: "90", num: 9, den: 10 },
+  { key: "100", num: 1, den: 1 },
+];
+export const DEFAULT_SHARE = "50";
+export const gameShareFrom = (value) => (value === "all" || GAME_SHARES.some((entry) => entry.key === value) ? value : DEFAULT_SHARE);
+export const gamesNeeded = (gamesSoFar, entry) => Math.ceil((gamesSoFar * entry.num) / entry.den);
+// "Games: 50% · 5+"; every game has no "+", since nobody can have more.
+export const gameShareLabel = (gamesSoFar, entry) => `Games: ${entry.key}% · ${gamesNeeded(gamesSoFar, entry)}${entry.key === "100" ? "" : "+"}`;
+
 // `volume`: what a player needs to be ranked on this stat, `min` of `fields` a game (`noun` names them). In a stage with standings
 // it is a season total, `min` times the rounds played; otherwise an average over the games he played (leaderData's hasVolume).
 const FIELD_GOALS = { group: "traditional", fields: ["twoPointersAttempted", "threePointersAttempted"], min: 5, noun: "field goal attempts" };
-const MINUTES = { group: "traditional", fields: ["minutesPlayed"], min: 10, noun: "minutes" };
 
 export const PLAYER_STATS = [
   { key: "pointsScored", family: "Scoring", label: "Points", short: "PTS", group: "traditional", kind: "count" },
@@ -33,20 +49,20 @@ export const PLAYER_STATS = [
     tip: "Free throws made per field goal attempt" },
 
   { key: "assists", family: "Playmaking", label: "Assists", short: "AST", group: "traditional", kind: "count" },
-  { key: "assistsToTurnoversRatio", family: "Playmaking", label: "Assist to turnover", short: "AST/TO", group: "advanced", kind: "decimal", volume: MINUTES },
-  { key: "assistsRatio", family: "Playmaking", label: "Assist ratio", short: "AST ratio", group: "advanced", kind: "decimal", volume: MINUTES,
+  { key: "assistsToTurnoversRatio", family: "Playmaking", label: "Assist to turnover", short: "AST/TO", group: "advanced", kind: "decimal" },
+  { key: "assistsRatio", family: "Playmaking", label: "Assist ratio", short: "AST ratio", group: "advanced", kind: "decimal",
     tip: "Assists per 100 possessions the player used" },
   { key: "turnovers", family: "Playmaking", label: "Turnovers", short: "TO", group: "traditional", kind: "count", lowerIsBetter: true, showMost: true },
-  { key: "turnoversRatio", family: "Playmaking", label: "Turnover ratio", short: "TO ratio", group: "advanced", kind: "decimal", lowerIsBetter: true, volume: MINUTES,
+  { key: "turnoversRatio", family: "Playmaking", label: "Turnover ratio", short: "TO ratio", group: "advanced", kind: "decimal", lowerIsBetter: true,
     tip: "Turnovers per 100 possessions the player used" },
 
   { key: "totalRebounds", family: "Rebounding", label: "Rebounds", short: "REB", group: "traditional", kind: "count" },
   { key: "offensiveRebounds", family: "Rebounding", label: "Offensive rebounds", short: "OREB", group: "traditional", kind: "count" },
   { key: "defensiveRebounds", family: "Rebounding", label: "Defensive rebounds", short: "DREB", group: "traditional", kind: "count" },
-  { key: "reboundsPercentage", family: "Rebounding", label: "Rebound %", short: "REB%", group: "advanced", kind: "percent", volume: MINUTES,
+  { key: "reboundsPercentage", family: "Rebounding", label: "Rebound %", short: "REB%", group: "advanced", kind: "percent",
     tip: "The share of available rebounds the player took while on the floor" },
-  { key: "offensiveReboundsPercentage", family: "Rebounding", label: "Offensive rebound %", short: "OREB%", group: "advanced", kind: "percent", volume: MINUTES },
-  { key: "defensiveReboundsPercentage", family: "Rebounding", label: "Defensive rebound %", short: "DREB%", group: "advanced", kind: "percent", volume: MINUTES },
+  { key: "offensiveReboundsPercentage", family: "Rebounding", label: "Offensive rebound %", short: "OREB%", group: "advanced", kind: "percent" },
+  { key: "defensiveReboundsPercentage", family: "Rebounding", label: "Defensive rebound %", short: "DREB%", group: "advanced", kind: "percent" },
 
   { key: "steals", family: "Defense", label: "Steals", short: "STL", group: "traditional", kind: "count" },
   { key: "blocks", family: "Defense", label: "Blocks", short: "BLK", group: "traditional", kind: "count" },

@@ -30,8 +30,8 @@ const GAMES_LIMIT = 100;
 
 // The Shooting tab waits for the game log (to tell a phase with no games from one with no shots) and then hands over to
 // the shared layout.
-function PlayerShootingTab({ seasonCode, phaseCode, player, gamesQuery, personKey }) {
-  if (gamesQuery.isPending) return <AsyncState status="loading" label="Loading this player's shot locations" skeleton={<SkeletonShooting sides={false} />} />;
+function PlayerShootingTab({ seasonCode, phaseCode, phaseName, player, gamesQuery, personKey }) {
+  if (gamesQuery.isPending) return <AsyncState status="loading" label="Loading this player's shot locations" skeleton={<SkeletonShooting />} />;
   if (gamesQuery.isError) {
     return <AsyncState status="error" message="Could not load this player's shot locations." onRetry={() => gamesQuery.refetch()} />;
   }
@@ -40,6 +40,7 @@ function PlayerShootingTab({ seasonCode, phaseCode, player, gamesQuery, personKe
       key={`${seasonCode}-${personKey}-${phaseCode}`}
       seasonCode={seasonCode}
       phaseCode={phaseCode}
+      phaseName={phaseName}
       player={player}
       games={gamesQuery.data?.games ?? []}
       personKey={personKey}
@@ -154,7 +155,11 @@ export default function PlayerPage() {
           ) : section === "advanced" ? (
             <PlayerAdvancedSection key={`${seasonCode}-${personKey}`} seasonCode={seasonCode} personKey={personKey} />
           ) : section === "shooting" ? (
-            <PlayerShootingTab seasonCode={seasonCode} phaseCode={phaseCode} player={player} gamesQuery={gamesQuery} personKey={personKey} />
+            <PlayerShootingTab
+              seasonCode={seasonCode}
+              phaseCode={phaseCode}
+              phaseName={phases.find((phase) => phase.code === phaseCode)?.name ?? phaseCode}
+              player={player} gamesQuery={gamesQuery} personKey={personKey} />
           ) : (
             <PlayerGamesSection gamesQuery={gamesQuery} seasonCode={seasonCode} />
           )}

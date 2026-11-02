@@ -1,4 +1,4 @@
-import { formatCount, formatMissing, formatPercentage, formatPeriod } from "../lib/format";
+import { formatCount, formatDecimal, formatMissing, formatPercentage, formatPeriod } from "../lib/format";
 import Panel from "../lib/Panel";
 import PanelHeader from "../lib/PanelHeader";
 import { shotZone } from "../lib/shotZones";
@@ -125,7 +125,8 @@ const PLAY_CONTEXTS = [
 // How each team scored on fast breaks, second chances and after the opponent's turnovers: the baskets and the points they
 // were worth, over the shots the other filters leave. The feed marks only made baskets with their context, so a miss is
 // never in one and an FG% here would always be 100%.
-export function PlayContextComparison({ shots, localTeam, roadTeam }) {
+// `countScale` multiplies each side's baskets and points (the player Shooting tab shows them per game).
+export function PlayContextComparison({ shots, localTeam, roadTeam, countScale = [1, 1] }) {
   const teams = [localTeam, roadTeam];
   return (
     <Panel className="p-3 sm:p-4">
@@ -137,18 +138,21 @@ export function PlayContextComparison({ shots, localTeam, roadTeam }) {
           </thead>
           <tbody>
             {PLAY_CONTEXTS.map((context) => {
-              const counts = teams.map((team) => shotCounts(shots.filter((shot) => shot.clubCode === team?.clubCode && context.test(shot) && isMade(shot))));
+              const counts = teams.map((team, teamIndex) => {
+                const raw = shotCounts(shots.filter((shot) => shot.clubCode === team?.clubCode && context.test(shot) && isMade(shot)));
+                return { made: raw.made * countScale[teamIndex], points: raw.points * countScale[teamIndex] };
+              });
               const morePoints = counts[0].points === counts[1].points ? -1 : counts[0].points > counts[1].points ? 0 : 1;
               return (
                 <tr key={context.key}>
                   <td>{context.label}</td>
                   {teams.flatMap((team, teamIndex) => [
                     <td key={`${team?.clubCode}-made`} className="text-center tabular-nums">
-                      {formatCount(counts[teamIndex].made)}
+                      {countScale[teamIndex] === 1 ? formatCount(counts[teamIndex].made) : formatDecimal(counts[teamIndex].made, 1)}
                     </td>,
                     <td key={`${team?.clubCode}-pts`} className="text-center tabular-nums">
                       <span className={morePoints === teamIndex ? `inline-block rounded px-1 font-bold ${TEAM_SHADES[teamIndex]}` : undefined}>
-                        {formatCount(counts[teamIndex].points)}
+                        {countScale[teamIndex] === 1 ? formatCount(counts[teamIndex].points) : formatDecimal(counts[teamIndex].points, 1)}
                         {morePoints === teamIndex ? <span className="sr-only"> (more)</span> : null}
                       </span>
                     </td>,

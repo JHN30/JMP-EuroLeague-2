@@ -55,6 +55,12 @@ export async function getPlayerShots(seasonCode, personKey, phaseCode) {
   return data;
 }
 
+// Every field-goal attempt of a phase by one position's players (`position` null for everyone), as compact rows.
+export async function getPositionShots(seasonCode, phaseCode, position) {
+  const { data } = await api.get(`/seasons/${seasonCode}/shots`, { params: { phase: phaseCode, position: position ?? undefined } });
+  return data;
+}
+
 export async function getShots(seasonCode, gameCode) {
   const { data } = await api.get(`/seasons/${seasonCode}/games/${gameCode}/shots`);
   return data;

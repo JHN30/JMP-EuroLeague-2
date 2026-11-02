@@ -1,11 +1,11 @@
-import { and, asc, eq, inArray, isNotNull, isNull, or, sql } from "drizzle-orm";
+import { and, asc, eq, exists, inArray, isNotNull, isNull, or, sql } from "drizzle-orm";
 import { alias, type AnyPgColumn } from "drizzle-orm/pg-core";
 import { db } from "./client";
 import { gameTeamShotSplits } from "./season-advanced-schema";
 import { CatalogDatabaseError, catalogRead } from "./season-catalog";
 import { seasonFormat } from "./season-format-registry";
 import { type ClubTvCodes, getClubTvCodes, tvCodeOf } from "./season-identities";
-import { clubs, gameOfficials, gamePeriodScores, gamePlayerStats, gameTeamStats, games, playByPlay, postseasonSeries, shots, teamSeasonStats } from "./season-schema";
+import { clubs, gameOfficials, gamePeriodScores, gamePlayerStats, gameTeamStats, games, playByPlay, postseasonSeries, registrations, shots, teamSeasonStats } from "./season-schema";
 
 const COMPETITION_CODE = "E";
 
@@ -706,6 +706,114 @@ export async function getPlayerShots(seasonCode: string, personKey: string, phas
   );
 
   return { shots: rows };
+}
+
+// Shot context flags packed into one number in a compact shot row.
+const FAST_BREAK_FLAG = 1;
+const SECOND_CHANCE_FLAG = 2;
+const OFF_TURNOVER_FLAG = 4;
+
+// Every field-goal attempt in one phase by the players registered at `position` in the season (any club), or by
+// every player without one: what a player is set against on his Shooting tab. A regular season is about 16,000 shots a
+// position, so each is a compact row [coordX, coordY, actionCode, minute, flags, personCode] (flags: 1 fast break,
+// 2 second chance, 4 off a turnover). `players` lists each shooter once: name, club (the one of his latest game in the
+// phase) and games played in the phase.
+export async function getPositionShots(seasonCode: string, phaseCode: string, position: string | null) {
+  const rows = await catalogRead(() =>
+    db
+      .select({
+        coordX: shots.coordX,
+        coordY: shots.coordY,
+        actionCode: shots.actionCode,
+        minute: shots.minute,
+        fastbreak: shots.fastbreak,
+        secondChance: shots.secondChance,
+        pointsOffTurnover: shots.pointsOffTurnover,
+        personCode: shots.personCode,
+      })
+      .from(shots)
+      .innerJoin(games, and(
+        eq(games.competitionCode, shots.competitionCode),
+        eq(games.seasonCode, shots.seasonCode),
+        eq(games.gameCode, shots.gameCode),
+      ))
+      .where(and(
+        eq(shots.competitionCode, COMPETITION_CODE),
+        eq(shots.seasonCode, seasonCode),
+        eq(games.phaseCode, phaseCode),
+        inArray(shots.actionCode, FIELD_GOAL_ACTION_CODES),
+        position
+          ? exists(db.select({ one: sql`1` }).from(registrations).where(and(
+            eq(registrations.competitionCode, COMPETITION_CODE),
+            eq(registrations.seasonCode, seasonCode),
+            eq(registrations.personKey, shots.personCode),
+            eq(registrations.positionName, position),
+          )))
+          : undefined,
+      )),
+  );
+
+  const shooters = [...new Set(rows.map((row) => row.personCode).filter((code): code is string => Boolean(code)))];
+  const [codes, appearances] = await Promise.all([
+    getClubTvCodes(seasonCode),
+    shooters.length === 0
+      ? Promise.resolve([])
+      : catalogRead(() =>
+        db
+          .select({
+            personKey: gamePlayerStats.personKey,
+            clubCode: gamePlayerStats.clubCode,
+            name: sql<string | null>`max(${gamePlayerStats.personName})`,
+            games: sql<number>`count(distinct ${gamePlayerStats.gameCode})::int`,
+            lastAt: sql<string | null>`max(${games.scheduledAt})`,
+          })
+          .from(gamePlayerStats)
+          .innerJoin(games, and(
+            eq(games.competitionCode, gamePlayerStats.competitionCode),
+            eq(games.seasonCode, gamePlayerStats.seasonCode),
+            eq(games.gameCode, gamePlayerStats.gameCode),
+          ))
+          .where(and(
+            eq(gamePlayerStats.competitionCode, COMPETITION_CODE),
+            eq(gamePlayerStats.seasonCode, seasonCode),
+            eq(games.phaseCode, phaseCode),
+            inArray(gamePlayerStats.personKey, shooters),
+          ))
+          .groupBy(gamePlayerStats.personKey, gamePlayerStats.clubCode),
+      ),
+  ]);
+  // A player traded during the phase has a row per club: his games add up, and his club is the latest one's.
+  const byPlayer = new Map<string, { name: string | null; club: string | null; games: number; lastAt: string }>();
+  for (const row of appearances) {
+    const lastAt = String(row.lastAt ?? "");
+    const entry = byPlayer.get(row.personKey);
+    if (!entry) {
+      byPlayer.set(row.personKey, { name: row.name, club: tvCodeOf(codes, row.clubCode), games: row.games, lastAt });
+      continue;
+    }
+    entry.games += row.games;
+    entry.name ??= row.name;
+    if (lastAt > entry.lastAt) {
+      entry.club = tvCodeOf(codes, row.clubCode);
+      entry.lastAt = lastAt;
+    }
+  }
+
+  const coordinate = (value: string | null) => (value === null ? null : Number(value));
+  return {
+    players: shooters.map((code) => {
+      const entry = byPlayer.get(code);
+      return { personCode: code, name: entry?.name ?? null, club: entry?.club ?? null, games: entry?.games ?? 0 };
+    }),
+    shots: rows.map((row) => [
+      coordinate(row.coordX),
+      coordinate(row.coordY),
+      row.actionCode,
+      row.minute,
+      (row.fastbreak ? FAST_BREAK_FLAG : 0) | (row.secondChance ? SECOND_CHANCE_FLAG : 0) | (row.pointsOffTurnover ? OFF_TURNOVER_FLAG : 0),
+      row.personCode,
+    ]),
+  };
 }
 
 const MEASURE_KEYS = [

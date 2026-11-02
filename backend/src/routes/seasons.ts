@@ -21,7 +21,7 @@ import {
   getTeamRoster,
   getTeams,
 } from "../db/season-identities";
-import { getBoxScore, getGame, getGameOfficials, getGames, getGameVenue, getLeagueTeamStats, getPhaseResults, getPlayByPlay, getPlayerGameLog, getPlayerShots, getPostseasonSeries, getShots, getTeamGames, getTeamStatsSummary } from "../db/season-games";
+import { getBoxScore, getGame, getGameOfficials, getGames, getGameVenue, getLeagueTeamStats, getPhaseResults, getPlayByPlay, getPlayerGameLog, getPlayerShots, getPositionShots, getPostseasonSeries, getShots, getTeamGames, getTeamStatsSummary } from "../db/season-games";
 import { getSeasonFormat } from "../db/season-format";
 import { seasonScopes, seasonStageCodes } from "../db/season-format-registry";
 import { getLatestStandingsRound, getStandings } from "../db/season-standings";
@@ -1089,6 +1089,25 @@ seasonRouter.get("/:seasonCode/players/:personKey/shots", async (req, res) => {
     return;
   }
   res.json(await getPlayerShots(season.seasonCode, personKey, phase));
+});
+
+// Every field-goal attempt of a phase by one position's players (or by everyone without `position`), as compact rows:
+// the player Shooting tab's comparison side.
+seasonRouter.get("/:seasonCode/shots", async (req, res) => {
+  const season = await requestedSeason(req, res);
+  if (!season) return;
+  const phase = req.query.phase;
+  if (typeof phase !== "string" || !FORM_PHASES.includes(phase)) {
+    sendError(res, 400, "INVALID_PHASE", "Invalid phase");
+    return;
+  }
+  if (!inSeasonFormat(season.seasonCode, phase, res)) return;
+  const position = req.query.position;
+  if (position !== undefined && (typeof position !== "string" || !PLAYER_POSITIONS.includes(position as (typeof PLAYER_POSITIONS)[number]))) {
+    sendError(res, 400, "INVALID_POSITION_FILTER", "Invalid position filter");
+    return;
+  }
+  res.json(await getPositionShots(season.seasonCode, phase, typeof position === "string" ? position : null));
 });
 
 function requestedGameStatus(req: Request, res: Response): "played" | "scheduled" | undefined | null {

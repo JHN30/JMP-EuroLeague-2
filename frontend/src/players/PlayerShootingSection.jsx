@@ -1,118 +1,163 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import AsyncState from "../lib/AsyncState";
 import { SkeletonShooting } from "../lib/Skeleton";
 import EmptyText from "../lib/EmptyText";
-import FilterDisclosure from "../games/FilterDisclosure";
-import { formatCount, formatPercentage } from "../lib/format";
-import Panel from "../lib/Panel";
-import PanelHeader from "../lib/PanelHeader";
-import { nameParts, titleCase } from "../lib/playerName";
-import ShootingBreakdown from "../lib/ShootingBreakdown";
-import { PRESENTATION_TABS, RESULT_TABS, isMade, shootingLine, usePlayerShots } from "../lib/shootingData";
-import { GAME_SEGMENTS, RESULT_OPTIONS } from "../lib/shotFilters";
-import { situationRows, zoneRows } from "../lib/shotBreakdown";
-import { TabPanel, TabStrip } from "../lib/TabStrip";
+import { formatCount } from "../lib/format";
+import { displayName, nameParts, titleCase } from "../lib/playerName";
+import { usePlayerShots, usePositionShots } from "../lib/shootingData";
+import { shotZone } from "../lib/shotZones";
+import ShootingStudio from "../games/ShootingStudio";
+import ShotRivalPicker from "./ShotRivalPicker";
 
-const PANEL_ID = "player-shooting-panel";
+// The two sides of the studio: the player's own shots, and the chosen player's (or every other player of his position).
+const PLAYER_CODE = "PLAYER";
+const OTHER_CODE = "OTHER";
+// The picker's choice for the whole position, pooled.
+const POOL_KEY = "all";
+// A player is suggested as the closest match only with this many attempts, so a handful of shots never makes a profile.
+const SIMILAR_MIN_ATTEMPTS = 20;
 
-// One player's shots on a half court, with the zones and game situations they come from: the team Shooting tab's layout
-// over a single player. `games` is the player's game log, used to tell a phase with no games from one with no shots.
-export default function PlayerShootingSection({ seasonCode, phaseCode, player, games, personKey }) {
-  const [presentation, setPresentation] = useState("heatmap");
-  const [gameSegment, setGameSegment] = useState("all");
-  const [result, setResult] = useState("all");
+// "Guard" → "guard"; a season without positions compares with every player.
+function positionLabel(position) {
+  return position ? position.toLowerCase() : "player";
+}
 
+const plural = (label) => `${label}s`;
+const surname = (fullName) => titleCase(nameParts(fullName).last);
+
+// A player's shot profile: attempts, and the share of his located attempts in each kind of zone (left and right count as
+// one, so the profile is where on the floor he shoots from, not which side).
+function shotProfile(shots) {
+  const zones = new Map();
+  let located = 0;
+  for (const shot of shots) {
+    const zone = shotZone(shot);
+    if (!zone) continue;
+    const kind = zone.replace(/^(Left|Right) /, "");
+    zones.set(kind, (zones.get(kind) ?? 0) + 1);
+    located += 1;
+  }
+  return { attempts: shots.length, shares: new Map([...zones].map(([kind, count]) => [kind, count / located])) };
+}
+
+// How far apart two profiles are: the zone shares that differ (0 to 2), plus how different the attempts per game are
+// (half the log of their ratio, so twice as many weighs about as much as a third of the shares moved).
+function profileDistance(a, aGames, b, bGames) {
+  const kinds = new Set([...a.shares.keys(), ...b.shares.keys()]);
+  let shares = 0;
+  for (const kind of kinds) shares += Math.abs((a.shares.get(kind) ?? 0) - (b.shares.get(kind) ?? 0));
+  const volume = Math.abs(Math.log(a.attempts / Math.max(1, aGames) / (b.attempts / Math.max(1, bGames))));
+  return shares + 0.5 * volume;
+}
+
+// The team Shooting tab's studio over one player: his shots against one other player of his position, picked from a search
+// (the closest shot profile first), or against all of them pooled. Paint points and play-context counts are per game, since
+// two players rarely play the same number. `games` is the player's game log, used to tell a phase with no games from one
+// with no shots, and to count his games.
+export default function PlayerShootingSection({ seasonCode, phaseCode, phaseName, player, games, personKey }) {
   const playedGames = games.filter((game) => game.phaseCode === phaseCode);
-  const { loading, errored, shots, retry } = usePlayerShots(seasonCode, personKey, phaseCode, playedGames.length > 0);
-  const name = titleCase(nameParts(player.name ?? player.jerseyName ?? "Player").last);
+  const hasGames = playedGames.length > 0;
+  const position = player.positionName ?? null;
+  const own = usePlayerShots(seasonCode, personKey, phaseCode, hasGames);
+  const field = usePositionShots(seasonCode, phaseCode, position, hasGames);
+  const [choice, setChoice] = useState(null);
+  const name = surname(player.name ?? player.jerseyName ?? "Player");
+  const label = positionLabel(position);
+  const poolName = `All ${plural(label)}`;
 
-  if (playedGames.length === 0) {
+  // Every other shooter of the position with his shots, most attempts first, and the one whose profile is closest to his.
+  const { others, shotsByPlayer, similar } = useMemo(() => {
+    const byPlayer = new Map();
+    for (const shot of field.shots) {
+      if (shot.personCode === personKey) continue;
+      const list = byPlayer.get(shot.personCode) ?? [];
+      list.push(shot);
+      byPlayer.set(shot.personCode, list);
+    }
+    const rows = field.players
+      .filter((entry) => entry.personCode !== personKey && byPlayer.has(entry.personCode))
+      .map((entry) => ({ ...entry, profile: shotProfile(byPlayer.get(entry.personCode)) }))
+      .sort((a, b) => b.profile.attempts - a.profile.attempts);
+    const mine = shotProfile(own.shots);
+    const eligible = rows.filter((row) => row.profile.attempts >= SIMILAR_MIN_ATTEMPTS && row.games > 0);
+    let closest = null;
+    if (mine.attempts > 0) {
+      for (const row of eligible.length > 0 ? eligible : rows) {
+        const distance = profileDistance(mine, playedGames.length, row.profile, row.games);
+        if (!closest || distance < closest.distance) closest = { key: row.personCode, distance };
+      }
+    }
+    return { others: rows, shotsByPlayer: byPlayer, similar: closest?.key ?? null };
+  }, [field.shots, field.players, own.shots, personKey, playedGames.length]);
+
+  if (!hasGames) {
     return <EmptyText>No played games yet this phase to map shot locations from.</EmptyText>;
   }
-  if (loading) {
+  if (own.loading || field.loading) {
+    return <AsyncState status="loading" label={`Loading ${label} shots`} skeleton={<SkeletonShooting />} />;
+  }
+  if (own.errored || field.errored) {
     return (
       <AsyncState
-        status="loading"
-        label={`Aggregating ${formatCount(playedGames.length)} shooting charts`}
-        skeleton={<SkeletonShooting sides={false} />}
+        status="error"
+        message="Could not load this player's shot locations."
+        onRetry={() => {
+          if (own.errored) own.retry();
+          if (field.errored) field.retry();
+        }}
       />
     );
   }
-  if (errored) {
-    return <AsyncState status="error" message="Could not load this player's shot locations." onRetry={retry} />;
+  if (own.shots.length === 0) {
+    return <EmptyText>No shot locations recorded for this player in this phase yet.</EmptyText>;
   }
 
-  const segmentTest = GAME_SEGMENTS.find((segment) => segment.key === gameSegment)?.test ?? (() => true);
-  // Makes and misses only mean something on the every-attempt view: on the heatmap a made-only zone is always 100%.
-  const activeResult = presentation === "markers" ? result : "all";
-  const resultTest = RESULT_OPTIONS.find((option) => option.key === activeResult)?.test ?? (() => true);
-  const filtered = shots.filter((shot) => segmentTest(shot) && resultTest(shot));
+  const selectedKey = choice ?? similar ?? POOL_KEY;
+  const rival = selectedKey === POOL_KEY ? null : others.find((row) => row.personCode === selectedKey) ?? null;
+  const poolGames = others.reduce((sum, row) => sum + row.games, 0);
+  const otherShots = rival ? shotsByPlayer.get(rival.personCode) : others.flatMap((row) => shotsByPlayer.get(row.personCode));
+  const sideShots = [
+    ...own.shots.map((shot) => ({ ...shot, clubCode: PLAYER_CODE })),
+    ...otherShots.map((shot) => ({ ...shot, clubCode: OTHER_CODE })),
+  ];
+  const otherName = rival ? surname(rival.name ?? rival.personCode) : poolName;
+  const otherGames = rival ? rival.games : poolGames;
+  const playerSide = { clubCode: PLAYER_CODE, name, abbreviatedName: name, tvCode: name, crestUrl: null };
+  const otherSide = { clubCode: OTHER_CODE, name: otherName, abbreviatedName: otherName, tvCode: otherName, crestUrl: null };
+  const gamesText = (count) => `${formatCount(count)} ${count === 1 ? "game" : "games"}`;
 
-  const twoPoint = filtered.filter((shot) => shot.actionCode.startsWith("2"));
-  const threePoint = filtered.filter((shot) => shot.actionCode.startsWith("3"));
-  const made = filtered.filter(isMade);
-  const effectiveFg =
-    filtered.length === 0 ? null : ((made.length + 0.5 * made.filter((shot) => shot.actionCode.startsWith("3")).length) / filtered.length) * 100;
-  const pointsPerShot = filtered.length === 0 ? null : made.reduce((sum, shot) => sum + (shot.points ?? 0), 0) / filtered.length;
-  // The court colours shots by club; one colour is enough for one player.
-  const courtShots = filtered.map((shot) => ({ ...shot, clubCode: "SIDE" }));
-  // The segment and the result are the two filters that sit behind the Filters button below sm.
-  const activeFilters = (gameSegment !== "all" ? 1 : 0) + (presentation === "markers" && result !== "all" ? 1 : 0);
+  const options = [
+    { key: POOL_KEY, name: poolName, detail: `Every other ${label} pooled: ${formatCount(others.length)} players` },
+    ...others.map((row) => ({
+      key: row.personCode,
+      name: displayName(row.name ?? row.personCode),
+      short: row.club,
+      detail: [row.club, `${formatCount(row.profile.attempts)} shots`, gamesText(row.games)].filter(Boolean).join(" · "),
+      tag: row.personCode === similar ? "Most similar" : null,
+    })),
+  ];
 
   return (
-    <Panel as="section" className="p-4">
-      <PanelHeader kicker="SHOOTING" title={`Where ${name} shoots`} />
-
-      <div className="mb-4 flex flex-wrap items-center gap-x-6 gap-y-3">
-        <TabStrip ariaLabel="Presentation" panelId={PANEL_ID} activeKey={presentation} onChange={setPresentation} tabs={PRESENTATION_TABS} />
-        {/* Below sm the result strip and the segment select are behind one button; from sm the wrapper and the grid vanish and the
-            controls sit in this row as before. */}
-        <FilterDisclosure activeCount={activeFilters} className="max-sm:w-full sm:contents" gridClassName="sm:contents">
-          {presentation === "markers" ? (
-            <TabStrip ariaLabel="Result" panelId={PANEL_ID} activeKey={result} onChange={setResult} tabs={RESULT_TABS} />
-          ) : null}
-          <label className="flex items-center gap-2 text-sm font-medium whitespace-nowrap">
-            Game segment
-            <select
-              className="select select-bordered select-sm"
-              value={gameSegment}
-              onChange={(event) => setGameSegment(event.target.value)}
-            >
-              {GAME_SEGMENTS.map((segment) => (
-                <option key={segment.key} value={segment.key}>
-                  {segment.label}
-                </option>
-              ))}
-            </select>
-          </label>
-        </FilterDisclosure>
-      </div>
-
-      <TabPanel id={PANEL_ID} focusKey={`${presentation}-${activeResult}`} scroll={false}>
-        <ShootingBreakdown
-          shots={filtered}
-          courtShots={courtShots}
-          presentation={presentation}
-          replayKey={`${gameSegment}-${activeResult}`}
-          courtLabel={`${name} shot locations: ${formatCount(filtered.length)} attempts`}
-          cards={[
-            { label: "Field goals", value: shootingLine(filtered) },
-            { label: "Two-pointers", value: shootingLine(twoPoint) },
-            { label: "Three-pointers", value: shootingLine(threePoint) },
-            {
-              label: "Effective FG%",
-              value: formatPercentage(effectiveFg),
-              detail: pointsPerShot == null ? null : `${pointsPerShot.toFixed(2)} pts/shot`,
-            },
-          ]}
-          zoneRows={zoneRows(filtered)}
-          situationRows={situationRows(filtered)}
-          zonesTitle="Where the shots come from"
-          situationsTitle={`How ${name} scores`}
-          phoneLayout
-          plainWording
-        />
-      </TabPanel>
-    </Panel>
+    <>
+      <ShootingStudio
+        shots={sideShots}
+        localTeam={playerSide}
+        roadTeam={otherSide}
+        playerFilterTeams={[]}
+        playerTableTeams={[]}
+        countScale={[1 / playedGames.length, 1 / Math.max(1, otherGames)]}
+        initialPresentation="zones"
+        sideHeadings={[null, <ShotRivalPicker key="picker" label={`Compare with a ${label}`} options={options} value={selectedKey} onChange={setChoice} />]}
+        title={`${name} against ${rival ? otherName : `every ${label}`}${phaseName ? `, ${phaseName}` : ""}`}
+        emptyText="No shot locations recorded in this phase yet."
+      />
+      <p className="muted mt-3 text-xs">
+        {rival
+          ? `The 2PT and 3PT lines and the zones are each player's ${phaseName ?? "phase"} totals.`
+          : `${poolName}: every other ${label}'s shots in the ${phaseName ?? "phase"} pooled (${formatCount(others.length)} players), so their percentages and zones are the position's.`}{" "}
+        Paint points and the play-context baskets and points are per game: {name} {gamesText(playedGames.length)}, {otherName}{" "}
+        {rival ? gamesText(otherGames) : `${formatCount(otherGames)} player games`}.
+      </p>
+    </>
   );
 }

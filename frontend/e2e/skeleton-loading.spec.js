@@ -576,7 +576,8 @@ test.describe("Player page", () => {
     { tab: "Season by season", pattern: "season-stats", label: "Loading season history" },
     { tab: "Statistics", pattern: "season-stats", label: "Loading season statistics" },
     { tab: "Advanced", pattern: "players/[^/]+/advanced", label: "Loading advanced player stats" },
-    { tab: "Shooting", pattern: "players/[^/]+/shots", label: /^Aggregating \d+ shooting charts$/ },
+    // The Shooting tab reads the player's shots and his position's.
+    { tab: "Shooting", pattern: "players/[^/]+/shots", label: /^Loading \w+ shots$/ },
     // The Overview already loads the game log, so it is held from the start.
     { tab: "Games", pattern: "players/[^/]+/games", label: "Loading the game log", early: true },
   ]) {

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import EmptyText from "../lib/EmptyText";
-import { formatCount, formatMissing, formatPercentage, formatPeriod } from "../lib/format";
+import { formatCount, formatDecimal, formatMissing, formatPercentage, formatPeriod } from "../lib/format";
 import HeaderTip from "../lib/HeaderTip";
 import HeatmapLegend from "../lib/HeatmapLegend";
 import LabelledSelect from "../lib/LabelledSelect";
@@ -133,9 +133,17 @@ const COURT_MAX_WIDTH = "max(18rem, calc(100svh - 20rem))";
 
 const FT_TIP = "Free throws come from the box score: the whole game, for the team or the chosen player. The period, shot and play-context filters don't apply to them";
 
+// A count on one side: as it is, or multiplied by `scale` (one decimal) when the side is scaled.
+function scaledCount(value, scale = 1) {
+  if (value === null || value === undefined) return formatMissing(value);
+  return scale === 1 ? formatCount(value) : formatDecimal(value * scale, 1);
+}
+
 // One team's side of the comparison: its 2PT, 3PT, FT, eFG% and paint points over its own court, as markers or as zones.
-// `freeThrows` is the box score's made and attempted, since free throws are not in the shot data.
-function TeamComparisonPanel({ team, shots, teams, mode, freeThrows, freeThrowsTip }) {
+// `freeThrows` is the box score's made and attempted, since free throws are not in the shot data. `scale` multiplies the
+// paint points (the player Shooting tab shows them per game). `heading` replaces the crest and name; `tallHeading` keeps
+// the name row as tall as a picker box, so both sides' numbers line up when one side has one.
+function TeamComparisonPanel({ team, shots, teams, mode, freeThrows, freeThrowsTip, scale = 1, heading = null, tallHeading = false }) {
   const twoPoint = (shot) => shot.actionCode.startsWith("2");
   const threePoint = (shot) => shot.actionCode.startsWith("3");
   const made = shots.filter((shot) => shot.actionCode.endsWith("M"));
@@ -144,20 +152,24 @@ function TeamComparisonPanel({ team, shots, teams, mode, freeThrows, freeThrowsT
 
   return (
     <Panel className="p-3 sm:p-4">
-      <div className="mb-3 flex items-center gap-2">
-        {team?.crestUrl ? (
-          <img
-            src={team.crestUrl}
-            alt=""
-            className="h-8 w-8 flex-none object-contain"
-            onError={(event) => {
-              event.currentTarget.style.display = "none";
-            }}
-          />
-        ) : null}
-        <span className="font-semibold">
-          <TeamName team={team} />
-        </span>
+      <div className={`mb-3 flex items-center gap-2${tallHeading ? " min-h-8" : ""}`}>
+        {heading ?? (
+          <>
+            {team?.crestUrl ? (
+              <img
+                src={team.crestUrl}
+                alt=""
+                className="h-8 w-8 flex-none object-contain"
+                onError={(event) => {
+                  event.currentTarget.style.display = "none";
+                }}
+              />
+            ) : null}
+            <span className="font-semibold">
+              <TeamName team={team} />
+            </span>
+          </>
+        )}
       </div>
       <div className="mb-3 grid grid-cols-3 gap-2 text-center text-sm lg:grid-cols-5">
         <div>
@@ -195,7 +207,7 @@ function TeamComparisonPanel({ team, shots, teams, mode, freeThrows, freeThrowsT
           <p className="eyebrow">
             <HeaderTip tip="Points from made shots in the restricted area and the paint">Paint pts</HeaderTip>
           </p>
-          <p className="tabular-nums">{formatMissing(paintPoints(shots, team?.clubCode))}</p>
+          <p className="tabular-nums">{scaledCount(paintPoints(shots, team?.clubCode), scale)}</p>
         </div>
       </div>
       <div className="rounded-field border border-base-300 bg-base-100/60 p-1 sm:p-2">
@@ -220,7 +232,7 @@ function TeamComparisonPanel({ team, shots, teams, mode, freeThrows, freeThrowsT
 // returns the court header's { made, attempted } (or null) in place of the box score, with `freeThrowsTip` saying where they
 // come from; `playerFilterTeams` and `playerTableTeams` list the sides (0 home, 1 away) that get a player list in the
 // filters and a player table; `initialPresentation` is the presentation it opens on; `title` and `emptyText` replace the
-// game's wording.
+// game's wording; `sideHeadings` replaces a side's name over its court (the player tab's picker on the other side).
 export default function ShootingStudio({
   shots,
   localTeam,
@@ -231,7 +243,9 @@ export default function ShootingStudio({
   playerFilterTeams = [0, 1],
   playerTableTeams = [0, 1],
   initialPresentation = "map",
+  countScale = [1, 1],
   title = "Shooting studio",
+  sideHeadings = [null, null],
   emptyText = "Shot data isn't available for this game yet.",
 }) {
   const [presentationMode, setPresentationMode] = useState(initialPresentation);
@@ -457,6 +471,9 @@ export default function ShootingStudio({
                   mode={presentationMode === "zones" ? "heatmap" : "markers"}
                   freeThrows={freeThrowsFor(team)}
                   freeThrowsTip={freeThrowsTip}
+                  scale={countScale[index]}
+                  heading={sideHeadings[index]}
+                  tallHeading={sideHeadings.some(Boolean)}
                 />
               ))}
             </div>
@@ -470,18 +487,21 @@ export default function ShootingStudio({
 
         <div className="grid grid-cols-[minmax(0,1fr)] gap-6 lg:grid-cols-2 lg:gap-4">
           <ShootingByQuarter shots={tableShots({ period: false })} localTeam={localTeam} roadTeam={roadTeam} />
-          <PlayContextComparison shots={tableShots({ context: false })} localTeam={localTeam} roadTeam={roadTeam} />
+          <PlayContextComparison shots={tableShots({ context: false })} localTeam={localTeam} roadTeam={roadTeam} countScale={countScale} />
         </div>
 
-        <PlayerShooting
-          shots={tableShots({ player: false })}
-          localTeam={localTeam}
-          roadTeam={roadTeam}
-          activePlayers={playerGroups.map(({ filter }) => filter)}
-          onSelectPlayer={selectPlayer}
-          selectableTeams={playerFilterTeams}
-          teamIndexes={playerTableTeams}
-        />
+        {/* A page that lists no side's players (the player page, whose other side is a whole position) has no table. */}
+        {playerTableTeams.length > 0 ? (
+          <PlayerShooting
+            shots={tableShots({ player: false })}
+            localTeam={localTeam}
+            roadTeam={roadTeam}
+            activePlayers={playerGroups.map(({ filter }) => filter)}
+            onSelectPlayer={selectPlayer}
+            selectableTeams={playerFilterTeams}
+            teamIndexes={playerTableTeams}
+          />
+        ) : null}
       </div>
     </div>
   );

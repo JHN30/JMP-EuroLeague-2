@@ -1,4 +1,6 @@
 const DAY_MS = 86_400_000;
+// Most games last about two hours, so until there are live scores a started game without a result is taken to be on for this long.
+const LIKELY_LIVE_MS = 2 * 60 * 60 * 1000;
 
 const localMidnight = (date) => new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime();
 // Whole local calendar days from `now`'s date to `date`'s (a day is not always 24 hours, so the difference is rounded).
@@ -16,7 +18,7 @@ function when(date, now) {
 }
 
 // Where a round stands, from its games (each with `scheduledAt`, a UTC instant, and `played`) and the current time. There is no live
-// state: nothing here claims a game is being played. A round whose games have no start time has no line.
+// state, so the games that should be live are an estimate from their start times. A round whose games have no start time has no line.
 export function roundStatus(games, now) {
   const dated = games.filter((game) => game.scheduledAt).map((game) => ({ ...game, start: new Date(game.scheduledAt) }));
   if (dated.length === 0) return null;
@@ -29,5 +31,10 @@ export function roundStatus(games, now) {
 
   const played = games.filter((game) => game.played).length;
   const next = dated.filter((game) => !game.played && game.start > now).sort((a, b) => a.start - b.start)[0];
-  return { line: `Under way · ${played} of ${games.length} games played${next ? ` · next game ${when(next.start, now)}` : ""}` };
+  const live = dated.filter((game) => !game.played && game.start <= now && now - game.start < LIKELY_LIVE_MS).length;
+  const parts = ["Under way"];
+  if (live > 0) parts.push(`${live} ${live === 1 ? "game" : "games"} should be live`);
+  parts.push(`${played} of ${games.length} games played`);
+  if (next) parts.push(`next game ${when(next.start, now)}`);
+  return { line: parts.join(" · ") };
 }

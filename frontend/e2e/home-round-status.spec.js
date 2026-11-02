@@ -68,11 +68,30 @@ test.describe("the round line", () => {
     await serveRound(page, { scheduled: unplayed(round), round });
     await page.goto(`/${slug}/home`);
     await expect(header(page)).toHaveText("Round 5", { timeout: 30_000 });
-    await expect(statusLine(page)).toHaveText(/^Under way · 1 of 4 games played · next game today at 0?7:45\s?PM$/);
+    await expect(statusLine(page)).toHaveText(/^Under way · 1 game should be live · 1 of 4 games played · next game today at 0?7:45\s?PM$/);
   });
 
   test("leaves out the next game when every unplayed game has started", async ({ page }) => {
     const { slug, games } = await openHome(page, "2026-10-13T21:30:00Z");
+    const round = roundOf(games, { at: TUESDAY, played: [true, true, true, false] });
+    await serveRound(page, { scheduled: unplayed(round), round });
+    await page.goto(`/${slug}/home`);
+    await expect(header(page)).toHaveText("Round 5", { timeout: 30_000 });
+    await expect(statusLine(page)).toHaveText("Under way · 1 game should be live · 3 of 4 games played");
+  });
+
+  test("counts the unplayed games that started less than two hours ago as should be live", async ({ page }) => {
+    // At 20:00 the 18:45 and 19:45 games are in their first two hours; the 17:45 game is past them.
+    const { slug, games } = await openHome(page, "2026-10-13T20:00:00Z");
+    const round = roundOf(games, { at: TUESDAY });
+    await serveRound(page, { scheduled: unplayed(round), round });
+    await page.goto(`/${slug}/home`);
+    await expect(header(page)).toHaveText("Round 5", { timeout: 30_000 });
+    await expect(statusLine(page)).toHaveText(/^Under way · 2 games should be live · 0 of 4 games played · next game today at 0?8:45\s?PM$/);
+  });
+
+  test("says no game should be live once the last unplayed one is two hours old", async ({ page }) => {
+    const { slug, games } = await openHome(page, "2026-10-13T22:45:00Z");
     const round = roundOf(games, { at: TUESDAY, played: [true, true, true, false] });
     await serveRound(page, { scheduled: unplayed(round), round });
     await page.goto(`/${slug}/home`);
@@ -136,7 +155,7 @@ test.describe("the round line", () => {
     await expect(statusLine(page)).toHaveText(/^Starts today at 0?5:45\s?PM$/, { timeout: 30_000 });
     // Two hours later the first game has started.
     await page.clock.fastForward("02:00:00");
-    await expect(statusLine(page)).toHaveText(/^Under way · 0 of 4 games played · next game today at 0?6:45\s?PM$/);
+    await expect(statusLine(page)).toHaveText(/^Under way · 1 game should be live · 0 of 4 games played · next game today at 0?6:45\s?PM$/);
   });
 });
 

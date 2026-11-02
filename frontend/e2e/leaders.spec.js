@@ -223,3 +223,30 @@ test("one row of choices under the scope tabs: the stage, a board's statistic an
   await expect(page.getByLabel("Stage", { exact: true })).toHaveCount(0);
   await expect(page.getByRole("group", { name: "Player statistics mode" })).toBeVisible();
 });
+
+test("a player board ranks from a share of the games played, sorts from its value heading and resets its filters", async ({ page }) => {
+  await page.goto("/2026/leaders?metric=pointsScored");
+  const games = page.getByRole("combobox", { name: "Minimum games played" });
+  // Half the games played by default, rounded up.
+  const rounds = Number((await (await page.request.get("http://localhost:3000/api/seasons/2026/phases/RS/standings")).json()).round);
+  await expect(games).toHaveValue("50", { timeout: 30_000 });
+  await expect(games.locator("option:checked")).toHaveText(`Games: 50% · ${Math.ceil(rounds / 2)}+`);
+  const gamesShown = () => page.locator("main .board-row-link [title='Games played']").allTextContents();
+
+  // Every game: only players who have played them all, and the choice is in the address.
+  await games.selectOption("100");
+  await expect(page).toHaveURL(/[?&]games=100/);
+  await expect.poll(async () => (await gamesShown()).every((value) => Number(value) === rounds)).toBe(true);
+
+  // The value heading flips the order.
+  const heading = page.getByRole("button", { name: /^PTS: highest first/ });
+  await heading.click();
+  await expect(page).toHaveURL(/[?&]direction=asc/);
+  await expect(page.getByRole("button", { name: /^PTS: lowest first/ })).toBeVisible();
+
+  // Reset puts the filters back to their defaults and keeps the order.
+  await page.getByRole("button", { name: "Reset", exact: true }).click();
+  await expect(page).not.toHaveURL(/[?&]games=/);
+  await expect(page).toHaveURL(/[?&]direction=asc/);
+  await expect(page.getByRole("button", { name: "Reset", exact: true })).toHaveCount(0);
+});

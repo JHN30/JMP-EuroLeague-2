@@ -5,13 +5,11 @@ import { getAdvancedLeaders } from "../lib/api";
 import AsyncState from "../lib/AsyncState";
 import { BoardSkeleton, LandingSkeleton } from "./LeadersSkeleton";
 import EmptyText from "../lib/EmptyText";
-import FilterDisclosure from "../games/FilterDisclosure";
-import LabelledSelect from "../lib/LabelledSelect";
 import { listContainer } from "../lib/motion";
 import Panel from "../lib/Panel";
 import PanelHeader from "../lib/PanelHeader";
 import { nameParts, titleCase } from "../lib/playerName";
-import { Avatar, BOARD_AVATAR, BoardControls, BoardHeader, BoardRow, BoardTopLine, CardGrid, CategoryCard, LeadersToolbar, StageSelect, StatSelect, TeamTag } from "./LeaderParts";
+import { Avatar, BarSelect, BOARD_AVATAR, BoardBar, BoardHeader, BoardPager, BoardRow, CardGrid, CategoryCard, LeadersToolbar, StageSelect, StatSelect, TeamTag } from "./LeaderParts";
 import { barShare, formatAdvancedValue } from "./leaderData";
 import { ADVANCED_FAMILIES, ADVANCED_SCOPES, ADVANCED_STATS } from "./leaderDefs";
 
@@ -25,6 +23,7 @@ const displayName = (entry) => {
 };
 const teamOf = (entry) => ({ code: entry.clubCode, name: entry.clubName, tvCode: entry.clubTvCode, crestUrl: entry.crestUrl });
 const order = (stat) => (stat.lowerIsBetter ? "asc" : "desc");
+const FIXED_ORDER = ["rapm", "onOff", "per", "winShares", "offWinShares", "defWinShares", "winSharesPer40"];
 
 // ---- Landing ----
 
@@ -112,6 +111,9 @@ function AdvancedBoard({ seasonCode, scope, stage, metric, params, setParams }) 
   }, [offset, pageQuery.isLoading]);
 
   const chooseStat = (key) => update({ metric: key, direction: undefined, offset: undefined });
+  // These boards come in one order from the API, so their heading does not sort.
+  const sortable = !FIXED_ORDER.includes(stat.key);
+  const toggleOrder = () => update({ direction: direction === "asc" ? "desc" : "asc", offset: undefined });
 
   return (
     <div className="flex flex-col gap-4">
@@ -119,41 +121,37 @@ function AdvancedBoard({ seasonCode, scope, stage, metric, params, setParams }) 
         {stage}
         <StatSelect families={ADVANCED_FAMILIES} stats={ADVANCED_STATS} activeKey={stat.key} onChoose={chooseStat} />
       </LeadersToolbar>
-      <BoardControls>
-        <BoardTopLine>
-          <p className="muted text-sm">{stat.tip ?? stat.label}</p>
-          {pageQuery.data?.earlySeason ? <span className="badge badge-warning badge-outline">Early season: small samples</span> : null}
-        </BoardTopLine>
-        <div className="grid grid-cols-2 items-end gap-3 max-sm:[&_select]:w-full sm:flex sm:flex-wrap lg:flex-1">
-          <LabelledSelect label="Order" ariaLabel="Advanced sort direction" value={direction} onChange={(event) => update({ direction: event.target.value, offset: undefined })} disabled={["rapm", "onOff", "per", "winShares", "offWinShares", "defWinShares", "winSharesPer40"].includes(stat.key)}>
-            <option value="desc">Highest first</option>
-            <option value="asc">Lowest first</option>
-          </LabelledSelect>
-          <FilterDisclosure activeCount={minutesParam ? 1 : 0} className="col-span-2 sm:contents" gridClassName="sm:contents">
-            <LabelledSelect label="Minimum minutes" ariaLabel="Minimum minutes played" value={minutesParam ?? ""} onChange={(event) => update({ minMinutes: event.target.value, offset: undefined })}>
-              <option value="">{defaultMinutes !== null ? `Default (${defaultMinutes}+ min)` : "Default"}</option>
-              {MINUTE_OPTIONS.map((value) => (
-                <option key={value} value={value}>
-                  {value === 0 ? "No minimum" : `${value}+ minutes`}
-                </option>
-              ))}
-            </LabelledSelect>
-          </FilterDisclosure>
-        </div>
-      </BoardControls>
-
       {pageQuery.isLoading ? (
         <AsyncState status="loading" label="Loading the advanced leaderboard" skeleton={<BoardSkeleton />} />
       ) : pageQuery.isError ? (
         <AsyncState status="error" message="Could not load the advanced leaderboard." onRetry={() => pageQuery.refetch()} />
-      ) : entries.length === 0 ? (
-        <EmptyText>No players meet the minimum yet.</EmptyText>
       ) : (
         <Panel ref={listRef} className="scroll-mt-28 p-2 sm:p-3">
-          <p className="muted px-2 pb-2 text-sm">
-            Showing {offset + 1}-{offset + entries.length} of {total} players
-          </p>
-          <BoardHeader columns={["GP", "MIN"]} valueLabel={stat.label.length > 8 ? "VALUE" : stat.label} />
+          <BoardBar
+            summary={
+              <>
+                    <span className="font-semibold">{entries.length ? `Showing ${offset + 1}-${offset + entries.length} of ${total} players` : "No players"}</span>
+                    <span className="muted">· {stat.tip ?? stat.label}</span>
+                    {pageQuery.data?.earlySeason ? <span className="badge badge-warning badge-outline badge-sm">Early season: small samples</span> : null}
+              </>
+            }
+            activeCount={minutesParam ? 1 : 0}
+            onReset={() => update({ minMinutes: undefined, offset: undefined })}
+          >
+            <BarSelect label="Minimum minutes played" value={minutesParam ?? ""} onChange={(value) => update({ minMinutes: value, offset: undefined })}>
+              <option value="">{defaultMinutes !== null ? `Minutes: default (${defaultMinutes}+)` : "Minutes: default"}</option>
+              {MINUTE_OPTIONS.map((value) => (
+                <option key={value} value={value}>
+                  {value === 0 ? "Minutes: no minimum" : `Minutes: ${value}+`}
+                </option>
+              ))}
+            </BarSelect>
+          </BoardBar>
+          {entries.length === 0 ? (
+            <EmptyText>No players meet the minimum yet.</EmptyText>
+          ) : (
+            <>
+          <BoardHeader columns={["GP", "MIN"]} valueLabel={stat.label.length > 8 ? "VALUE" : stat.label} sort={sortable ? { direction, onToggle: toggleOrder } : undefined} />
           <motion.ol variants={listContainer} initial="hidden" animate="show" key={`${stat.key}-${direction}-${offset}-${minutesParam}-${scope}`}>
             {entries.map((entry, index) => (
               <BoardRow
@@ -172,14 +170,9 @@ function AdvancedBoard({ seasonCode, scope, stage, metric, params, setParams }) 
               />
             ))}
           </motion.ol>
-          <div className="mt-3 flex justify-center gap-2">
-            <button type="button" className="btn btn-sm" disabled={offset === 0} onClick={() => changePage(Math.max(0, offset - PAGE_SIZE) || undefined)}>
-              Previous page
-            </button>
-            <button type="button" className="btn btn-sm" disabled={offset + PAGE_SIZE >= total} onClick={() => changePage(offset + PAGE_SIZE)}>
-              Next page
-            </button>
-          </div>
+          <BoardPager offset={offset} pageSize={PAGE_SIZE} total={total} onChange={(next) => changePage(next || undefined)} />
+            </>
+          )}
         </Panel>
       )}
     </div>

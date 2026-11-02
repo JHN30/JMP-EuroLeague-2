@@ -1,10 +1,13 @@
 import { useContext, useState } from "react";
 import { createPortal } from "react-dom";
+import IconArrowDown from "@tabler/icons-react/dist/esm/icons/IconArrowDown.mjs";
+import IconSearch from "@tabler/icons-react/dist/esm/icons/IconSearch.mjs";
 import { motion } from "motion/react";
 import { Link } from "react-router";
 import AsyncState from "../lib/AsyncState";
 import { CategoryRowsSkeleton } from "./LeadersSkeleton";
 import EmptyText from "../lib/EmptyText";
+import FilterDisclosure from "../games/FilterDisclosure";
 import { CREST_WIDTH, PORTRAIT_WIDTH, sizedImageUrl } from "../lib/imageSize";
 import { EASE_OUT, listContainer, listItem } from "../lib/motion";
 import Panel from "../lib/Panel";
@@ -217,16 +220,68 @@ export function ModeToggle({ ariaLabel, mode, onChange }) {
   return <ToggleButtons label="Show" ariaLabel={ariaLabel} choices={MODES} value={mode} onChange={onChange} panelId="leaders-panel" />;
 }
 
-// The line above a board: what the board shows. The way back to the cards is the page's back link (LeadersPage). From lg it sits
-// in the controls' row, as tall as a select so it lines up with them.
-export function BoardTopLine({ children }) {
-  return <div className="flex flex-wrap items-center gap-x-4 gap-y-1 lg:min-h-8">{children}</div>;
+// The bar at the top of a full board's list: what the list shows on the left (`summary`, with an optional `note` under it), and
+// its filters on the right, with a way back to their defaults once any differs. Below sm the filters sit behind one button.
+export function BoardBar({ summary, note, activeCount = 0, onReset, children }) {
+  return (
+    <div className="flex flex-col gap-2 px-2 pb-3 lg:flex-row lg:items-center lg:justify-between lg:gap-4">
+      <div className="min-w-0">
+        <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm">{summary}</div>
+        {note}
+      </div>
+      {children ? (
+        <div className="flex flex-wrap items-center gap-2 max-sm:w-full lg:flex-none">
+          <FilterDisclosure activeCount={activeCount} className="max-sm:w-full sm:contents" gridClassName="max-sm:[&_select]:w-full sm:contents">
+            {children}
+          </FilterDisclosure>
+          {activeCount > 0 ? (
+            <button type="button" className="btn btn-ghost btn-xs" onClick={onReset}>
+              Reset
+            </button>
+          ) : null}
+        </div>
+      ) : null}
+    </div>
+  );
 }
 
-// A board's line, its order and filters (which take the rest of the row), and its notes: stacked below lg, one row from lg (the
-// notes on a line of their own under it).
-export function BoardControls({ children }) {
-  return <div className="flex flex-col gap-4 lg:flex-row lg:flex-wrap lg:items-end lg:gap-x-6 lg:gap-y-3">{children}</div>;
+// One of a board's filters: a small select whose options say what they are ("All teams", "Games: 50% · 5+"), with no label
+// above it.
+export function BarSelect({ label, value, onChange, children }) {
+  return (
+    <select aria-label={label} className="select select-bordered select-sm w-auto sm:max-w-56" value={value} onChange={(event) => onChange(event.target.value)}>
+      {children}
+    </select>
+  );
+}
+
+// A board's name search, short, with its icon inside the field.
+export function BarSearch({ label, placeholder, value, onChange }) {
+  return (
+    <label className="input input-bordered input-sm flex items-center gap-2 sm:w-48">
+      <IconSearch aria-hidden="true" size={14} className="muted flex-none" />
+      <input type="search" aria-label={label} placeholder={placeholder} className="min-w-0 grow" value={value} onChange={(event) => onChange(event.target.value)} />
+    </label>
+  );
+}
+
+// The page buttons under a board's list, with where the page is; nothing when the list fits one page.
+export function BoardPager({ offset, pageSize, total, onChange }) {
+  if (total <= pageSize) return null;
+  const pages = Math.ceil(total / pageSize);
+  return (
+    <div className="mt-2 flex items-center justify-center gap-1">
+      <button type="button" className="btn btn-ghost btn-sm" aria-label="Previous page" disabled={offset === 0} onClick={() => onChange(Math.max(0, offset - pageSize))}>
+        <span aria-hidden="true">‹</span>
+      </button>
+      <span className="muted text-sm tabular-nums">
+        Page {Math.floor(offset / pageSize) + 1} of {pages}
+      </span>
+      <button type="button" className="btn btn-ghost btn-sm" aria-label="Next page" disabled={offset + pageSize >= total} onClick={() => onChange(offset + pageSize)}>
+        <span aria-hidden="true">›</span>
+      </button>
+    </div>
+  );
 }
 
 // The size of a board's photo or crest: a step smaller from lg.
@@ -243,18 +298,34 @@ export function StatSelect({ families, stats, activeKey, onChoose }) {
 
 // ---- A full-board row ----
 
-// The column header over the rows; `columns` are the same extra figures the rows carry.
-export function BoardHeader({ columns = [], valueLabel }) {
+// The column header over the rows; `columns` are the same extra figures the rows carry. With `sort` ({ direction, onToggle }) the
+// value's heading is a button that flips the order, highest or lowest first.
+export function BoardHeader({ columns = [], valueLabel, sort }) {
   return (
-    <div aria-hidden="true" className="board-row muted border-b border-base-300 text-xs font-bold tracking-wide uppercase" style={{ "--extra": columns.length }}>
-      <span>#</span>
-      <span>Name</span>
+    <div className="board-row muted border-b border-base-300 text-xs font-bold tracking-wide uppercase" style={{ "--extra": columns.length }}>
+      <span aria-hidden="true">#</span>
+      <span aria-hidden="true">Name</span>
       {columns.map((column) => (
-        <span key={column} className="hidden text-right sm:block">
+        <span key={column} aria-hidden="true" className="hidden text-right sm:block">
           {column}
         </span>
       ))}
-      <span className="text-right">{valueLabel}</span>
+      {sort ? (
+        <button
+          type="button"
+          className="ml-auto flex items-center gap-1 font-bold tracking-wide uppercase hover:text-base-content"
+          aria-label={`${valueLabel}: ${sort.direction === "asc" ? "lowest" : "highest"} first. Show ${sort.direction === "asc" ? "highest" : "lowest"} first`}
+          title={sort.direction === "asc" ? "Lowest first" : "Highest first"}
+          onClick={sort.onToggle}
+        >
+          {valueLabel}
+          <IconArrowDown aria-hidden="true" size={12} className={sort.direction === "asc" ? "rotate-180" : ""} />
+        </button>
+      ) : (
+        <span aria-hidden="true" className="text-right">
+          {valueLabel}
+        </span>
+      )}
     </div>
   );
 }
@@ -269,9 +340,10 @@ export function BoardRow({ rank, change, avatar, name, sub, columns = [], valueT
       </span>
       <span className="flex min-w-0 items-center gap-2 sm:gap-3">
         {avatar}
-        <span className="min-w-0">
-          <span className="block font-semibold leading-tight max-sm:text-xs max-sm:line-clamp-2 max-sm:wrap-break-word sm:truncate">{name}</span>
-          <span className="block min-w-0">{sub}</span>
+        {/* From lg one line: the name, then the team and the rest after it. */}
+        <span className="min-w-0 lg:flex lg:items-baseline lg:gap-2">
+          <span className="block font-semibold leading-tight max-sm:text-xs max-sm:line-clamp-2 max-sm:wrap-break-word sm:truncate lg:flex-none">{name}</span>
+          <span className="block min-w-0 lg:truncate">{sub}</span>
         </span>
       </span>
       {columns.map((column) => (

@@ -2,13 +2,10 @@ import { motion } from "motion/react";
 import AsyncState from "../lib/AsyncState";
 import { BoardSkeleton } from "./LeadersSkeleton";
 import EmptyText from "../lib/EmptyText";
-import FilterDisclosure from "../games/FilterDisclosure";
-import LabelledSelect from "../lib/LabelledSelect";
 import { listContainer } from "../lib/motion";
 import Panel from "../lib/Panel";
 import PanelHeader from "../lib/PanelHeader";
-import SearchField from "../lib/SearchField";
-import { Avatar, BOARD_AVATAR, BoardControls, BoardHeader, BoardRow, BoardTopLine, CardGrid, CategoryCard, LeadersToolbar, ModeToggle, StatSelect } from "./LeaderParts";
+import { Avatar, BarSearch, BOARD_AVATAR, BoardBar, BoardHeader, BoardRow, CardGrid, CategoryCard, LeadersToolbar, ModeToggle, StatSelect } from "./LeaderParts";
 import { advancedScopeForPhase } from "../teams/teamLeague";
 import { barShare, rankRows } from "./leaderData";
 import ForfeitStatsNote from "../lib/ForfeitStatsNote";
@@ -83,6 +80,7 @@ function TeamsBoard({ seasonCode, phaseCode, stage, metric, source, params, setP
   const families = TEAM_SECTION_NAMES.filter((entry) => LEADER_STATS.some((candidate) => candidate.family === entry && usable(candidate, source)));
   const chooseStat = (key) => update({ metric: key, direction: undefined, offset: undefined });
   const setMode = (key) => update({ mode: key === "perGame" ? undefined : key });
+  const toggleOrder = () => update({ direction: direction === "asc" ? "desc" : "asc" });
 
   return (
     <div className="flex flex-col gap-4">
@@ -91,34 +89,37 @@ function TeamsBoard({ seasonCode, phaseCode, stage, metric, source, params, setP
         <StatSelect families={families} stats={LEADER_STATS.filter((entry) => usable(entry, source))} activeKey={stat.key} onChoose={chooseStat} />
         {hasMode ? <ModeToggle ariaLabel="Team statistics mode" mode={mode} onChange={setMode} /> : null}
       </LeadersToolbar>
-      <BoardControls>
-        <BoardTopLine>
-          <p className="muted text-sm">{hasMode ? (mode === "perGame" ? "Per game" : "Season totals") : "Whole phase"} · overtime counted</p>
-        </BoardTopLine>
-        {/* The notes keep their place under the line below lg, and go under the row from lg. */}
-        {source.unadjusted ? <p className="muted text-sm lg:order-last lg:w-full">{UNADJUSTED_NOTE}</p> : null}
-        <ForfeitStatsNote seasonCode={seasonCode} phaseCode={phaseCode} className="muted text-sm lg:order-last lg:w-full" />
-        <div className="grid grid-cols-2 items-end gap-3 max-sm:[&_select]:w-full sm:flex sm:flex-wrap lg:flex-1">
-          <LabelledSelect label="Order" ariaLabel="Team sort direction" value={direction} onChange={(event) => update({ direction: event.target.value })}>
-            <option value="desc">Highest first</option>
-            <option value="asc">Lowest first</option>
-          </LabelledSelect>
-          <FilterDisclosure activeCount={search ? 1 : 0} className="col-span-2 sm:contents" gridClassName="sm:contents">
-            <SearchField label="Search teams by name" placeholder="Search teams..." value={search} onChange={(event) => update({ search: event.target.value || undefined })} />
-          </FilterDisclosure>
-        </div>
-      </BoardControls>
       {source.isLoading ? (
         <AsyncState status="loading" label="Loading the team leaderboard" skeleton={<BoardSkeleton />} />
       ) : source.isError ? (
         <AsyncState status="error" message="Could not load the team leaderboard." onRetry={source.refetch} />
       ) : isUnratedSrs(stat, source) ? (
         <EmptyText>{SRS_UNAVAILABLE}</EmptyText>
-      ) : shown.length === 0 ? (
-        <EmptyText>No teams match.</EmptyText>
       ) : (
         <Panel className="p-2 sm:p-3">
-          <BoardHeader columns={["GP", "Record"]} valueLabel={stat.short} />
+          <BoardBar
+            summary={
+              <>
+                    <span className="font-semibold">{shown.length} {shown.length === 1 ? "team" : "teams"}</span>
+                    <span className="muted">· {hasMode ? (mode === "perGame" ? "per game" : "season totals") : "whole phase"} · overtime counted</span>
+              </>
+            }
+            note={
+              <>
+                {source.unadjusted ? <p className="muted text-xs">{UNADJUSTED_NOTE}</p> : null}
+                <ForfeitStatsNote seasonCode={seasonCode} phaseCode={phaseCode} className="muted text-xs" />
+              </>
+            }
+            activeCount={search ? 1 : 0}
+            onReset={() => update({ search: undefined })}
+          >
+            <BarSearch label="Search teams by name" placeholder="Search teams" value={search} onChange={(value) => update({ search: value || undefined })} />
+          </BoardBar>
+          {shown.length === 0 ? (
+            <EmptyText>No teams match.</EmptyText>
+          ) : (
+            <>
+          <BoardHeader columns={["GP", "Record"]} valueLabel={stat.short} sort={{ direction, onToggle: toggleOrder }} />
           <motion.ol variants={listContainer} initial="hidden" animate="show" key={`${stat.key}-${mode}-${direction}-${search}`}>
             {shown.slice(0, PAGE_SIZE).map(({ row: { row }, rank, value }) => (
               <BoardRow
@@ -136,6 +137,8 @@ function TeamsBoard({ seasonCode, phaseCode, stage, metric, source, params, setP
               />
             ))}
           </motion.ol>
+            </>
+          )}
         </Panel>
       )}
     </div>

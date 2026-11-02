@@ -6,16 +6,13 @@ import { getLeaderForm, getSeasonGames, getSeasonStandings } from "../lib/api";
 import AsyncState from "../lib/AsyncState";
 import { BoardSkeleton, FormSkeleton } from "./LeadersSkeleton";
 import EmptyText from "../lib/EmptyText";
-import FilterDisclosure from "../games/FilterDisclosure";
 import { formatSignedDecimal } from "../lib/format";
-import LabelledSelect from "../lib/LabelledSelect";
 import { listContainer } from "../lib/motion";
 import Panel from "../lib/Panel";
 import PanelHeader from "../lib/PanelHeader";
 import { nameParts, titleCase } from "../lib/playerName";
-import SearchField from "../lib/SearchField";
 import { TabStrip } from "../lib/TabStrip";
-import { Avatar, BOARD_AVATAR, BoardControls, BoardHeader, BoardRow, BoardTopLine, CardGrid, CategoryCard, LeadersToolbar, ModeToggle, RankBadge, StatSelect, TeamTag } from "./LeaderParts";
+import { Avatar, BarSearch, BarSelect, BOARD_AVATAR, BoardBar, BoardHeader, BoardPager, BoardRow, CardGrid, CategoryCard, LeadersToolbar, ModeToggle, RankBadge, StatSelect, TeamTag } from "./LeaderParts";
 import { barShare, fetchQualifiedPool, formatPlayerValue, hasVolume, playerValue, rankRows, statNumber, volumeText } from "./leaderData";
 import { FORM_STATS, PLAYER_CARDS, PLAYER_FAMILIES, PLAYER_STATS, PLAYER_TOTAL_CARDS } from "./leaderDefs";
 import { fetchLeagueLeaderboard, leaderboardQueryKey } from "../players/leagueLeaderboard";
@@ -265,13 +262,23 @@ function PlayersLanding({ seasonCode, phaseCode, stage, params, setParams, openM
 
 // ---- The full board for one stat ----
 
-const MIN_GAMES_OPTIONS = [1, 5, 10, 15];
+// The minimum games as shares of the games played so far (`num` / `den`), rounded up: half is the default. In the address as
+// `?games=` (the share's key; "all" for every player, nothing for half).
+const GAME_SHARES = [
+  { key: "25", num: 1, den: 4 },
+  { key: "50", num: 1, den: 2 },
+  { key: "67", num: 2, den: 3 },
+  { key: "75", num: 3, den: 4 },
+  { key: "90", num: 9, den: 10 },
+  { key: "100", num: 1, den: 1 },
+];
+const DEFAULT_SHARE = "50";
 
 function PlayersBoard({ seasonCode, phaseCode, stage, metric, params, setParams }) {
   const stat = statByKey(metric) ?? PLAYER_STATS[0];
   const mode = params.get("mode") === "accumulated" ? "accumulated" : "perGame";
   const direction = params.get("direction") ?? (stat.lowerIsBetter ? "asc" : "desc");
-  const minGames = Number(params.get("minGames")) || 0;
+  const share = params.get("games") === "all" || GAME_SHARES.some((entry) => entry.key === params.get("games")) ? params.get("games") : DEFAULT_SHARE;
   const team = params.get("team") ?? "";
   const position = params.get("position") ?? "";
   const search = params.get("search") ?? "";
@@ -306,20 +313,15 @@ function PlayersBoard({ seasonCode, phaseCode, stage, metric, params, setParams 
   }, [formQuery.data, formStat, mode]);
 
   const all = sorted;
-  // The games a qualified player needs: half the rounds played, or the feed's minimum in a stage without rounds.
-  const phaseMinGames = rule.minGames ?? all[0]?.minGames ?? null;
-  // The ranked pool: qualified players (or at least N games) with enough volume for the stat. Team, position and search only
+  const gamesOf = (player) => statNumber(player.traditional?.gamesPlayed) ?? 0;
+  // The games played so far: the stage's rounds, or in a stage without them (the postseason) the most games any player has.
+  const gamesSoFar = rule.rounds ?? all.reduce((most, player) => Math.max(most, gamesOf(player)), 0);
+  const needFor = (entry) => Math.ceil((gamesSoFar * entry.num) / entry.den);
+  const shareEntry = GAME_SHARES.find((entry) => entry.key === share);
+  const minGames = shareEntry ? needFor(shareEntry) : 0;
+  // The ranked pool: players with the chosen share of the games and enough volume for the stat. Team, position and search only
   // narrow what is shown, so a row keeps its true rank.
-  const pool = all.filter(
-    (player) =>
-      (minGames > 0
-        ? (statNumber(player.traditional?.gamesPlayed) ?? 0) >= minGames
-        : rule.minGames
-          ? (statNumber(player.traditional?.gamesPlayed) ?? 0) >= rule.minGames
-          : player.qualified !== false) &&
-      playerValue(player, stat) !== null &&
-      hasVolume(player, stat, mode, rule),
-  );
+  const pool = all.filter((player) => gamesOf(player) >= minGames && playerValue(player, stat) !== null && hasVolume(player, stat, mode, rule));
   const ranked = rankRows(pool, (player) => playerValue(player, stat));
   const teams = [...new Map(pool.filter((p) => p.clubCode).map((p) => [p.clubCode, p.clubName ?? p.clubCode])).entries()].sort((a, b) => a[1].localeCompare(b[1]));
   const positions = [...new Set(pool.map((p) => p.positionName).filter(Boolean))].sort();
@@ -348,11 +350,13 @@ function PlayersBoard({ seasonCode, phaseCode, stage, metric, params, setParams 
   const setMode = (key) => update({ mode: key === "perGame" ? undefined : key, offset: undefined });
   // Leaving a games count writes the mode it showed; otherwise the live address keeps its own mode.
   const chooseStat = (key) => update({ metric: key, direction: undefined, offset: undefined, ...(stat.kind === "games" ? { mode } : {}) });
-  const activeFilters = [minGames > 0, team, position, search].filter(Boolean).length;
+  const activeFilters = [share !== DEFAULT_SHARE, team, position, search].filter(Boolean).length;
+  const resetFilters = () => update({ games: undefined, team: undefined, position: undefined, search: undefined, offset: undefined });
+  const toggleOrder = () => update({ direction: direction === "asc" ? "desc" : "asc", offset: undefined });
   // The page buttons are under the list, so a new page brings the top of the list back into view.
   const listRef = useRef(null);
   const changePage = (nextOffset) => {
-    update({ offset: nextOffset });
+    update({ offset: nextOffset || undefined });
     listRef.current?.scrollIntoView({ block: "start" });
   };
 
@@ -363,97 +367,92 @@ function PlayersBoard({ seasonCode, phaseCode, stage, metric, params, setParams 
         <StatSelect families={PLAYER_FAMILIES} stats={PLAYER_STATS} activeKey={stat.key} onChoose={chooseStat} />
         <ModeToggle ariaLabel="Player statistics mode" mode={mode} onChange={setMode} />
       </LeadersToolbar>
-      <BoardControls>
-        <BoardTopLine>
-          <p className="muted text-sm">
-            {mode === "perGame" ? "Per game" : "Season totals"} · {phaseMinGames && minGames === 0 ? `qualified players (${phaseMinGames}+ games)` : minGames > 1 ? `${minGames}+ games` : "all players"}
-          </p>
-        </BoardTopLine>
-
-        <div className="grid grid-cols-2 items-end gap-3 max-sm:[&_select]:w-full sm:flex sm:flex-wrap lg:flex-1">
-          <LabelledSelect label="Order" ariaLabel="Player sort direction" value={direction} onChange={(event) => update({ direction: event.target.value, offset: undefined })}>
-            <option value="desc">Highest first</option>
-            <option value="asc">Lowest first</option>
-          </LabelledSelect>
-          <FilterDisclosure activeCount={activeFilters} className="col-span-2 sm:contents" gridClassName="sm:contents">
-            <LabelledSelect label="Minimum games" ariaLabel="Minimum games played" value={String(minGames)} onChange={(event) => update({ minGames: Number(event.target.value) || undefined, offset: undefined })}>
-              <option value="0">{phaseMinGames ? `Qualified (${phaseMinGames}+ games)` : "Qualified players"}</option>
-              {MIN_GAMES_OPTIONS.map((value) => (
-                <option key={value} value={value}>
-                  {value === 1 ? "All players" : `${value}+ games`}
+      {boardQuery.isPending || rule.isLoading ? (
+        <AsyncState status="loading" label="Loading the player leaderboard" skeleton={<BoardSkeleton />} />
+      ) : boardQuery.isError ? (
+        <AsyncState status="error" message="Could not load the player leaderboard." onRetry={() => boardQuery.refetch()} />
+      ) : (
+        <Panel ref={listRef} className="scroll-mt-28 p-2 sm:p-3">
+          <BoardBar
+            summary={
+              <>
+                <span className="font-semibold">{shown.length ? `Showing ${offset + 1}-${offset + page.length} of ${shown.length} players` : "No players"}</span>
+                <span className="muted">· {mode === "perGame" ? "per game" : "season totals"}</span>
+              </>
+            }
+            note={
+              stat.volume ? (
+                <>
+                  <p className="muted text-xs">Ranked among players with {volumeText(stat.volume, rule.rounds)}.</p>
+                  <BehindNote rule={rule} className="muted text-xs" />
+                </>
+              ) : null
+            }
+            activeCount={activeFilters}
+            onReset={resetFilters}
+          >
+            <BarSelect label="Minimum games played" value={share} onChange={(value) => update({ games: value === DEFAULT_SHARE ? undefined : value, offset: undefined })}>
+              {GAME_SHARES.map((entry) => (
+                <option key={entry.key} value={entry.key}>
+                  Games: {entry.key}% · {needFor(entry)}
+                  {entry.key === "100" ? "" : "+"}
                 </option>
               ))}
-            </LabelledSelect>
-            <LabelledSelect label="Team" ariaLabel="Team" value={team} onChange={(event) => update({ team: event.target.value || undefined, offset: undefined })}>
+              <option value="all">Games: all players</option>
+            </BarSelect>
+            <BarSelect label="Team" value={team} onChange={(value) => update({ team: value || undefined, offset: undefined })}>
               <option value="">All teams</option>
               {teams.map(([code, name]) => (
                 <option key={code} value={code}>
                   {name}
                 </option>
               ))}
-            </LabelledSelect>
-            <LabelledSelect label="Position" ariaLabel="Position" value={position} onChange={(event) => update({ position: event.target.value || undefined, offset: undefined })}>
+            </BarSelect>
+            <BarSelect label="Position" value={position} onChange={(value) => update({ position: value || undefined, offset: undefined })}>
               <option value="">All positions</option>
               {positions.map((value) => (
                 <option key={value} value={value}>
                   {value}
                 </option>
               ))}
-            </LabelledSelect>
-            <SearchField label="Search players by name" placeholder="Search players..." value={search} onChange={(event) => update({ search: event.target.value || undefined, offset: undefined })} />
-          </FilterDisclosure>
-        </div>
-        {stat.volume ? <p className="muted text-sm lg:w-full">Ranked among players with {volumeText(stat.volume, rule.rounds)}.</p> : null}
-        {stat.volume ? <BehindNote rule={rule} className="muted text-sm lg:w-full" /> : null}
-      </BoardControls>
-
-      {boardQuery.isLoading || rule.isLoading ? (
-        <AsyncState status="loading" label="Loading the player leaderboard" skeleton={<BoardSkeleton />} />
-      ) : boardQuery.isError ? (
-        <AsyncState status="error" message="Could not load the player leaderboard." onRetry={() => boardQuery.refetch()} />
-      ) : shown.length === 0 ? (
-        <EmptyText>No players match these filters.</EmptyText>
-      ) : (
-        <Panel ref={listRef} className="scroll-mt-28 p-2 sm:p-3">
-          <p className="muted px-2 pb-2 text-sm">
-            Showing {offset + 1}-{offset + page.length} of {shown.length} players
-          </p>
-          <BoardHeader columns={["GP", "MIN"]} valueLabel={stat.short} />
-          <motion.ol variants={listContainer} initial="hidden" animate="show" key={`${stat.key}-${mode}-${direction}-${offset}-${team}-${position}-${search}-${minGames}`}>
-            {page.map(({ row, rank, value }) => {
-              const move = movement.get(row.personKey);
-              return (
-                <BoardRow
-                  key={row.personKey}
-                  rank={rank}
-                  change={move && move.before !== null ? move.before - move.now : null}
-                  avatar={<Avatar optimize imageUrl={row.playerImageUrl} size={BOARD_AVATAR} />}
-                  name={displayName(row)}
-                  sub={
-                    <span className="flex min-w-0 flex-wrap items-center gap-x-2">
-                      <TeamTag {...teamOf(row)} />
-                      {row.positionName ? <span className="muted text-xs">· {row.positionName}</span> : null}
-                    </span>
-                  }
-                  columns={[
-                    { label: "Games played", value: Math.round(statNumber(row.traditional?.gamesPlayed) ?? 0) },
-                    { label: "Minutes per game", value: minutesPerGame(row, mode) },
-                  ]}
-                  valueText={formatPlayerValue(stat, value, mode)}
-                  share={barShare(value, top, bottom)}
-                  to={`/${seasonCode}/players/${row.personKey}`}
-                />
-              );
-            })}
-          </motion.ol>
-          <div className="mt-3 flex justify-center gap-2">
-            <button type="button" className="btn btn-sm" disabled={offset === 0} onClick={() => changePage(Math.max(0, offset - PAGE_SIZE) || undefined)}>
-              Previous page
-            </button>
-            <button type="button" className="btn btn-sm" disabled={offset + PAGE_SIZE >= shown.length} onClick={() => changePage(offset + PAGE_SIZE)}>
-              Next page
-            </button>
-          </div>
+            </BarSelect>
+            <BarSearch label="Search players by name" placeholder="Search players" value={search} onChange={(value) => update({ search: value || undefined, offset: undefined })} />
+          </BoardBar>
+          {shown.length === 0 ? (
+            <EmptyText>No players match these filters.</EmptyText>
+          ) : (
+            <>
+              <BoardHeader columns={["GP", "MIN"]} valueLabel={stat.short} sort={{ direction, onToggle: toggleOrder }} />
+              <motion.ol variants={listContainer} initial="hidden" animate="show" key={`${stat.key}-${mode}-${direction}-${offset}-${team}-${position}-${search}-${share}`}>
+                {page.map(({ row, rank, value }) => {
+                  const move = movement.get(row.personKey);
+                  return (
+                    <BoardRow
+                      key={row.personKey}
+                      rank={rank}
+                      change={move && move.before !== null ? move.before - move.now : null}
+                      avatar={<Avatar optimize imageUrl={row.playerImageUrl} size={BOARD_AVATAR} />}
+                      name={displayName(row)}
+                      sub={
+                        <span className="flex min-w-0 flex-wrap items-center gap-x-2">
+                          <TeamTag {...teamOf(row)} />
+                          {row.positionName ? <span className="muted text-xs">· {row.positionName}</span> : null}
+                        </span>
+                      }
+                      columns={[
+                        { label: "Games played", value: Math.round(statNumber(row.traditional?.gamesPlayed) ?? 0) },
+                        { label: "Minutes per game", value: minutesPerGame(row, mode) },
+                      ]}
+                      valueText={formatPlayerValue(stat, value, mode)}
+                      share={barShare(value, top, bottom)}
+                      to={`/${seasonCode}/players/${row.personKey}`}
+                    />
+                  );
+                })}
+              </motion.ol>
+              <BoardPager offset={offset} pageSize={PAGE_SIZE} total={shown.length} onChange={changePage} />
+            </>
+          )}
         </Panel>
       )}
     </div>

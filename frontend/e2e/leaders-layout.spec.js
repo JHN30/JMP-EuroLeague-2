@@ -103,7 +103,8 @@ for (const view of VIEWS) {
     await expect(rows(page).first()).toBeVisible({ timeout: 30_000 });
 
     await atWidths(page, WIDTHS, async (width) => {
-      const header = await shown(page.locator('#leaders-panel .board-row[aria-hidden="true"] > span'));
+      // The column header is the one row that is not a link (its value heading is the sort button).
+      const header = await shown(page.locator("#leaders-panel div.board-row > span"));
       for (const extra of view.extras) expect(header.includes(extra), `${extra} at ${width}px`).toBe(width >= 640);
       const bars = await shown(rows(page).locator('span[aria-hidden="true"].rounded-full'));
       expect(bars.length > 0).toBe(width >= 640);

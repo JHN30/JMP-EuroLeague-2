@@ -4,7 +4,7 @@ import { MIN_BEST_PLAYER_SECONDS } from "./overview";
 // The advanced view reuses the box score table: each player row (and team total) carries the pipeline's advanced
 // row as `advanced`, and these columns read from it. A missing value is an em dash, never a computed zero.
 
-const ADVANCED_TIPS = {
+export const ADVANCED_TIPS = {
   GmSc: "Game Score: Hollinger's single-game productivity score, a weighted sum of the box score line",
   PER: "Player Efficiency Rating for this game only, scaled so the league average is 15. Shown from 10 minutes played",
   "TS%": "True shooting: points per shooting possession, counting free throws and threes",

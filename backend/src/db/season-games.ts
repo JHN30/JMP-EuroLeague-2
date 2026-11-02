@@ -1,7 +1,7 @@
 import { and, asc, eq, exists, inArray, isNotNull, isNull, or, sql } from "drizzle-orm";
 import { alias, type AnyPgColumn } from "drizzle-orm/pg-core";
 import { db } from "./client";
-import { gameTeamShotSplits } from "./season-advanced-schema";
+import { gamePlayerAdvanced, gameTeamShotSplits } from "./season-advanced-schema";
 import { CatalogDatabaseError, catalogRead } from "./season-catalog";
 import { seasonFormat } from "./season-format-registry";
 import { type ClubTvCodes, getClubTvCodes, tvCodeOf } from "./season-identities";
@@ -303,13 +303,37 @@ export async function getPlayerGameLog(
       game: gameFields,
       side: gamePlayerStats.side,
       headshotUrl: gamePlayerStats.headshotUrl,
+      // Whether he was in the starting five (null when the feed does not say).
+      started: gamePlayerStats.started,
       ...measureFields(gamePlayerStats),
+      // The pipeline's advanced numbers for his game (percentages as fractions), where the season has them.
+      advanced: {
+        secondsPlayed: gamePlayerAdvanced.secondsPlayed,
+        gameScore: gamePlayerAdvanced.gameScore,
+        gamePer: gamePlayerAdvanced.gamePer,
+        trueShootingPct: gamePlayerAdvanced.trueShootingPct,
+        efgPct: gamePlayerAdvanced.efgPct,
+        usagePct: gamePlayerAdvanced.usagePct,
+        assistPct: gamePlayerAdvanced.assistPct,
+        tovPct: gamePlayerAdvanced.tovPct,
+        orbPct: gamePlayerAdvanced.orbPct,
+        drbPct: gamePlayerAdvanced.drbPct,
+        stealPct: gamePlayerAdvanced.stealPct,
+        blockPct: gamePlayerAdvanced.blockPct,
+      },
     })
       .from(gamePlayerStats)
       .innerJoin(games, and(
         eq(games.competitionCode, gamePlayerStats.competitionCode),
         eq(games.seasonCode, gamePlayerStats.seasonCode),
         eq(games.gameCode, gamePlayerStats.gameCode),
+      ))
+      .leftJoin(gamePlayerAdvanced, and(
+        eq(gamePlayerAdvanced.competitionCode, gamePlayerStats.competitionCode),
+        eq(gamePlayerAdvanced.seasonCode, gamePlayerStats.seasonCode),
+        eq(gamePlayerAdvanced.gameCode, gamePlayerStats.gameCode),
+        eq(gamePlayerAdvanced.side, gamePlayerStats.side),
+        eq(gamePlayerAdvanced.personKey, gamePlayerStats.personKey),
       ))
       .leftJoin(localClubs, and(
         eq(localClubs.competitionCode, games.competitionCode),
@@ -331,7 +355,12 @@ export async function getPlayerGameLog(
       .offset(offset),
   );
   return {
-    items: rows.slice(0, limit).map(({ game, ...stats }) => ({ ...toGame(game, codes), ...stats })),
+    // A game without an advanced row has `advanced` null rather than an object of nulls.
+    items: rows.slice(0, limit).map(({ game, advanced, ...stats }) => ({
+      ...toGame(game, codes),
+      ...stats,
+      advanced: advanced && Object.values(advanced).some((value) => value !== null) ? advanced : null,
+    })),
     hasMore: rows.length > limit,
   };
 }

@@ -344,25 +344,38 @@ export function PlayerAdvancedSkeleton() {
 export function PlayerGamesSkeleton() {
   return (
     <div aria-hidden="true" className="flex flex-col gap-4">
+      <div className="grid grid-cols-[minmax(0,1fr)] gap-4 lg:grid-cols-[17rem_minmax(0,1fr)]">
+        <div className="panel flex flex-col p-3 sm:p-4">
+          <div className="skeleton mb-2 h-3 w-24" />
+          <div className="grid flex-1 auto-rows-fr grid-cols-2 gap-2 lg:grid-cols-1">
+            {range(4).map((index) => (
+              <div key={index} className="skeleton min-h-13 rounded-field" />
+            ))}
+          </div>
+        </div>
+        <div className="panel p-4">
+          <SkeletonPanelHead title="w-48" />
+          {range(9).map((index) => (
+            <div key={index} className="flex h-9 items-center gap-3 border-b border-base-300 last:border-0">
+              <div className="skeleton h-3 w-20" />
+              <div className="skeleton ml-auto h-3 w-2/3" />
+            </div>
+          ))}
+        </div>
+      </div>
       <div className="panel p-4">
         <SkeletonPanelHead title="w-44" />
         <div className="mb-3 flex gap-2">
           <div className="skeleton h-6 w-20 rounded-full" />
           <div className="skeleton h-6 w-28 rounded-full" />
         </div>
-        <div className="skeleton mb-3 h-9 w-64 max-w-full" />
-        <div className="skeleton h-44 w-full" />
+        <div className="skeleton mb-3 h-9 w-80 max-w-full" />
+        <div className="skeleton h-40 w-full" />
         <div className="skeleton mt-3 h-4 w-3/4 max-sm:h-12 max-sm:w-full" />
-      </div>
-      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        {range(4).map((index) => (
-          <div key={index} className="skeleton h-28 rounded-box" />
-        ))}
       </div>
       <div className="panel p-4">
         <SkeletonPanelHead title="w-28" />
-        <div className="skeleton mb-3 h-9 w-72 max-w-full" />
-        <div className="skeleton mb-3 h-10 w-56" />
+        <div className="skeleton mb-3 h-9 w-full max-w-xl" />
         <div className="flex h-10 items-center gap-3 border-b border-base-300">
           <div className="skeleton h-3 w-16" />
           <div className="skeleton ml-auto h-3 w-2/3" />

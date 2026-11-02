@@ -37,7 +37,6 @@ const holdsContent = (locator) =>
     }),
   );
 
-const columns = (locator) => locator.evaluateAll((els) => new Set(els.map((el) => Math.round(el.getBoundingClientRect().left))).size);
 const failing = (route) => route.fulfill({ status: 500, json: { error: "Mocked failure" } });
 
 const LOG_URL = (url) => /\/api\/seasons\/[^/]+\/players\/[^/]+\/games$/.test(url.pathname);
@@ -98,18 +97,93 @@ async function openTab(page, href, tab) {
   await page.getByRole("tab", { name: tab, exact: true }).click();
 }
 
-test("the Games tab fits every width: scrolling strips, badges under the title, one-column splits, a compact table with a narrow pinned opponent", async ({ page }) => {
-  test.setTimeout(120_000);
+// The bar of a game in the chart and the value over (or under) it.
+const chartBar = (page, index) => page.locator("#player-games-bars > ul > li:has(a)").nth(index).locator("a > div.relative");
+const barParts = (bar) =>
+  bar.evaluate((el) => {
+    const [label, fill] = el.children;
+    const top = (node) => (node ? node.getBoundingClientRect().top : null);
+    return { text: label.textContent.trim(), label: top(label), bar: top(fill), hasBar: Boolean(fill) };
+  });
+
+test("the Games tab fits every width: highs beside the splits from 1024px, a chart that scrolls, a fuller table with its controls in the heading", async ({ page }) => {
+  test.setTimeout(150_000);
   const player = await veteranPlayer(page);
   const rival = "Meridianbet Crvena Zvezda Belgrade";
-  await mockLog(page, await logFor(page, player, { count: 40, phases: [["RS", "Regular Season"], ["RS", "Regular Season"], ["PO", "Play-offs"], ["F4", "Final Four"]], rival }));
+  const log = await logFor(page, player, { count: 40, phases: [["RS", "Regular Season"], ["RS", "Regular Season"], ["PO", "Play-offs"], ["F4", "Final Four"]], rival });
+  // He starts every other game. Each game has advanced numbers: the first is 5 minutes (so no game PER), the sixth has
+  // the best game score.
+  log.games.forEach((game, index) => {
+    game.started = index % 2 === 0;
+    game.advanced = {
+      secondsPlayed: index === 0 ? 300 : 1500,
+      gameScore: index === 5 ? 30 : 5,
+      gamePer: 12,
+      trueShootingPct: 0.5,
+      efgPct: 0.5,
+      usagePct: 0.2,
+      assistPct: 0.1,
+      tovPct: 0.1,
+      orbPct: 0.05,
+      drbPct: 0.15,
+      stealPct: 0.02,
+      blockPct: 0.01,
+    };
+  });
+  await mockLog(page, log);
   await openTab(page, player.href, "Games");
   const bars = page.locator("section.panel", { has: page.getByRole("heading", { name: "How each game went" }) });
   await expect(bars).toBeVisible({ timeout: 60_000 });
   const table = page.getByRole("region", { name: "Every game, box scores" });
+  const splits = page.getByRole("region", { name: "Splits, per game" });
+  const highs = page.getByRole("region", { name: "Season highs" });
+  const boxScores = page.locator("section.panel", { has: page.getByRole("heading", { name: "Every game" }) });
   const strips = ["Phase", "Stat to chart", "Games to show"].map((name) => page.getByRole("tablist", { name }));
-  const splits = page.locator("#player-games-panel > div.grid > div");
-  await expect(splits).toHaveCount(4);
+
+  // The highs: the best game in points, rebounds, assists and PIR, each opening a game.
+  await expect(highs.getByRole("link")).toHaveCount(4);
+  await expect(highs.getByRole("link").first()).toHaveAttribute("href", /\/games\/\d+$/);
+  await expect(highs.getByRole("link").first()).toHaveAccessibleName(/PTS, the season high/);
+
+  // The splits: eight rows; Started and Off the bench split the 40 games in two.
+  const splitRows = splits.locator("tbody tr");
+  await expect(splitRows).toHaveCount(8);
+  await expect(splitRows.filter({ hasText: "Started" }).locator("td").nth(1)).toHaveText("20");
+  await expect(splitRows.filter({ hasText: "Off the bench" }).locator("td").nth(1)).toHaveText("20");
+
+  // The box scores: the new columns and the starter mark.
+  for (const header of ["BLK", "FG", "PF", "FD"]) await expect(table.getByRole("columnheader", { name: header, exact: true })).toBeVisible();
+  await expect(table.locator(".sr-only", { hasText: /^Started$/ }).first()).toBeAttached();
+
+  // The Advanced numbers: the same games with the advanced columns; the 5-minute game has no PER, and the best game score
+  // is in colour.
+  const numbers = page.getByRole("tablist", { name: "Box score numbers" });
+  await numbers.getByRole("tab", { name: "Advanced" }).click();
+  for (const header of ["GmSc", "PER", "TS%", "eFG%", "USG%", "AST%", "TOV%", "ORB%", "DRB%", "STL%", "BLK%"]) {
+    await expect(table.getByRole("columnheader", { name: new RegExp(`^${header}`) })).toBeVisible();
+  }
+  await expect(table.getByRole("columnheader", { name: "PTS", exact: true })).toHaveCount(0);
+  await page.getByRole("combobox", { name: "Sort by" }).selectOption("oldest");
+  const firstGame = table.locator("tbody tr").first();
+  await expect(firstGame.locator("td").nth(4)).toHaveText("—");
+  await expect(firstGame.locator("td").nth(4)).toHaveAttribute("title", "Game PER is shown from 10 minutes played");
+  await expect(firstGame.locator("td").nth(5)).toHaveText("50.0%");
+  await expect(table.locator("td.text-primary", { hasText: "30.0" })).toHaveCount(1);
+  await numbers.getByRole("tab", { name: "Basic" }).click();
+  await page.getByRole("combobox", { name: "Sort by" }).selectOption("newest");
+
+  // +/- goes below zero: the first game is -10 (its value under the bar), a later one +5 (over it).
+  await page.getByRole("tab", { name: "+/-", exact: true }).click();
+  // (polled: the bars grow to their new heights from the last stat's).
+  await expect.poll(async () => {
+    const minus = await barParts(chartBar(page, 0));
+    return { text: minus.text, under: minus.label > minus.bar };
+  }).toEqual({ text: "-10", under: true });
+  await expect.poll(async () => {
+    const plus = await barParts(chartBar(page, 15));
+    return { text: plus.text, over: plus.label < plus.bar };
+  }).toEqual({ text: "+5", over: true });
+  await page.getByRole("tab", { name: "PTS", exact: true }).click();
 
   await atWidths(page, WIDE, async (width) => {
     const phone = width < 640;
@@ -126,8 +200,22 @@ test("the Games tab fits every width: scrolling strips, badges under the title, 
         }),
       )
       .toEqual({ count: 2, under: phone, beside: !phone });
-    // The bars scroll inside their own box; the page does not.
+    // 40 bars scroll inside their own box at a phone's width; the page does not.
     if (width <= 390) expect(await bars.locator("#player-games-bars").evaluate((el) => el.scrollWidth > el.clientWidth)).toBe(true);
+
+    // The highs sit beside the splits from 1024px and above them below it.
+    const [highsBox, splitsBox] = [await highs.boundingBox(), await splits.boundingBox()];
+    if (width >= 1024) expect(highsBox.x + highsBox.width).toBeLessThanOrEqual(splitsBox.x + 1);
+    else expect(highsBox.y + highsBox.height).toBeLessThanOrEqual(splitsBox.y + 1);
+
+    // The box scores' filter, sort and count are in the panel heading: beside the title from 1280px.
+    const heading = await boxScores.evaluate((el) => {
+      const title = el.querySelector("h2").getBoundingClientRect();
+      const filter = el.querySelector("[role=tablist]").getBoundingClientRect();
+      return { inHeading: Boolean(el.querySelector(".panel-header [role=tablist]") && el.querySelector(".panel-header select")), beside: filter.left >= title.right - 1 };
+    });
+    expect(heading.inHeading).toBe(true);
+    if (width >= 1280) expect(heading.beside).toBe(true);
 
     // Each strip is one row, inside the window, with the selected tab on screen.
     for (const strip of strips) {
@@ -143,12 +231,6 @@ test("the Games tab fits every width: scrolling strips, badges under the title, 
       });
       expect(state).toEqual({ oneRow: true, visible: true, inWindow: true });
     }
-
-    // The splits: one card to a row below 640px, two from 640px, four from 1280px; each card's four stats whole and in one row.
-    expect(await columns(splits)).toBe(phone ? 1 : width >= 1280 ? 4 : 2);
-    expect(await holdsContent(splits)).toBe(true);
-    const rows = await splits.evaluateAll((cards) => cards.map((card) => new Set([...card.querySelectorAll("dl > div")].map((stat) => Math.round(stat.getBoundingClientRect().top))).size));
-    expect(rows).toEqual([1, 1, 1, 1]);
 
     // The game table scrolls in its own region (a keyboard can reach it) with the opponent pinned.
     await expect(table).toHaveAttribute("tabindex", "0");
@@ -166,8 +248,8 @@ test("the Games tab fits every width: scrolling strips, badges under the title, 
     if (scrolls) expect(pinned.moved).toBeLessThan(1);
     if (phone) expect(pinned.width).toBeLessThan(pinned.panel * 0.4);
 
-    // Scrolled cells never show beside or over the pinned column (the PTS and PIR numbers sit above their bars, which must not
-    // lift them above it): at several scroll positions, every point across the pinned cell belongs to it.
+    // Scrolled cells never show beside or over the pinned column: at several scroll positions, every point across the pinned
+    // cell belongs to it.
     if (scrolls) {
       const leaks = await table.evaluate((el) => {
         el.scrollIntoView({ block: "center" });
@@ -198,10 +280,10 @@ test("the Games tab fits every width: scrolling strips, badges under the title, 
     const crestShown = await table.locator("tbody td:first-child img").first().evaluate((img) => img.getBoundingClientRect().width > 0).catch(() => false);
     if (phone) expect(crestShown).toBe(false);
 
-    // The PTS and PIR bars are drawn from 640px only.
-    const bars2 = await table.locator(".stat-bar-cell .bar").first().evaluate((el) => getComputedStyle(el).display);
-    expect(bars2 === "none").toBe(phone);
-    expect(await page.getByText("The bars in the PTS and PIR columns compare the games shown.").isVisible()).toBe(!phone);
+    // The lines under PTS and PIR are drawn from 640px only.
+    const line = await table.locator(".bar-line").first().evaluate((el) => getComputedStyle(el).display);
+    expect(line === "none").toBe(phone);
+    expect(await page.getByText("The lines under PTS and PIR compare the games shown.").isVisible()).toBe(!phone);
   });
 
   // Arrow keys move between the phase tabs.
@@ -215,18 +297,36 @@ test("the Games tab fits every width: scrolling strips, badges under the title, 
 test("the Games tab states fit a phone: a few games, none, no match for the filter, show all, failing", async ({ page }) => {
   test.setTimeout(120_000);
   const player = await veteranPlayer(page);
-  await page.setViewportSize({ width: 320, height: HEIGHT });
 
-  // Three games, all lost: no Phase strip, and "Wins" matches nothing.
-  await mockLog(page, await logFor(page, player, { count: 3, lossEvery: 1 }));
+  // Three games, all lost, the first without a field-goal attempt: no Phase strip, and "Wins" matches nothing.
+  const few = await logFor(page, player, { count: 3, lossEvery: 1 });
+  Object.assign(few.games[0], { fieldGoalsAttempted2: "0", fieldGoalsMade2: "0", fieldGoalsAttempted3: "0", fieldGoalsMade3: "0" });
+  // A season without advanced numbers.
+  for (const game of few.games) game.advanced = null;
+  await mockLog(page, few);
   await openTab(page, player.href, "Games");
   await expect(page.getByRole("heading", { name: "How each game went" })).toBeVisible({ timeout: 60_000 });
+
+  // A few games fill the chart's width at 1280px rather than leaving it empty.
+  const fill = await page.locator("#player-games-bars").evaluate((el) => ({ box: el.clientWidth, list: el.querySelector("ul").getBoundingClientRect().width }));
+  expect(fill.list).toBeGreaterThan(fill.box - 2);
+  // FG% without an attempt: a dash and no bar.
+  await page.getByRole("tab", { name: "FG%", exact: true }).click();
+  expect(await barParts(chartBar(page, 0))).toMatchObject({ text: "—", hasBar: false });
+  expect((await barParts(chartBar(page, 1))).hasBar).toBe(true);
+
+  await page.setViewportSize({ width: 320, height: HEIGHT });
   await expect(page.getByRole("tablist", { name: "Phase" })).toHaveCount(0);
+  // Without advanced numbers there is no Basic / Advanced switch.
+  await expect(page.getByRole("tablist", { name: "Box score numbers" })).toHaveCount(0);
   await expectNoSidewaysScroll(page);
-  expect(await holdsContent(page.locator("#player-games-panel section.panel, #player-games-panel > div.grid > div"))).toBe(true);
+  expect(await holdsContent(page.locator("#player-games-panel section.panel"))).toBe(true);
+  // No wins: the split's Wins row is all dashes.
+  const wins = page.getByRole("region", { name: "Splits, per game" }).locator("tbody tr").filter({ hasText: "Wins" });
+  await expect(wins.locator("td").nth(1)).toHaveText("0");
+  await expect(wins.locator("td").nth(2)).toHaveText("—");
   await page.getByRole("tab", { name: "Wins", exact: true }).click();
   await expect(page.getByText("No games match this filter.")).toBeVisible();
-  await expect(page.getByText("No games.").first()).toBeVisible();
   await expectNoSidewaysScroll(page);
 
   // A long log: "Show all" and "Show fewer".

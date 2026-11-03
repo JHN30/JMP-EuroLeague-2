@@ -58,7 +58,12 @@ export const ROSTER_SUMMARY_TIPS = {
   Players: "Players who have appeared for the club in this phase",
   "Average age": "Average age of the players, in years",
   "Average height": "Average height of the players",
+  "Average weight": "Average weight of the players",
   Nationalities: "Different countries the players come from",
   "Points of the top 3 scorers": "Points per game of the club's three best scorers added together",
   "Players on 15+ minutes": "Players averaging 15 or more minutes a game",
+  Continuity: "The share of the club's minutes played by players who were also on its roster last season",
+  "Top scorer's share": "The share of the club's points scored by its top scorer",
+  "Top three's share": "The share of the club's points scored by its three top scorers",
+  "Players on 10+ points": "Players averaging 10 or more points a game",
 };

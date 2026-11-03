@@ -282,12 +282,51 @@ test.describe("states and long names at 320px", () => {
 test("every statistic row of the team comparison has a hover tip", async ({ page }) => {
   test.setTimeout(120_000);
   const { slug, teams } = await liveSeason(page);
-  const rowNames = page.locator("main span.text-xs.font-bold.tracking-wide.uppercase");
-  // The Overview has no statistic rows: its home and away records are one line under each club's form.
-  for (const tab of ["Statistics", "Rosters"]) {
+  // The Overview has no statistic rows: its home and away records are one line under each club's form. The name is each row's first cell.
+  for (const [tab, region] of [["Statistics", "Statistics compared"], ["Rosters", "Rosters compared"]]) {
     await openTab(page, slug, teams, tab);
+    const rowNames = page.getByRole("region", { name: region }).locator("li > span:first-child");
     await expect(rowNames.first()).toBeVisible({ timeout: 30_000 });
     expect(await rowNames.count()).toBeGreaterThan(1);
-    await expect(page.locator("main span.text-xs.font-bold.tracking-wide.uppercase:not(:has(.header-tip-label))")).toHaveCount(0);
+    await expect(page.getByRole("region", { name: region }).locator("li > span:first-child:not(:has(.header-tip-label))")).toHaveCount(0);
+  }
+});
+
+test("the Rosters tab compares the squads, the positions and the continuity, with the players who have not played folded away", async ({ page }) => {
+  test.setTimeout(90_000);
+  const { slug, teams } = await liveSeason(page);
+  await openTab(page, slug, teams, "Rosters");
+  const profile = page.getByRole("region", { name: "Rosters compared" });
+  await expect(profile.locator("li").first()).toBeVisible({ timeout: 30_000 });
+  for (const label of ["Players", "Average age", "Average height", "Average weight", "Nationalities", "Players on 15+ minutes", "Points of the top 3 scorers", "Top scorer's share", "Top three's share", "Players on 10+ points"]) {
+    await expect(profile.locator("li", { hasText: label }).first()).toBeVisible();
+  }
+  // Continuity once last season's rosters are in: a share of minutes for each club.
+  const continuity = profile.locator("li", { hasText: "Continuity" });
+  await expect(continuity).toHaveCount(1, { timeout: 30_000 });
+  await expect(continuity).toHaveText(/\d+%.*\d+%$/);
+
+  // Guards, forwards and centers, each with both clubs' best player and the group's facts.
+  const positions = page.getByRole("region", { name: "Position matchups" }).locator("li");
+  await expect(positions).toHaveCount(3);
+  for (const [index, title] of ["GUARDS", "FORWARDS", "CENTERS"].entries()) {
+    await expect(positions.nth(index)).toContainText(title, { ignoreCase: true });
+    await expect(positions.nth(index)).toContainText("Share of minutes");
+    await expect(positions.nth(index)).toContainText("Average weight");
+  }
+  const matchup = positions.getByRole("link").first();
+  if (await matchup.count()) await expect(matchup).toHaveAttribute("href", /\/compare\?view=players&playerA=[^&]+&playerB=[^&]+$/);
+
+  // A roster's players with no games sit under a button that shows them, and hides them again.
+  const toggle = page.getByRole("button", { name: /^Show \d+ who haven't played$/ }).first();
+  if (await toggle.count()) {
+    const hidden = Number((await toggle.textContent()).match(/\d+/)[0]);
+    // The panel is found by either label, so it stays the same once the button reads "Hide".
+    const table = page.locator("main .panel", { has: page.getByRole("button", { name: /who haven't played$/ }) }).first().locator("tbody tr");
+    const before = await table.count();
+    await toggle.click();
+    await expect(table).toHaveCount(before + hidden);
+    await page.getByRole("button", { name: `Hide the ${hidden} who haven't played` }).click();
+    await expect(table).toHaveCount(before);
   }
 });

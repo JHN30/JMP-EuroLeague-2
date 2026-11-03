@@ -338,9 +338,38 @@ export function ImpactRowsSkeleton() {
 export function RostersSkeleton() {
   return (
     <div aria-hidden="true" className="flex flex-col gap-6">
-      <div className="panel p-3">
-        <PairStrip />
-        <ComparisonRows rows={6} rowClassName="h-[4.6rem]" />
+      {/* The squads (two groups of thin rows) beside the three position matchups from xl. */}
+      <div className="grid gap-6 xl:grid-cols-2">
+        <div className="panel p-4">
+          <div className="skeleton mb-3 h-6 w-56" />
+          {[7, 4].map((rows, group) => (
+            <div key={group} className="mb-4 last:mb-0">
+              <div className="skeleton mb-1 h-5 w-28" />
+              {range(rows).map((index) => (
+                <div key={index} className="flex h-9 items-center gap-2 border-b border-base-300 last:border-0">
+                  <div className="skeleton h-3.5 w-32" />
+                  <div className="skeleton ml-auto h-3.5 w-10" />
+                  <div className="skeleton h-2 flex-1 rounded-full max-sm:hidden" />
+                  <div className="skeleton h-2 flex-1 rounded-full max-sm:hidden" />
+                  <div className="skeleton h-3.5 w-10" />
+                </div>
+              ))}
+            </div>
+          ))}
+        </div>
+        <div className="panel p-4">
+          <div className="skeleton mb-3 h-6 w-56" />
+          {range(3).map((index) => (
+            <div key={index} className="border-b border-base-300 py-3 last:border-0">
+              <div className="skeleton mb-2 h-3 w-20" />
+              <div className="mb-2 flex justify-between">
+                <div className="skeleton h-8 w-36" />
+                <div className="skeleton h-8 w-36" />
+              </div>
+              <div className="skeleton mx-auto h-20 w-56" />
+            </div>
+          ))}
+        </div>
       </div>
       <div>
         <HeadWithNote title="w-52" />
@@ -351,7 +380,7 @@ export function RostersSkeleton() {
           <div key={side} className="panel p-3">
             <div className="skeleton mb-3 h-9 w-40" />
             <div className="skeleton h-8 w-full" />
-            <ListRows rows={18} rowClassName="h-12 max-sm:h-10" />
+            <ListRows rows={15} rowClassName="h-10" />
           </div>
         ))}
       </div>

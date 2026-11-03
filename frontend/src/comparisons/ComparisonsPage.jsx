@@ -18,6 +18,7 @@ import BackLink from "../lib/BackLink";
 import { PLAYER_STAT_TIPS } from "./statTips";
 import CompareFixtures, { ComparisonContext } from "./CompareFixtures";
 import CompareSkeleton, { PlayerStatsSkeleton } from "./CompareSkeleton";
+import CompareSuggestions from "./CompareSuggestions";
 import PickerPanel, { PickerImage, PickerOption } from "./PickerPanel";
 import PlayerPairHeader from "./PlayerPairHeader";
 import TeamPairHeader from "./TeamPairHeader";
@@ -546,6 +547,14 @@ function ComparisonsBody({
     persistEntities("teams", home, road, game.gameCode);
   }
 
+  // A suggested pair or star matchup on the Players tab: both players at once, as a picked game opens its two clubs.
+  function handlePickPlayers(a, b) {
+    toTop();
+    setEntityA(a);
+    setEntityB(b);
+    persistEntities("players", a, b);
+  }
+
   function handleBack() {
     toTop();
     setEntityA(null);
@@ -582,7 +591,8 @@ function ComparisonsBody({
     </div>
   );
 
-  // Nothing chosen yet: the games of the coming round and the pickers for any two teams (or players).
+  // Nothing chosen yet: the games of the coming round and the pickers for any two teams, or the round's star matchups, the suggested pairs and
+  // the pickers for any two players.
   if (!bothSelected) {
     return (
       <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3, ease: EASE_OUT }}>
@@ -611,7 +621,14 @@ function ComparisonsBody({
               </Panel>
             </div>
           ) : (
-            playerPickers
+            <div className="flex flex-col gap-6">
+              <CompareSuggestions seasonCode={seasonCode} onPick={handlePickPlayers} />
+              <Panel className="p-4">
+                <p className="eyebrow mb-0.5">ANY TWO PLAYERS</p>
+                <h2 className="mb-3 text-lg font-bold">Compare any two players</h2>
+                {playerPickers}
+              </Panel>
+            </div>
           )}
         </div>
       </motion.div>

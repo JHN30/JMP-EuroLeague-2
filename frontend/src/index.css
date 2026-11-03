@@ -1057,11 +1057,14 @@ button {
   justify-content: center;
   margin-top: 0.3rem;
 }
-/* Five badges have to fit a club's column also with two cards side by side (768px), so they are compact at every width. */
-.fixture-form .flex {
+/* Five badges have to fit a club's column also with two cards side by side (768px), so they are compact at every width. The Compare page's
+   upcoming games (`compact-form`) use the same size. */
+.fixture-form .flex,
+.compact-form .flex {
   gap: 0.125rem;
 }
-.fixture-form .badge {
+.fixture-form .badge,
+.compact-form .badge {
   padding-inline: 0.2rem;
   font-size: 0.6rem;
 }

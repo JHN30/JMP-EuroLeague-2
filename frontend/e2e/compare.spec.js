@@ -75,6 +75,54 @@ test("two players open a comparison with a profile, advanced numbers and the way
   expect(errors).toEqual([]);
 });
 
+test("the Players tab suggests pairs of leaders and the round's star matchups, each opening its comparison", async ({ page }) => {
+  await page.goto("/2026/compare?view=players");
+  const pairs = page.getByRole("region", { name: "Suggested pairs" }).getByRole("button");
+  await expect(pairs).toHaveCount(4, { timeout: 30_000 });
+  for (const [index, stat] of ["points", "pir", "rebounds", "assists"].entries()) {
+    await expect(pairs.nth(index)).toHaveAttribute("aria-label", new RegExp(`^Compare .+ and .+, the top two in ${stat} per game$`));
+  }
+  // The leader comes first: the two values of a pair, best first.
+  const values = (await pairs.first().locator("span.font-black").allInnerTexts()).map(Number);
+  expect(values[0]).toBeGreaterThanOrEqual(values[1]);
+
+  // The coming round's games, each side's best player, as one row per game.
+  const { games: next } = await (await page.request.get("http://localhost:3000/api/seasons/2026/games?status=scheduled&order=asc&limit=1")).json();
+  const matchups = page.getByRole("region", { name: /^Round|^Star/ }).getByRole("button");
+  if (next.length > 0) {
+    await expect(page.getByText("STAR MATCHUPS")).toBeVisible();
+    expect(await matchups.count()).toBeGreaterThan(0);
+  }
+
+  // A pair opens its comparison, and the way back returns to the suggestions.
+  await pairs.first().click();
+  await expect(page).toHaveURL(/view=players&playerA=[^&]+&playerB=[^&]+/);
+  await expect(page.getByRole("tablist", { name: "Comparison section" })).toBeVisible();
+  await expect(page.getByRole("region", { name: "Suggested pairs" })).toHaveCount(0);
+  await page.getByRole("link", { name: "Back to Players" }).click();
+  await expect(pairs).toHaveCount(4);
+  if (next.length > 0) {
+    await matchups.first().click();
+    await expect(page).toHaveURL(/view=players&playerA=[^&]+&playerB=[^&]+/);
+    await expect(page.getByRole("tablist", { name: "Comparison section" })).toBeVisible();
+  }
+});
+
+test("the round's game cards show both clubs' last five results from 640px", async ({ page }) => {
+  const { games: next } = await (await page.request.get("http://localhost:3000/api/seasons/2026/games?status=scheduled&order=asc&limit=1")).json();
+  test.skip(next.length === 0 || next[0].phaseCode !== "RS", "the form goes with the regular-season records");
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await page.goto("/2026/compare");
+  const cards = page.locator('main button[aria-label^="Compare "]');
+  await expect(cards.first()).toBeVisible({ timeout: 30_000 });
+  const forms = cards.first().locator('[aria-label^="Last "]');
+  await expect(forms).toHaveCount(2);
+  await expect(forms.first()).toHaveAttribute("aria-label", /^Last [1-5]: (win|loss)(, (win|loss))*$/);
+  // Below 640px a club's column is too narrow for five results.
+  await page.setViewportSize({ width: 390, height: 900 });
+  await expect(forms.first()).toBeHidden();
+});
+
 test("the team and player pickers work from the keyboard", async ({ page }) => {
   await page.goto("/2025/compare");
   const teamA = page.getByRole("combobox", { name: "Team A" });
@@ -149,7 +197,7 @@ test("a team comparison names both clubs in a header over every section, each op
 
 test("a player comparison has no club header", async ({ page }) => {
   await page.goto("/2025/compare?view=players");
-  await expect(page.getByRole("heading", { name: "Compare" })).toBeVisible({ timeout: 30_000 });
+  await expect(page.getByRole("heading", { name: "Compare", exact: true })).toBeVisible({ timeout: 30_000 });
   await expect(page.getByRole("region", { name: "Clubs compared" })).toHaveCount(0);
 });
 

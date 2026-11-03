@@ -135,6 +135,23 @@ test("an opened comparison keeps its top tidy: the game info and links, a scroll
   });
 });
 
+test("the Players tab's suggested pairs and star matchups fit at every width", async ({ page }) => {
+  test.setTimeout(90_000);
+  const { slug } = await liveSeason(page);
+  await page.goto(`/${slug}/compare?view=players`);
+  const pairs = page.getByRole("region", { name: "Suggested pairs" }).getByRole("button");
+  await expect(pairs).toHaveCount(4, { timeout: 30_000 });
+  const rows = page.locator('main section[aria-labelledby="star-matchups"] button');
+  await atWidths(page, WIDTHS, async (width) => {
+    // One column of pairs below 640px, two from 640px, four from 1280px: the cards sharing the first one's top.
+    const perRow = await pairs.evaluateAll((els) => els.filter((el) => Math.abs(el.getBoundingClientRect().top - els[0].getBoundingClientRect().top) < 2).length);
+    expect(perRow).toBe(width >= 1280 ? 4 : width >= 640 ? 2 : 1);
+    expect(await holdsContent(pairs)).toBe(true);
+    if (await rows.count()) expect(await holdsContent(rows)).toBe(true);
+    await expectNoSidewaysScroll(page);
+  });
+});
+
 test("a finished season has no games panel, and a failing games list says so, at 320px", async ({ page }) => {
   const { slug } = await liveSeason(page);
   await page.setViewportSize({ width: 320, height: HEIGHT });

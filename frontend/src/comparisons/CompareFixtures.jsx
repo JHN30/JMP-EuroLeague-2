@@ -1,20 +1,21 @@
 import { useQuery } from "@tanstack/react-query";
 import { motion } from "motion/react";
 import { Link } from "react-router";
-import { getGame, getSeasonGames, getSeasonStandings } from "../lib/api";
+import { getGame, getSeasonStandings } from "../lib/api";
 import AsyncState from "../lib/AsyncState";
 import { UpcomingGamesSkeleton } from "./CompareSkeleton";
+import { useUpcomingRound } from "./useUpcomingRound";
 import { formatDateTime, formatShortDate, formatTimeOfDay } from "../lib/format";
 import { shortTeamName, teamCode } from "../games/gameUtils";
 import { listContainer, listItem, wideCardHover } from "../lib/motion";
 import RevealImage from "../lib/RevealImage";
 import ShortLabel from "../lib/ShortLabel";
 import Panel from "../lib/Panel";
+import { FormCell } from "../standings/standingsCells";
 
-// A round never holds more than a handful of games; this is the API's page cap (the Games page asks the same).
-const ROUND_GAME_LIMIT = 100;
-
-function Side({ team, record, alignEnd }) {
+// A club's side of a game: crest, code (the name from sm), and under it the regular-season record with the last five results beside it
+// (oldest first) from sm; below sm a club's column is too narrow for five results, so the record stands alone.
+function Side({ team, record, form, alignEnd }) {
   const crest = team?.crestUrl ? (
     <RevealImage src={team.crestUrl} className="h-7 w-7 flex-none object-contain sm:h-8 sm:w-8" />
   ) : (
@@ -27,7 +28,16 @@ function Side({ team, record, alignEnd }) {
         <span className="block truncate text-sm font-semibold leading-tight">
           <ShortLabel short={teamCode(team)} full={shortTeamName(team)} />
         </span>
-        {record ? <span className="muted block text-xs leading-tight">{record}</span> : null}
+        {record ? (
+          <span className={`muted flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-xs leading-tight ${alignEnd ? "justify-end" : ""}`}>
+            {record}
+            {form?.length ? (
+              <span className="compact-form max-sm:hidden">
+                <FormCell form={form} />
+              </span>
+            ) : null}
+          </span>
+        ) : null}
       </span>
     </span>
   );
@@ -36,10 +46,12 @@ function Side({ team, record, alignEnd }) {
 // One game as a compact row; choosing it opens the full comparison of its two clubs.
 function GameRow({ game, standingByClubCode, onPick }) {
   const hasScore = game.played && game.localScore != null && game.roadScore != null;
+  const standingOf = (team) => (team?.clubCode ? standingByClubCode.get(team.clubCode) : null);
   const recordOf = (team) => {
-    const basic = team?.clubCode ? standingByClubCode.get(team.clubCode)?.basic : null;
+    const basic = standingOf(team)?.basic;
     return basic ? `${basic.gamesWon}-${basic.gamesLost}` : null;
   };
+  const formOf = (team) => [...(standingOf(team)?.form ?? [])].sort((a, b) => a.resultOrdinal - b.resultOrdinal).slice(-5);
   const localName = game.localTeam?.name ?? game.localTeam?.abbreviatedName ?? "the home team";
   const roadName = game.roadTeam?.name ?? game.roadTeam?.abbreviatedName ?? "the away team";
   const comparable = Boolean(game.localTeam?.clubCode && game.roadTeam?.clubCode);
@@ -51,9 +63,9 @@ function GameRow({ game, standingByClubCode, onPick }) {
         disabled={!comparable}
         aria-label={`Compare ${localName} and ${roadName}`}
         onClick={() => onPick(game)}
-        className="grid w-full grid-cols-[minmax(0,1fr)_4.25rem_minmax(0,1fr)] items-center gap-1.5 rounded-field border border-base-300 bg-base-100 px-2 py-2 sm:grid-cols-[minmax(0,1fr)_4.75rem_minmax(0,1fr)_1rem] sm:gap-2 sm:px-3 text-left transition-colors hover:border-primary hover:bg-base-200 disabled:cursor-not-allowed disabled:opacity-60"
+        className="grid h-full w-full grid-cols-[minmax(0,1fr)_4.25rem_minmax(0,1fr)] items-center gap-1.5 rounded-field border border-base-300 bg-base-100 px-2 py-2 sm:grid-cols-[minmax(0,1fr)_4.75rem_minmax(0,1fr)_1rem] sm:gap-2 sm:px-3 text-left transition-colors hover:border-primary hover:bg-base-200 disabled:cursor-not-allowed disabled:opacity-60"
       >
-        <Side team={game.localTeam} record={recordOf(game.localTeam)} />
+        <Side team={game.localTeam} record={recordOf(game.localTeam)} form={formOf(game.localTeam)} />
         <span className="flex flex-col items-center text-center leading-tight">
           {hasScore ? (
             <>
@@ -69,7 +81,7 @@ function GameRow({ game, standingByClubCode, onPick }) {
             </>
           )}
         </span>
-        <Side team={game.roadTeam} record={recordOf(game.roadTeam)} alignEnd />
+        <Side team={game.roadTeam} record={recordOf(game.roadTeam)} form={formOf(game.roadTeam)} alignEnd />
         <span aria-hidden="true" className="hidden text-primary sm:block">
           ›
         </span>
@@ -81,19 +93,7 @@ function GameRow({ game, standingByClubCode, onPick }) {
 // The round with the next game to play, as compact rows to pick a game from. The game picked is handed up. Once the season is
 // over there is no next game and nothing to show.
 export default function CompareFixtures({ seasonCode, onPick }) {
-  const nextQuery = useQuery({
-    queryKey: ["compare-next-game", seasonCode],
-    queryFn: () => getSeasonGames(seasonCode, { status: "scheduled", order: "asc", limit: 1 }),
-  });
-  const nextGame = nextQuery.data?.games[0] ?? null;
-  const phaseCode = nextGame?.phaseCode ?? null;
-  const roundNumber = nextGame?.roundNumber ?? null;
-
-  const gamesQuery = useQuery({
-    queryKey: ["fixtures", seasonCode, phaseCode, roundNumber],
-    queryFn: () => getSeasonGames(seasonCode, { phase: phaseCode, round: roundNumber, limit: ROUND_GAME_LIMIT, order: "asc" }),
-    enabled: Boolean(phaseCode) && roundNumber !== null,
-  });
+  const { nextQuery, gamesQuery, nextGame, phaseCode, roundNumber, games } = useUpcomingRound(seasonCode);
   // The records under the clubs are the regular-season ones, as on the Games page.
   const standingsQuery = useQuery({
     queryKey: ["standings", seasonCode, "RS"],
@@ -101,7 +101,6 @@ export default function CompareFixtures({ seasonCode, onPick }) {
     enabled: phaseCode === "RS",
   });
   const standingByClubCode = new Map(phaseCode === "RS" ? (standingsQuery.data?.standings ?? []).map((entry) => [entry.clubCode, entry]) : []);
-  const games = gamesQuery.data?.games ?? [];
 
   if (nextQuery.isLoading || (nextGame && gamesQuery.isLoading)) {
     return <AsyncState status="loading" label="Loading games" skeleton={<UpcomingGamesSkeleton />} />;

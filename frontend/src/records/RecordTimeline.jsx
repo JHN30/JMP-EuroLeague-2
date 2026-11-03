@@ -111,7 +111,7 @@ export default function RecordTimeline({ bySeason, progression, overallKey, labe
   }, [slots, label, percent, theme, reducedMotion, canFollow, navigate]);
 
   return (
-    <Panel as="section" className="p-5">
+    <Panel as="section" id="records-timeline" className="h-full p-5">
       <PanelHeader kicker="TIMELINE" title="Best of each season" />
       <p className="muted mt-1 text-sm">{summaryText(progression, lowerIsBetter)}</p>
       <div className="relative mt-4 h-56 w-full sm:h-72">

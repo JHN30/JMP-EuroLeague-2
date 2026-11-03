@@ -120,7 +120,7 @@ export function pickKey(entries, value, fallback) {
 // One record row as the page shows it. The picture of a player is the headshot (`portraitUrl`), of a club its crest (`crestUrl`); the second line is
 // a player's club (with its crest beside it) or the opponent of a team game. A part the row does not have is null. `shortName` and
 // `shortLine` are the same two with the club's TV code, for the places with little room (below sm). `format` is the reply's: how the values
-// read, and `change` writes a difference between two of them.
+// read, and `change` writes a difference between two of them. `holderKey` is the same for every row of one player or club.
 export function describeRecord(family, format, row) {
   const slug = seasonSlug(row.seasonCode);
   const isClub = FAMILIES.find((entry) => entry.key === family)?.club ?? false;
@@ -130,6 +130,7 @@ export function describeRecord(family, format, row) {
   const write = VALUE_FORMATS[format];
   return {
     key: `${row.seasonCode}-${row.personKey ?? row.clubCode}-${row.gameCode ?? "season"}`,
+    holderKey: row.personKey ?? row.clubCode ?? null,
     name: isClub ? (clubName ?? row.clubCode ?? "-") : displayName(row.playerName),
     to: isClub ? (row.clubCode ? `/${slug}/teams/${row.clubCode}` : null) : row.personKey ? `/${slug}/players/${row.personKey}` : null,
     isClub,

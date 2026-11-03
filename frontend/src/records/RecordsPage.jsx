@@ -1,6 +1,6 @@
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { motion } from "motion/react";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useParams } from "react-router";
 import { useLiveSearchParams } from "../lib/useLiveSearchParams";
 import { getPlayerSeasonRecords, getSingleGameRecords, getTeamGameRecords, getTeamSeasonRecords } from "../lib/api";
@@ -21,6 +21,10 @@ import { DEFAULT_FAMILY, DEFAULT_METRIC, FAMILIES, GROUPS, allMetrics, describeR
 
 const PANEL_ID = "records-panel";
 
+// Who a record counts, said once on the record book (the API's rule in backend/src/db/season-records.ts).
+const RULE_NOTE =
+  "Per-game and rate records count players and clubs with at least 67% of their season's regular-season games (23 of 34), and player rates also 10+ minutes a game. Totals and single games count everyone.";
+
 const PER_CHOICES = [
   { key: "total", label: "Totals" },
   { key: "game", label: "Per game" },
@@ -36,8 +40,8 @@ async function fetchRecords(seasonCode, family, metric, per) {
 }
 
 // The Podium and the Top 50 read `records`, the overall best 50. The timeline reads the API's own lists over every loaded season (the best of
-// each season and the progression), so a season that never reaches the best 50 still shows in it.
-function RecordsContent({ data }) {
+// each season and the progression), so a season that never reaches the best 50 still shows in it. From xl the podium sits beside the timeline.
+function RecordsContent({ data, seasonCode, unique, onUniqueChange }) {
   const [records, bySeason, progression] = useMemo(() => {
     const describe = (rows) => (rows ?? []).map((row) => describeRecord(data.family, data.format, row));
     return [describe(data.records), describe(data.bySeason), describe(data.progression)];
@@ -52,21 +56,30 @@ function RecordsContent({ data }) {
   const holders = FAMILIES.find((entry) => entry.key === data.family)?.club ? "clubs" : "players";
   return (
     <motion.div key={`${data.family}-${data.metricKey}-${data.per}`} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3, ease: EASE_OUT }}>
-      {/* The minimum is for a 34-game regular season; each season keeps the same share of its own (22 of 38, 6 of 10). `volume` is a further
-          minimum of minutes or shots, worded by the API. */}
+      {/* The minimum is two thirds of a season's regular-season games (the group stage and the Top 16 where there was one); each row has its
+          season's minimum. `volume` is a further minimum of minutes or shots, worded by the API. */}
       {data.minGames || data.lowerIsBetter || data.volume ? (
-        <p className="muted mb-4 text-sm">
+        <p className="muted mb-3 text-xs">
           {data.lowerIsBetter ? <span>Lower is better. </span> : null}
-          {data.minGames ? `Counts ${holders} with at least ${data.minGames} games of a 34-game regular season, or the same share of a shorter or longer one.` : null}
+          {data.minGames ? `Counts ${holders} with at least 67% of their season's regular-season games.` : null}
           {data.volume ? <span> Also needs {data.volume}.</span> : null}
         </p>
       ) : null}
-      <Podium records={records} label={data.label} />
-      <div className="mt-6">
+      <div className="grid grid-cols-[minmax(0,1fr)] gap-4 xl:grid-cols-[20rem_minmax(0,1fr)]">
+        <Podium records={records} bySeason={bySeason} progression={progression} seasonCode={seasonCode} />
         <RecordTimeline bySeason={bySeason} progression={progression} overallKey={records[0].key} label={data.label} lowerIsBetter={data.lowerIsBetter} percent={data.format === "percent"} />
       </div>
-      <div className="mt-6">
-        <Board family={data.family} metricKey={data.metricKey} label={data.label} records={records} lowerIsBetter={data.lowerIsBetter} />
+      <div className="mt-4">
+        <Board
+          family={data.family}
+          metricKey={data.metricKey}
+          label={data.label}
+          records={records}
+          lowerIsBetter={data.lowerIsBetter}
+          seasonCode={seasonCode}
+          unique={unique}
+          onUniqueChange={onUniqueChange}
+        />
       </div>
     </motion.div>
   );
@@ -115,6 +128,8 @@ function RecordsDetail({ seasonCode, params, setParams }) {
     setAddress((live) => ({ type: [live.family, null], metric: [key, null], per: keepPer(live, live.family, live.metrics.find((entry) => entry.key === key)?.group) }));
   const choosePer = (key) => setAddress((live) => ({ type: [live.family, null], metric: [live.metric, null], per: [key, "total"] }));
   const metricGroups = GROUPS.map((entry) => ({ label: entry.label, options: metricsOf(family, entry.key) }));
+  // One per player or club stays on while the record type and metric change, so it lives here rather than in the Top 50.
+  const [unique, setUnique] = useState(false);
 
   // The rows stay on screen while the next choice loads; the full loading state is only for the very first load.
   const query = useQuery({
@@ -128,12 +143,14 @@ function RecordsDetail({ seasonCode, params, setParams }) {
       <BackLink to={`/${seasonCode}/records`} label="Record book" />
       <PageHeader kicker="ARCHIVE" title="Records" description={<p className="muted">{familyInfo.description}</p>} />
 
-      <TabStrip scrolling ariaLabel="Record type" level={1} panelId={PANEL_ID} activeKey={family} onChange={chooseFamily} className="mb-4 w-fit" tabs={FAMILIES} />
-      {/* One row of choices under the record type: the metric (its traditional and advanced ones in sections) and, for the season records
-          of the traditional metrics only, totals or per game. Below sm the toggle wraps under the select. */}
-      <div className="mb-6 flex flex-wrap items-end gap-3">
-        <ViewSelect className="w-full sm:w-72" label="Metric" value={metric} groups={metricGroups} onChange={chooseMetric} />
-        {hasPer ? <ToggleButtons label="Show" ariaLabel="Totals or per game" choices={PER_CHOICES} value={per} onChange={choosePer} panelId={PANEL_ID} /> : null}
+      {/* The record type, then the metric (its traditional and advanced ones in sections) and, for the season records of the traditional
+          metrics only, totals or per game. From lg they share one row, the type on the left; below sm the toggle wraps under the select. */}
+      <div className="mb-4 flex flex-col gap-4 lg:flex-row lg:flex-wrap lg:items-end lg:justify-between">
+        <TabStrip scrolling ariaLabel="Record type" level={1} panelId={PANEL_ID} activeKey={family} onChange={chooseFamily} className="w-fit" tabs={FAMILIES} />
+        <div className="flex flex-wrap items-end gap-3">
+          <ViewSelect className="w-full sm:w-72" label="Metric" value={metric} groups={metricGroups} onChange={chooseMetric} />
+          {hasPer ? <ToggleButtons label="Show" ariaLabel="Totals or per game" choices={PER_CHOICES} value={per} onChange={choosePer} panelId={PANEL_ID} /> : null}
+        </div>
       </div>
 
       <div id={PANEL_ID} aria-busy={query.isPlaceholderData} className={query.isPlaceholderData ? "opacity-60 transition-opacity" : "transition-opacity"}>
@@ -142,7 +159,7 @@ function RecordsDetail({ seasonCode, params, setParams }) {
         ) : !query.data ? (
           <AsyncState status="loading" label="Loading archive records" skeleton={<RecordDetailSkeleton />} />
         ) : (
-          <RecordsContent data={query.data} />
+          <RecordsContent data={query.data} seasonCode={seasonCode} unique={unique} onUniqueChange={setUnique} />
         )}
       </div>
     </div>
@@ -161,7 +178,12 @@ export default function RecordsPage() {
       <PageHeader
         kicker="ARCHIVE"
         title="Records"
-        description={<p className="muted">The best of every loaded season. Open a record for its Top 50, its timeline and every season.</p>}
+        description={
+          <>
+            <p className="muted">The best of every loaded season. Open a record for its Top 50, its timeline and every season.</p>
+            <p className="muted mt-1 text-sm">{RULE_NOTE}</p>
+          </>
+        }
       />
       <RecordPicker seasonCode={seasonCode} />
       <section aria-labelledby="popular-records">

@@ -6,16 +6,15 @@ import { catalogRead, SUPPORTED_SEASONS } from "./season-catalog";
 import { seasonFormat } from "./season-format-registry";
 import { getTeams } from "./season-identities";
 import { gamePlayerStats, gameTeamStats, games, seasonStatsTraditional } from "./season-schema";
-import { getLoadedSeasonsRecordRows, getSeasonRecordRows, type RecordMetric } from "./season-stats";
+import { getLoadedSeasonsRecordRows, getSeasonRecordRows, regularSeasonGames, type RecordMetric } from "./season-stats";
 
 // The records the API serves: four kinds, each with the metrics it can rank. A metric is a key, a label and a group; the routes read this
 // list, so a new record is one entry here and one value source below.
 export const RECORD_KINDS = ["player-seasons", "single-games", "team-seasons", "team-games"] as const;
 export type RecordKind = (typeof RECORD_KINDS)[number];
 export type RecordGroup = "traditional" | "advanced";
-// `minGames`: a record of a season's rating counts only players or clubs with at least that many games, so a season still being played does not
-// put a club at the top after a few games. It is the minimum of a 34-game regular season; each season scales it to its own length
-// (seasonMinGames), and every row says the minimum of its season.
+// `minGames`: a record of a season's rate counts only players or clubs with at least two thirds of the season's regular-season games. It is
+// the minimum of a 34-game regular season; each season has its own (seasonMinGames), and every row says the minimum of its season.
 // `lowerIsBetter` ranks from the lowest (the best defense allows the fewest points). `format` says how the page writes the value: whole
 // numbers for totals, one decimal for rates, a sign for margins, and a stored fraction as a percentage.
 // `volume` names a minimum beyond games (minutes, shots) for the page to say.
@@ -26,15 +25,20 @@ export const RECORD_PERS = ["total", "game"] as const;
 export type RecordPer = (typeof RECORD_PERS)[number];
 
 const LIMIT = 50;
-// 20 of a 34-game regular season leaves a finished season whole and keeps a season in progress out until it is past the middle.
-export const MIN_SEASON_GAMES = 20;
+// Two thirds of a season's regular-season games, rounded up: 23 of 34, 26 of 38, 16 of a 10-game group stage and a 14-game Top 16. That is
+// stricter than the Leaders boards' half, since a record stands against every season. The regular season is the group stage and the Top 16
+// where there was one; the postseason counts neither toward the minimum nor toward a player's games. It counts the whole schedule rather
+// than the games played so far, so a season in progress stays out of the all-time lists until two thirds of it are played. The answer's
+// `minGames` is the minimum of a 34-game season, and every row says the minimum of its own.
 const REFERENCE_SEASON_GAMES = 34;
+const minimumOf = (regularSeason: number) => Math.ceil((regularSeason * 2) / 3);
+export const MIN_SEASON_GAMES = minimumOf(REFERENCE_SEASON_GAMES);
 
-// The same share of the season's own regular season (a club's games in its group): 22 of 38, 24 of 40, 6 of 10. A season without a
-// format keeps the 34-game minimum.
-export function seasonMinGames(seasonCode: string, minGames: number): number {
-  const gamesPerClub = seasonFormat(seasonCode)?.stages.find((stage) => stage.code === "RS")?.gamesPerClub ?? null;
-  return gamesPerClub === null ? minGames : Math.round((minGames * gamesPerClub) / REFERENCE_SEASON_GAMES);
+// A season's own minimum, from a club's games in the group stage and the Top 16. A season without a format counts 34 games.
+function seasonMinGames(seasonCode: string): number {
+  const stages = seasonFormat(seasonCode)?.stages.filter((stage) => stage.code === "RS" || stage.code === "TS") ?? [];
+  const regularSeason = stages.reduce((total, stage) => total + (stage.gamesPerClub ?? 0), 0) || REFERENCE_SEASON_GAMES;
+  return minimumOf(regularSeason);
 }
 const COMPETITION_CODE = "E";
 
@@ -91,20 +95,21 @@ const TEAM_GAME_ADVANCED: Array<[RecordMetricDef, PgColumn]> = [
 ];
 const columnOf = (catalogue: Array<[RecordMetricDef, PgColumn]>, key: string) => catalogue.find(([metric]) => metric.key === key)![1];
 
-// A player's season rate needs 10 minutes a game, and a shooting percentage also 4 field goal attempts a game (the Leaders boards' MINUTES
-// and FIELD_GOALS rules), so a few minutes or shots cannot set a record. Both read the same round row as the value.
+// Every advanced player record needs two thirds of the season's games. A rate also needs 10 minutes a game, and a
+// shooting percentage 5 field goal attempts a game as well (the Leaders boards' FIELD_GOALS rule), so a few minutes or shots cannot set a
+// record. Both read the same round row as the value.
 type PlayerVolume = "minutes" | "shooting";
-const PLAYER_VOLUME_TEXT: Record<PlayerVolume, string> = { minutes: "10+ minutes a game", shooting: "10+ minutes and 4+ field goal attempts a game" };
+const PLAYER_VOLUME_TEXT: Record<PlayerVolume, string> = { minutes: "10+ minutes a game", shooting: "10+ minutes and 5+ field goal attempts a game" };
 type PlayerRoundTable = typeof playerRoundRatings | typeof playerRoundWinShares | typeof playerRoundStats;
 type PlayerSeasonSource = { metric: RecordMetricDef; table: PlayerRoundTable; column: PgColumn; volume?: PlayerVolume };
 const playerSeason = (key: string, label: string, table: PlayerRoundTable, column: PgColumn, extra: Partial<RecordMetricDef> = {}, volume?: PlayerVolume): PlayerSeasonSource => ({
-  metric: { key, label, group: "advanced", ...extra, ...(volume ? { minGames: MIN_SEASON_GAMES, volume: PLAYER_VOLUME_TEXT[volume] } : {}) },
+  metric: { key, label, group: "advanced", minGames: MIN_SEASON_GAMES, ...extra, ...(volume ? { volume: PLAYER_VOLUME_TEXT[volume] } : {}) },
   table,
   column,
   volume,
 });
 const PLAYER_SEASON_ADVANCED: PlayerSeasonSource[] = [
-  playerSeason("per", "PER", playerRoundRatings, playerRoundRatings.per, { minGames: MIN_SEASON_GAMES }),
+  playerSeason("per", "PER", playerRoundRatings, playerRoundRatings.per),
   playerSeason("winShares", "Win Shares", playerRoundWinShares, playerRoundWinShares.winShares),
   playerSeason("offensiveWinShares", "Offensive Win Shares", playerRoundWinShares, playerRoundWinShares.offWinShares),
   playerSeason("defensiveWinShares", "Defensive Win Shares", playerRoundWinShares, playerRoundWinShares.defWinShares),
@@ -228,12 +233,13 @@ async function clubLooks(seasonCode: string) {
 
 // ---- Player seasons ----
 
-// An advanced player metric after the season's latest round (scope `all`, as the Leaders Advanced board reads them), for the players the
-// season statistics mark qualified, with the metric's minutes or shots a game, so that nobody sets a record in a handful of games.
+// An advanced player metric after the season's latest round (scope `all`, as the Leaders Advanced board reads them), for the players with two thirds
+// of the season's games and the metric's minutes or shots a game, so that nobody sets a record in a handful of games or minutes.
 async function advancedPlayerSeasonRows(seasonCode: string, key: string, minGames: number | undefined) {
   const { table, column, volume } = PLAYER_SEASON_ADVANCED.find((source) => source.metric.key === key)!;
+  const regular = regularSeasonGames(seasonCode);
   const minutes = volume ? sql`${table.secondsPlayed} >= 600 * ${table.gamesPlayed}` : undefined;
-  const shots = volume === "shooting" ? sql`${playerRoundStats.fieldGoalsAttempted} >= 4 * ${playerRoundStats.gamesPlayed}` : undefined;
+  const shots = volume === "shooting" ? sql`${playerRoundStats.fieldGoalsAttempted} >= 5 * ${playerRoundStats.gamesPlayed}` : undefined;
   const inSeason = and(eq(table.competitionCode, COMPETITION_CODE), eq(table.seasonCode, seasonCode), eq(table.scope, "all"));
   const [latest] = await catalogRead(() => db.select({ round: sql<number | null>`max(${table.roundNumber})` }).from(table).where(inSeason));
   if (latest?.round === null || latest?.round === undefined) return [];
@@ -246,7 +252,7 @@ async function advancedPlayerSeasonRows(seasonCode: string, key: string, minGame
       clubTvCodes: seasonStatsTraditional.clubTvCodes,
       playerImageUrl: seasonStatsTraditional.playerImageUrl,
       clubImageUrl: seasonStatsTraditional.clubImageUrl,
-      gamesPlayed: seasonStatsTraditional.gamesPlayed,
+      gamesPlayed: regular.games,
       value: column,
     })
       .from(table)
@@ -256,9 +262,9 @@ async function advancedPlayerSeasonRows(seasonCode: string, key: string, minGame
         eq(seasonStatsTraditional.personKey, table.personKey),
         eq(seasonStatsTraditional.phaseCode, "all"),
         eq(seasonStatsTraditional.mode, "accumulated"),
-        eq(seasonStatsTraditional.qualified, true),
       ))
-      .where(and(inSeason, eq(table.roundNumber, round), isNotNull(column), minutes, shots, minGames === undefined ? undefined : sql`${seasonStatsTraditional.gamesPlayed} >= ${minGames}`))
+      .leftJoin(regular, eq(regular.personKey, table.personKey))
+      .where(and(inSeason, eq(table.roundNumber, round), isNotNull(column), minutes, shots, minGames === undefined ? undefined : sql`coalesce(${regular.games}, 0) >= ${minGames}`))
       .orderBy(desc(column), asc(table.personKey))
       .limit(LIMIT),
   );
@@ -267,15 +273,15 @@ async function advancedPlayerSeasonRows(seasonCode: string, key: string, minGame
 async function playerSeasonRecords(metric: RecordMetricDef, per: RecordPer) {
   const perSeason = await Promise.all(
     SUPPORTED_SEASONS.map(async (seasonCode) => {
-      const minGames = metric.minGames === undefined ? undefined : seasonMinGames(seasonCode, metric.minGames);
-      // A per-game record needs the season's share of 20 games, as a rating does, so a few hot games cannot set one.
-      const perGameMinGames = per === "game" ? seasonMinGames(seasonCode, MIN_SEASON_GAMES) : undefined;
+      const minGames = metric.minGames === undefined ? undefined : seasonMinGames(seasonCode);
+      // A per-game record needs two thirds of the season's regular-season games, as a rating does, so a few hot games cannot set one.
+      const perGameMinGames = per === "game" ? seasonMinGames(seasonCode) : undefined;
       const rows =
         metric.group === "traditional" ? await getSeasonRecordRows(seasonCode, metric.key as RecordMetric, LIMIT, perGameMinGames) : await advancedPlayerSeasonRows(seasonCode, metric.key, minGames);
       return rows.map((player) => ({
-        // The games behind a rating or a per-game average, and the season's minimum.
+        // The regular-season games behind a rating or a per-game average, and the season's minimum.
         ...(minGames !== undefined && "gamesPlayed" in player ? { gamesPlayed: Number(player.gamesPlayed), minGames } : {}),
-        ...(perGameMinGames !== undefined ? { gamesPlayed: Number(player.gamesPlayed), minGames: perGameMinGames } : {}),
+        ...(perGameMinGames !== undefined && "regularGames" in player ? { gamesPlayed: Number(player.regularGames ?? 0), minGames: perGameMinGames } : {}),
         seasonCode,
         personKey: player.personKey,
         playerName: player.playerName,
@@ -351,6 +357,8 @@ async function singleGameRecords(metric: RecordMetricDef) {
 
 // ---- Team seasons ----
 
+// A club plays every game of its regular season, so its games so far meet the minimum once two thirds of a season in progress are played, and the
+// postseason never decides it.
 async function teamSeasonRecords(metric: RecordMetricDef, per: RecordPer) {
   if (metric.group === "advanced") {
     // A club's rating after the season's latest round (scope `all`), as the standings read it.
@@ -361,7 +369,7 @@ async function teamSeasonRecords(metric: RecordMetricDef, per: RecordPer) {
         const [latest] = await catalogRead(() => db.select({ round: sql<number | null>`max(${standingsStats.roundNumber})` }).from(standingsStats).where(inSeason));
         if (latest?.round === null || latest?.round === undefined) return [];
         const round = latest.round;
-        const minGames = metric.minGames === undefined ? undefined : seasonMinGames(seasonCode, metric.minGames);
+        const minGames = metric.minGames === undefined ? undefined : seasonMinGames(seasonCode);
         const [rows, looks] = await Promise.all([
           catalogRead(() =>
             db.select({ clubCode: standingsStats.clubCode, clubName: standingsStats.clubName, gamesPlayed: standingsStats.gamesPlayed, value: column })
@@ -400,11 +408,11 @@ async function teamSeasonRecords(metric: RecordMetricDef, per: RecordPer) {
       ))
       .groupBy(gameTeamStats.seasonCode, clubCode, clubName),
   );
-  // A club needs the season's share of 20 games for a per-game record, as for the season ratings, so a few games cannot set one.
+  // A club needs two thirds of the season's regular-season games for a per-game record, as for the season ratings, so a few games cannot set one.
   const rows =
     per === "game"
       ? totals.flatMap(({ value, ...row }) => {
-          const minGames = seasonMinGames(row.seasonCode, MIN_SEASON_GAMES);
+          const minGames = seasonMinGames(row.seasonCode);
           return row.gamesPlayed >= minGames && value !== null ? [{ ...row, minGames, value: Number(value) / row.gamesPlayed }] : [];
         })
       : totals.map(({ seasonCode, clubCode, clubName, value }) => ({ seasonCode, clubCode, clubName, value }));

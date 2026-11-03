@@ -34,7 +34,7 @@ const PLAYER_LISTS = [OLD, ROWS.player[2], ROWS.player[1], ROWS.player[0]];
 const LISTS = { player: { bySeason: PLAYER_LISTS, progression: PLAYER_LISTS } };
 const ROUTES = { "player-seasons": "player", "single-games": "game", "team-seasons": "team", "team-games": "teamgame" };
 const ADVANCED = ["per", "winShares", "gameScore", "offensiveRating", "netRating"];
-const MIN_GAMES = { "player-seasons": ["per"], "team-seasons": ["offensiveRating", "netRating"] };
+const MIN_GAMES = { "player-seasons": ["per", "winShares"], "team-seasons": ["offensiveRating", "netRating"] };
 
 // Team-season answers for one metric each, with their own format and direction: defensive rating ranks from the lowest, turnover % is a
 // stored fraction, net rating carries a sign. Their best of each season and progression run oldest first.
@@ -44,11 +44,11 @@ const TEAM_METRICS = {
     label: "Defensive rating",
     format: "decimal",
     lowerIsBetter: true,
-    minGames: 20,
+    minGames: 23,
     records: [club("2025", "OLY", "Olympiacos", 90.5), club("2024", "MAD", "Real Madrid", 92.1), club("2023", "BAR", "FC Barcelona", 95)],
   },
-  turnoverPct: { label: "Turnover %", format: "percent", lowerIsBetter: true, minGames: 20, records: [club("2025", "OLY", "Olympiacos", 0.1152)] },
-  netRating: { label: "Net rating", format: "signed", lowerIsBetter: false, minGames: 20, records: [club("2025", "OLY", "Olympiacos", 21.53)] },
+  turnoverPct: { label: "Turnover %", format: "percent", lowerIsBetter: true, minGames: 23, records: [club("2025", "OLY", "Olympiacos", 0.1152)] },
+  netRating: { label: "Net rating", format: "signed", lowerIsBetter: false, minGames: 23, records: [club("2025", "OLY", "Olympiacos", 21.53)] },
 };
 // A player-season rate with a minimum of minutes and shots beyond games, and Win Shares / 40 with three decimals.
 const player = (seasonCode, personKey, playerName, numericValue) => ({ seasonCode, personKey, playerName, clubName: "Club A", clubTvCodes: "AAA", playerImageUrl: null, clubImageUrl: null, numericValue });
@@ -57,11 +57,11 @@ const PLAYER_METRICS = {
     label: "True shooting %",
     format: "percent",
     lowerIsBetter: false,
-    minGames: 20,
-    volume: "10+ minutes and 4+ field goal attempts a game",
+    minGames: 23,
+    volume: "10+ minutes and 5+ field goal attempts a game",
     records: [player("2000", "p9", "DJORDJEVIC, SASA", 0.7766)],
   },
-  winSharesPer40: { label: "Win Shares / 40", format: "decimal3", lowerIsBetter: false, minGames: 20, volume: "10+ minutes a game", records: [player("2011", "p8", "KIRILENKO, ANDREI", 0.3506)] },
+  winSharesPer40: { label: "Win Shares / 40", format: "decimal3", lowerIsBetter: false, minGames: 23, volume: "10+ minutes a game", records: [player("2011", "p8", "KIRILENKO, ANDREI", 0.3506)] },
 };
 
 // The record book of the mocked rows: for every kind, the six headline metrics each with the kind's first two rows.
@@ -101,10 +101,10 @@ async function mockApi(page, { rows = {}, delay = {}, fail = false } = {}) {
       return route.fulfill({ json: { volume: null, ...ownMetric, metric, group: "advanced", per: "total", bySeason: oldestFirst, progression: oldestFirst } });
     }
     const lists = family in rows || !LISTS[family] ? { bySeason: data[family], progression: data[family] } : LISTS[family];
-    // Per game: the same rows over 30 games, so the values have decimals; a club needs 20 games of a 34-game season.
+    // Per game: the same rows over 30 games, so the values have decimals; a player or club needs two thirds of the season's regular-season games (23 of 34).
     if (url.searchParams.get("per") === "game") {
       const perGame = (list) => list.map((row) => ({ ...row, numericValue: row.numericValue / 30 }));
-      const json = { label: "Points per game", metric, group: "traditional", per: "game", minGames: 20, format: "decimal", lowerIsBetter: false, volume: null };
+      const json = { label: "Points per game", metric, group: "traditional", per: "game", minGames: 23, format: "decimal", lowerIsBetter: false, volume: null };
       return route.fulfill({ json: { ...json, records: perGame(data[family]), bySeason: perGame(lists.bySeason), progression: perGame(lists.progression) } });
     }
     const minGames = MIN_GAMES[match[1]]?.includes(metric) ? 20 : null;
@@ -158,12 +158,13 @@ test("shows team-game records: the club, its opponent, the date and the game", a
   const podium = page.locator("ol").first().locator("> li");
   await expect(podium.first()).toContainText("Real Madrid");
   await expect(podium.first()).toContainText("vs FC Barcelona");
-  await expect(podium.first()).toContainText("2025-26");
+  // A game's day, with its season on hover.
+  await expect(podium.first().locator('[title="2025-26"]')).toHaveText(/2025/);
   await expect(podium.first().getByRole("link", { name: "Real Madrid" })).toHaveAttribute("href", "/2025/teams/MAD");
   await expect(podium.first().getByRole("link", { name: "Game", exact: true })).toHaveAttribute("href", "/2025/games/77");
   await expect(podium.first().locator("img[src='/logo-header.png']")).toBeVisible();
-  // The table has a Game column and the same club, opponent and link.
-  const row = page.locator("tbody tr").first();
+  // The table has the same club, opponent and game link, the link beside the season.
+  const row = page.locator("#records-top > li").first();
   await expect(row).toContainText("vs FC Barcelona");
   await expect(row.getByRole("link", { name: "Game", exact: true })).toHaveAttribute("href", "/2025/games/77");
 });
@@ -186,6 +187,10 @@ test("the podium, the timeline and the Top 50 read from the rows, with the pictu
   await expect(podium.nth(0).locator("img[src='/favicon-32x32.png']")).toBeVisible();
   // A row without pictures shows none, and nothing breaks.
   await expect(podium.nth(2).locator("img")).toHaveCount(0);
+  // Under the podium, the record's facts: its lead, the record it took over, how long it has stood and how often the record has been set.
+  const facts = page.locator("section", { has: page.getByRole("heading", { name: "Podium" }) }).locator("dl");
+  await expect(facts.locator("dt")).toHaveText(["Lead over 2nd", "Previous record", "Standing", "Times set"]);
+  await expect(facts.locator("dd")).toHaveText(["+40 over Ben Two, 2025-26", "780, Ben Two, 2025-26", "1 season, since 2026-27", "4 since 2005-06"]);
 
   // The timeline: one panel in place of the progression and best-in-each-season panels. It reads the API's lists, so it opens with the 2005
   // season that is not among the best 50; the summary and the chart's name give the record that stands.
@@ -213,12 +218,70 @@ test("the podium, the timeline and the Top 50 read from the rows, with the pictu
   await expect(page.getByRole("link", { name: "Old Zero" })).toHaveAttribute("href", "/2005/players/p0");
 
   // The Top 50: the four rows, in rank order, with the pictures on the rows that have them; the 2005 season is not among them.
-  const rows = page.locator("tbody tr");
+  const rows = page.locator("#records-top > li");
   await expect(rows).toHaveCount(4);
-  await expect(page.locator("tbody")).not.toContainText("Old Zero");
+  await expect(page.locator("#records-top")).not.toContainText("Old Zero");
   await expect(rows.nth(3)).toContainText("Dee Four");
   await expect(rows.nth(0).locator("img")).toHaveCount(2);
   await expect(rows.nth(3).locator("img")).toHaveCount(0);
+});
+
+// Thirty player-season rows by twenty players, all from 2026: the first ten players have two rows each.
+const MANY = Array.from({ length: 30 }, (_, index) => ({
+  ...ROWS.player[3],
+  seasonCode: "2026",
+  personKey: `m${index % 20}`,
+  playerName: `NAME${index % 20}, PLAYER`,
+  numericValue: 900 - index,
+}));
+
+test("the Top 50 opens on 25 rows, shows the rest on demand and starts at 25 again on a new choice", async ({ page }) => {
+  await mockApi(page, { rows: { player: MANY } });
+  await page.goto(DETAIL);
+  const rows = page.locator("#records-top > li");
+  await expect(rows).toHaveCount(25);
+  await page.getByRole("button", { name: "Show all 30" }).click();
+  await expect(rows).toHaveCount(30);
+  await expect(page.getByRole("button", { name: /^Show all/ })).toHaveCount(0);
+  await chooseMetric(page, "Rebounds");
+  await expect(page).toHaveURL(/metric=totalRebounds/);
+  await expect(rows).toHaveCount(25);
+});
+
+test("One per player keeps each player's best row, ranked from 1, and stays on across metrics; the most entries line names the repeats", async ({ page }) => {
+  await mockApi(page, { rows: { player: MANY } });
+  await page.goto(DETAIL);
+  const board = page.locator("section", { has: page.getByRole("heading", { name: /^Top 50/ }) });
+  // The three players who appear most, each linked, in the order they first appear.
+  await expect(board.getByText(/^Most entries:/)).toHaveText("Most entries: Player Name0 2 · Player Name1 2 · Player Name2 2");
+  await expect(board.getByText(/^Most entries:/).getByRole("link", { name: "Player Name0" })).toHaveAttribute("href", "/2026/players/m0");
+  const toggle = page.getByRole("checkbox", { name: "One per player" });
+  await toggle.check();
+  await expect(page.getByRole("heading", { name: "Top 50 · 20 players" })).toBeVisible();
+  const rows = page.locator("#records-top > li");
+  await expect(rows).toHaveCount(20);
+  await expect(rows.nth(10)).toContainText("Player Name10");
+  await expect(rows.nth(10).locator("> span").first()).toHaveText("11");
+  await expect(board.getByText(/^Most entries:/)).toHaveCount(0);
+  await expect(page.getByRole("button", { name: /^Show all/ })).toHaveCount(0);
+  // A club record names its switch for clubs; the choice is still on.
+  await tab(page, "Team seasons").click();
+  await expect(page.getByRole("checkbox", { name: "One per club" })).toBeChecked();
+  await tab(page, "Player seasons").click();
+  await expect(toggle).toBeChecked();
+  await toggle.uncheck();
+  await expect(rows).toHaveCount(25);
+});
+
+test("records set in the season being viewed carry its badge in the podium and the Top 50", async ({ page }) => {
+  await mockApi(page);
+  await page.goto(DETAIL);
+  const podium = page.locator("ol").first().locator("> li");
+  await expect(podium.nth(0).getByText("New in 2026-27")).toBeVisible();
+  await expect(podium.nth(1).getByText(/^New in/)).toHaveCount(0);
+  const rows = page.locator("#records-top > li");
+  await expect(rows.nth(0).getByText("New in 2026-27")).toBeVisible();
+  await expect(rows.nth(1).getByText(/^New in/)).toHaveCount(0);
 });
 
 test("a picture on the feed's CDN is asked for small, as WebP, and loads only near the screen", async ({ page }) => {
@@ -366,14 +429,14 @@ test("totals or per game: offered for the season records of the traditional metr
   await expect(choice.getByRole("button", { name: "Per game" })).toHaveAttribute("aria-pressed", "true");
   await expect(page).toHaveURL(/[?&]per=game\b/);
   await expect.poll(() => asked.at(-1)).toBe("game");
-  await expect(page.locator("thead")).toContainText("Points per game");
+  await expect(page.getByText(/^Ranked by Points per game/)).toBeVisible();
   await expect(page.locator("ol").first().locator("> li").first()).toContainText("27.3");
-  await expect(page.getByText("Counts players with at least 20 games of a 34-game regular season, or the same share of a shorter or longer one.")).toBeVisible();
+  await expect(page.getByText("Counts players with at least 67% of their season's regular-season games.")).toBeVisible();
 
   // Team seasons keep it, with the clubs' minimum; Player games has no per-game view, so the choice goes and so does `per`.
   await tab(page, "Team seasons").click();
   await expect(page).toHaveURL(/[?&]per=game\b/);
-  await expect(page.getByText("Counts clubs with at least 20 games of a 34-game regular season, or the same share of a shorter or longer one.")).toBeVisible();
+  await expect(page.getByText("Counts clubs with at least 67% of their season's regular-season games.")).toBeVisible();
   await tab(page, "Player games").click();
   await expect(page).not.toHaveURL(/per=/);
   await expect(choice).toHaveCount(0);
@@ -400,6 +463,12 @@ test("the record book: the headline records of every type, each opening its deta
   await mockApi(page);
   await page.goto("/2026/records");
   await expect(page.getByText("The best of every loaded season. Open a record for its Top 50, its timeline and every season.")).toBeVisible();
+  // The header says once who the records count.
+  await expect(
+    page.getByText(
+      "Per-game and rate records count players and clubs with at least 67% of their season's regular-season games (23 of 34), and player rates also 10+ minutes a game. Totals and single games count everyone.",
+    ),
+  ).toBeVisible();
   // Each type is a panel of rows; its heading carries the type's description as a tip instead of a line under it.
   for (const name of ["Player seasons", "Player games", "Team seasons", "Team games"]) await expect(page.getByRole("heading", { name: new RegExp(`^${name}`) })).toBeVisible();
   await expect(page.locator("main p", { hasText: "The highest season totals by one player." })).toHaveCount(0);
@@ -509,7 +578,7 @@ test("a lower-is-better metric ranks from the lowest and says so; percentages an
   await expect(seasons.nth(1)).toContainText("New record -2.9");
   await expect(seasons.nth(2)).toContainText("New record -1.6");
   // The best row of the Top 50 has the full bar, as it would for a higher-is-better metric.
-  await expect(page.locator("tbody tr").first()).toContainText("90.5");
+  await expect(page.locator("#records-top > li").first()).toContainText("90.5");
 
   await page.goto("/2026/records?type=team&metric=turnoverPct");
   await expect(page.locator("ol").first().locator("> li").first()).toContainText("11.5%");
@@ -522,10 +591,11 @@ test("a player rate says the minutes and shots it needs beyond games, and Win Sh
   await mockApi(page);
   await page.goto("/2026/records?metric=trueShootingPct");
   await expect(
-    page.getByText("Counts players with at least 20 games of a 34-game regular season, or the same share of a shorter or longer one. Also needs 10+ minutes and 4+ field goal attempts a game."),
+    page.getByText("Counts players with at least 67% of their season's regular-season games. Also needs 10+ minutes and 5+ field goal attempts a game."),
   ).toBeVisible();
   await expect(page.locator("ol").first().locator("> li").first()).toContainText("77.7%");
   await page.goto("/2026/records?metric=winSharesPer40");
+  await expect(page.getByText("Counts players with at least 67% of their season's regular-season games.")).toBeVisible();
   await expect(page.getByText("Also needs 10+ minutes a game.")).toBeVisible();
   await expect(page.locator("ol").first().locator("> li").first()).toContainText("0.351");
 });
@@ -533,13 +603,13 @@ test("a player rate says the minutes and shots it needs beyond games, and Win Sh
 test("the records with a minimum number of games say so", async ({ page }) => {
   await mockApi(page);
   await page.goto("/2026/records?metric=per");
-  await expect(page.getByText("Counts players with at least 20 games of a 34-game regular season, or the same share of a shorter or longer one.")).toBeVisible();
+  await expect(page.getByText("Counts players with at least 67% of their season's regular-season games.")).toBeVisible();
   await page.goto("/2026/records?type=team&metric=netRating");
-  await expect(page.getByText("Counts clubs with at least 20 games of a 34-game regular season, or the same share of a shorter or longer one.")).toBeVisible();
-  // Win Shares and the game records have no minimum, so there is nothing to say.
+  await expect(page.getByText("Counts clubs with at least 67% of their season's regular-season games.")).toBeVisible();
+  // Win Shares needs the games as every player-season rating does; the game records have no minimum, so there is
+  // nothing to say.
   await page.goto("/2026/records?metric=winShares");
-  await expect(page.getByRole("heading", { name: "Podium" })).toBeVisible();
-  await expect(page.getByText(/Counts (players|clubs)/)).toHaveCount(0);
+  await expect(page.getByText("Counts players with at least 67% of their season's regular-season games.")).toBeVisible();
   await page.goto("/2026/records?type=teamgame&metric=netRating");
   await expect(page.getByRole("heading", { name: "Podium" })).toBeVisible();
   await expect(page.getByText(/Counts (players|clubs)/)).toHaveCount(0);
@@ -559,10 +629,10 @@ test("a change of metric keeps the header, the choices and the rows on screen wh
   await expect(page.locator("#records-panel")).toHaveAttribute("aria-busy", "false");
 });
 
-test("the PIR column header carries the PIR tip", async ({ page }) => {
+test("the Top 50's Ranked by line carries the PIR tip", async ({ page }) => {
   await mockApi(page);
   await page.goto("/2026/records?metric=pir");
-  await page.locator("thead .header-tip-label").hover();
+  await page.getByText(/^Ranked by/).locator(".header-tip-label").hover();
   await expect(page.getByRole("tooltip")).toContainText("Performance index rating");
 });
 
@@ -586,6 +656,6 @@ test("with reduced motion the cards and rows do not slide in", async ({ page }) 
   const cards = page.locator("ol").first().locator("> li");
   await expect(cards).toHaveCount(3);
   // Read straight away: a slide would still have a transform on its first frames.
-  const transforms = await page.locator("ol > li, tbody tr").evaluateAll((els) => els.map((el) => getComputedStyle(el).transform));
+  const transforms = await page.locator("ol > li").evaluateAll((els) => els.map((el) => getComputedStyle(el).transform));
   expect(new Set(transforms)).toEqual(new Set(["none"]));
 });

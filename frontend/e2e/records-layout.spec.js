@@ -4,9 +4,10 @@ import { HEIGHT, seasonSlug, mockLayoutImages } from "./support/layout";
 
 test.beforeEach(async ({ page }) => { await mockLayoutImages(page); });
 
-// The Records page at every width, for each record type, on the live data: nothing outside its panel, the podium three across from 1024px
-// and stacked below it, the Top 50 a table from 640px (inside its panel) and a list of rows below it, the metric a select below 640px and a
-// strip from it, and every link to a player, club or game in a season's address (the year, not "E2025").
+// The Records page at every width, for each record type, on the live data: nothing outside its panel, the podium three compact rows (beside
+// the timeline and as tall as it from 1280px, above it below), the Top 50 one-line rows from 640px (in two columns from 1280px) and two-line
+// rows below it, opening on 25 rows, the record type and the metric on one row at 1280px, and every link to a player, club or game in a season's
+// address (the year, not "E2025").
 const WIDTHS = [1280, 1024, 1023, 768, 640, 639, 390, 320];
 const CASES = [
   { name: "player seasons", query: "?type=player&metric=pointsScored", column: "Player", pictures: true },
@@ -40,13 +41,13 @@ const outsidePanels = (page) =>
   );
 
 for (const family of CASES) {
-  test(`${family.name}: the panels fit, the podium is three across from 1024px, the Top 50 is a table from 640px and the links use the season's address`, async ({ page }) => {
+  test(`${family.name}: the panels fit, the podium sits beside the timeline from 1280px, the Top 50 is short rows, two columns from 1280px, and the links use the season's address`, async ({ page }) => {
     test.setTimeout(120_000);
     await page.setViewportSize({ width: 1280, height: HEIGHT });
     const slug = await seasonSlug(page);
     await page.goto(`/${slug}/records${family.query}`);
     await expect(page.getByRole("heading", { name: "Top 50" })).toBeVisible({ timeout: 45_000 });
-    await expect(page.locator("tbody tr")).not.toHaveCount(0);
+    await expect(page.locator("#records-top > li")).not.toHaveCount(0);
     // Every season under the timeline's disclosure, open for every width so its rows are checked too.
     await page.getByText(/^Show every season/).click();
 
@@ -57,35 +58,49 @@ for (const family of CASES) {
         await expectNoSidewaysScroll(page);
         await expect.poll(() => outsidePanels(page), { timeout: 20_000 }).toEqual([]);
 
-        // The podium: three cards in one row from 1024px, one under another below it.
-        const cards = page.locator("ol").first().locator("> li");
-        await expect(cards).toHaveCount(3);
-        // The cards slide in for a moment, so the rows are read once they have settled.
+        // The podium: three rows, one under another, in a panel beside the timeline from 1280px and above it below.
+        const podiumRows = page.locator("ol").first().locator("> li");
+        await expect(podiumRows).toHaveCount(3);
+        // The rows slide in for a moment, so they are read once they have settled.
         await expect
-          .poll(async () => new Set(await cards.evaluateAll((els) => els.map((el) => Math.round(el.getBoundingClientRect().top)))).size, { timeout: 10_000 })
-          .toBe(width >= 1024 ? 1 : 3);
+          .poll(async () => new Set(await podiumRows.evaluateAll((els) => els.map((el) => Math.round(el.getBoundingClientRect().top)))).size, { timeout: 10_000 })
+          .toBe(3);
+        const tops = await page.evaluate(() =>
+          ["records-podium", "records-timeline"].map((id) => Math.round(document.getElementById(id).closest(".panel").getBoundingClientRect().top)),
+        );
+        const heights = await page.evaluate(() =>
+          ["records-podium", "records-timeline"].map((id) => Math.round(document.getElementById(id).closest(".panel").getBoundingClientRect().height)),
+        );
+        if (width >= 1280) {
+          expect(Math.abs(tops[0] - tops[1])).toBeLessThanOrEqual(1);
+          expect(Math.abs(heights[0] - heights[1])).toBeLessThanOrEqual(1);
+        } else expect(tops[1]).toBeGreaterThan(tops[0]);
 
-        // The Top 50: a list of 50 rows on a phone, a table that fits its panel from 640px.
-        const board = page.locator("section", { has: page.getByRole("heading", { name: "Top 50" }) });
-        if (phone) {
-          await expect(page.locator("table")).toHaveCount(0);
-          await expect(board.locator("ol > li")).toHaveCount(50);
-        } else {
-          const headers = await page.locator("thead th").allInnerTexts();
-          expect(headers.slice(0, 3)).toEqual(["Rank", family.column, "Season"]);
-          if (family.game) expect(headers).toContain("Game");
-          const table = await page.locator("table").evaluate((el) => ({ table: el.getBoundingClientRect().right, panel: el.closest(".panel").getBoundingClientRect().right }));
-          expect(table.table).toBeLessThanOrEqual(table.panel + 1);
-          // The box that scrolls has nothing to scroll.
-          expect(await page.locator("table").evaluate((el) => el.parentElement.scrollWidth - el.parentElement.clientWidth)).toBeLessThanOrEqual(1);
-        }
-
+        // The Top 50: two-line rows on a phone and one-line rows from 640px, both opening on 25 rows; from 1280px they run down two columns
+        // (rank 14 starts the second). A game record's season carries a link to the game. Most rows are short (a long name can wrap): about 44px in the table and 60px in the list, where at 320px the
+        // club's code often wraps under the name.
+        const board = page.locator("section", { has: page.getByRole("heading", { name: /^Top 50/ }) });
+        const rows = board.locator("#records-top > li");
+        await expect(rows).toHaveCount(25);
+        const rowHeights = (await rows.evaluateAll((els) => els.map((el) => el.getBoundingClientRect().height))).sort((a, b) => a - b);
+        expect(rowHeights[12]).toBeLessThanOrEqual(width < 390 ? 80 : phone ? 62 : 47);
+        const lefts = await rows.evaluateAll((els) => [els[0], els[13]].map((el) => Math.round(el.getBoundingClientRect().left)));
+        if (width >= 1280) expect(lefts[1]).toBeGreaterThan(lefts[0] + 100);
+        else expect(lefts[1]).toBe(lefts[0]);
+        if (family.game) await expect(rows.first().getByRole("link", { name: "Game", exact: true })).toHaveAttribute("href", /\/games\//);
         // A club board shows the TV code below 640px and the name from it.
         if (family.club) {
-          const first = board.locator(phone ? "ol > li" : "tbody tr").first().getByRole("link").first();
+          const first = board.locator("#records-top > li").first().getByRole("link").first();
           const shown = (await first.evaluate((el) => el.querySelector('[aria-hidden="true"]')?.textContent ?? el.textContent)).trim();
           if (phone) expect(shown).toMatch(/^[A-Z0-9]{2,4}$/);
           else expect(shown.length).toBeGreaterThan(4);
+        }
+
+        // From 1024px the record type strip and the metric choices share a row where they fit (from 1280px they always do), bottoms lined up.
+        if (width >= 1280) {
+          const strip = await page.getByRole("tablist", { name: "Record type" }).boundingBox();
+          const metric = await page.getByRole("combobox", { name: "Metric" }).boundingBox();
+          expect(Math.abs(strip.y + strip.height - (metric.y + metric.height))).toBeLessThanOrEqual(8);
         }
 
         // Under the record type, one row of choices at every width: the metric select and, where there is one, the totals or per game toggle.
@@ -164,7 +179,7 @@ async function mockRecords(page, { rows, delay, fail = false }) {
     if (!/\/records\//.test(pathname)) return route.fulfill({ status: 404, json: {} });
     if (delay) await delay;
     if (fail) return route.fulfill({ status: 500, json: {} });
-    return route.fulfill({ json: { label: "Points", metric: "pointsScored", group: "traditional", minGames: 20, format: "count", lowerIsBetter: false, volume: null, records: rows, bySeason: rows.length ? longSeasons : [], progression: rows.length ? longSeasons : [] } });
+    return route.fulfill({ json: { label: "Points", metric: "pointsScored", group: "traditional", minGames: 23, format: "count", lowerIsBetter: false, volume: null, records: rows, bySeason: rows.length ? longSeasons : [], progression: rows.length ? longSeasons : [] } });
   });
 }
 
@@ -196,7 +211,7 @@ test("very long names wrap inside their panels at 320px, and the loading, error 
   await mockRecords(page, { rows: longRows(50) });
   await page.goto("/2025/records?type=player&metric=pointsScored");
   await expect(page.getByRole("heading", { name: "Top 50" })).toBeVisible({ timeout: 45_000 });
-  await expect(page.getByText("Counts players with at least 20 games of a 34-game regular season, or the same share of a shorter or longer one.")).toBeVisible();
+  await expect(page.getByText("Counts players with at least 67% of their season's regular-season games.")).toBeVisible();
   await page.getByText("Show every season (27)").click();
   await expect(page.locator("details li")).toHaveCount(27);
   await expectNoSidewaysScroll(page);

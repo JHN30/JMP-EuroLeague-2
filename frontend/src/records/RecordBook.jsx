@@ -8,9 +8,8 @@ import HeaderTip from "../lib/HeaderTip";
 import { RecordBookSkeleton } from "./RecordsSkeleton";
 import { listContainer, listItem } from "../lib/motion";
 import Panel from "../lib/Panel";
-import { seasonSlug } from "../lib/seasonSlug";
 import ViewSelect from "../lib/ViewSelect";
-import { CodeLabel, Holder } from "./RecordParts";
+import { CodeLabel, Holder, NewBadge } from "./RecordParts";
 import { DEFAULT_FAMILY, DEFAULT_METRIC, FAMILIES, GROUPS, allMetrics, describeRecord, metricsOf, whenText } from "./recordData";
 
 // The book's kinds by the page's record types.
@@ -39,7 +38,7 @@ function BookRow({ seasonCode, family, card }) {
             {card.label}
             <span aria-hidden="true"> →</span>
           </Link>
-          {first && seasonSlug(first.seasonCode) === seasonCode ? <span className="badge badge-primary badge-xs">New in {first.season}</span> : null}
+          {first ? <NewBadge record={first} seasonCode={seasonCode} /> : null}
         </div>
         <span className="text-lg font-black tabular-nums text-primary sm:text-right sm:text-xl">{first ? first.valueText : "-"}</span>
       </div>

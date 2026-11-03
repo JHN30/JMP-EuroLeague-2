@@ -34,17 +34,26 @@ export function RecordBookSkeleton() {
   );
 }
 
-// A record's detail: the podium (three cards from lg), the timeline chart and the Top 50.
+// A record's detail: the podium's three rows (beside the timeline chart from xl, above it below xl), then the Top 50's first 25 rows.
 export function RecordDetailSkeleton() {
   return (
     <div aria-hidden="true">
-      <div className="skeleton mb-3 h-5 w-32" />
-      <div className="grid grid-cols-[minmax(0,1fr)] gap-4 lg:grid-cols-3">
-        {Array.from({ length: 3 }, (_, index) => <SkeletonBlock key={index} className="h-36" />)}
+      <div className="grid grid-cols-[minmax(0,1fr)] items-start gap-4 xl:grid-cols-[20rem_minmax(0,1fr)]">
+        <div className="panel p-4 sm:p-5">
+          <div className="skeleton mb-2 h-5 w-24" />
+          {Array.from({ length: 3 }, (_, index) => (
+            <div key={index} className="flex items-center gap-3 border-b border-base-300 py-2.5 last:border-0">
+              <div className="skeleton size-7 flex-none rounded-full" />
+              <div className="skeleton size-10 flex-none rounded-full" />
+              <SkeletonLines lines={2} className="flex-1" />
+              <div className="skeleton h-6 w-12 flex-none" />
+            </div>
+          ))}
+        </div>
+        <SkeletonBlock className="h-96" />
       </div>
-      <SkeletonBlock className="mt-6 h-72" />
-      <div className="panel mt-6 p-2">
-        <SkeletonRankedRows rows={10} columns={2} rowClassName="h-12" />
+      <div className="panel mt-4 p-2">
+        <SkeletonRankedRows rows={25} columns={2} rowClassName="h-11" />
       </div>
     </div>
   );

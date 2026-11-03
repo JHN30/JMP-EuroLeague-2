@@ -600,7 +600,8 @@ for (const kind of RECORD_KINDS) {
       sendError(res, 400, "RECORD_PER_NOT_AVAILABLE", "Per game is not available for this record");
       return;
     }
-    // Per game, players and clubs need 20 games of a 34-game season (each season's share is on its rows), as for the ratings.
+    // Per game, players and clubs need two thirds of a season's regular-season games, 23 of a 34-game season (each season's minimum is on its rows), as for the
+    // ratings.
     const minGames = per === "game" ? RECORD_MIN_GAMES : (metric.minGames ?? null);
     const label = per === "game" ? `${metric.label} per game` : metric.label;
     const lowerIsBetter = metric.lowerIsBetter ?? false;

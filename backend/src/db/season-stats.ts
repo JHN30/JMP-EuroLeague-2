@@ -341,11 +341,27 @@ export type RecordMetric =
   | "freeThrowsMade"
   | "pir";
 
+// Each player's regular-season games in a season (the group stage, and the Top 16 where there was one), as a subquery to join: a records
+// minimum counts these games, so the postseason does not decide who has enough.
+export function regularSeasonGames(seasonCode: string) {
+  return db.select({ personKey: seasonStatsTraditional.personKey, games: sql<number>`sum(${seasonStatsTraditional.gamesPlayed})::int`.as("regular_games") })
+    .from(seasonStatsTraditional)
+    .where(and(
+      eq(seasonStatsTraditional.competitionCode, COMPETITION_CODE),
+      eq(seasonStatsTraditional.seasonCode, seasonCode),
+      inArray(seasonStatsTraditional.phaseCode, ["RS", "TS"]),
+      eq(seasonStatsTraditional.mode, "accumulated"),
+    ))
+    .groupBy(seasonStatsTraditional.personKey)
+    .as("regular_season");
+}
+
 // A season's top players on one whole-season total, for the records page: only the fields it shows. With `perGameMinGames`, the per-game
-// average instead, among the qualified players (as the leaderboards rank them) with at least that many games.
+// average instead, among the players with at least that many regular-season games (`regularGames`).
 export async function getSeasonRecordRows(seasonCode: string, metric: RecordMetric, limit: number, perGameMinGames?: number) {
   const perGame = perGameMinGames !== undefined;
   const column = SORTABLE_FIELDS[metric];
+  const regular = regularSeasonGames(seasonCode);
   return catalogRead(() =>
     db.select({
       personKey: seasonStatsTraditional.personKey,
@@ -356,16 +372,17 @@ export async function getSeasonRecordRows(seasonCode: string, metric: RecordMetr
       clubImageUrl: seasonStatsTraditional.clubImageUrl,
       gamesPlayed: seasonStatsTraditional.gamesPlayed,
       minGames: seasonStatsTraditional.minGames,
+      regularGames: regular.games,
       value: column,
     })
       .from(seasonStatsTraditional)
+      .leftJoin(regular, eq(regular.personKey, seasonStatsTraditional.personKey))
       .where(and(
         eq(seasonStatsTraditional.competitionCode, COMPETITION_CODE),
         eq(seasonStatsTraditional.seasonCode, seasonCode),
         eq(seasonStatsTraditional.phaseCode, "all"),
         eq(seasonStatsTraditional.mode, perGame ? "perGame" : "accumulated"),
-        perGame ? eq(seasonStatsTraditional.qualified, true) : undefined,
-        perGame ? sql`${seasonStatsTraditional.gamesPlayed} >= ${perGameMinGames}` : undefined,
+        perGame ? sql`coalesce(${regular.games}, 0) >= ${perGameMinGames}` : undefined,
       ))
       .orderBy(sql`${column} DESC NULLS LAST`, asc(seasonStatsTraditional.entryOrdinal))
       .limit(limit),

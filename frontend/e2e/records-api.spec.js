@@ -18,9 +18,10 @@ const TRADITIONAL = [
   ["freeThrowsMade", "Free throws made"],
   ["pir", "PIR"],
 ];
-// An advanced entry is key, label, format, whether lower is better, the minimum number of games a season rating needs (the server
-// leaves out players and clubs with fewer), and the minutes or shots it also needs, as the answer words them.
-const MIN_SEASON_GAMES = 20;
+// An advanced entry is key, label, format, whether lower is better, the minimum number of games a season rating needs (two thirds of a
+// 34-game regular season; the server leaves out players and clubs with fewer), and the minutes or shots it also needs, as the answer
+// words them.
+const MIN_SEASON_GAMES = 23;
 const ORTG = ["offensiveRating", "Offensive rating", "decimal"];
 const DRTG = ["defensiveRating", "Defensive rating", "decimal", true];
 const NET = ["netRating", "Net rating", "signed"];
@@ -46,9 +47,9 @@ const TEAM_SEASON = [
   ["assistRatio", "Assist ratio", "percent"],
 ].map(([key, label, format, lower]) => [key, label, format, lower, MIN_SEASON_GAMES]);
 const MINUTES = "10+ minutes a game";
-const SHOOTING = "10+ minutes and 4+ field goal attempts a game";
+const SHOOTING = "10+ minutes and 5+ field goal attempts a game";
 const PLAYER_SEASON = [
-  ["per", "PER", "decimal", false, MIN_SEASON_GAMES],
+  ["per", "PER", "decimal"],
   ["winShares", "Win Shares", "decimal"],
   ["offensiveWinShares", "Offensive Win Shares", "decimal"],
   ["defensiveWinShares", "Defensive Win Shares", "decimal"],
@@ -62,7 +63,7 @@ const PLAYER_SEASON = [
   ["blockPct", "Block %", "percent", false, MIN_SEASON_GAMES, MINUTES],
   ["gameScoreAverage", "Game Score average", "decimal", false, MIN_SEASON_GAMES, MINUTES],
   ["pie", "PIE", "percent", false, MIN_SEASON_GAMES, MINUTES],
-];
+].map(([key, label, format, lower, minGames = MIN_SEASON_GAMES, volume]) => [key, label, format, lower, minGames, volume]);
 const KINDS = {
   "player-seasons": { advanced: PLAYER_SEASON, players: true },
   "single-games": { advanced: [["gameScore", "Game Score", "decimal"], ["gamePer", "Game PER", "decimal", false, undefined, "10+ minutes in the game"]], players: true },
@@ -96,8 +97,8 @@ for (const [kind, info] of Object.entries(KINDS)) {
       expect(body.volume).toBe(metric.volume ?? null);
       // Every comparison below runs in the metric's direction: `better(a, b)` is how far a is ahead of b.
       const better = (a, b) => (metric.lowerIsBetter ? b - a : a - b);
-      // The minimum number of games of a 34-game regular season: said by the answer. Each row of a metric that has one says its
-      // season's share of it and keeps it.
+      // The minimum number of games of a 34-game season: said by the answer. Each row of a metric that has one says its season's own
+      // minimum (two thirds of the season's regular-season games) and keeps it.
       expect(body.minGames).toBe(metric.minGames ?? null);
       expect(body.records.length).toBeGreaterThan(0);
       expect(body.records.length).toBeLessThanOrEqual(50);
@@ -140,8 +141,8 @@ for (const [kind, info] of Object.entries(KINDS)) {
   }
 }
 
-// Per game: the season records of the traditional metrics, for qualified players and clubs with the season's share of 20 games (each row
-// says its games and that minimum).
+// Per game: the season records of the traditional metrics, for players and clubs with two thirds of the season's regular-season games (each row says its games
+// and that minimum).
 for (const kind of ["player-seasons", "team-seasons"]) {
   test(`${kind}: every traditional metric per game is the best 50 of the averages, with its games and minimum`, async ({ request }) => {
     test.setTimeout(120_000);
@@ -165,6 +166,19 @@ for (const kind of ["player-seasons", "team-seasons"]) {
     }
   });
 }
+
+// A season's minimum is two thirds of a club's regular-season games, rounded up: the group stage and the Top 16 where there was one (10 and 6 games in 2011-12),
+// never the postseason, and the whole schedule of the season being played (38 games in 2026-27). A row's games are its regular-season games.
+test("a season's minimum is two thirds of its regular-season schedule, and a row's games are its regular-season games", async ({ request }) => {
+  const body = await (await records(request, "player-seasons", "per")).json();
+  const minimums = new Map(body.bySeason.map((row) => [row.seasonCode, row.minGames]));
+  expect(minimums.get("E2011")).toBe(11);
+  expect(minimums.get("E2014")).toBe(16);
+  expect(minimums.get("E2024")).toBe(23);
+  if (minimums.has("E2026")) expect(minimums.get("E2026")).toBe(26);
+  // Nobody has more regular-season games than the schedule.
+  for (const row of body.records) expect(row.gamesPlayed, `${row.playerName} ${row.seasonCode}`).toBeLessThanOrEqual(Math.floor((row.minGames * 3) / 2));
+});
 
 test("per=total is the default, and per game answers 400 where it does not apply", async ({ request }) => {
   const totals = await (await records(request, "player-seasons", "assists")).json();
@@ -248,24 +262,33 @@ test("a records route is cached once for every season's address, and an unsuppor
   expect(unsupported.headers()["x-cache"]).not.toBe("HIT");
 });
 
-test("PER and Win Shares records are qualified players only", async ({ request }) => {
-  // The qualified players of each season, as the season statistics list them.
-  async function qualifiedKeys(seasonCode) {
-    const keys = new Set();
-    for (let offset = 0; ; offset += 100) {
-      const response = await request.get(`${API}/seasons/${seasonCode.replace(/^[A-Za-z]+/, "")}/season-stats?phase=all&mode=accumulated&qualified=true&limit=100&offset=${offset}`);
-      expect(response.status()).toBe(200);
-      const body = await response.json();
-      for (const player of body.players) keys.add(player.personKey);
-      if (!body.pagination.hasMore) return keys;
+test("PER and Win Shares records count regular-season games only, at least two thirds of the schedule", async ({ request }) => {
+  test.setTimeout(120_000);
+  // Each player's games in the group stage and the Top 16 (where the season had one), as the season statistics list them.
+  async function regularGames(seasonCode) {
+    const games = new Map();
+    const year = seasonCode.replace(/^[A-Za-z]+/, "");
+    for (const phase of ["RS", "TS"]) {
+      for (let offset = 0; ; offset += 100) {
+        const response = await request.get(`${API}/seasons/${year}/season-stats?phase=${phase}&mode=accumulated&limit=100&offset=${offset}`);
+        // A season without a Top 16 has no such phase.
+        if (phase === "TS" && [400, 404].includes(response.status())) break;
+        expect(response.status(), `${seasonCode} ${phase}`).toBe(200);
+        const body = await response.json();
+        for (const player of body.players) games.set(player.personKey, (games.get(player.personKey) ?? 0) + Number(player.traditional?.gamesPlayed ?? 0));
+        if (!body.pagination.hasMore) break;
+      }
     }
+    return games;
   }
-  const qualified = new Map();
+  const bySeason = new Map();
   for (const metric of ["per", "winShares"]) {
     const body = await (await records(request, "player-seasons", metric)).json();
-    for (const row of body.records) {
-      if (!qualified.has(row.seasonCode)) qualified.set(row.seasonCode, await qualifiedKeys(row.seasonCode));
-      expect(qualified.get(row.seasonCode).has(row.personKey), `${metric} ${row.seasonCode} ${row.playerName}`).toBe(true);
+    for (const row of body.records.slice(0, 15)) {
+      if (!bySeason.has(row.seasonCode)) bySeason.set(row.seasonCode, await regularGames(row.seasonCode));
+      const where = `${metric} ${row.seasonCode} ${row.playerName}`;
+      expect(row.gamesPlayed, where).toBe(bySeason.get(row.seasonCode).get(row.personKey));
+      expect(row.gamesPlayed, where).toBeGreaterThanOrEqual(row.minGames);
     }
   }
 });

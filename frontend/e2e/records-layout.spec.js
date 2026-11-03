@@ -168,22 +168,22 @@ async function mockRecords(page, { rows, delay, fail = false }) {
   });
 }
 
-test("the record book fits at every width: one column of cards below 640px, two from 640px, three from 1024px", async ({ page }) => {
+test("the record book fits at every width: one column of record-type panels below 1024px, two from 1024px", async ({ page }) => {
   test.setTimeout(120_000);
   await page.setViewportSize({ width: 1280, height: HEIGHT });
   const slug = await seasonSlug(page);
   await page.goto(`/${slug}/records`);
-  const cards = page.locator("main ol > li");
-  await expect(cards).toHaveCount(24, { timeout: 45_000 });
+  await expect(page.locator("main ol > li")).toHaveCount(24, { timeout: 45_000 });
+  const panels = page.locator("main section[aria-labelledby^=book-]");
   for (const width of WIDTHS) {
     await test.step(`${width}px`, async () => {
       await page.setViewportSize({ width, height: HEIGHT });
       await expectNoSidewaysScroll(page);
       await expect.poll(() => outsidePanels(page), { timeout: 20_000 }).toEqual([]);
-      const columns = width >= 1024 ? 3 : width >= 640 ? 2 : 1;
-      // The first row of a section: the cards that share the first card's top.
+      const columns = width >= 1024 ? 2 : 1;
+      // The first row of panels: the panels that share the first panel's top.
       await expect
-        .poll(() => cards.evaluateAll((items) => items.slice(0, 6).filter((item) => Math.abs(item.getBoundingClientRect().top - items[0].getBoundingClientRect().top) < 2).length))
+        .poll(() => panels.evaluateAll((items) => items.filter((item) => Math.abs(item.getBoundingClientRect().top - items[0].getBoundingClientRect().top) < 2).length))
         .toBe(columns);
     });
   }

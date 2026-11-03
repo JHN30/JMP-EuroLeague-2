@@ -14,7 +14,7 @@ import { TabStrip } from "../lib/TabStrip";
 import ToggleButtons from "../lib/ToggleButtons";
 import ViewSelect from "../lib/ViewSelect";
 import { useDocumentTitle } from "../lib/useDocumentTitle";
-import RecordBook from "./RecordBook";
+import RecordBook, { PopularRecordsHeading, RecordPicker } from "./RecordBook";
 import { Board, Podium } from "./RecordParts";
 import RecordTimeline from "./RecordTimeline";
 import { DEFAULT_FAMILY, DEFAULT_METRIC, FAMILIES, GROUPS, allMetrics, describeRecord, metricsOf, perGameAvailable, pickKey } from "./recordData";
@@ -163,7 +163,11 @@ export default function RecordsPage() {
         title="Records"
         description={<p className="muted">The best of every loaded season. Open a record for its Top 50, its timeline and every season.</p>}
       />
-      <RecordBook seasonCode={seasonCode} />
+      <RecordPicker seasonCode={seasonCode} />
+      <section aria-labelledby="popular-records">
+        <PopularRecordsHeading />
+        <RecordBook seasonCode={seasonCode} />
+      </section>
     </div>
   );
 }

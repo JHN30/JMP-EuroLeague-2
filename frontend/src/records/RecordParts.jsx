@@ -15,11 +15,23 @@ const PIR_TIP = PLAYER_STATS.find((stat) => stat.key === "pir")?.tip;
 // The second line of a holder: a club or an opponent, as its TV code below sm and in full from sm.
 const labelOf = (full, short) => (short && short !== full ? <ShortLabel short={short} full={full} /> : full);
 
+// A club as its TV code at every width; the full name is on hover and for screen readers. A traded player's codes come joined with ";".
+export function CodeLabel({ short, full }) {
+  return (
+    <span className="relative" title={full}>
+      <span aria-hidden="true">{short.replaceAll(";", "/")}</span>
+      <span className="sr-only">{full}</span>
+    </span>
+  );
+}
+
 // Whoever holds a record: their picture (a player's headshot, a club's crest), the name linked when the row says where they are, and a second line
 // under it (a player's club with its crest, the opponent of a team game). A part the row does not carry is left out. `size` is the picture's.
-// `short` is for the narrow lists: a club's name is its TV code below sm.
-export function Holder({ record, size = "h-9 w-9", short = false }) {
+// `short` is for the narrow lists: a club's name is its TV code below sm. The record book's rows pass `compact` (a smaller second line, with the
+// club or opponent as its TV code at every width) and `extra`, more of the second line after it.
+export function Holder({ record, size = "h-9 w-9", short = false, compact = false, extra = null }) {
   const text = short && record.shortName ? <ShortLabel short={record.shortName} full={record.name} /> : record.name;
+  const line = compact && record.shortLine ? <CodeLabel short={record.shortLine} full={record.line} /> : labelOf(record.line, record.shortLine);
   const name = record.to ? (
     <Link to={record.to} className="font-semibold hover:underline">
       {text}
@@ -34,10 +46,11 @@ export function Holder({ record, size = "h-9 w-9", short = false }) {
       {record.crestUrl ? <Avatar optimize crest imageUrl={record.crestUrl} size={`${size} flex-none`} /> : null}
       <div className="min-w-0">
         <p className="wrap-break-word">{name}</p>
-        {record.line ? (
-          <p className="muted flex items-center gap-1.5 text-sm">
-            {record.lineCrestUrl ? <Avatar optimize crest imageUrl={record.lineCrestUrl} size="h-4 w-4" /> : null}
-            <span className="wrap-break-word">{labelOf(record.line, record.shortLine)}</span>
+        {record.line || extra ? (
+          <p className={`muted flex items-center ${compact ? "text-xs" : "text-sm"} ${extra ? "flex-wrap gap-x-1.5" : "gap-1.5"}`}>
+            {record.line && record.lineCrestUrl ? <Avatar optimize crest imageUrl={record.lineCrestUrl} size="h-4 w-4" /> : null}
+            {record.line ? <span className="wrap-break-word">{line}</span> : null}
+            {extra}
           </p>
         ) : null}
       </div>

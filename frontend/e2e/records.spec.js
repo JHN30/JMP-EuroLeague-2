@@ -400,27 +400,89 @@ test("the record book: the headline records of every type, each opening its deta
   await mockApi(page);
   await page.goto("/2026/records");
   await expect(page.getByText("The best of every loaded season. Open a record for its Top 50, its timeline and every season.")).toBeVisible();
-  for (const name of ["Player seasons", "Player games", "Team seasons", "Team games"]) await expect(page.getByRole("heading", { name, exact: true })).toBeVisible();
-  const cards = page.locator("main ol > li");
-  await expect(cards).toHaveCount(24);
-  // The first card: the record, its holder and season, and how far it leads the row behind it (820 against 780).
-  await expect(cards.first()).toContainText("820");
-  await expect(cards.first()).toContainText("Cal Three");
-  await expect(cards.first()).toContainText("2026-27");
-  await expect(cards.first()).toContainText("+40 over 2nd");
-  await expect(cards.first().getByRole("link", { name: "Cal Three" })).toHaveAttribute("href", "/2026/players/p3");
-  // A kind with one row has no margin to tell.
-  const teamSeasons = page.locator("section", { has: page.getByRole("heading", { name: "Team seasons", exact: true }) }).locator("ol > li");
+  // Each type is a panel of rows; its heading carries the type's description as a tip instead of a line under it.
+  for (const name of ["Player seasons", "Player games", "Team seasons", "Team games"]) await expect(page.getByRole("heading", { name: new RegExp(`^${name}`) })).toBeVisible();
+  await expect(page.locator("main p", { hasText: "The highest season totals by one player." })).toHaveCount(0);
+  await page.getByRole("heading", { name: /^Player seasons/ }).getByText("Player seasons").hover();
+  await expect(page.getByRole("tooltip")).toHaveText("The highest season totals by one player.");
+  const rows = page.locator("main ol > li");
+  await expect(rows).toHaveCount(24);
+  // The first row: the record, its holder, club and season, and how far it leads the row behind it and whose that is (820 against Ben Two's 780).
+  await expect(rows.first()).toContainText("820");
+  await expect(rows.first()).toContainText("Cal Three");
+  await expect(rows.first()).toContainText("CCC");
+  await expect(rows.first()).toContainText("2026-27");
+  await expect(rows.first()).toContainText("+40 over Ben Two");
+  await expect(rows.first().getByRole("link", { name: "Cal Three" })).toHaveAttribute("href", "/2026/players/p3");
+  // A kind with one row has no lead to tell.
+  const teamSeasons = page.locator("section[aria-labelledby^=book-]", { has: page.getByRole("heading", { name: /^Team seasons/ }) }).locator("ol > li");
   await expect(teamSeasons.first()).toContainText("Olympiacos");
-  await expect(teamSeasons.first()).not.toContainText("over 2nd");
-  // No type strip on the book; a card opens its record's detail view, which names its type and metric, and the back link returns.
+  await expect(teamSeasons.first()).not.toContainText("over");
+  // No type strip on the book; a row opens its record's detail view, which names its type and metric, and the back link returns.
   await expect(page.getByRole("tablist", { name: "Record type" })).toHaveCount(0);
-  await cards.nth(1).getByRole("link", { name: /^Rebounds/ }).click();
+  await rows.nth(1).getByRole("link", { name: /^Rebounds/ }).click();
   await expect(page).toHaveURL(/\/2026\/records\?type=player&metric=totalRebounds$/);
   await expectMetric(page, "Rebounds");
   await page.getByRole("link", { name: /Record book/ }).first().click();
   await expect(page).toHaveURL(/\/2026\/records$/);
-  await expect(cards).toHaveCount(24);
+  await expect(rows).toHaveCount(24);
+});
+
+test("the record book marks the records set in the season being viewed", async ({ page }) => {
+  await mockApi(page);
+  await page.goto("/2026/records");
+  const rows = page.locator("main ol > li");
+  await expect(rows).toHaveCount(24);
+  // Only the player seasons lead with a 2026-27 row; the other kinds' records are from 2025-26.
+  await expect(page.getByText("New in 2026-27")).toHaveCount(6);
+  await expect(rows.first().getByText("New in 2026-27")).toBeVisible();
+  await expect(rows.nth(6).getByText(/^New in/)).toHaveCount(0);
+});
+
+test("the record book's lead line: a tie, and a holder who also has the row behind", async ({ page }) => {
+  const olympiacos = ROWS.team[0];
+  const madrid = ROWS.teamgame[0];
+  await mockApi(page, {
+    rows: {
+      team: [olympiacos, { ...olympiacos, seasonCode: "2024", numericValue: 2300 }],
+      teamgame: [madrid, { ...madrid, gameCode: 78, clubCode: "BAR", clubName: "FC Barcelona", clubTvCode: "BAR", opponentName: "Real Madrid", opponentTvCode: "RMB" }],
+    },
+  });
+  await page.goto("/2026/records");
+  const section = (name) => page.locator("section[aria-labelledby^=book-]", { has: page.getByRole("heading", { name: new RegExp(`^${name}`) }) }).locator("ol > li");
+  await expect(section("Team seasons").first()).toContainText("+100 over own 2024-25");
+  // A club runner-up is its TV code, the full name on hover.
+  await expect(section("Team games").first()).toContainText("Tied with BAR");
+  await expect(section("Team games").first().locator('[title="FC Barcelona"]')).toBeVisible();
+});
+
+test("the record book opens any record, advanced ones too", async ({ page }) => {
+  await mockApi(page);
+  await page.goto("/2026/records");
+  await expect(page.locator("main ol > li")).toHaveCount(24);
+  // The picker is a titled panel of its own, apart from the popular records under their own heading, so it does not read as their filter.
+  const finder = page.getByRole("region", { name: "Find any record" });
+  await expect(finder.getByRole("combobox", { name: "Record type" })).toBeVisible();
+  await expect(page.getByRole("region", { name: "Popular records" }).locator("ol > li")).toHaveCount(24);
+  const type = page.getByRole("combobox", { name: "Record type" });
+  await expect(type).toHaveValue("player");
+  await expectMetric(page, "Points");
+  // A metric the new type also has stays chosen; one it lacks falls back to Points.
+  await chooseMetric(page, "Rebounds");
+  await type.selectOption({ label: "Team games" });
+  await expectMetric(page, "Rebounds");
+  await chooseMetric(page, "Net rating");
+  await expect(sectionOptions(page, "Advanced")).toHaveText(["Offensive rating", "Defensive rating", "Net rating", "Pace", "Effective FG%", "True shooting %"]);
+  await type.selectOption({ label: "Player games" });
+  await expectMetric(page, "Points");
+  await type.selectOption({ label: "Team games" });
+  await chooseMetric(page, "Net rating");
+  // Nothing opens until the button is used.
+  await expect(page).toHaveURL(/\/2026\/records$/);
+  await page.getByRole("link", { name: "Open record" }).click();
+  await expect(page).toHaveURL(/\/2026\/records\?type=teamgame&metric=netRating$/);
+  await expectMetric(page, "Net rating");
+  await expect(tab(page, "Team games")).toHaveAttribute("aria-selected", "true");
 });
 
 test("the record book says when it cannot load", async ({ page }) => {

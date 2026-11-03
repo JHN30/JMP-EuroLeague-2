@@ -286,12 +286,35 @@ export function TeamOverviewSkeleton() {
   );
 }
 
-// The team Statistics section: the pair over eight groups of comparison rows.
+// The team Statistics section: the heading and summary, then the stat families in two columns from xl, a thin row per stat.
 export function TeamStatsSkeleton() {
+  const column = (groups) => (
+    <div className="flex flex-col gap-6">
+      {groups.map((rows, group) => (
+        <div key={group}>
+          <div className="skeleton mb-1 h-5 w-28" />
+          {range(rows).map((index) => (
+            <div key={index} className="flex h-9 items-center gap-2 border-b border-base-300 last:border-0">
+              <div className="skeleton h-3.5 w-28 max-sm:hidden" />
+              <div className="skeleton h-3.5 w-10" />
+              <div className="skeleton h-2 flex-1 rounded-full" />
+              <div className="skeleton h-2 flex-1 rounded-full" />
+              <div className="skeleton h-3.5 w-10" />
+            </div>
+          ))}
+        </div>
+      ))}
+    </div>
+  );
   return (
-    <div aria-hidden="true" className="panel p-3">
-      <PairStrip />
-      <ComparisonGroups groups={[3, 3, 4, 6, 5, 4, 8, 4]} rowClassName="h-[4.25rem]" />
+    <div aria-hidden="true" className="panel p-4">
+      <div className="skeleton mb-2 h-6 w-64 max-w-full" />
+      <div className="skeleton mb-1 h-4 w-80 max-w-full" />
+      <div className="skeleton mb-4 h-3 w-full" />
+      <div className="grid gap-x-10 gap-y-6 xl:grid-cols-2">
+        {column([3, 3, 9, 6])}
+        {column([5, 5, 11])}
+      </div>
     </div>
   );
 }

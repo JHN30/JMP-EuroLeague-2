@@ -24,8 +24,11 @@ export const EDGE_KEYS = [
   "oppFieldGoalPct",
 ];
 
+// How often a club shoots twos or threes, like its pace, is a style: neither more nor fewer is better.
+const STYLE_KEYS = new Set(["pace", "twoPointersAttempted", "threePointersAttempted"]);
+
 export function directionOf(stat) {
-  if (stat.key === "pace") return "neutral";
+  if (STYLE_KEYS.has(stat.key)) return "neutral";
   return stat.lowerIsBetter ? "lower" : "higher";
 }
 
@@ -50,11 +53,20 @@ export function edgesBetween(rows, clubA, clubB) {
   }).filter(Boolean);
 }
 
-// Free throws made, the attempts, assist-to-turnover, fouls drawn and the free throw rates and forced turnovers are on the Leaders board but left out of the comparison.
-const LEFT_OUT = new Set(["freeThrowsMade", "twoPointersAttempted", "threePointersAttempted", "freeThrowsAttempted", "astTo", "foulsDrawn", "ftRate", "oppTovPct", "oppFtRate"]);
+// Where the comparison puts a family's stats when the Leaders list order reads oddly: the free throws together (made, attempted,
+// rate), and the opponents' rates after their shooting.
+const FAMILY_ORDER = {
+  Scoring: ["points", "twoPointersMade", "twoPointersAttempted", "threePointersMade", "threePointersAttempted", "freeThrowsMade", "freeThrowsAttempted", "ftRate", "ortg"],
+  Defense: ["oppPoints", "drtg", "oppFieldGoalPct", "oppThreePct", "oppEfgPct", "oppTovPct", "oppFtRate", "steals", "blocks", "fouls", "foulsDrawn"],
+};
 
+// Every team statistic of a family the source can show, in the comparison's order.
 export function statsOfFamily(family, usableFn, source) {
-  return TEAM_STATS.filter((stat) => stat.family === family && !LEFT_OUT.has(stat.key) && usableFn(stat, source));
+  const stats = TEAM_STATS.filter((stat) => stat.family === family && usableFn(stat, source));
+  const order = FAMILY_ORDER[family];
+  if (!order) return stats;
+  const place = (stat) => (order.includes(stat.key) ? order.indexOf(stat.key) : order.length);
+  return [...stats].sort((x, y) => place(x) - place(y));
 }
 
 // A club that did not play in the season asked for: the API's 404 for it, which means no games rather than a failure.

@@ -128,11 +128,47 @@ test("the Statistics rows fit with no cut text", async ({ page }) => {
   await openTab(page, slug, teams, "Statistics");
   await expect(page.getByText(/Per game, overtime counted/)).toBeVisible({ timeout: 30_000 });
 
-  await atWidths(page, WIDTHS, async () => {
+  const panel = page.getByRole("region", { name: "Statistics compared" });
+  const rows = panel.locator("li");
+  await atWidths(page, WIDTHS, async (width) => {
     expect(await cutTexts(page)).toEqual([]);
     await expect.poll(() => outsidePanels(page), { timeout: 20_000 }).toEqual([]);
     await expectNoSidewaysScroll(page);
+    // The families in two columns from 1280px (the first family's top shared by the second column's), one below.
+    const tops = await panel.locator("section").evaluateAll((sections) => sections.map((section) => Math.round(section.getBoundingClientRect().top)));
+    expect(tops.filter((top) => top === tops[0]).length).toBe(width >= 1280 ? 2 : 1);
+    // A row is one line from 640px (the name level with both numbers), two below.
+    const lines = await rows.first().evaluate((row) => {
+      const [name, , valueA] = [...row.children].map((child) => child.getBoundingClientRect());
+      return Math.abs(name.top + name.height / 2 - (valueA.top + valueA.height / 2)) < 4 ? 1 : 2;
+    });
+    expect(lines).toBe(width >= 640 ? 1 : 2);
   });
+});
+
+test("every statistic is one row with both clubs' places, the better side marked and counted", async ({ page }) => {
+  test.setTimeout(60_000);
+  const { slug, teams } = await liveSeason(page);
+  await openTab(page, slug, teams, "Statistics");
+  const panel = page.getByRole("region", { name: "Statistics compared" });
+  await expect(panel.locator("li").first()).toBeVisible({ timeout: 30_000 });
+  const rows = await panel.locator("li").evaluateAll((items) =>
+    items.map((item) => ({
+      better: item.dataset.better ?? null,
+      ranks: [...item.querySelectorAll("[title$=' clubs']")].map((rank) => rank.textContent.trim()),
+      marked: [...item.querySelectorAll(".text-primary")].length,
+    })),
+  );
+  expect(rows.length).toBeGreaterThan(20);
+  for (const row of rows) {
+    expect(row.ranks.length).toBe(2);
+    for (const rank of row.ranks) expect(rank).toMatch(/^\d+(st|nd|rd|th)$/);
+    // The better side's number is the one in the primary colour; a level row or pace marks neither.
+    expect(row.marked).toBe(row.better === "a" || row.better === "b" ? 1 : 0);
+  }
+  const count = (side) => rows.filter((row) => row.better === side).length;
+  const level = count("level");
+  await expect(panel.getByTestId("stats-summary")).toHaveText(new RegExp(` better on ${count("a")} · .+ better on ${count("b")}${level ? ` · ${level} level` : ""}$`));
 });
 
 test("the Rosters tables swipe inside their box with the player column pinned", async ({ page }) => {

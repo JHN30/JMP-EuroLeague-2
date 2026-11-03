@@ -137,7 +137,19 @@ function ListRows({ rows, rowClassName = "h-13" }) {
 }
 
 // One side of the pair header: the crest or portrait over the name and a line under it.
-function PairSide({ players }) {
+function PairSide({ players, alignEnd = false }) {
+  if (!players) {
+    // A club: the crest over its name and place below sm, beside them from sm, mirrored on the road side.
+    return (
+      <div className={`flex flex-col items-center gap-1 sm:gap-3 ${alignEnd ? "sm:flex-row-reverse" : "sm:flex-row"}`}>
+        <div className="skeleton size-9 flex-none rounded-box sm:size-12" />
+        <div className={`flex min-w-0 flex-col items-center gap-1.5 sm:flex-1 ${alignEnd ? "sm:items-end" : "sm:items-start"}`}>
+          <div className="skeleton h-5 w-24 max-w-full sm:w-48" />
+          <div className="skeleton h-3 w-16" />
+        </div>
+      </div>
+    );
+  }
   return (
     <div className="flex flex-col items-center gap-2">
       <div className={`skeleton flex-none ${players ? "h-24 w-20 rounded-box sm:h-28 sm:w-24" : "size-16 rounded-box sm:size-20"}`} />
@@ -155,15 +167,15 @@ function OpenedTop({ players }) {
       <div className="mb-1 flex h-8 items-center max-sm:hidden">
         <div className="skeleton h-4 w-16" />
       </div>
-      <div className="panel relative mb-6 overflow-hidden p-4 sm:p-5">
+      <div className={`panel relative mb-6 overflow-hidden p-4 ${players ? "sm:p-5" : ""}`}>
         <div className="absolute inset-x-0 top-0 h-0.5 bg-primary" />
         <div className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-3 sm:gap-6">
           <PairSide players={players} />
           <div className="skeleton h-6 w-8" />
-          <PairSide players={players} />
+          <PairSide players={players} alignEnd />
         </div>
         {players ? null : (
-          <div className="mt-4 flex justify-center border-t border-base-300 pt-3">
+          <div className="mt-3 flex justify-center border-t border-base-300 pt-3">
             <div className="skeleton h-8 w-48" />
           </div>
         )}
@@ -186,7 +198,7 @@ function HeadWithNote({ title }) {
   );
 }
 
-// The team Overview's recent form panel body: each club's last five games, then the home and away records.
+// The team Overview's recent form panel body: each club's last five games over its home and away record.
 export function TeamFormBodySkeleton() {
   return (
     <div aria-hidden="true">
@@ -202,30 +214,32 @@ export function TeamFormBodySkeleton() {
                 <div className="skeleton ml-auto h-3.5 w-12" />
               </div>
             ))}
+            <div className="skeleton h-4 w-36" />
           </div>
         ))}
-      </div>
-      <div className="mt-4">
-        <ComparisonRows rows={2} />
       </div>
     </div>
   );
 }
 
-// The team Overview's players to watch panel body: each club's three top scorers and the compare button.
+// The team Overview's players to watch panel body: the heading beside the compare button, then each club's three top scorers.
 export function TeamWatchBodySkeleton() {
   return (
     <div aria-hidden="true">
-      <HeadWithNote title="w-32" />
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="flex-1">
+          <HeadWithNote title="w-32" />
+        </div>
+        <div className="skeleton h-8 w-64 max-w-full" />
+      </div>
       <div className="grid gap-x-8 gap-y-4 sm:grid-cols-2">
         {range(2).map((side) => (
           <div key={side}>
             <div className="skeleton mb-2 h-5 w-32" />
-            <ListRows rows={3} rowClassName="h-14" />
+            <ListRows rows={3} rowClassName="h-11" />
           </div>
         ))}
       </div>
-      <div className="skeleton mt-4 h-8 w-72 max-w-full" />
     </div>
   );
 }
@@ -243,25 +257,30 @@ export function TeamMatchupSkeleton() {
   );
 }
 
-// The team Overview, as `CompareTeamOverview` lays it out: the matchup, recent form, players to watch and the meetings.
+// The team Overview, as `CompareTeamOverview` lays it out: the matchup over recent form, beside the players to watch over the
+// meetings from lg.
 export function TeamOverviewSkeleton() {
   return (
-    <div aria-hidden="true" className="flex flex-col gap-6">
-      <TeamMatchupSkeleton />
-      <div className="panel p-4">
-        <TeamFormBodySkeleton />
+    <div aria-hidden="true" className="grid gap-6 lg:grid-cols-2 lg:items-start">
+      <div className="flex flex-col gap-6">
+        <TeamMatchupSkeleton />
+        <div className="panel p-4">
+          <TeamFormBodySkeleton />
+        </div>
       </div>
-      <div className="panel p-4">
-        <TeamWatchBodySkeleton />
-      </div>
-      <div className="panel p-4">
-        <HeadWithNote title="w-28" />
-        {range(2).map((index) => (
-          <div key={index} className="flex h-9 items-center justify-between border-b border-base-300 last:border-0">
-            <div className="skeleton h-3.5 w-36" />
-            <div className="skeleton h-3.5 w-48" />
-          </div>
-        ))}
+      <div className="flex flex-col gap-6">
+        <div className="panel p-4">
+          <TeamWatchBodySkeleton />
+        </div>
+        <div className="panel p-4">
+          <HeadWithNote title="w-28" />
+          {range(2).map((index) => (
+            <div key={index} className="flex h-9 items-center justify-between border-b border-base-300 last:border-0">
+              <div className="skeleton h-3.5 w-36" />
+              <div className="skeleton h-3.5 w-48" />
+            </div>
+          ))}
+        </div>
       </div>
     </div>
   );

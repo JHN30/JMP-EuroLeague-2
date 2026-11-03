@@ -195,6 +195,40 @@ test("a team comparison names both clubs in a header over every section, each op
   await expect(page).toHaveURL(/\/2025\/teams\/PAN$/);
 });
 
+test("a game's comparison shows each club's place and record, the venue records, streaks and the game among the meetings", async ({ page }) => {
+  const { games: next } = await (await page.request.get("http://localhost:3000/api/seasons/2026/games?status=scheduled&order=asc&limit=1")).json();
+  test.skip(next.length === 0 || next[0].phaseCode !== "RS", "needs an upcoming regular-season game");
+  const [game] = next;
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto(`/2026/compare?teamA=${game.localTeam.clubCode}&teamB=${game.roadTeam.clubCode}&game=${game.gameCode}`);
+  const header = page.getByRole("region", { name: "Clubs compared" });
+  await expect(header.getByText(/^\d+(st|nd|rd|th) · \d+-\d+$/)).toHaveCount(2, { timeout: 30_000 });
+  // The game's round, date and host on one line beside the ways on.
+  const when = header.getByText(/· Hosted by /);
+  const preview = header.getByRole("link", { name: "Game preview" });
+  await expect(preview).toBeVisible();
+  const [lineBox, buttonBox] = [await when.boundingBox(), await preview.boundingBox()];
+  expect(Math.abs(lineBox.y + lineBox.height / 2 - (buttonBox.y + buttonBox.height / 2))).toBeLessThan(8);
+
+  // Each club's home and away record under its last five, the one this game counts emphasised: the host's home, the visitor's away.
+  const form = page.locator(".panel", { has: page.getByRole("heading", { name: "Recent results and venue" }) });
+  await expect(form.getByText(/^Home (\d+-\d+|—)$/)).toHaveCount(2, { timeout: 30_000 });
+  await expect(form.locator(".text-primary", { hasText: /^Home / })).toHaveCount(1);
+  await expect(form.locator(".text-primary", { hasText: /^Away / })).toHaveCount(1);
+  await expect(form.locator(".text-primary").first()).toHaveText(/^Home /);
+  await expect(form.getByRole("heading", { name: "Recent results and venue" })).toBeVisible();
+  await expect(form.getByLabel(/^Streak: \d+ (win|wins|loss|losses)$/)).toHaveCount(2);
+  await expect(page.getByRole("heading", { name: "Home record" })).toHaveCount(0);
+
+  // The compare link sits beside the Top scorers title, and the game being previewed is marked among the meetings.
+  const watch = page.locator(".panel", { has: page.getByRole("heading", { name: "Top scorers" }) });
+  const [title, link] = [await watch.getByRole("heading", { name: "Top scorers" }).boundingBox(), await watch.getByRole("link", { name: /^Compare .+ and / }).boundingBox()];
+  expect(link.y).toBeLessThan(title.y + title.height);
+  const meetings = page.locator(".panel", { has: page.getByText("MEETINGS", { exact: true }) });
+  await expect(meetings.locator(`a[href$="/games/${game.gameCode}"]`).getByText("This game")).toBeVisible();
+  await expect(meetings.getByText("This game")).toHaveCount(1);
+});
+
 test("a player comparison has no club header", async ({ page }) => {
   await page.goto("/2025/compare?view=players");
   await expect(page.getByRole("heading", { name: "Compare", exact: true })).toBeVisible({ timeout: 30_000 });

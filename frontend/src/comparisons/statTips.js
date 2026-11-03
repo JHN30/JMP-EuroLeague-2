@@ -62,8 +62,3 @@ export const ROSTER_SUMMARY_TIPS = {
   "Points of the top 3 scorers": "Points per game of the club's three best scorers added together",
   "Players on 15+ minutes": "Players averaging 15 or more minutes a game",
 };
-
-export const RECORD_TIPS = {
-  "Home record": "Wins and losses in games played at home",
-  "Away record": "Wins and losses in games played away",
-};

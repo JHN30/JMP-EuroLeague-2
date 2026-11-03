@@ -138,7 +138,8 @@ export default function CompareFixtures({ seasonCode, onPick }) {
 }
 
 // What an opened comparison is about, for the page header: when it was opened from a game, which one (round, date and host), with the
-// ways on to that game and, for two clubs, to their all-time record. `centred` centres it, under the two clubs of the team header.
+// ways on to that game and, for two clubs, to their all-time record. `centred` puts it all on one centred line (wrapping when narrow),
+// under the two clubs of the team header.
 export function ComparisonContext({ seasonCode, gameCode, headToHeadTo, centred = false }) {
   const gameQuery = useQuery({
     queryKey: ["game", seasonCode, gameCode],
@@ -148,28 +149,43 @@ export function ComparisonContext({ seasonCode, gameCode, headToHeadTo, centred 
   });
   const game = gameQuery.data?.game;
   if (!game && !headToHeadTo) return null;
+  const when = game ? `${game.roundName ?? (game.roundNumber ? `Round ${game.roundNumber}` : game.phaseName)} · ${formatDateTime(game.scheduledAt)}` : null;
+  const host = game ? `Hosted by ${game.localTeam?.abbreviatedName ?? game.localTeam?.name}` : null;
+  const links = (
+    <>
+      {game ? (
+        <Link to={`/${seasonCode}/games/${gameCode}`} className="btn btn-outline btn-sm">
+          {game.played ? "Game overview" : "Game preview"}
+        </Link>
+      ) : null}
+      {headToHeadTo ? (
+        <Link to={headToHeadTo} className="btn btn-outline btn-sm">
+          All-time head-to-head
+        </Link>
+      ) : null}
+    </>
+  );
+  if (centred) {
+    return (
+      <div className="mt-3 flex flex-wrap items-center justify-center gap-x-4 gap-y-2 border-t border-base-300 pt-3 text-center">
+        {game ? (
+          <p className="muted text-sm">
+            {when} · {host}
+          </p>
+        ) : null}
+        <div className="flex flex-wrap justify-center gap-2">{links}</div>
+      </div>
+    );
+  }
   return (
-    <div className={centred ? "mt-4 border-t border-base-300 pt-3 text-center" : "mt-2"}>
+    <div className="mt-2">
       {game ? (
         <>
-          <p className="muted text-sm">
-            {game.roundName ?? (game.roundNumber ? `Round ${game.roundNumber}` : game.phaseName)} · {formatDateTime(game.scheduledAt)}
-          </p>
-          <p className="muted text-sm">Hosted by {game.localTeam?.abbreviatedName ?? game.localTeam?.name}</p>
+          <p className="muted text-sm">{when}</p>
+          <p className="muted text-sm">{host}</p>
         </>
       ) : null}
-      <div className={`mt-3 flex flex-wrap gap-2${centred ? " justify-center" : ""}`}>
-        {game ? (
-          <Link to={`/${seasonCode}/games/${gameCode}`} className="btn btn-outline btn-sm">
-            {game.played ? "Game overview" : "Game preview"}
-          </Link>
-        ) : null}
-        {headToHeadTo ? (
-          <Link to={headToHeadTo} className="btn btn-outline btn-sm">
-            All-time head-to-head
-          </Link>
-        ) : null}
-      </div>
+      <div className="mt-3 flex flex-wrap gap-2">{links}</div>
     </div>
   );
 }

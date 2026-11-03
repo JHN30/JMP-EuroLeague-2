@@ -7,6 +7,7 @@ import { shortTeamName, teamCode } from "../games/gameUtils";
 import { getSeasonTeams, getSeasons, getTeamGames } from "../lib/api";
 import AsyncState from "../lib/AsyncState";
 import HeadToHeadSkeleton, { HeadToHeadHistorySkeleton } from "./HeadToHeadSkeleton";
+import { absentFromSeason } from "./teamCompare";
 import { isForfeit } from "../lib/forfeit";
 import BackLink from "../lib/BackLink";
 import CompactFilterSelect from "../lib/CompactFilterSelect";
@@ -147,10 +148,6 @@ function MomentumPanel({ matchups, teamA, teamB, teamAId }) {
 }
 
 // A club that was not in a season answers 404 TEAM_NOT_FOUND for it: it simply had no games, and so no meetings, that season.
-function absentFromSeason(error) {
-  return error?.response?.status === 404 && error.response.data?.error?.code === "TEAM_NOT_FOUND";
-}
-
 async function fetchMergedMatchups(seasonCodes, teamAId, teamBId) {
   const perSeason = await Promise.all(
     seasonCodes.map(async (seasonCode) => {

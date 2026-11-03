@@ -712,7 +712,7 @@ function ComparisonsBody({
       <TabPanel id="comparison-section-panel" focusKey={section} scroll={false}>
         {section === "overview" ? (
           view === "teams" ? (
-            <CompareTeamOverview seasonCode={seasonCode} phaseCode={phaseCode} entityA={effectiveEntityA} entityB={effectiveEntityB} hosted={Boolean(gameCode)} />
+            <CompareTeamOverview seasonCode={seasonCode} phaseCode={phaseCode} entityA={effectiveEntityA} entityB={effectiveEntityB} gameCode={gameCode} />
           ) : (
             <ComparePlayerOverview seasonCode={seasonCode} phaseCode={phaseCode} entityA={effectiveEntityA} entityB={effectiveEntityB} />
           )

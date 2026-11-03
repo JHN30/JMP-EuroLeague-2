@@ -66,8 +66,14 @@ test("the Overview fits, with TV codes for the opponents below 640px and the clu
   const { slug, code, teams } = await liveSeason(page);
   const codes = new Set();
   const names = new Set();
-  for (const team of teams.slice(0, 2)) {
-    const { games } = await (await page.request.get(`${API}/${code}/teams/${team.clubCode}/games?limit=100&order=asc`)).json();
+  // The form lists and this season's meetings, then last season's meetings (club A's games of the season before).
+  const { seasons } = await (await page.request.get(API)).json();
+  const previous = seasons[seasons.findIndex((season) => season.seasonCode === code) + 1]?.seasonCode;
+  const sources = [code, code, previous].map((seasonCode, index) => [seasonCode, teams[index === 1 ? 1 : 0].clubCode]).filter(([seasonCode]) => seasonCode);
+  for (const [seasonCode, clubCode] of sources) {
+    const response = await page.request.get(`${API}/${seasonCode}/teams/${clubCode}/games?limit=100&order=asc`);
+    if (!response.ok()) continue;
+    const { games } = await response.json();
     for (const side of games.flatMap((game) => [game.localTeam, game.roadTeam])) {
       codes.add(side?.tvCode ?? side?.abbreviatedName ?? side?.clubCode ?? "TBD");
       names.add(side?.abbreviatedName ?? side?.name ?? "TBD");
@@ -96,6 +102,18 @@ test("the Overview fits, with TV codes for the opponents below 640px and the clu
       .getByRole("heading", { name: "Where each club is stronger" })
       .evaluate((heading) => getComputedStyle(heading.closest(".panel").querySelector(".grid")).gridTemplateColumns.split(" ").length);
     expect(columns).toBe(width < 640 ? 1 : 2);
+    // The panels (panel, its motion wrapper, its column, the grid): the matchup and form beside the players to watch and meetings from 1024px, one column below.
+    const panelColumns = await page
+      .getByRole("heading", { name: "Where each club is stronger" })
+      .evaluate((heading) => getComputedStyle(heading.closest(".panel").parentElement.parentElement.parentElement).gridTemplateColumns.split(" ").length);
+    expect(panelColumns).toBe(width >= 1024 ? 2 : 1);
+    if (width >= 1024) {
+      // Both columns end on one line: the last panel of each reaches the bottom of the grid.
+      const bottoms = await page
+        .getByRole("heading", { name: "Where each club is stronger" })
+        .evaluate((heading) => [...heading.closest(".panel").parentElement.parentElement.parentElement.children].map((column) => Math.round(column.lastElementChild.querySelector(".panel").getBoundingClientRect().bottom)));
+      expect(Math.abs(bottoms[0] - bottoms[1])).toBeLessThanOrEqual(1);
+    }
     // The compare link wraps its text inside its button.
     const link = page.getByRole("link", { name: /^Compare .* and / });
     if (await link.count()) expect(await link.evaluate((el) => el.scrollWidth <= el.clientWidth + 1)).toBe(true);
@@ -229,7 +247,8 @@ test("every statistic row of the team comparison has a hover tip", async ({ page
   test.setTimeout(120_000);
   const { slug, teams } = await liveSeason(page);
   const rowNames = page.locator("main span.text-xs.font-bold.tracking-wide.uppercase");
-  for (const tab of ["Overview", "Statistics", "Rosters"]) {
+  // The Overview has no statistic rows: its home and away records are one line under each club's form.
+  for (const tab of ["Statistics", "Rosters"]) {
     await openTab(page, slug, teams, tab);
     await expect(rowNames.first()).toBeVisible({ timeout: 30_000 });
     expect(await rowNames.count()).toBeGreaterThan(1);

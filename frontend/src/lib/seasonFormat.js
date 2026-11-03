@@ -52,7 +52,7 @@ export function competitionNotes(format, seasonCode, { gameCode, phaseCode, roun
   } : entry);
 }
 
-function ordinal(number) {
+export function ordinal(number) {
   const lastTwo = number % 100;
   if (lastTwo >= 11 && lastTwo <= 13) return `${number}th`;
   return `${number}${{ 1: "st", 2: "nd", 3: "rd" }[number % 10] ?? "th"}`;

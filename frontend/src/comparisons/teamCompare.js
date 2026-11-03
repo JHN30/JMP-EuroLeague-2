@@ -56,3 +56,8 @@ const LEFT_OUT = new Set(["freeThrowsMade", "twoPointersAttempted", "threePointe
 export function statsOfFamily(family, usableFn, source) {
   return TEAM_STATS.filter((stat) => stat.family === family && !LEFT_OUT.has(stat.key) && usableFn(stat, source));
 }
+
+// A club that did not play in the season asked for: the API's 404 for it, which means no games rather than a failure.
+export function absentFromSeason(error) {
+  return error?.response?.status === 404 && error.response.data?.error?.code === "TEAM_NOT_FOUND";
+}

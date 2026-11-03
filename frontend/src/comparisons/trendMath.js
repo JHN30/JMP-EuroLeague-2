@@ -15,3 +15,12 @@ export function padTo(points, length) {
 export function average(values) {
   return values.length === 0 ? null : values.reduce((sum, value) => sum + value, 0) / values.length;
 }
+
+// The average of each value and the ones before it, up to `window` of them; null where the value itself is missing (a padded end).
+export function rollingAverage(values, window) {
+  return values.map((value, index) => {
+    if (value === null || value === undefined) return null;
+    const recent = values.slice(Math.max(0, index - window + 1), index + 1).filter((entry) => entry !== null && entry !== undefined);
+    return average(recent);
+  });
+}

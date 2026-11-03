@@ -399,6 +399,56 @@ function ChartPanel({ chart = "h-60" }) {
   );
 }
 
+// A thin row of a compact panel: a name and two short figures.
+function ThinRows({ rows }) {
+  return range(rows).map((index) => (
+    <div key={index} className="flex h-9 items-center gap-3 border-b border-base-300 last:border-0">
+      <div className="skeleton h-3.5 w-36" />
+      <div className="skeleton ml-auto h-3.5 w-12" />
+      <div className="skeleton h-3.5 w-12" />
+    </div>
+  ));
+}
+
+// The team Trends section: the two form lines, records by type of game beside the common opponents, the two scoring charts and the two
+// margin charts, all compact.
+export function TeamTrendsSkeleton() {
+  return (
+    <div aria-hidden="true" className="flex flex-col gap-6">
+      <div className="panel p-4">
+        <div className="skeleton mb-3 h-6 w-72 max-w-full" />
+        {range(2).map((index) => (
+          <div key={index} className="flex h-12 items-center gap-4 border-b border-base-300 last:border-0">
+            <div className="skeleton h-7 w-40" />
+            <div className="skeleton h-2 flex-1 rounded-full" />
+            <div className="skeleton h-4 w-48 max-sm:hidden" />
+          </div>
+        ))}
+      </div>
+      <div className="grid gap-6 xl:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]">
+        <div className="panel p-4">
+          <div className="skeleton mb-3 h-6 w-48" />
+          <ThinRows rows={4} />
+        </div>
+        <div className="panel p-4">
+          <div className="skeleton mb-3 h-6 w-48" />
+          <ThinRows rows={6} />
+        </div>
+      </div>
+      {range(2).map((pair) => (
+        <div key={pair} className="grid gap-6 xl:grid-cols-2">
+          {range(2).map((side) => (
+            <div key={side} className="panel p-4">
+              <div className="skeleton mb-2 h-5 w-48" />
+              <div className={`skeleton w-full ${pair === 0 ? "h-44" : "h-40"}`} />
+            </div>
+          ))}
+        </div>
+      ))}
+    </div>
+  );
+}
+
 // The Trends section, as both comparisons lay it out: the last games against the season, two charts, a wide chart, then a
 // chart for each side.
 export function TrendsSkeleton() {

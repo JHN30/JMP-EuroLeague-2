@@ -202,13 +202,16 @@ test("the Rosters tables swipe inside their box with the player column pinned", 
   });
 });
 
-test("the Trends form cards and charts fit, and the chart pairs sit side by side from 1280px", async ({ page }) => {
+test("the Trends form lines and charts fit, and the chart pairs sit side by side from 1280px", async ({ page }) => {
   test.setTimeout(90_000);
   const { slug, teams } = await liveSeason(page);
   await openTab(page, slug, teams, "Trends");
   const charts = page.locator("main canvas");
   test.skip((await charts.count()) === 0 && (await page.getByText("Not enough games played").count()) > 0, "too few games for a trend yet");
-  await expect(charts).toHaveCount(5, { timeout: 30_000 });
+  // Points scored and allowed, then each club's margins: the point differential line repeated the margins and is gone.
+  await expect(charts).toHaveCount(4, { timeout: 30_000 });
+  await expect(page.getByRole("heading", { name: /^Point differential/ })).toHaveCount(0);
+  const formLines = page.getByRole("region", { name: "Recent form" }).locator("li");
 
   await atWidths(page, WIDTHS, async (width) => {
     expect(await cutTexts(page)).toEqual([]);
@@ -216,12 +219,48 @@ test("the Trends form cards and charts fit, and the chart pairs sit side by side
     // Every canvas fits the panel it is drawn in.
     const canvasFits = await charts.evaluateAll((els) => els.every((el) => el.getBoundingClientRect().right <= el.closest(".panel").getBoundingClientRect().right + 1));
     expect(canvasFits).toBe(true);
-    const margins = page.getByRole("heading", { name: "Margin in every game" });
+    const margins = page.getByRole("heading", { name: /^Margin in every game/ });
     const [first, second] = await Promise.all([margins.nth(0).boundingBox(), margins.nth(1).boundingBox()]);
     if (width >= 1280) expect(Math.abs(first.y - second.y)).toBeLessThan(2);
     else expect(second.y).toBeGreaterThan(first.y + 50);
+    // A club's form is one line from 640px (the name level with its scored number), two below.
+    const oneLine = await formLines.first().evaluate((line) => {
+      const [name, , , scored] = [...line.children].map((child) => child.getBoundingClientRect());
+      return Math.abs(name.top + name.height / 2 - (scored.top + scored.height / 2)) < 6;
+    });
+    expect(oneLine).toBe(width >= 640);
     await expectNoSidewaysScroll(page);
   });
+});
+
+test("the Trends tab has each club's record by type of game and its results against the common opponents", async ({ page }) => {
+  test.setTimeout(60_000);
+  const { slug, teams } = await liveSeason(page);
+  await openTab(page, slug, teams, "Trends");
+  const types = page.getByRole("region", { name: "Game types" });
+  test.skip((await page.getByText("Not enough games played").count()) > 0, "too few games for a trend yet");
+  await expect(types.locator("li").first()).toBeVisible({ timeout: 30_000 });
+  // Close and one-sided games always; the top and bottom halves when the season has one regular-season table.
+  // The name before its tip's text.
+  const labels = (await types.locator("li > span:first-child").allInnerTexts()).map((label) => label.split("\n")[0].trim());
+  expect(labels.slice(0, 2)).toEqual(["Close games (5 or fewer)", "Decided by 15+"]);
+  if (labels.length > 2) expect(labels.slice(2).map((label) => label.replace(/\d+/, "N"))).toEqual(["Against the top N", "Against the bottom N"]);
+  for (const record of await types.locator("li > span:not(:first-child)").allInnerTexts()) expect(record).toMatch(/^(\d+-\d+|—)$/);
+
+  // Every common opponent is a row with each club's margins; the summary counts the rows each club did better on.
+  const common = page.getByRole("region", { name: "Common opponents" });
+  const rows = common.locator("li");
+  if ((await rows.count()) === 0) {
+    await expect(common).toContainText("have not played the same opponent");
+    return;
+  }
+  const count = await rows.count();
+  const better = await rows.evaluateAll((items) => items.map((item) => item.dataset.better ?? null));
+  for (const margins of await rows.locator("span[title]").allInnerTexts()) expect(margins).toMatch(/^[+−]\d+$/);
+  const level = better.filter((side) => side === null).length;
+  await expect(common.getByTestId("common-summary")).toHaveText(
+    new RegExp(`^Against ${count === 1 ? "1 common opponent" : `${count} common opponents`}: .+ better on ${better.filter((side) => side === "a").length}, .+ on ${better.filter((side) => side === "b").length}${level ? `, ${level} level` : ""}$`),
+  );
 });
 
 test.describe("states and long names at 320px", () => {

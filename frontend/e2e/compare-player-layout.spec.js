@@ -141,26 +141,60 @@ test("the Statistics tab holds the box score, the advanced numbers and the clubs
   });
 });
 
-test("the Trends charts fit, show every game, and sit side by side from 1280px", async ({ page }) => {
-  test.setTimeout(120_000);
+test("the Trends tab has the last ten games, splits and consistency, a production picker and compact charts that fit", async ({ page }) => {
+  test.setTimeout(150_000);
   const { slug, a, b } = await livePlayers(page);
   await openTab(page, slug, a, b, "Trends");
   const charts = page.locator("main canvas");
-  await expect(charts.first()).toBeVisible({ timeout: 30_000 });
+  await expect(charts.first().or(page.getByText(/Not enough games played/))).toBeVisible({ timeout: 30_000 });
+  test.skip((await charts.count()) === 0, "too few games for a trend yet");
   const lastNames = [a, b].map((player) => player.playerName.split(",")[0].trim().toLowerCase());
-  // The first chart's note says every game, not an average that starts later.
-  await expect(page.getByText("Every game, in order. Hover or tap a point for the game.").first()).toBeVisible();
+
+  // The slim header, both players' last games as pairs of PIR bars on one scale, and the two row panels.
+  await expect(page.getByRole("group", { name: "Players compared" })).toBeVisible();
+  const form = page.getByRole("region", { name: "Recent form" });
+  const formChart = form.getByRole("img", { name: /^PIR in the last \d+ games/ });
+  await expect(formChart).toBeVisible();
+  for (const name of lastNames) expect((await formChart.getAttribute("aria-label")).toLowerCase()).toContain(name);
+  const splits = page.getByRole("region", { name: "Splits" });
+  const consistency = page.getByRole("region", { name: "Consistency" });
+  for (const label of ["Home", "Away", "In wins", "In losses", "First half", "Second half"]) await expect(splits.locator("li", { hasText: label }).first()).toBeVisible();
+  for (const label of ["10+ point games", "Double-doubles", "PIR spread"]) await expect(consistency.locator("li", { hasText: label }).first()).toBeVisible();
+  // Home and away cover every game of the phase between them.
+  const games = async (row) => Number((await splits.locator("li", { hasText: row }).first().locator("span[title]").first().getAttribute("title")).split(" ")[0]);
+  const [home, away] = [await games("Home"), await games("Away")];
+  const [first, second] = [await games("First half"), await games("Second half")];
+  expect(home + away).toBe(first + second);
+
+  // The production picker swaps the chart's stat.
+  const picker = page.getByRole("group", { name: "Production stat" });
+  await expect(picker.getByRole("button", { name: "Points" })).toHaveAttribute("aria-pressed", "true");
+  await picker.getByRole("button", { name: "Rebounds" }).click();
+  await expect(picker.getByRole("button", { name: "Rebounds" })).toHaveAttribute("aria-pressed", "true");
+  await expect(page.locator("main canvas[aria-label^='Rebounds:']")).toHaveCount(1);
+  await expect(page.locator("main canvas[aria-label^='Points:']")).toHaveCount(0);
+  await expect(page.locator("main canvas[aria-label^='Minutes:']")).toHaveCount(1);
 
   await atWidths(page, WIDTHS, async (width) => {
     expect(await cutTexts(page)).toEqual([]);
     await expect.poll(() => outsidePanels(page), { timeout: 20_000 }).toEqual([]);
     const label = (await charts.first().getAttribute("aria-label")).toLowerCase();
     for (const name of lastNames) expect(label).toContain(name);
-    const points = page.getByRole("heading", { name: "Points", exact: true });
-    const rebounds = page.getByRole("heading", { name: "Rebounds", exact: true });
-    const [first, second] = await Promise.all([points.boundingBox(), rebounds.boundingBox()]);
-    if (width >= 1280) expect(Math.abs(first.y - second.y)).toBeLessThan(2);
-    else expect(second.y).toBeGreaterThan(first.y + 50);
+    // Splits beside consistency, and the charts in a row, from 1280px; stacked below.
+    const [left, right] = await Promise.all([splits.boundingBox(), consistency.boundingBox()]);
+    const [production, minutes] = await Promise.all(["Rebounds", "Minutes"].map((name) => page.locator(`main canvas[aria-label^='${name}:']`).boundingBox()));
+    if (width >= 1280) {
+      expect(Math.abs(left.y - right.y)).toBeLessThan(2);
+      expect(Math.abs(production.y - minutes.y)).toBeLessThan(2);
+    } else {
+      expect(right.y).toBeGreaterThan(left.y + 50);
+      expect(minutes.y).toBeGreaterThan(production.y + 50);
+    }
+    // The form chart is at least 140px tall at every width, so the bars can be told apart.
+    expect((await formChart.boundingBox()).height).toBeGreaterThanOrEqual(140);
+    // A split row is one line from 640px.
+    const row = (await splits.locator("li", { hasText: "Home" }).first().boundingBox()).height;
+    if (width >= 640) expect(row).toBeLessThan(40);
     await expectNoSidewaysScroll(page);
   });
 });
@@ -212,7 +246,7 @@ test.describe("states and long names at 320px", () => {
     await expect(page.getByText("Their clubs have not met this season.")).toBeVisible();
     await expectNoSidewaysScroll(page);
     await page.getByRole("tab", { name: "Trends", exact: true }).click();
-    await expect(page.getByText("Not enough games played to show a trend yet.")).toBeVisible({ timeout: 30_000 });
+    await expect(page.getByText("Not enough games played in this phase to show a trend yet.")).toBeVisible({ timeout: 30_000 });
     await expectNoSidewaysScroll(page);
     await page.unroute(/\/players\/[^/]+\/games/);
 
@@ -221,6 +255,12 @@ test.describe("states and long names at 320px", () => {
     await openTab(page, slug, a, b, "Statistics");
     await expect(page.getByText("Could not load the advanced numbers.")).toHaveCount(3, { timeout: 45_000 });
     await expect(page.getByRole("region", { name: "Scoring", exact: true }).locator("li").first()).toBeVisible();
+    await expectNoSidewaysScroll(page);
+    // The Trends tab draws from the game logs alone: its rows and every chart, PER included, still show.
+    await page.getByRole("tab", { name: "Trends", exact: true }).click();
+    await expect(page.getByRole("region", { name: "Splits" })).toBeVisible({ timeout: 30_000 });
+    await expect(page.locator("main canvas[aria-label^='Minutes:']")).toHaveCount(1);
+    await expect(page.locator("main canvas[aria-label^='PER:']")).toHaveCount(1);
     await expectNoSidewaysScroll(page);
   });
 });

@@ -5,17 +5,20 @@ import Panel from "../lib/Panel";
 import { themeColor, useActiveTheme } from "../lib/useActiveTheme";
 import { rollingAverage } from "./trendMath";
 
-// `compact` puts the kicker beside the title, the note in a tip on the title and `subtitle` (what must stay visible) after it.
-function ChartPanel({ kicker, title, note, subtitle, ariaLabel, canvasRef, height, compact = false }) {
+// `compact` puts the kicker beside the title, the note in a tip on the title and `subtitle` (what must stay visible) after it;
+// `actions` (a compact panel's control, say a stat picker) sits at the end of that line. `stretch` fills the grid cell and keeps the
+// chart at the bottom, so charts in a row line up when one heading wraps.
+function ChartPanel({ kicker, title, note, subtitle, actions, ariaLabel, canvasRef, height, compact = false, stretch = false }) {
   if (compact) {
     return (
-      <Panel className="p-4">
+      <Panel className={stretch ? "flex h-full flex-col p-4" : "p-4"}>
         <div className="mb-2 flex flex-wrap items-baseline gap-x-3 gap-y-0.5">
           {kicker ? <p className="eyebrow">{kicker}</p> : null}
           <h3 className="font-bold">{note ? <HeaderTip tip={note}>{title}</HeaderTip> : title}</h3>
           {subtitle ? <p className="muted text-xs">{subtitle}</p> : null}
+          {actions ? <div className="ms-auto">{actions}</div> : null}
         </div>
-        <div className={`relative w-full ${height}`}>
+        <div className={`relative w-full ${height} ${stretch ? "mt-auto min-w-0" : ""}`}>
           <canvas ref={canvasRef} role="img" aria-label={ariaLabel} />
         </div>
       </Panel>
@@ -37,8 +40,8 @@ function ChartPanel({ kicker, title, note, subtitle, ariaLabel, canvasRef, heigh
 // a gap, and an optional line of text per point for the tooltip (the opponent, say). `zero` draws the zero line stronger.
 // `markers` draws a dot on every point and straight segments, for series of single values (each game) rather than a smoothed average.
 // `rolling` (a window, say 3) adds each series' rolling average as a bold line over a faint game-by-game one; the legend then names
-// each series once. `compact` and `subtitle` are the panel's (see ChartPanel).
-export function LineTrend({ kicker, title, note, subtitle, labels, series, digits = 1, zero = false, axisTitle, markers = false, rolling = 0, compact = false }) {
+// each series once. `compact`, `subtitle`, `actions` and `stretch` are the panel's (see ChartPanel).
+export function LineTrend({ kicker, title, note, subtitle, actions, labels, series, digits = 1, zero = false, axisTitle, markers = false, rolling = 0, compact = false, stretch = false }) {
   const canvasRef = useRef(null);
   const theme = useActiveTheme();
 
@@ -83,14 +86,18 @@ export function LineTrend({ kicker, title, note, subtitle, labels, series, digit
     const legendLabels = {
       color: textColor,
       usePointStyle: true,
+      // The point is drawn boxHeight across: kept to the box width, with room before the name.
       boxWidth: 8,
+      boxHeight: 8,
+      padding: 16,
       filter: (item, data) => !rolling || Boolean(data.datasets[item.datasetIndex].average),
-      ...(rolling
-        ? {
-            generateLabels: (chartRef) =>
-              Chart.defaults.plugins.legend.labels.generateLabels(chartRef).map((item) => ({ ...item, text: series[chartRef.data.datasets[item.datasetIndex].series]?.label ?? item.text })),
-          }
-        : {}),
+      // Each dot is filled in its series' full colour (a line's own fill is faint); with rolling lines the name is the series'.
+      generateLabels: (chartRef) =>
+        Chart.defaults.plugins.legend.labels.generateLabels(chartRef).map((item) => {
+          const dataset = chartRef.data.datasets[item.datasetIndex];
+          const colour = colors[dataset.series % colors.length];
+          return { ...item, fillStyle: colour, strokeStyle: colour, text: rolling ? (series[dataset.series]?.label ?? item.text) : item.text };
+        }),
     };
 
     const chart = new Chart(canvas, {
@@ -128,7 +135,9 @@ export function LineTrend({ kicker, title, note, subtitle, labels, series, digit
       title={title}
       note={note}
       subtitle={subtitle}
+      actions={actions}
       compact={compact}
+      stretch={stretch}
       canvasRef={canvasRef}
       height={compact ? "h-44" : "h-64"}
       ariaLabel={`${title}: ${series.map((entry) => entry.label).join(" and ")}`}

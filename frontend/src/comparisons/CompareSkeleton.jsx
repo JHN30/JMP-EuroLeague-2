@@ -344,17 +344,6 @@ export function RostersSkeleton() {
   );
 }
 
-// A chart panel: its heading and note over the chart.
-function ChartPanel({ chart = "h-60" }) {
-  return (
-    <div className="panel p-4">
-      <HeadWithNote title="w-36" />
-      <div className="skeleton -mt-2 mb-4 h-3.5 w-2/3 sm:hidden" />
-      <div className={`skeleton w-full ${chart}`} />
-    </div>
-  );
-}
-
 // A thin row of a compact panel: a name and two short figures.
 function ThinRows({ rows }) {
   return range(rows).map((index) => (
@@ -405,26 +394,54 @@ export function TeamTrendsSkeleton() {
   );
 }
 
-// The Trends section, as both comparisons lay it out: the last games against the season, two charts, a wide chart, then a
-// chart for each side.
+// The player Trends section: the slim pair header, the form chart, the splits beside the consistency rows, then the compact charts
+// three a row.
 export function TrendsSkeleton() {
   return (
     <div aria-hidden="true" className="flex flex-col gap-6">
       <div className="panel p-4">
-        <SkeletonPanelHead title="w-64" />
-        <div className="grid gap-3 lg:grid-cols-2">
-          <div className="skeleton h-44 rounded-box" />
-          <div className="skeleton h-44 rounded-box" />
+        <div className="grid grid-cols-2 gap-4">
+          {range(2).map((side) => (
+            <div key={side} className={`flex min-w-0 flex-col items-center gap-2 sm:flex-row sm:gap-3 ${side ? "sm:flex-row-reverse" : ""}`}>
+              <div className="skeleton size-12 flex-none rounded-full sm:size-14" />
+              <div className="flex min-w-0 flex-col items-center gap-1.5">
+                <div className="skeleton h-4 w-32 max-w-full" />
+                <div className="skeleton h-3 w-24 max-w-full" />
+              </div>
+            </div>
+          ))}
         </div>
       </div>
-      <div className="grid gap-6 lg:grid-cols-2">
-        <ChartPanel />
-        <ChartPanel />
+      <div className="panel p-4">
+        <div className="skeleton mb-3 h-6 w-72 max-w-full" />
+        <div className="grid grid-cols-[minmax(0,1fr)] gap-3 sm:grid-cols-2 sm:gap-6">
+          {range(2).map((index) => (
+            <div key={index} className="flex items-center gap-2.5">
+              <div className="skeleton size-9 flex-none rounded-full" />
+              <div className="flex min-w-0 flex-1 flex-col gap-1.5">
+                <div className="skeleton h-4 w-36 max-w-full" />
+                <div className="skeleton h-3.5 w-56 max-w-full" />
+              </div>
+            </div>
+          ))}
+        </div>
+        <div className="skeleton mt-5 h-36 w-full sm:h-40" />
       </div>
-      <ChartPanel />
-      <div className="grid gap-6 lg:grid-cols-2">
-        <ChartPanel chart="h-56" />
-        <ChartPanel chart="h-56" />
+      <div className="grid grid-cols-[minmax(0,1fr)] gap-6 xl:grid-cols-2">
+        {[9, 7].map((rows, index) => (
+          <div key={index} className="panel p-4">
+            <div className="skeleton mb-3 h-6 w-48" />
+            <ThinRows rows={rows} />
+          </div>
+        ))}
+      </div>
+      <div className="grid grid-cols-[minmax(0,1fr)] gap-6 xl:grid-cols-3">
+        {range(6).map((index) => (
+          <div key={index} className="panel p-4">
+            <div className="skeleton mb-2 h-5 w-48" />
+            <div className="skeleton h-44 w-full" />
+          </div>
+        ))}
       </div>
     </div>
   );

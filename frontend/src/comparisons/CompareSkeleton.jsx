@@ -78,50 +78,6 @@ function PickersSkeleton() {
 
 // ---- An opened comparison ----
 
-// Rows of a comparison: the label over the two sides' numbers, each over its bar.
-function ComparisonRows({ rows, rowClassName = "h-[4.8rem]" }) {
-  return range(rows).map((index) => (
-    <div key={index} className={`flex flex-col justify-center gap-2 border-b border-base-300 last:border-0 ${rowClassName}`}>
-      <div className="skeleton mx-auto h-3 w-24" />
-      <div className="grid grid-cols-2 gap-4">
-        <div className="flex flex-col items-end gap-1.5">
-          <div className="skeleton h-4 w-16" />
-          <div className="skeleton h-1.5 w-full rounded-full" />
-        </div>
-        <div className="flex flex-col gap-1.5">
-          <div className="skeleton h-4 w-16" />
-          <div className="skeleton h-1.5 w-full rounded-full" />
-        </div>
-      </div>
-    </div>
-  ));
-}
-
-// Groups of comparison rows, each under its grey heading strip, as the statistics tables draw them.
-function ComparisonGroups({ groups, rowClassName }) {
-  return groups.map((rows, group) => (
-    <div key={group}>
-      <div className="skeleton -mx-3 h-9 rounded-none" />
-      <ComparisonRows rows={rows} rowClassName={rowClassName} />
-    </div>
-  ));
-}
-
-// The pair of clubs or players over a section's rows: a crest or face over the name, either side.
-function PairStrip() {
-  return (
-    <div className="mb-3 grid grid-cols-2 gap-4 pt-2">
-      {range(2).map((side) => (
-        <div key={side} className="flex flex-col items-center gap-2">
-          <div className="skeleton size-10 rounded-full" />
-          <div className="skeleton h-4 w-28 max-w-full" />
-          <div className="skeleton h-3 w-16" />
-        </div>
-      ))}
-    </div>
-  );
-}
-
 // A list of `rows` rows, each a face or crest, a name with a line under it and a figure.
 function ListRows({ rows, rowClassName = "h-13" }) {
   return range(rows).map((index) => (
@@ -568,22 +524,44 @@ export function PlayerOverviewSkeleton() {
   );
 }
 
-// The player Statistics table: the pair over groups of comparison rows.
+// The player Statistics tab: the compact pair and its note, then the groups of one-line rows in two columns from xl.
 export function PlayerStatsSkeleton() {
-  return (
-    <div aria-hidden="true" className="panel p-3">
-      <PairStrip />
-      <ComparisonGroups groups={[9, 8, 8, 7]} rowClassName="h-[3.4rem]" />
+  const group = (rows, index) => (
+    <div key={index} className="flex flex-col">
+      <div className="flex h-7 items-center gap-3 border-b border-base-300 pb-1">
+        <div className="skeleton h-4 w-28" />
+      </div>
+      {range(rows).map((row) => (
+        <div key={row} className="flex h-9 items-center gap-3 border-b border-base-300 last:border-0 max-sm:h-14">
+          <div className="skeleton h-3.5 w-24 max-sm:hidden" />
+          <div className="skeleton h-3.5 w-10" />
+          <div className="skeleton h-2 flex-1" />
+          <div className="skeleton h-2 flex-1" />
+          <div className="skeleton h-3.5 w-10" />
+        </div>
+      ))}
     </div>
   );
-}
-
-// The player Advanced section: the pair over the overall, per-100 and rate rows.
-export function PlayerAdvancedSkeleton() {
   return (
-    <div aria-hidden="true" className="panel p-3">
-      <PairStrip />
-      <ComparisonGroups groups={[9, 15, 10]} rowClassName="h-[4.8rem]" />
+    <div aria-hidden="true" className="panel p-4">
+      <div className="grid grid-cols-2 gap-4">
+        {range(2).map((side) => (
+          <div key={side} className={`flex flex-col items-center gap-2 sm:flex-row sm:gap-3 ${side ? "sm:flex-row-reverse" : ""}`}>
+            <div className="skeleton size-12 rounded-full sm:size-14" />
+            <div className="flex flex-col items-center gap-1.5">
+              <div className="skeleton h-4 w-32" />
+              <div className="skeleton h-3 w-24" />
+            </div>
+          </div>
+        ))}
+      </div>
+      <div className="mt-3 mb-4 flex justify-center border-t border-base-300 pt-2">
+        <div className="skeleton h-3 w-72 max-w-full" />
+      </div>
+      <div className="grid gap-4 xl:grid-cols-2 xl:gap-x-8">
+        <div className="flex flex-col gap-4">{[9, 14, 5, 8, 6].map(group)}</div>
+        <div className="flex flex-col gap-4">{[6, 6, 5, 5, 6, 6, 5].map(group)}</div>
+      </div>
     </div>
   );
 }

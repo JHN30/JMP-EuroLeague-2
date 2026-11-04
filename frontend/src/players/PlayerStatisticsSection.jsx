@@ -12,7 +12,7 @@ import PanelHeader from "../lib/PanelHeader";
 import { TabPanel, TabStrip } from "../lib/TabStrip";
 import { ordinal, rankTier } from "../teams/teamLeague";
 import { fetchLeagueLeaderboard, leaderboardQueryKey } from "./leagueLeaderboard";
-import { leagueStanding, STAT_GROUPS, statValue } from "./playerStatDefs";
+import { formatSheetValue, leagueStanding, STAT_GROUPS, statValue } from "./playerStatDefs";
 import { statNumber } from "./playerOverview";
 
 const PANEL_ID = "player-stats-panel";
@@ -30,13 +30,7 @@ const ROW_GRID =
   "grid items-center gap-x-2 grid-cols-[3.25rem_1fr_1fr_3.25rem] sm:grid-cols-[9.5rem_2.75rem_3.75rem_1fr_1fr_3.75rem] lg:grid-cols-[11rem_2.75rem_3.75rem_1fr_1fr_3.75rem]";
 const LABEL_CELL = "col-span-4 sm:col-span-1";
 
-function formatValue(stat, value, mode) {
-  if (value === null || value === undefined) return "—";
-  if (stat.kind === "percent") return `${value.toFixed(1)}%`;
-  if (stat.kind === "games") return String(Math.round(value));
-  if (stat.kind === "count" && mode === "accumulated") return Math.round(value).toLocaleString();
-  return value.toFixed(1);
-}
+const formatValue = formatSheetValue;
 
 // An average of whole games (double-doubles) keeps a decimal.
 function formatAverage(stat, value, mode) {

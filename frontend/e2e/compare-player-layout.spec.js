@@ -93,23 +93,48 @@ test("the Overview fits, with club and opponent codes below 640px and the radar 
   });
 });
 
-test("the Statistics and Advanced rows fit, and the Statistics header reads First Last", async ({ page }) => {
-  test.setTimeout(120_000);
+test("the Statistics tab holds the box score, the advanced numbers and the clubs: one line a row from 640px, two columns from 1280px", async ({ page }) => {
+  test.setTimeout(150_000);
   const { slug, a, b } = await livePlayers(page);
   await openTab(page, slug, a, b, "Statistics");
-  await expect(page.locator("main .panel h3").first()).toBeVisible({ timeout: 30_000 });
+  await expect(page.getByRole("region", { name: "Scoring", exact: true })).toBeVisible({ timeout: 30_000 });
   await expect(page.locator(".loading, [aria-busy=\"true\"]")).toHaveCount(0, { timeout: 30_000 });
-  const header = await page.locator("main .panel .grid-cols-2").first().innerText();
+  // There is no Advanced tab: its numbers are here.
+  await expect(page.getByRole("tab", { name: "Advanced", exact: true })).toHaveCount(0);
+  await expect(page.getByRole("region", { name: "Impact", exact: true })).toBeVisible();
+  await expect(page.getByRole("region", { name: "Rates", exact: true })).toBeVisible();
+  const header = await page.getByRole("group", { name: "Players compared" }).innerText();
   expect(header).not.toContain(",");
-  await atWidths(page, WIDTHS, async () => {
-    expect(await cutTexts(page)).toEqual([]);
-    await expect.poll(() => outsidePanels(page), { timeout: 20_000 }).toEqual([]);
-    await expectNoSidewaysScroll(page);
-  });
 
-  await page.getByRole("tab", { name: "Advanced", exact: true }).click();
-  await expect(page.getByText(/Running values after the latest round/)).toBeVisible({ timeout: 30_000 });
-  await atWidths(page, WIDTHS, async () => {
+  // The club rows: the record is the club's in the phase's standings.
+  const { seasons } = await (await page.request.get(API)).json();
+  const code = seasons.map((season) => season.seasonCode).find((seasonCode) => seasonCode.endsWith(slug));
+  const { standings } = await (await page.request.get(`${API}/${code}/phases/RS/standings`)).json();
+  const basic = standings.find((row) => row.clubCode === a.clubCode)?.basic;
+  if (basic) {
+    const record = page.getByRole("region", { name: "The club", exact: true }).locator("li").first();
+    await expect(record).toContainText(`${basic.gamesWon}-${basic.gamesLost}`);
+  }
+
+  // Per 100 possessions is shown, under Impact in the left column; the club is in the right.
+  await expect(page.getByRole("region", { name: "Per 100 possessions", exact: true })).toBeVisible();
+
+  await atWidths(page, WIDTHS, async (width) => {
+    // A row is one line from 640px and two below.
+    const points = page.getByRole("region", { name: "Scoring", exact: true }).locator("li").first();
+    const height = (await points.boundingBox()).height;
+    if (width >= 640) expect(height).toBeLessThan(40);
+    else expect(height).toBeGreaterThan(40);
+    // The groups sit in two columns from 1280px.
+    const [scoring, rebounding] = await Promise.all(
+      ["Scoring", "Rebounding"].map((name) => page.getByRole("region", { name, exact: true }).evaluate((el) => el.getBoundingClientRect().left)),
+    );
+    if (width >= 1280) expect(rebounding).toBeGreaterThan(scoring + 100);
+    else expect(Math.abs(rebounding - scoring)).toBeLessThan(2);
+    const per100 = await page.getByRole("region", { name: "Per 100 possessions", exact: true }).evaluate((el) => el.getBoundingClientRect().left);
+    expect(Math.abs(per100 - scoring)).toBeLessThan(2);
+    const club = page.getByRole("region", { name: "The club", exact: true });
+    if (await club.count()) expect(Math.abs((await club.evaluate((el) => el.getBoundingClientRect().left)) - rebounding)).toBeLessThan(2);
     expect(await cutTexts(page)).toEqual([]);
     await expect.poll(() => outsidePanels(page), { timeout: 20_000 }).toEqual([]);
     await expectNoSidewaysScroll(page);
@@ -157,7 +182,7 @@ test.describe("states and long names at 320px", () => {
       );
       await route.fulfill({ response, json: body });
     });
-    for (const tab of ["Overview", "Statistics", "Advanced", "Trends"]) {
+    for (const tab of ["Overview", "Statistics", "Trends"]) {
       await openTab(page, slug, a, b, tab);
       await expect(page.locator(".loading, [aria-busy=\"true\"]")).toHaveCount(0, { timeout: 30_000 });
       await expect.poll(() => outsidePanels(page), { timeout: 20_000 }).toEqual([]);
@@ -191,10 +216,11 @@ test.describe("states and long names at 320px", () => {
     await expectNoSidewaysScroll(page);
     await page.unroute(/\/players\/[^/]+\/games/);
 
-    // The advanced numbers fail.
+    // The advanced numbers fail: their three groups (Impact, Rates, Per 100 possessions) say so, and the box score still shows.
     await page.route(/\/players\/[^/]+\/advanced/, (route) => route.fulfill({ status: 500, json: {} }));
-    await openTab(page, slug, a, b, "Advanced");
-    await expect(page.getByText("Could not load the advanced numbers.")).toBeVisible({ timeout: 45_000 });
+    await openTab(page, slug, a, b, "Statistics");
+    await expect(page.getByText("Could not load the advanced numbers.")).toHaveCount(3, { timeout: 45_000 });
+    await expect(page.getByRole("region", { name: "Scoring", exact: true }).locator("li").first()).toBeVisible();
     await expectNoSidewaysScroll(page);
   });
 });
@@ -224,23 +250,14 @@ test.describe("on a phone", () => {
     await expect(header).toHaveCount(1);
 
     await page.getByRole("tab", { name: "Statistics", exact: true }).tap();
+    await expect(page.getByText(/Hover or tap a name for what it means./)).toBeVisible({ timeout: 30_000 });
     await expectHeader(header);
-    // The Statistics tab carries no note about the tips: the rows are named in full.
-    await expect(page.getByText("Hover or tap a name for what it means.")).toHaveCount(0);
+    // The rows are named in full, each with a tip, the advanced ones too.
     await expect(page.getByText(/^Team wins/).first()).toBeAttached();
-    for (const label of ["Double-doubles", "Triple-doubles", "Possessions"]) {
+    for (const label of ["Double-doubles", "Triple-doubles", "Possessions", "PER", "Usage %"]) {
       await expect(page.locator(".header-tip-label", { hasText: label }).first()).toBeAttached();
     }
     await expect(page.getByText(/^(DD|TD)$/)).toHaveCount(0);
-
-    await page.getByRole("tab", { name: "Advanced", exact: true }).tap();
-    await expect(page.getByText(/Hover or tap a name for what it means./)).toBeVisible({ timeout: 30_000 });
-    await expectHeader(header);
-    // Every advanced row has a tip on its name.
-    const withoutTip = await page.evaluate(() =>
-      [...document.querySelectorAll("main .panel .flex-col.justify-center")].filter((row) => !row.querySelector(".header-tip-label")).map((row) => row.textContent.slice(0, 30)),
-    );
-    expect(withoutTip).toEqual([]);
 
     await page.getByRole("tab", { name: "Trends", exact: true }).tap();
     await expectHeader(header);
@@ -274,7 +291,7 @@ test("every statistic row of the player comparison has a hover tip", async ({ pa
   test.setTimeout(120_000);
   const { slug, a, b } = await livePlayers(page);
   const rowNames = page.locator("main span.text-xs.font-bold.tracking-wide.uppercase");
-  for (const tab of ["Overview", "Statistics", "Advanced"]) {
+  for (const tab of ["Overview", "Statistics"]) {
     await openTab(page, slug, a, b, tab);
     await expect(rowNames.first()).toBeVisible({ timeout: 30_000 });
     expect(await rowNames.count()).toBeGreaterThan(1);

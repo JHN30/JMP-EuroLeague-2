@@ -50,7 +50,7 @@ test("Compare opens on the games of a round, and a game opens the comparison of 
   expect(errors).toEqual([]);
 });
 
-test("two players open a comparison with a profile, advanced numbers and the way back", async ({ page }) => {
+test("two players open a comparison with a profile, one Statistics tab with the advanced numbers, and the way back", async ({ page }) => {
   const errors = [];
   page.on("console", (message) => {
     if (message.type() === "error" && !message.text().startsWith("Failed to load resource")) errors.push(message.text());
@@ -62,8 +62,9 @@ test("two players open a comparison with a profile, advanced numbers and the way
   await expect(sections.getByRole("tab", { name: "Overview" })).toHaveAttribute("aria-selected", "true");
   await expect(page.getByRole("heading", { name: "Season line" })).toBeVisible();
 
-  await sections.getByRole("tab", { name: "Advanced" }).click();
-  await expect(page.getByText("Per 100 possessions", { exact: true })).toBeVisible();
+  await expect(sections.getByRole("tab", { name: "Advanced" })).toHaveCount(0);
+  await sections.getByRole("tab", { name: "Statistics" }).click();
+  await expect(page.getByRole("heading", { name: "Per 100 possessions" })).toBeVisible();
 
   await page.getByRole("link", { name: "Back to Players" }).click();
   await expect(page.getByLabel("Player A")).toBeVisible();

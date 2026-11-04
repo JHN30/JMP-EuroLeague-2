@@ -6,8 +6,7 @@ import { useLiveSearchParams } from "../lib/useLiveSearchParams";
 import AsyncState from "../lib/AsyncState";
 import LabelledSelect from "../lib/LabelledSelect";
 import Panel from "../lib/Panel";
-import ComparisonRow from "../lib/ComparisonRow";
-import { EASE_OUT, denseListContainer, listItem } from "../lib/motion";
+import { EASE_OUT } from "../lib/motion";
 import ShortLabel from "../lib/ShortLabel";
 import PageHeader from "../lib/PageHeader";
 import { useDocumentTitle } from "../lib/useDocumentTitle";
@@ -15,16 +14,13 @@ import { useDebouncedValue } from "../lib/useDebouncedValue";
 import { usePhaseParam } from "../lib/usePhaseParam";
 import { TabPanel, TabStrip } from "../lib/TabStrip";
 import BackLink from "../lib/BackLink";
-import { PLAYER_STAT_TIPS } from "./statTips";
 import CompareFixtures, { ComparisonContext } from "./CompareFixtures";
-import CompareSkeleton, { PlayerStatsSkeleton } from "./CompareSkeleton";
+import CompareSkeleton from "./CompareSkeleton";
 import CompareSuggestions from "./CompareSuggestions";
 import PickerPanel, { PickerImage, PickerOption } from "./PickerPanel";
-import PlayerPairHeader from "./PlayerPairHeader";
 import TeamPairHeader from "./TeamPairHeader";
-import { STAT_GROUPS as PLAYER_STAT_GROUPS } from "../players/playerStatDefs";
 import CompareRosters from "./CompareRosters";
-import ComparePlayerAdvanced from "./ComparePlayerAdvanced";
+import ComparePlayerStats from "./ComparePlayerStats";
 import ComparePlayerOverview from "./ComparePlayerOverview";
 import CompareTeamOverview from "./CompareTeamOverview";
 import CompareTeamTrends from "./CompareTeamTrends";
@@ -34,46 +30,9 @@ import {
   getLeaderStats,
   getPhases,
   getPlayer,
-  getPlayerSeasonStats,
   getSeasonPlayers,
   getSeasonTeams,
 } from "../lib/api";
-import { PLAYER_METRIC_GROUPS, formatStatValue } from "../lib/statsFields";
-
-const PLAYER_COMPARISON_SECTIONS = PLAYER_METRIC_GROUPS.map((group) => ({
-  key: group.group,
-  label: group.label,
-  rows: group.options.map(([key, label]) => ({ key: `${group.group}-${key}`, group: group.group, metricKey: key, label })),
-}));
-
-// The player page's readable name and tip for each statistic ("Double-doubles", not "DD").
-const PLAYER_STAT_DEFS = new Map(PLAYER_STAT_GROUPS.flatMap((group) => group.stats).map((stat) => [stat.field, stat]));
-
-const PLAYER_METRIC_DIRECTIONS = {
-  pointsScored: "higher",
-  totalRebounds: "higher",
-  assists: "higher",
-  steals: "higher",
-  turnovers: "lower",
-  blocks: "higher",
-  pir: "higher",
-  minutesPlayed: "neutral",
-  gamesPlayed: "neutral",
-  effectiveFieldGoalPercentage: "higher",
-  trueShootingPercentage: "higher",
-  reboundsPercentage: "higher",
-  assistsToTurnoversRatio: "higher",
-  possessions: "neutral",
-  twoPointRate: "neutral",
-  threePointRate: "neutral",
-  pointsFromTwoPointersPercentage: "neutral",
-  pointsFromThreePointersPercentage: "neutral",
-  pointsFromFreeThrowsPercentage: "neutral",
-  wins: "higher",
-  losses: "lower",
-  doubleDoubles: "higher",
-  tripleDoubles: "higher",
-};
 
 // A comparison opens on its overview, the preview of the pairing.
 const firstSection = () => "overview";
@@ -354,68 +313,6 @@ function PlayerPicker({ seasonCode, label, selected, excludeId, onSelect }) {
   );
 }
 
-function PlayerComparisonTable({ seasonCode, phaseCode, mode, entityA, entityB }) {
-  const statsAQuery = useQuery({
-    queryKey: ["player-compare-stats", seasonCode, phaseCode, mode, entityA?.id],
-    queryFn: () => getPlayerSeasonStats(seasonCode, entityA.id, { phase: phaseCode, mode }),
-    enabled: Boolean(phaseCode) && Boolean(entityA),
-  });
-  const statsBQuery = useQuery({
-    queryKey: ["player-compare-stats", seasonCode, phaseCode, mode, entityB?.id],
-    queryFn: () => getPlayerSeasonStats(seasonCode, entityB.id, { phase: phaseCode, mode }),
-    enabled: Boolean(phaseCode) && Boolean(entityB),
-  });
-
-  if (!entityA || !entityB) return <p className="muted">Select two players to compare.</p>;
-  if (statsAQuery.isPending || statsBQuery.isPending) return <AsyncState status="loading" label="Loading the comparison" skeleton={<PlayerStatsSkeleton />} />;
-  if (statsAQuery.isError || statsBQuery.isError) {
-    return (
-      <AsyncState status="error"
-        message="Could not load the comparison."
-        onRetry={() => {
-          statsAQuery.refetch();
-          statsBQuery.refetch();
-        }}
-      />
-    );
-  }
-
-  const a = statsAQuery.data.players?.[0];
-  const b = statsBQuery.data.players?.[0];
-
-  return (
-    <Panel className="p-3">
-      <motion.div variants={denseListContainer} initial="hidden" animate="show">
-        <motion.div variants={listItem} className="mb-4">
-          <PlayerPairHeader seasonCode={seasonCode} entityA={entityA} entityB={entityB} rowA={a} rowB={b} />
-        </motion.div>
-        {PLAYER_COMPARISON_SECTIONS.map((section) => (
-          <div key={section.key}>
-            <motion.h3 variants={listItem} className="bg-base-200 -mx-3 px-3 py-2 text-sm font-bold">
-              {section.label}
-            </motion.h3>
-              {section.rows.map((row) => (
-                <ComparisonRow
-                  key={row.key}
-                  animated
-                  compact
-                  dense
-                  label={PLAYER_STAT_DEFS.get(row.metricKey)?.label ?? row.label}
-                  tip={PLAYER_STAT_DEFS.get(row.metricKey)?.tip ?? PLAYER_STAT_TIPS[row.metricKey]}
-                  rawA={a?.[row.group]?.[row.metricKey]}
-                  rawB={b?.[row.group]?.[row.metricKey]}
-                  displayA={formatStatValue(row.metricKey, a?.[row.group]?.[row.metricKey])}
-                  displayB={formatStatValue(row.metricKey, b?.[row.group]?.[row.metricKey])}
-                  direction={PLAYER_METRIC_DIRECTIONS[row.metricKey]}
-                />
-              ))}
-          </div>
-        ))}
-      </motion.div>
-    </Panel>
-  );
-}
-
 function ComparisonsBody({
   seasonCode,
   phases,
@@ -659,7 +556,6 @@ function ComparisonsBody({
       : [
           { key: "overview", label: "Overview" },
           { key: "statistics", label: "Statistics" },
-          { key: "advanced", label: "Advanced" },
           { key: "trends", label: "Trends" },
         ];
   return (
@@ -720,10 +616,8 @@ function ComparisonsBody({
           view === "teams" ? (
             <CompareTeamStats seasonCode={seasonCode} phaseCode={phaseCode} entityA={effectiveEntityA} entityB={effectiveEntityB} />
           ) : (
-            <PlayerComparisonTable seasonCode={seasonCode} phaseCode={phaseCode} mode={mode} entityA={effectiveEntityA} entityB={effectiveEntityB} />
+            <ComparePlayerStats seasonCode={seasonCode} phaseCode={phaseCode} mode={mode} entityA={effectiveEntityA} entityB={effectiveEntityB} />
           )
-        ) : section === "advanced" ? (
-          <ComparePlayerAdvanced seasonCode={seasonCode} phaseCode={phaseCode} entityA={effectiveEntityA} entityB={effectiveEntityB} />
         ) : section === "rosters" ? (
           <CompareRosters seasonCode={seasonCode} phaseCode={phaseCode} entityA={effectiveEntityA} entityB={effectiveEntityB} />
         ) : (

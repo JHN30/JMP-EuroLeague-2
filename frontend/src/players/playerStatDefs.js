@@ -181,6 +181,16 @@ export const STAT_GROUPS = [
   },
 ];
 
+// How a row's number is written: a percentage with one decimal and a %, games whole, a count whole in season totals and with
+// one decimal per game.
+export function formatSheetValue(stat, value, mode) {
+  if (value === null || value === undefined) return "—";
+  if (stat.kind === "percent") return `${value.toFixed(1)}%`;
+  if (stat.kind === "games") return String(Math.round(value));
+  if (stat.kind === "count" && mode === "accumulated") return Math.round(value).toLocaleString();
+  return value.toFixed(1);
+}
+
 // One row's number for a player's entry (null when there is none).
 export function statValue(stat, entry, mode) {
   if (!entry) return null;

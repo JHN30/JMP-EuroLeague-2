@@ -23,48 +23,66 @@ function LinesPanel({ rows, title = "w-40" }) {
   );
 }
 
-// The history of two clubs' meetings: the series record between the clubs, the four headline cards, the margins and
-// momentum, the notable meetings and the season breakdown, then every meeting.
+// The series figures under the pickers while the meetings load: three figures and the last ten meetings.
+export function SeriesFiguresSkeleton() {
+  return (
+    <div aria-hidden="true" className="mt-3 flex flex-col gap-3 border-t border-base-300 pt-3 lg:flex-row lg:items-end lg:justify-between">
+      <div className="grid grid-cols-2 gap-x-4 gap-y-2 sm:flex sm:gap-x-8">
+        {range(3).map((index) => (
+          <div key={index} className="flex flex-col gap-1.5">
+            <div className="skeleton h-3 w-16" />
+            <div className="skeleton h-4 w-28" />
+          </div>
+        ))}
+      </div>
+      <div className="grid grid-cols-5 gap-1 sm:grid-cols-10 lg:w-[22rem]">
+        {range(10).map((index) => (
+          <div key={index} className="skeleton h-11 rounded-field sm:h-7 sm:w-9" />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// The history of two clubs' meetings below the series header: the records beside the margin chart, the notable meetings, the season
+// breakdown in two columns from lg, then the latest meetings.
 export function HeadToHeadHistorySkeleton() {
   return (
     <div aria-hidden="true" className="flex flex-col gap-6">
-      <div className="panel flex h-28 items-center max-sm:h-40 justify-between gap-4 p-4 sm:p-5">
-        <div className="flex items-center gap-3">
-          <div className="skeleton size-12 rounded-box" />
-          <div className="skeleton h-5 w-56 max-sm:hidden" />
-        </div>
-        <div className="flex flex-col items-center gap-2">
-          <div className="skeleton h-9 w-20" />
-          <div className="skeleton h-3 w-32 max-sm:hidden" />
-        </div>
-        <div className="flex items-center gap-3">
-          <div className="skeleton h-5 w-56 max-sm:hidden" />
-          <div className="skeleton size-12 rounded-box" />
-        </div>
-      </div>
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-        {range(4).map((index) => (
-          <div key={index} className="skeleton h-[4.75rem] rounded-box" />
-        ))}
-      </div>
       <div className="grid gap-6 lg:grid-cols-2">
+        <LinesPanel rows={9} title="w-48" />
         <div className="panel p-4">
           <SkeletonPanelHead title="w-36" />
-          <div className="skeleton h-72 w-full" />
+          <div className="skeleton h-40 w-full lg:h-[calc(100%-3.5rem)]" />
         </div>
-        <LinesPanel rows={3} title="w-36" />
-      </div>
-      <div className="grid gap-6 lg:grid-cols-2">
-        <LinesPanel rows={6} />
-        <LinesPanel rows={14} />
       </div>
       <div className="panel p-4">
-        <SkeletonPanelHead title="w-56" />
+        <SkeletonPanelHead title="w-40" />
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          {range(4).map((index) => (
+            <div key={index} className="skeleton h-[6.5rem] rounded-box" />
+          ))}
+        </div>
+      </div>
+      <div className="panel p-4">
+        <SkeletonPanelHead title="w-40" />
+        <div className="grid gap-x-8 gap-y-3 lg:grid-cols-2">
+          {range(8).map((index) => (
+            <div key={index} className="flex h-5 items-center gap-3">
+              <div className="skeleton h-3.5 w-16" />
+              <div className="skeleton h-3.5 w-8" />
+              <div className="skeleton h-3.5 w-24" />
+            </div>
+          ))}
+        </div>
+      </div>
+      <div className="panel p-4">
+        <SkeletonPanelHead title="w-28" />
         <div className="flex flex-col gap-2">
-          {range(28).map((index) => (
-            <div key={index} className="flex h-[2.85rem] items-center justify-between max-sm:h-[3.6rem] gap-3 rounded-field border border-base-300 px-3">
-              <div className="skeleton h-3.5 w-28" />
-              <div className="skeleton h-3.5 w-48 max-w-1/2" />
+          {range(12).map((index) => (
+            <div key={index} className="flex h-7 items-center justify-between gap-3 max-sm:h-11">
+              <div className="skeleton h-3.5 w-40" />
+              <div className="skeleton h-3.5 w-40 max-w-1/2" />
             </div>
           ))}
         </div>
@@ -73,8 +91,8 @@ export function HeadToHeadHistorySkeleton() {
   );
 }
 
-// The whole page, as `HeadToHeadPage` lays it out: the way back, the header, the two club pickers with the swap between them,
-// then the history.
+// The whole page, as `HeadToHeadPage` lays it out: the way back, the header, the series header with the two club pickers and the
+// swap between them, then the history.
 export default function HeadToHeadSkeleton() {
   return (
     <div aria-hidden="true">
@@ -85,7 +103,7 @@ export default function HeadToHeadSkeleton() {
         <SkeletonPageHeader />
       </div>
       <div className="panel mb-6 p-4">
-        <div className="grid grid-cols-[minmax(0,1fr)] items-end gap-3 sm:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] sm:gap-4">
+        <div className="grid grid-cols-[minmax(0,1fr)] items-center gap-3 sm:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] sm:gap-4">
           <div className="skeleton h-8 w-full sm:w-80" />
           <div className="skeleton mx-auto size-8 max-sm:size-11" />
           <div className="skeleton h-8 w-full sm:w-80 sm:justify-self-end" />

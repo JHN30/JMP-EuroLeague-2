@@ -101,9 +101,21 @@ async function mockApi(page, { seasons = "ok", games = "ok", absent = [] } = {})
 
 const OPEN = "/2025/compare/head-to-head?teamA=A&teamB=B";
 const heroOf = (page) => page.locator("section.panel", { hasText: "completed meetings" });
-const historyOf = (page) => page.locator("section.panel", { hasText: "Upcoming and latest meetings" });
+const panelTitled = (page, name) => page.locator("section.panel").filter({ has: page.getByRole("heading", { name, exact: true }) });
+const historyOf = (page) => panelTitled(page, "Meetings");
 
-test("the page fits at every width, with the strip two by two below 1024px and four across from it", async ({ page }) => {
+// Every mocked meeting from Club A's side, in date order, as the page reads them.
+const MEETINGS = SEASONS.flatMap(({ seasonCode }) => meetingsOf(seasonCode)).sort((x, y) => new Date(x.scheduledAt) - new Date(y.scheduledAt));
+const fromA = (game) => {
+  const homeIsA = game.localTeam.clubCode === "A";
+  const scoreA = homeIsA ? game.localScore : game.roadScore;
+  const scoreB = homeIsA ? game.roadScore : game.localScore;
+  return { scoreA, scoreB, winner: !game.played ? null : scoreA > scoreB ? "A" : scoreB > scoreA ? "B" : null };
+};
+const PLAYED = MEETINGS.filter((game) => game.played);
+const recordOf = (games) => ({ a: games.filter((game) => fromA(game).winner === "A").length, b: games.filter((game) => fromA(game).winner === "B").length });
+
+test("the page fits at every width, with the header figures two by two below 640px and in one row from it", async ({ page }) => {
   test.setTimeout(120_000);
   await mockApi(page);
   await page.goto(OPEN);
@@ -114,31 +126,26 @@ test("the page fits at every width, with the strip two by two below 1024px and f
   await atWidths(page, WIDTHS, async (width) => {
     await expectNoSidewaysScroll(page);
     await expect.poll(() => outsidePanels(page), { timeout: 20_000 }).toEqual([]);
-    expect(await findBrokenWords(page.locator("main .panel h2:visible, main .panel .font-semibold:visible:not(:has(.relative)), main .kpi-chip .label:visible"))).toEqual([]);
+    expect(await findBrokenWords(page.locator("main .panel h2:visible, main .panel .font-semibold:visible:not(:has(.relative))"))).toEqual([]);
 
-    // The four cards: in a grid that never scrolls, two columns below 1024px and four across from it.
-    const chips = page.locator(".kpi-strip .kpi-chip");
-    await expect(chips).toHaveCount(4);
-    expect(await page.locator(".kpi-strip").evaluate((el) => el.scrollWidth <= el.clientWidth + 1)).toBe(true);
-    expect(new Set(await tops(chips)).size).toBe(width < 1024 ? 2 : 1);
+    // The header's three figures: two by two below 640px, one row from it, never outside the window.
+    const figures = heroOf(page).locator("dl > div");
+    await expect(figures).toHaveCount(3);
+    expect(new Set(await tops(figures)).size).toBe(width < 640 ? 2 : 1);
+    expect(await insideWindow(figures, width)).toBe(true);
+    // The last ten meetings: five to a line below 640px, ten in one line from it.
+    const chips = heroOf(page).locator("ol a");
+    await expect(chips).toHaveCount(10);
+    expect(new Set(await tops(chips)).size).toBe(width < 640 ? 2 : 1);
     expect(await insideWindow(chips, width)).toBe(true);
 
-    // The two clubs: the abbreviated name under the crest below 640px, the full name from 640px; the series record between them.
+    // The two clubs' selects are the header's names, with the series record between them.
     const hero = heroOf(page);
-    const slots = hero.locator(".relative");
-    const short = await shown(slots.locator("> span[aria-hidden=true]"));
-    const full = await shown(slots.locator("> span:not([aria-hidden=true])"));
-    if (width < 640) {
-      expect(short).toEqual([CLUB_A.abbreviatedName, CLUB_B.abbreviatedName]);
-      expect(full).toEqual([]);
-    } else {
-      expect(short).toEqual([]);
-      expect(full).toEqual([CLUB_A.name, CLUB_B.name]);
-    }
+    await expect(hero.getByRole("combobox")).toHaveCount(2);
     expect(await insideWindow(hero.locator("span.text-primary"), width)).toBe(true);
 
-    // The streak card names its club by TV code below 640px and by abbreviated name from 640px.
-    const streak = page.locator(".kpi-chip", { hasText: "Current streak" }).locator(".relative");
+    // The streak figure names its club by TV code below 640px and by abbreviated name from 640px.
+    const streak = heroOf(page).locator("dl > div", { hasText: "Current streak" }).locator(".relative");
     const streakShort = await shown(streak.locator("> span[aria-hidden=true]"));
     const streakFull = await shown(streak.locator("> span:not([aria-hidden=true])"));
     if (width < 640) {
@@ -153,37 +160,44 @@ test("the page fits at every width, with the strip two by two below 1024px and f
   });
 });
 
-test("the meeting margin chart fills its box at every width, and the meetings stack below 640px", async ({ page }) => {
+test("the meeting margin chart fills its box at every width, and each meeting is two lines below 640px and one from it", async ({ page }) => {
   test.setTimeout(120_000);
   await mockApi(page);
   await page.goto(OPEN);
   await expect(page.getByText(/completed meetings/)).toBeVisible({ timeout: 30_000 });
   const canvas = page.getByRole("img", { name: "Meeting margin timeline from Crvena Zvezda's perspective" });
   await expect(canvas).toBeVisible();
-  // The note says which way the bars point, by name.
-  await expect(page.getByText("Above the line: Crvena Zvezda won. Below it: Baskonia won.")).toBeVisible();
+  // The title's tip says which way the bars point, by name.
+  await expect(page.getByText("Above the line: Crvena Zvezda won. Below it: Baskonia won.")).toBeAttached();
 
   await atWidths(page, WIDTHS, async (width) => {
     // The drawing is as wide as the box inside the well's padding, after a resize too.
     await expect
       .poll(() => canvas.evaluate((el) => Math.abs(el.getBoundingClientRect().width - (el.parentElement.clientWidth - 16))), { timeout: 20_000 })
       .toBeLessThanOrEqual(2);
-    // The two panels side by side from 1024px, stacked below.
-    const [momentum, margins] = await Promise.all([
-      page.getByRole("heading", { name: "Series momentum" }).evaluate((el) => el.closest(".panel").getBoundingClientRect().left),
-      page.getByRole("heading", { name: "Meeting margin" }).evaluate((el) => el.closest(".panel").getBoundingClientRect().left),
+    // The records beside the margin chart from 1024px, stacked below; the notable meetings under the chart.
+    const left = (name) => page.getByRole("heading", { name: new RegExp(`^${name}`) }).evaluate((el) => el.closest(".panel").getBoundingClientRect().left);
+    const [records, margins] = await Promise.all([left("Records by type of game"), left("Meeting margin")]);
+    if (width >= 1024) expect(margins).toBeGreaterThan(records + 100);
+    else expect(Math.abs(records - margins)).toBeLessThan(2);
+    // The plot is the short one below 1024px; from 1024px it grows to the records' height, which it must not set.
+    const [chartPanel, recordsPanel] = await Promise.all([
+      page.getByRole("heading", { name: /^Meeting margin/ }).evaluate((el) => el.closest(".panel").getBoundingClientRect().height),
+      page.getByRole("heading", { name: "Records by type of game" }).evaluate((el) => el.closest(".panel").getBoundingClientRect().height),
     ]);
-    if (width >= 1024) expect(momentum).toBeGreaterThan(margins + 100);
-    else expect(Math.abs(momentum - margins)).toBeLessThan(2);
-    // The momentum row's three records stay inside their panel.
-    expect(await insideWindow(page.locator("dl > div"), width)).toBe(true);
+    if (width >= 1024) expect(Math.abs(chartPanel - recordsPanel)).toBeLessThan(2);
+    else expect((await canvas.boundingBox()).height).toBeLessThanOrEqual(170);
+    // The notable meetings: four cards across from 1024px, two from 640px, one below.
+    const cards = panelTitled(page, "Notable meetings").locator("li");
+    await expect(cards).toHaveCount(4);
+    expect(new Set(await tops(cards)).size).toBe(width >= 1024 ? 1 : width >= 640 ? 2 : 4);
 
-    // The meetings: the round above the result below 640px, side by side from 640px.
-    const rows = historyOf(page).locator("a");
-    await expect(rows).toHaveCount(40);
-    const parts = await rows.nth(1).evaluate((el) => [...el.children].map((child) => Math.round(child.getBoundingClientRect().top)));
-    if (width < 640) expect(parts[1]).toBeGreaterThan(parts[0] + 10);
-    else expect(Math.abs(parts[1] - parts[0])).toBeLessThan(10);
+    // The meetings: the game still to play and the latest ten, each two lines below 640px and one from it.
+    const rows = historyOf(page).locator("li > a");
+    await expect(rows).toHaveCount(11);
+    const height = (await rows.nth(1).boundingBox()).height;
+    if (width < 640) expect(height).toBeGreaterThanOrEqual(44);
+    else expect(height).toBeLessThan(40);
     // Each side is the TV code below 640px and the abbreviated name from 640px.
     const slots = rows.nth(1).locator(".relative");
     const short = await shown(slots.locator("> span[aria-hidden=true]"));
@@ -277,9 +291,11 @@ test("long names do not wrap into the page: a very long club name fits its selec
   await expect(page.getByText(/completed meetings/)).toBeVisible({ timeout: 30_000 });
   await expect.poll(() => outsidePanels(page), { timeout: 20_000 }).toEqual([]);
   await expectNoSidewaysScroll(page);
-  // Two clubs of the same name, both with no crest: the heads are still two columns around the record.
-  const heads = await heroOf(page).locator(".relative").evaluateAll((els) => els.map((el) => Math.round(el.getBoundingClientRect().left)));
-  expect(heads[0]).toBeLessThan(heads[1]);
+  // The two selects in the header stay inside the window, one under the other.
+  const selects = heroOf(page).getByRole("combobox");
+  expect(await insideWindow(selects, 320)).toBe(true);
+  const [first, second] = await tops(selects);
+  expect(second).toBeGreaterThan(first);
 });
 
 test("the loading, error, empty and nothing-chosen states fit at 320px", async ({ page }) => {
@@ -381,9 +397,69 @@ test("a live pair of clubs fits at every width", async ({ page }) => {
   await atWidths(page, WIDTHS, async (width) => {
     await expectNoSidewaysScroll(page);
     await expect.poll(() => outsidePanels(page), { timeout: 20_000 }).toEqual([]);
-    if (await page.locator(".kpi-strip").count()) {
-      expect(await page.locator(".kpi-strip").evaluate((el) => el.scrollWidth <= el.clientWidth + 1)).toBe(true);
-      expect(new Set(await tops(page.locator(".kpi-strip .kpi-chip"))).size).toBe(width < 1024 ? 2 : 1);
+    if (await heroOf(page).count()) {
+      expect(await insideWindow(heroOf(page).locator("dl > div, ol a"), width)).toBe(true);
+      expect(await insideWindow(historyOf(page).locator("li > a"), width)).toBe(true);
     }
   });
+});
+
+test("the header shows the series once, with the last ten meetings in order, each linking to its game", async ({ page }) => {
+  test.setTimeout(60_000);
+  await mockApi(page);
+  await page.setViewportSize({ width: 1280, height: HEIGHT });
+  await page.goto(OPEN);
+  await expect(page.getByText("39 completed meetings")).toBeVisible({ timeout: 30_000 });
+  const { a, b } = recordOf(PLAYED);
+  await expect(heroOf(page).locator("span.text-primary")).toHaveText(`${a}-${b}`);
+  // No second strip of cards repeats it.
+  await expect(page.locator(".kpi-strip")).toHaveCount(0);
+  await expect(page.getByText("Series record")).toHaveCount(0);
+
+  const last = PLAYED.slice(-10);
+  const codeOf = (game) => ({ A: CLUB_A.tvCode, B: CLUB_B.tvCode })[fromA(game).winner] ?? "-";
+  const chips = heroOf(page).locator("ol a");
+  await expect(chips).toHaveText(last.map(codeOf));
+  const season = (game) => String(2020 + Math.floor(game.gameCode / 100));
+  await expect(chips.last()).toHaveAttribute("href", `/${season(last.at(-1))}/games/${last.at(-1).gameCode}`);
+});
+
+test("the records by type of game, the notable meetings and the folded history agree with the meetings", async ({ page }) => {
+  test.setTimeout(60_000);
+  await mockApi(page);
+  await page.setViewportSize({ width: 1280, height: HEIGHT });
+  await page.goto(OPEN);
+  await expect(page.getByText("39 completed meetings")).toBeVisible({ timeout: 30_000 });
+
+  // A stage row only for stages the clubs met in: the regular season and one Final Four, no play-in. The Final Four is the neutral court.
+  const records = panelTitled(page, "Records by type of game");
+  // Each row is read out as one sentence: the type, each club's wins, then the games.
+  const rowOf = (label) => records.locator("li .sr-only").filter({ hasText: new RegExp(`^${label.replace(/[()]/g, "\\$&")}:`) });
+  const said = ({ a, b }, games) => `${CLUB_A.abbreviatedName} ${a}, ${CLUB_B.abbreviatedName} ${b}, ${games} games`;
+  const regularGames = PLAYED.filter((game) => game.phaseCode === "RS");
+  await expect(rowOf("Regular season")).toContainText(said(recordOf(regularGames), regularGames.length));
+  const finalFour = recordOf(PLAYED.filter((game) => game.phaseCode === "FF"));
+  await expect(rowOf("Final Four")).toContainText(said(finalFour, 1));
+  await expect(rowOf("Neutral (Final Four)")).toContainText(said(finalFour, 1));
+  await expect(rowOf("Play-in")).toHaveCount(0);
+  const close = PLAYED.filter((game) => Math.abs(game.localScore - game.roadScore) <= 5);
+  await expect(rowOf("Close games (≤5)")).toContainText(`, ${close.length} games`);
+
+  // Each club's biggest win, by its margin.
+  const margins = PLAYED.map((game) => fromA(game).scoreA - fromA(game).scoreB);
+  const notable = panelTitled(page, "Notable meetings");
+  await expect(notable.locator("li", { hasText: `${CLUB_A.abbreviatedName} win` })).toContainText(`+${Math.max(...margins)}`);
+  await expect(notable.locator("li", { hasText: `${CLUB_B.abbreviatedName} win` })).toContainText(`+${-Math.min(...margins)}`);
+
+  // The history: the game still to play first, then the played ones newest first; the rest fold behind a button.
+  const rows = historyOf(page).locator("li > a");
+  await expect(rows).toHaveCount(11);
+  await expect(rows.first()).toContainText("Upcoming");
+  await expect(rows.nth(1)).toHaveAttribute("href", new RegExp(`/games/${PLAYED.at(-1).gameCode}$`));
+  const more = historyOf(page).getByRole("button", { name: "Show all 40 meetings" });
+  await expect(more).toHaveAttribute("aria-expanded", "false");
+  await more.click();
+  await expect(rows).toHaveCount(40);
+  await historyOf(page).getByRole("button", { name: "Show fewer" }).click();
+  await expect(rows).toHaveCount(11);
 });

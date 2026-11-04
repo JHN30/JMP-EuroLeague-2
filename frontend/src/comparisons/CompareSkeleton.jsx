@@ -481,48 +481,88 @@ export function PlayerFormBodySkeleton() {
       {range(2).map((side) => (
         <div key={side} className="flex flex-col gap-2.5">
           <div className="skeleton h-5 w-44" />
-          <div className="flex gap-4">
-            {range(4).map((index) => (
-              <div key={index} className="flex flex-col gap-1.5">
-                <div className="skeleton h-3 w-8" />
-                <div className="skeleton h-5 w-10" />
-              </div>
-            ))}
-          </div>
-          {range(5).map((index) => (
-            <div key={index} className="flex h-5 items-center gap-2">
-              <div className="skeleton size-5 rounded-full" />
-              <div className="skeleton h-3.5 w-24" />
-              <div className="skeleton ml-auto h-3.5 w-28" />
+          <div className="flex flex-col gap-2.5 lg:grid lg:grid-cols-[10rem_minmax(0,1fr)] lg:gap-4">
+            <div className="grid grid-cols-4 gap-2 lg:grid-cols-2 lg:gap-y-3">
+              {range(4).map((index) => (
+                <div key={index} className="flex flex-col gap-1.5">
+                  <div className="skeleton h-3 w-8" />
+                  <div className="skeleton h-5 w-14" />
+                </div>
+              ))}
             </div>
-          ))}
+            <div className="flex flex-col gap-2">
+              {range(5).map((index) => (
+                <div key={index} className="flex h-5 items-center gap-2 max-sm:h-11">
+                  <div className="skeleton size-5 rounded-full" />
+                  <div className="skeleton h-3.5 w-24" />
+                  <div className="skeleton ml-auto h-3.5 w-28" />
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
       ))}
     </div>
   );
 }
 
-// The player Overview, as `ComparePlayerOverview` lays it out: the profile radar between the two players, the season line,
-// then recent form.
+// A row of two aligned halves with a label between them, as the season line and the season highs lay them out.
+function MirroredRows({ rows }) {
+  return range(rows).map((index) => (
+    <div key={index} className="flex h-9 items-center gap-3 border-b border-base-300 last:border-0">
+      <div className="skeleton h-3.5 w-10" />
+      <div className="skeleton h-2 flex-1" />
+      <div className="skeleton h-2 flex-1" />
+      <div className="skeleton h-3.5 w-10" />
+    </div>
+  ));
+}
+
+// The player Overview, as `ComparePlayerOverview` lays it out: the slim pair header, the profile radar beside the season line, recent
+// form, then the games they met in beside their season highs.
 export function PlayerOverviewSkeleton() {
   return (
     <div aria-hidden="true" className="flex flex-col gap-6">
       <div className="panel p-4">
-        <SkeletonPanelHead title="w-20" />
-        <div className="grid items-center gap-6 lg:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)]">
-          <div className="skeleton h-28 w-full rounded-box max-sm:h-36" />
-          <div className="skeleton mx-auto size-64 rounded-full" />
-          <div className="skeleton h-28 w-full rounded-box max-sm:h-36" />
+        <div className="grid grid-cols-2 gap-4">
+          {range(2).map((side) => (
+            <div key={side} className={`flex flex-col items-center gap-2 sm:flex-row sm:gap-3 ${side ? "sm:flex-row-reverse" : ""}`}>
+              <div className="skeleton size-12 rounded-full sm:size-14" />
+              <div className={`flex flex-col items-center gap-1.5 ${side ? "sm:items-end" : "sm:items-start"}`}>
+                <div className="skeleton h-4 w-32" />
+                <div className="skeleton h-3 w-24" />
+                <div className="skeleton h-3 w-36 max-w-full" />
+              </div>
+            </div>
+          ))}
+        </div>
+        <div className="mt-3 flex justify-center border-t border-base-300 pt-2">
+          <div className="skeleton h-4 w-64 max-w-full" />
         </div>
       </div>
-      <div className="panel p-4">
-        <SkeletonPanelHead title="w-28" />
-        <PairStrip />
-        <ComparisonRows rows={7} rowClassName="h-[4.8rem]" />
+      <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]">
+        <div className="panel p-4">
+          <SkeletonPanelHead title="w-20" />
+          <div className="skeleton mx-auto size-60 rounded-full" />
+        </div>
+        <div className="panel p-4">
+          <SkeletonPanelHead title="w-28" />
+          <MirroredRows rows={7} />
+        </div>
       </div>
       <div className="panel p-4">
         <SkeletonPanelHead title="w-32" />
         <PlayerFormBodySkeleton />
+      </div>
+      <div className="grid items-start gap-6 lg:grid-cols-2">
+        <div className="panel p-4">
+          <SkeletonPanelHead title="w-32" />
+          <MirroredRows rows={2} />
+        </div>
+        <div className="panel p-4">
+          <SkeletonPanelHead title="w-28" />
+          <MirroredRows rows={4} />
+        </div>
       </div>
     </div>
   );

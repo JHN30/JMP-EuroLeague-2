@@ -51,7 +51,7 @@ export default function CompareRadar({ axes, labelA, labelB }) {
   }, [axes, labelA, labelB, theme]);
 
   return (
-    <div className="relative h-72 w-full">
+    <div className="relative h-64 w-full">
       <canvas ref={canvasRef} role="img" aria-label={`Percentile radar of ${labelA} and ${labelB} across ${axes.map((axis) => axis.label).join(", ")}`} />
     </div>
   );

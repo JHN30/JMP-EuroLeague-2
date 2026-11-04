@@ -170,10 +170,10 @@ test.describe("states and long names at 320px", () => {
     const { slug, a, b } = await livePlayers(page);
     await page.setViewportSize({ width: 320, height: HEIGHT });
 
-    // The games fail: the Overview's form and the Trends tab each say so.
+    // The games fail: the Overview's form, meetings and season highs, and the Trends tab, each say so.
     await page.route(/\/players\/[^/]+\/games/, (route) => route.fulfill({ status: 500, json: {} }));
     await openTab(page, slug, a, b, "Overview");
-    await expect(page.getByText("Could not load the recent games.")).toBeVisible({ timeout: 45_000 });
+    await expect(page.getByText("Could not load the games.")).toHaveCount(3, { timeout: 45_000 });
     await expectNoSidewaysScroll(page);
     await page.getByRole("tab", { name: "Trends", exact: true }).click();
     await expect(page.getByText("Could not load the trends.")).toBeVisible({ timeout: 45_000 });
@@ -184,6 +184,7 @@ test.describe("states and long names at 320px", () => {
     await page.route(/\/players\/[^/]+\/games/, (route) => route.fulfill({ json: { games: [], pagination: { limit: 100, offset: 0, total: 0, hasMore: false } } }));
     await openTab(page, slug, a, b, "Overview");
     await expect(page.getByText("No games played yet.").first()).toBeVisible({ timeout: 30_000 });
+    await expect(page.getByText("Their clubs have not met this season.")).toBeVisible();
     await expectNoSidewaysScroll(page);
     await page.getByRole("tab", { name: "Trends", exact: true }).click();
     await expect(page.getByText("Not enough games played to show a trend yet.")).toBeVisible({ timeout: 30_000 });
@@ -279,4 +280,115 @@ test("every statistic row of the player comparison has a hover tip", async ({ pa
     expect(await rowNames.count()).toBeGreaterThan(1);
     await expect(page.locator("main span.text-xs.font-bold.tracking-wide.uppercase:not(:has(.header-tip-label))")).toHaveCount(0);
   }
+});
+
+// A played game of a mocked log: the player's side, both clubs and the score, and his line.
+function loggedGame(gameCode, { side, local, road, localScore, roadScore, points, valuation, day }) {
+  return {
+    gameCode,
+    played: true,
+    side,
+    localTeam: { clubCode: local, tvCode: local, name: local, abbreviatedName: local },
+    roadTeam: { clubCode: road, tvCode: road, name: road, abbreviatedName: road },
+    localScore,
+    roadScore,
+    roundNumber: gameCode,
+    scheduledAt: new Date(Date.UTC(2025, 9, day, 19)).toISOString(),
+    timePlayed: 1500,
+    points,
+    totalRebounds: 4,
+    assistances: 3,
+    valuation,
+  };
+}
+
+test("the Overview has the players once, a one-line season line from 640px, and the meetings, teammates line and season highs from the game logs", async ({ page }) => {
+  test.setTimeout(150_000);
+  const { slug, a, b } = await livePlayers(page);
+  // A and B met twice (A's club AAA against B's club BBB), and played one game on the same side.
+  const logs = {
+    [a.personKey]: [
+      loggedGame(1, { side: "local", local: "AAA", road: "BBB", localScore: 90, roadScore: 80, points: 25, valuation: 30, day: 1 }),
+      loggedGame(2, { side: "road", local: "BBB", road: "AAA", localScore: 85, roadScore: 70, points: 12, valuation: 9, day: 8 }),
+      loggedGame(3, { side: "local", local: "AAA", road: "CCC", localScore: 77, roadScore: 75, points: 31, valuation: 33, day: 15 }),
+      loggedGame(4, { side: "local", local: "AAA", road: "DDD", localScore: 60, roadScore: 70, points: 8, valuation: 4, day: 22 }),
+    ],
+    [b.personKey]: [
+      loggedGame(1, { side: "road", local: "AAA", road: "BBB", localScore: 90, roadScore: 80, points: 18, valuation: 20, day: 1 }),
+      loggedGame(2, { side: "local", local: "BBB", road: "AAA", localScore: 85, roadScore: 70, points: 22, valuation: 26, day: 8 }),
+      loggedGame(4, { side: "local", local: "AAA", road: "DDD", localScore: 60, roadScore: 70, points: 14, valuation: 12, day: 22 }),
+    ],
+  };
+  await page.route(/\/players\/([^/]+)\/games/, (route) => {
+    const personKey = /\/players\/([^/]+)\/games/.exec(route.request().url())[1];
+    const games = logs[personKey] ?? [];
+    return route.fulfill({ json: { games, pagination: { limit: 100, offset: 0, total: games.length, hasMore: false } } });
+  });
+  await openTab(page, slug, a, b, "Overview");
+  await expect(page.getByRole("heading", { name: "When they met" })).toBeVisible({ timeout: 30_000 });
+  await expect(page.locator(".loading, [aria-busy=\"true\"]")).toHaveCount(0, { timeout: 30_000 });
+
+  // The players are named once, in the header, with the lead line under it.
+  await expect(page.getByRole("group", { name: "Players compared" })).toHaveCount(1);
+  await expect(page.getByText(/ ahead in \d of 6 /)).toBeVisible();
+
+  // The two meetings, newest first, with each player's PIR; game 4 was played together.
+  const meetings = page.locator(".panel", { has: page.getByRole("heading", { name: "When they met" }) });
+  await expect(meetings.getByText(/^Met 2 times/)).toBeVisible();
+  await expect(meetings.getByText("Teammates: played 1 game together this season.")).toBeVisible();
+  const rows = meetings.locator("li a");
+  await expect(rows).toHaveCount(2);
+  await expect(rows.nth(0)).toHaveAttribute("href", /\/games\/2$/);
+  await expect(rows.nth(0)).toContainText("AAA 70-85 BBB");
+  await expect(rows.nth(1)).toContainText("AAA 90-80 BBB");
+
+  // The season highs: A's best points game is game 3 (31), B's is game 2 (22); each links to its game.
+  const highs = page.locator(".panel", { has: page.getByRole("heading", { name: "Season highs" }) });
+  const pts = highs.locator("li").first();
+  await expect(pts.locator("a").first()).toHaveAttribute("href", /\/games\/3$/);
+  await expect(pts.locator("a").first()).toContainText("31");
+  await expect(pts.locator("a").last()).toHaveAttribute("href", /\/games\/2$/);
+  await expect(pts.locator("a").last()).toContainText("22");
+
+  await atWidths(page, [1280, 1024, 640, 320], async (width) => {
+    // A season line row is one line from 640px (name, places, numbers and bars) and two below.
+    const row = page.locator(".panel", { has: page.getByRole("heading", { name: "Season line" }) }).locator("li").first();
+    const height = (await row.boundingBox()).height;
+    if (width >= 640) expect(height).toBeLessThan(40);
+    else expect(height).toBeGreaterThan(40);
+    await expect.poll(() => outsidePanels(page), { timeout: 20_000 }).toEqual([]);
+    await expectNoSidewaysScroll(page);
+  });
+});
+
+test("players whose clubs have not met yet see the scheduled meetings, soonest first, each linking to its game", async ({ page }) => {
+  test.setTimeout(120_000);
+  const { slug, a, b } = await livePlayers(page);
+  // The two players on clubs AAA and BBB, with no shared game, and two meetings of the clubs on AAA's schedule.
+  await page.route(/\/api\/seasons\/[^/]+\/season-stats\?/, async (route) => {
+    const response = await route.fetch();
+    const body = await response.json();
+    body.players = body.players.map((player) => (player.personKey === a.personKey ? { ...player, clubCode: "AAA" } : player.personKey === b.personKey ? { ...player, clubCode: "BBB" } : player));
+    await route.fulfill({ response, json: body });
+  });
+  await page.route(/\/players\/[^/]+\/games/, (route) => route.fulfill({ json: { games: [], pagination: { limit: 100, offset: 0, total: 0, hasMore: false } } }));
+  const club = (code) => ({ clubCode: code, tvCode: code, name: code, abbreviatedName: code });
+  const scheduled = (gameCode, local, road, month) => ({ gameCode, played: false, localTeam: club(local), roadTeam: club(road), roundNumber: gameCode, roundName: `Round ${gameCode}`, scheduledAt: new Date(Date.UTC(2027, month, 5, 19)).toISOString() });
+  await page.route(/\/teams\/AAA\/games/, (route) =>
+    route.fulfill({ json: { games: [scheduled(12, "AAA", "BBB", 0), scheduled(13, "AAA", "CCC", 1), scheduled(30, "BBB", "AAA", 2)], pagination: { limit: 100, offset: 0, total: 3, hasMore: false } } }),
+  );
+  await openTab(page, slug, a, b, "Overview");
+  const meetings = page.locator(".panel", { has: page.getByRole("heading", { name: "When they met" }) });
+  await expect(meetings.getByText("Their clubs have not met this season.")).toBeVisible({ timeout: 30_000 });
+  await expect(meetings.getByText("Scheduled", { exact: true })).toBeVisible();
+  const rows = meetings.locator("li a");
+  await expect(rows).toHaveCount(2);
+  await expect(rows.nth(0)).toContainText("AAA vs BBB");
+  await expect(rows.nth(0)).toHaveAttribute("href", /\/games\/12$/);
+  await expect(rows.nth(1)).toContainText("AAA at BBB");
+
+  await atWidths(page, [1280, 390, 320], async () => {
+    await expect.poll(() => outsidePanels(page), { timeout: 20_000 }).toEqual([]);
+    await expectNoSidewaysScroll(page);
+  });
 });

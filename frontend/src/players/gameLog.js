@@ -94,10 +94,11 @@ export function seasonHighs(views) {
   return highs;
 }
 
-// The game of each season high (the latest on a tie), or null when the best is 0. Views run oldest first.
-export function seasonHighGames(views) {
+// The game of each season high (the latest on a tie), or null when the best is 0. Views run oldest first. `stats` are the view keys
+// to look at (points, rebounds, assists and PIR by default).
+export function seasonHighGames(views, stats = ["pts", "reb", "ast", "pir"]) {
   const games = {};
-  for (const stat of ["pts", "reb", "ast", "pir"]) {
+  for (const stat of stats) {
     let best = null;
     for (const view of views) {
       if (view[stat] > 0 && (best === null || view[stat] >= best[stat])) best = view;

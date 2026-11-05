@@ -6,7 +6,7 @@ import { SkeletonChip, SkeletonLines, SkeletonPageHeader, SkeletonPanel } from "
 // The summary: the hero's two club cards, then the phase story's cards (two columns from sm, four from xl).
 export function SummarySkeleton() {
   return (
-    <div aria-hidden="true" className="flex flex-col gap-6">
+    <div aria-hidden="true" className="flex flex-col gap-6 lg:gap-4">
       <div className="season-hero-kpis grid grid-cols-2 gap-3 sm:gap-4">
         <SkeletonChip />
         <SkeletonChip />
@@ -14,7 +14,7 @@ export function SummarySkeleton() {
       <div className="flex flex-col gap-2">
         <div className="skeleton h-3 w-20" />
         <div className="skeleton mb-2 h-5 w-32" />
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <div className="grid gap-3 sm:grid-cols-2 sm:gap-4 xl:grid-cols-4">
           {Array.from({ length: 4 }, (_, index) => (
             <div key={index} className="panel flex h-44 flex-col gap-2 p-4">
               <div className="skeleton h-3 w-20" />
@@ -31,7 +31,7 @@ export function SummarySkeleton() {
 // The whole page, laid out as `SeasonOverviewPage` lays it out: the header, the summary and the leaders' cards.
 export default function OverviewSkeleton() {
   return (
-    <div aria-hidden="true" className="flex flex-col gap-6">
+    <div aria-hidden="true" className="flex flex-col gap-6 lg:gap-4">
       <SkeletonPageHeader />
       <SummarySkeleton />
       <SkeletonPanel>

@@ -1,5 +1,5 @@
 import { test, expect } from "@playwright/test";
-import { HEIGHT, expectSwipeRowAtRest, expectSwipeRowSettles, findBrokenWords, seasonSlug, mockLayoutImages } from "./support/layout";
+import { HEIGHT, findBrokenWords, seasonSlug, mockLayoutImages } from "./support/layout";
 
 test.beforeEach(async ({ page }) => { await mockLayoutImages(page); });
 
@@ -129,7 +129,7 @@ test.describe("defining games", () => {
 
 test.describe("statistical leaders", () => {
   for (const season of [undefined, FINISHED]) {
-    test(`${season ?? "live season"}: swipe rows below 640px`, async ({ page }) => {
+    test(`${season ?? "live season"}: two by two below 640px, with nothing to scroll sideways`, async ({ page }) => {
       await openOverview(page, season, { summary: false });
       const rows = page.getByRole("group", { name: /leaders$/ });
       const count = await rows.count();
@@ -137,10 +137,18 @@ test.describe("statistical leaders", () => {
 
       await atWidths(page, [320, 390], async () => {
         for (let index = 0; index < count; index += 1) {
-          await rows.nth(index).scrollIntoViewIfNeeded();
-          await expectSwipeRowAtRest(rows.nth(index));
-          await expectSwipeRowSettles(page, rows.nth(index));
+          const row = rows.nth(index);
+          await expect(row).not.toHaveAttribute("tabindex", /.*/);
+          const layout = await row.evaluate((el) => ({
+            overflow: el.scrollWidth - el.clientWidth,
+            lefts: new Set([...el.children].map((card) => Math.round(card.getBoundingClientRect().left))).size,
+            tops: new Set([...el.children].map((card) => Math.round(card.getBoundingClientRect().top))).size,
+          }));
+          expect(layout.overflow).toBeLessThanOrEqual(0);
+          expect(layout.lefts).toBe(2);
+          expect(layout.tops).toBe(3);
         }
+        expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBeLessThanOrEqual(0);
       });
     });
 
@@ -164,6 +172,17 @@ test.describe("statistical leaders", () => {
     await atWidths(page, [320, 390, 639, 640, 768, 1024, 1280], async () => {
       expect(await findBrokenWords(names)).toEqual([]);
     });
+  });
+});
+
+test("the road to the title sits in one row from 1024px and one step per line below it", async ({ page }) => {
+  await openOverview(page, FINISHED);
+  const steps = panel(page, "Road to the title").locator("p.font-medium");
+  await expect(steps).toHaveCount(3);
+
+  await atWidths(page, [390, 1024, 1280], async (width) => {
+    const tops = await steps.evaluateAll((els) => new Set(els.map((el) => Math.round(el.parentElement.parentElement.getBoundingClientRect().top))).size);
+    expect(tops).toBe(width >= 1024 ? 1 : 3);
   });
 });
 

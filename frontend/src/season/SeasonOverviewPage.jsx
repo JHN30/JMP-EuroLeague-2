@@ -15,7 +15,6 @@ import PageHeader from "../lib/PageHeader";
 import LeaderPhoto from "../lib/LeaderPhoto";
 import { useDocumentTitle } from "../lib/useDocumentTitle";
 import { useCurrentPhaseCode } from "../lib/useCurrentPhaseCode";
-import { useMediaQuery } from "../lib/useMediaQuery";
 import { PHASE_NAMES, dateRangeLabel, isChampionshipLabel, phaseSortIndex } from "../lib/phaseSummary";
 import { currentStage, groupedStageCodes, hasLoadingIssues, LOADING_ISSUES_NOTE, stageDescription, stagePlaceholder } from "../lib/seasonFormat";
 import { useSeasonFormat } from "../lib/useSeasonFormat";
@@ -163,9 +162,9 @@ function PhaseStory({ phases, format, phaseSummaries, activePhaseCode }) {
 
   return (
     <div>
-      <PanelHeader kicker="TIMELINE" title="Phase story" />
+      <PanelHeader compact kicker="TIMELINE" title="Phase story" />
       <motion.div
-        className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4"
+        className="grid gap-3 sm:grid-cols-2 sm:gap-4 xl:grid-cols-4"
         variants={listContainer}
         initial="hidden"
         animate="show"
@@ -175,7 +174,7 @@ function PhaseStory({ phases, format, phaseSummaries, activePhaseCode }) {
           const isActive = phase.code === activePhaseCode;
           return (
             <motion.div key={phase.code} variants={listItem} className="flex items-stretch gap-2">
-              <Panel className={`relative flex-1 overflow-hidden p-4 ${isActive ? "border-primary" : ""}`}>
+              <Panel className={`relative flex-1 overflow-hidden p-3 sm:p-4 ${isActive ? "border-primary" : ""}`}>
                 {isActive ? <div aria-hidden="true" className="absolute inset-x-0 top-0 h-1 bg-primary" /> : null}
                 <p className="eyebrow mb-1 flex items-center gap-2">
                   Phase {index + 1}
@@ -278,7 +277,7 @@ function DefiningGames({ seasonCode, playedGames }) {
 
   return (
     <Panel className="p-4">
-      <PanelHeader kicker="HIGHLIGHTS" title="Defining games" />
+      <PanelHeader compact kicker="HIGHLIGHTS" title="Defining games" />
       {picks.length === 0 ? (
         <p className="muted text-sm">No played games yet this season.</p>
       ) : (
@@ -473,7 +472,7 @@ function ScoringTrendChart({ playedGames }) {
             },
             grid: { color: (context) => (axisRoundLabel(points[context.index], points.length) ? gridColor : "transparent") },
           },
-          y: { ticks: { color: textColor }, grid: { color: gridColor } },
+          y: { title: { display: true, text: "Points per team", color: textColor }, ticks: { color: textColor }, grid: { color: gridColor } },
         },
         plugins: {
           legend: { display: false },
@@ -499,13 +498,13 @@ function ScoringTrendChart({ playedGames }) {
 
   return (
     <Panel className="p-4">
-      <PanelHeader kicker="TRENDS" title="Scoring through the season" />
+      <PanelHeader compact kicker="TRENDS" title="Scoring through the season" />
       {points.length < 2 ? (
         <p className="muted text-sm">Not enough played games yet to chart a trend.</p>
       ) : (
         <>
           <div className="rounded-field border border-base-300 bg-base-100/60 p-2 sm:p-3">
-            <div className="relative h-64 w-full">
+            <div className="relative h-64 w-full lg:h-52">
               <canvas
                 ref={canvasRef}
                 role="img"
@@ -513,8 +512,7 @@ function ScoringTrendChart({ playedGames }) {
               />
             </div>
           </div>
-          <p className="muted mt-3 text-xs">Average points per team, by round</p>
-          <dl className="mt-1 grid grid-cols-3 gap-2">
+          <dl className="mt-3 grid grid-cols-3 gap-2">
             {scoringSummary(points).map(({ label, value, name }) => (
               <div key={label} className="rounded-field border border-base-300 bg-base-100/60 p-2">
                 <dt className="micro-label">{label}</dt>
@@ -580,7 +578,6 @@ function LeaderCard({ seasonCode, category, phaseCode }) {
 }
 
 function PhaseLeadersGroup({ seasonCode, phaseCode, showHeading }) {
-  const isSwipeRow = useMediaQuery("not (min-width: 40rem)");
   return (
     <div>
       {showHeading ? (
@@ -590,7 +587,6 @@ function PhaseLeadersGroup({ seasonCode, phaseCode, showHeading }) {
         className="season-leaders-grid"
         role="group"
         aria-label={`${PHASE_NAMES[phaseCode] ?? phaseCode} leaders`}
-        tabIndex={isSwipeRow ? 0 : undefined}
         variants={listContainer}
         initial="hidden"
         animate="show"
@@ -614,6 +610,7 @@ function SeasonLeaders({ seasonCode }) {
   return (
     <Panel className="p-4">
       <PanelHeader
+        compact
         kicker="LEADERS"
         title={phasesToShow.length === 1 ? (PHASE_NAMES[phaseCode] ?? phaseCode) : "Statistical leaders"}
         trailing={
@@ -622,7 +619,7 @@ function SeasonLeaders({ seasonCode }) {
           </Link>
         }
       />
-      <div className="flex flex-col gap-6">
+      <div className="flex flex-col gap-6 lg:gap-4">
         {phasesToShow.map((code) => (
           <PhaseLeadersGroup
             key={code}
@@ -699,7 +696,7 @@ function RoadStep({ step, index }) {
   const detail = step.stageName ? `${step.stageName} · ${resultText}` : resultText;
 
   return (
-    <Panel className="flex items-center gap-3 border-success bg-success/10 p-4">
+    <Panel className="flex items-center gap-3 border-success bg-success/10 p-3">
       <span className="rank rank-1">{index + 1}</span>
       {step.opponent?.crestUrl ? (
         <img
@@ -727,7 +724,7 @@ function RoadToTitle({ champion, steps }) {
 
   return (
     <Panel className="p-4">
-      <PanelHeader kicker="JOURNEY" title="Road to the title" />
+      <PanelHeader compact kicker="JOURNEY" title="Road to the title" />
       <div className="mb-4 flex items-center gap-4 rounded-field border border-success bg-success/10 p-4">
         {champion.crestUrl ? (
           <img
@@ -748,7 +745,8 @@ function RoadToTitle({ champion, steps }) {
           </p>
         </div>
       </div>
-      <div className="flex flex-col gap-3">
+      {/* One step per line below lg; from lg side by side, as many as fit at about 15rem each. */}
+      <div className="grid gap-2 lg:grid-cols-[repeat(auto-fit,minmax(15rem,1fr))]">
         {steps.map((step, index) => (
           <RoadStep key={`${step.phaseCode}-${step.opponent?.clubCode ?? index}`} step={step} index={index} />
         ))}
@@ -879,9 +877,9 @@ export default function SeasonOverviewPage() {
   }
 
   return (
-    <motion.div className="flex flex-col gap-6" variants={sectionContainer} initial="hidden" animate="show">
+    <motion.div className="flex flex-col gap-6 lg:gap-4" variants={sectionContainer} initial="hidden" animate="show">
       <motion.div variants={sectionItem}>
-        <PageHeader stacked kicker="RECAP" title={`EuroLeague ${formatSeasonLabel(seasonCode)}`} />
+        <PageHeader stacked compact kicker="RECAP" title={`EuroLeague ${formatSeasonLabel(seasonCode)}`} />
       </motion.div>
 
       {summaryLoading ? (

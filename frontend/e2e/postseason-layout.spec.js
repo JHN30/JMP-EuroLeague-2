@@ -100,6 +100,54 @@ async function mockPostseason(page, { delay, fail = false } = {}) {
   });
 }
 
+test("one header carries the status and the stages, and a matchup is open before any click", async ({ page }) => {
+  test.setTimeout(120_000);
+  await page.setViewportSize({ width: 1280, height: HEIGHT });
+  const header = page.locator("main section").filter({ has: page.getByRole("heading", { name: "Postseason", level: 1 }) });
+
+  // A finished season opens on its Final.
+  await page.goto("/2025/postseason");
+  await expect(header).toContainText("THE SEASON IS OVER", { ignoreCase: true, timeout: 45_000 });
+  await expect(header).toContainText("are the champions");
+  await expect(header.getByRole("list", { name: "Stages of the season" })).toBeVisible();
+  await expect(page.locator(".scroll-mt-28")).toContainText("FINAL FOUR · FINAL");
+  await expect(page.locator(".scroll-mt-28 a[href*='/games/']")).toHaveCount(1);
+
+  // A season in progress opens on a projected matchup, with no prompt to pick one.
+  await page.goto("/2026/postseason");
+  await expect(header).toContainText("the bracket is a projection", { timeout: 45_000 });
+  await expect(page.locator(".scroll-mt-28")).toContainText("Projected from the current standings");
+  await expect(page.getByText("Select a matchup to see its games.")).toHaveCount(0);
+
+  // Picking another card still switches the detail.
+  await page.getByRole("group", { name: "4 v 5" }).getByRole("button").first().click();
+  await expect(page.locator(".scroll-mt-28")).toContainText("PLAYOFFS · 4 V 5");
+});
+
+// Each format shows its own stage cards, in the order the season plays them.
+for (const [season, cards] of [
+  ["2026", ["Regular season", "Play-In", "Playoffs", "Final Four"]],
+  ["2016", ["Regular season", "Playoffs", "Final Four"]],
+  ["2012", ["Regular season", "Top 16", "Quarterfinals", "Final Four"]],
+  ["2000", ["Regular season", "Knockout rounds"]],
+]) {
+  test(`${season}: how the postseason works, one card per stage, nothing cut`, async ({ page }) => {
+    test.setTimeout(120_000);
+    await page.setViewportSize({ width: 1440, height: HEIGHT });
+    await page.goto(`/${season}/postseason`);
+    const list = page.getByRole("list", { name: "How the postseason works" });
+    await expect(list).toBeVisible({ timeout: 45_000 });
+    const titles = await list.locator(":scope > li > p:first-child").allTextContents();
+    expect(titles.map((title) => title.replace(/^\d+/, "").trim())).toEqual(cards);
+    for (const width of [1440, 390]) {
+      await page.setViewportSize({ width, height: HEIGHT });
+      await expectNoSidewaysScroll(page);
+      const cut = await list.locator("p").evaluateAll((els) => els.filter((el) => el.scrollWidth > el.clientWidth + 1).length);
+      expect(cut).toBe(0);
+    }
+  });
+}
+
 test("the loading, error and no-standings states fit at 320px", async ({ page }) => {
   test.setTimeout(120_000);
   await page.setViewportSize({ width: 320, height: HEIGHT });

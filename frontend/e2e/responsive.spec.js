@@ -73,8 +73,8 @@ const PAGES = [
 test.describe("the page header", () => {
   for (const width of [390, 1280]) {
     for (const { name, route } of PAGES.filter((page) => page.name !== "Page not found")) {
-      // The team page's, Home's and the Season overview's headers are compact from 1024px, with 16px under them.
-      const gap = (name === "Team page" || name.startsWith("Home") || name.startsWith("Overview")) && width >= 1024 ? 16 : 24;
+      // The team page's, Home's, the Season overview's and the Postseason's headers are compact from 1024px, with 16px under them.
+      const gap = (name === "Team page" || name.startsWith("Home") || name.startsWith("Overview") || name === "Postseason") && width >= 1024 ? 16 : 24;
       test(`sits ${gap}px above the content on ${name} at ${width}px`, async ({ page }) => {
         test.setTimeout(60_000);
         await page.setViewportSize({ width, height: HEIGHT });

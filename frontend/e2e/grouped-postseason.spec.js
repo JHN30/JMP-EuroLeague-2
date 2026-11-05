@@ -51,7 +51,7 @@ for (const season of [2012, 2013, 2014, 2015]) {
     await page.getByRole("group", { name: "E1 v F4", exact: true }).getByRole("button").first().click();
     await expect(page.locator(".scroll-mt-28")).toContainText("Top 16:");
     await expect(page.locator(".scroll-mt-28 a[href*='/games/']").first()).toBeVisible();
-    await page.getByText("How the postseason works", { exact: true }).click();
+    await expect(page.getByRole("list", { name: "How the postseason works" })).toBeVisible();
     await expect(page.locator("main")).not.toContainText(/1 v 8|2 v 7|Play-In|bracket is a projection/);
   });
 }
@@ -131,8 +131,12 @@ test("season switches clear matchup detail and club focus", async ({ page }) => 
   await expect(page.locator(".scroll-mt-28")).toContainText("Top 16:");
   await page.getByLabel("Selected season").first().selectOption("2013");
   await expect(page).toHaveURL(/\/2013\/postseason$/);
-  await expect(page.getByText("Select a matchup to see its games.")).toBeVisible({ timeout: 30_000 });
-  await expect(page.locator(".scroll-mt-28 a[href*='/games/']")).toHaveCount(0);
+  // The pick is cleared: 2013 opens on its own default matchup, its Final, with its own games.
+  await expect(page.locator(".scroll-mt-28")).toContainText("FINAL FOUR · FINAL", { timeout: 30_000 });
+  await expect(page.locator(".scroll-mt-28")).not.toContainText("E1 V F4");
+  const hrefs = await page.locator(".scroll-mt-28 a[href*='/games/']").evaluateAll((links) => links.map((link) => link.getAttribute("href")));
+  expect(hrefs.length).toBeGreaterThan(0);
+  for (const href of hrefs) expect(href).toMatch(/^\/2013\//);
 });
 
 for (const theme of ["light-euroleague", "dark-euroleague"]) {

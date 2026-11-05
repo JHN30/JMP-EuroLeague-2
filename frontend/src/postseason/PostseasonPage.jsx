@@ -10,6 +10,7 @@ import { formatSeasonLabel, formatShortDate } from "../lib/format";
 import { EASE_OUT } from "../lib/motion";
 import PageHeader from "../lib/PageHeader";
 import Panel from "../lib/Panel";
+import PanelHeader from "../lib/PanelHeader";
 import { useDocumentTitle } from "../lib/useDocumentTitle";
 import Bracket from "./Bracket";
 import EliminationGrid from "./EliminationGrid";
@@ -113,6 +114,46 @@ function summaryLine({ bracket, regularSeasonDone, nextRound, totalRounds, serie
     kicker: "REGULAR SEASON",
     title: nextRound && totalRounds ? "Round " + nextRound + " of " + totalRounds + ": the bracket is a projection" : "The bracket is a projection",
   };
+}
+
+// The matchup the detail shows before anybody picks one: a series in progress (the one with the latest game), else the latest
+// finished matchup (the Final on a finished season), else the first matchup with both clubs known (a projected one during the
+// regular season). None when no matchup has two clubs yet.
+function defaultMatchup(slots) {
+  const lastGame = (slot) => (slot.series?.games ?? []).map((game) => game.scheduledAt).filter(Boolean).sort().at(-1) ?? "";
+  const latest = (list) => list.reduce((best, slot) => (!best || lastGame(slot) > lastGame(best) ? slot : best), null);
+  return (
+    latest(slots.filter((slot) => slot.state === "live")) ??
+    latest(slots.filter((slot) => slot.state === "done")) ??
+    slots.find((slot) => slot.participants.filter((side) => side.clubCode).length === 2) ??
+    null
+  );
+}
+
+const FORMAT_COLUMNS = { 2: "lg:grid-cols-2", 3: "lg:grid-cols-3", 4: "lg:grid-cols-4" };
+
+// "How the postseason works": one numbered card per stage, in the order the season plays them.
+function FormatCards({ cards }) {
+  return (
+    <Panel className="p-4">
+      <PanelHeader compact kicker="FORMAT" title="How the postseason works" />
+      <ol className={"grid gap-3 sm:grid-cols-2 " + (FORMAT_COLUMNS[cards.length] ?? "lg:grid-cols-4")} aria-label="How the postseason works">
+        {cards.map((card, index) => (
+          <li key={card.title} className="rounded-field border border-base-300 bg-base-100/60 p-3">
+            <p className="flex items-center gap-2 font-semibold">
+              <span aria-hidden="true" className="flex h-6 w-6 flex-none items-center justify-center rounded-full bg-primary/15 text-xs font-black text-primary">
+                {index + 1}
+              </span>
+              {card.title}
+            </p>
+            {card.paragraphs.filter(Boolean).map((text, paragraph) => (
+              <p key={paragraph} className="muted mt-2 text-sm">{text}</p>
+            ))}
+          </li>
+        ))}
+      </ol>
+    </Panel>
+  );
 }
 
 const GROUP_COUNT_WORDS = { 2: "Two", 3: "Three", 4: "Four" };
@@ -241,23 +282,57 @@ export default function PostseasonPage() {
     { title: "Final Four", sub: dateRange(series, ["FF"]) ?? stageSub(format, "FF", "Semifinals and final"), state: stageState([...bracket.semis, bracket.final]) },
   ];
 
-  const selected = bracket.all.find((slot) => slot.id === selectedId) ?? null;
+  const selected = bracket.all.find((slot) => slot.id === selectedId) ?? defaultMatchup(bracket.all);
   function select(id) {
     setSelectedId(id);
     // The detail sits under the bracket at every width, so it is brought into view whenever it is partly below the fold.
     requestAnimationFrame(() => detailRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" }));
   }
 
+  // The format, one card per stage, from the same wording as before.
+  const stageOf = (code) => format.stages.find((stage) => stage.code === code);
+  const formatCards = [
+    { title: "Regular season", paragraphs: [stageDescription(regularSeasonStage, format)] },
+    ...(elimination ? [{
+      title: "Knockout rounds",
+      paragraphs: [
+        stageDescription(stageOf("PO"), format),
+        `Each round is a series: the first round and quarterfinals are won with ${WIN_WORDS[bracket.rounds[0].winTarget]?.toLowerCase() ?? "two"} wins, the semifinals and final with ${WIN_WORDS[bracket.final.winTarget]?.toLowerCase() ?? "three"}. A series counts as decided only when a club reaches that number, and a club moves on only when it is recorded as playing the next tie. There is no Top 16 or Final Four and no third-place game.`,
+      ],
+    }] : grouped ? [
+      {
+        title: "Top 16",
+        paragraphs: [
+          stageDescription(stageOf("TS"), format),
+          bracket.direct ? `Only the winner of each Top 16 group advances, straight to the Final Four; there are no quarterfinals. Labels such as ${bracket.semis[0]?.participants[0]?.seedLabel ?? "G1"} are Top 16 group places.` : null,
+        ],
+      },
+      ...(bracket.direct ? [] : [{
+        title: "Quarterfinals",
+        paragraphs: [`Quarterfinals are best-of-${SERIES_WORDS[bracket.playoffs[0]?.winTarget] ?? "five"} series between recorded cross-group qualifiers. ${WIN_WORDS[bracket.playoffs[0]?.winTarget] ?? "Three"} wins are required to advance; labels such as ${bracket.playoffs.find((slot) => slot.label.includes(" v "))?.label ?? "E1 v F4"} are Top 16 group places.`],
+      }]),
+      { title: "Final Four", paragraphs: ["The Final Four follows the recorded semifinal matchups, championship game and any verified third-place game. Unverified draws and results remain unknown."] },
+    ] : [
+      ...(bracket.playIn.length ? [{
+        title: "Play-In",
+        paragraphs: ["In the Play-In, 7th hosts 8th and 9th hosts 10th in single games. The loser of 7 v 8 then plays the winner of 9 v 10 for the last Playoffs place; the winner of 7 v 8 takes the 7th place."],
+      }] : []),
+      { title: "Playoffs", paragraphs: ["The Playoffs are best-of-five series: 1st plays the 8th place, 2nd the 7th, 3rd the 6th and 4th the 5th. The higher seed has home court."] },
+      {
+        title: "Final Four",
+        paragraphs: [`The winners of 1 v 8 and 4 v 5 meet in one Final Four semifinal, the winners of 2 v 7 and 3 v 6 in the other. Each is a single game, and the two winners play the final. ${stageSub(format, "FF", "")}`.trim()],
+      },
+    ]),
+  ];
+
   const seasonLabel = formatSeasonLabel(seasonCode);
   return (
-    <motion.div className="flex flex-col gap-6" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3, ease: EASE_OUT }}>
-      <PageHeader stacked kicker="SEASON" title="Postseason" />
-
-      <Panel className="p-4">
-        <p className="eyebrow mb-0.5">{summary.kicker}</p>
-        <h2 className="mb-4 text-xl font-bold">{summary.title}</h2>
-        <Steps steps={steps} />
-      </Panel>
+    <motion.div className="flex flex-col gap-6 lg:gap-4" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3, ease: EASE_OUT }}>
+      <PageHeader stacked compact kicker={summary.kicker} title="Postseason" description={<p className="mt-1 font-semibold">{summary.title}</p>}>
+        <div className="basis-full">
+          <Steps steps={steps} />
+        </div>
+      </PageHeader>
 
       {hasLoadingIssues(format) ? <p className="muted text-sm">{LOADING_ISSUES_NOTE}</p> : null}
       {elimination ? <>
@@ -275,43 +350,17 @@ export default function PostseasonPage() {
         <p className="muted -mb-2 text-sm">Projected from the current standings: the dashed matchups update as the regular season goes on.</p>
       ) : null}
       {elimination
-        ? <EliminationGrid bracket={bracket} selectedId={selectedId} focusClub={focusClub} onSelect={select} onFocusClub={setFocusClub} />
-        : <Bracket bracket={bracket} selectedId={selectedId} focusClub={focusClub} onSelect={select} onFocusClub={setFocusClub} />}
+        ? <EliminationGrid bracket={bracket} selectedId={selected?.id ?? null} focusClub={focusClub} onSelect={select} onFocusClub={setFocusClub} />
+        : <Bracket bracket={bracket} selectedId={selected?.id ?? null} focusClub={focusClub} onSelect={select} onFocusClub={setFocusClub} />}
 
       <div ref={detailRef} className="scroll-mt-28">
-        {selected ? <MatchupDetail slot={selected} seasonCode={seasonCode} /> : <p className="muted text-sm">Select a matchup to see its games.</p>}
+        {selected ? <MatchupDetail slot={selected} seasonCode={seasonCode} /> : null}
       </div>
 
       {!grouped && !elimination && !regularSeasonDone && raceUnavailable ? <EmptyText>The qualification race is unavailable while regular-season data is incomplete.</EmptyText> : null}
       {!grouped && !elimination && !regularSeasonDone && !raceUnavailable && race ? <RacePanel standings={standings} teams={teams} race={race} directSeeds={bracket.directSeeds} playInLast={bracket.playInLast} /> : null}
 
-      <details className="rounded-box border border-base-300 bg-base-100 p-4">
-        <summary className="cursor-pointer font-semibold">How the postseason works</summary>
-        <div className="muted mt-3 flex flex-col gap-2 text-sm">
-          <p>{stageDescription(regularSeasonStage, format)}</p>
-          {elimination ? <>
-            <p>{stageDescription(format.stages.find((stage) => stage.code === "PO"), format)}</p>
-            <p>
-              Each round is a series: the first round and quarterfinals are won with {WIN_WORDS[bracket.rounds[0].winTarget]?.toLowerCase() ?? "two"} wins, the semifinals and final with {WIN_WORDS[bracket.final.winTarget]?.toLowerCase() ?? "three"}.
-              A series counts as decided only when a club reaches that number, and a club moves on only when it is recorded as playing the next tie. There is no Top 16 or Final Four and no third-place game.
-            </p>
-          </> : grouped ? <>
-            <p>{stageDescription(format.stages.find((stage) => stage.code === "TS"), format)}</p>
-            {bracket.direct ? <p>Only the winner of each Top 16 group advances, straight to the Final Four; there are no quarterfinals. Labels such as {bracket.semis[0]?.participants[0]?.seedLabel ?? "G1"} are Top 16 group places.</p> : <p>Quarterfinals are best-of-{SERIES_WORDS[bracket.playoffs[0]?.winTarget] ?? "five"} series between recorded cross-group qualifiers. {WIN_WORDS[bracket.playoffs[0]?.winTarget] ?? "Three"} wins are required to advance; labels such as {bracket.playoffs.find((slot) => slot.label.includes(" v "))?.label ?? "E1 v F4"} are Top 16 group places.</p>}
-            <p>The Final Four follows the recorded semifinal matchups, championship game and any verified third-place game. Unverified draws and results remain unknown.</p>
-          </> : <>
-          {bracket.playIn.length ? <p>
-            In the Play-In, 7th hosts 8th and 9th hosts 10th in single games. The loser of 7 v 8 then plays the winner of 9 v 10 for the last Playoffs place; the winner of 7 v 8
-            takes the 7th place.
-          </p> : null}
-          <p>The Playoffs are best-of-five series: 1st plays the 8th place, 2nd the 7th, 3rd the 6th and 4th the 5th. The higher seed has home court.</p>
-          <p>
-            The winners of 1 v 8 and 4 v 5 meet in one Final Four semifinal, the winners of 2 v 7 and 3 v 6 in the other. Each is a single game, and the two winners play the
-            final. {stageSub(format, "FF", "")}
-          </p>
-          </>}
-        </div>
-      </details>
+      <FormatCards cards={formatCards} />
     </motion.div>
   );
 }

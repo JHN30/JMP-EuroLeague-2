@@ -42,23 +42,6 @@ function raceZones(stillIn, directSeeds, playInLast) {
     .filter((zone) => zone.clubs.length > 0);
 }
 
-function gamesLeftText(standings, race) {
-  const counts = standings.map((entry) => race.get(entry.clubCode)?.remaining ?? 0);
-  const low = Math.min(...counts);
-  const high = Math.max(...counts);
-  return (low === high ? String(high) : low + " to " + high) + (high === 1 ? " game" : " games") + " left per club.";
-}
-
-function referenceText(reference, zone, margins, nameOf) {
-  const name = nameOf(reference);
-  const text = "Against " + ordinal(zone.reference) + ": " + name + " (" + reference.basic.gamesWon + "-" + reference.basic.gamesLost + ").";
-  const counts = [...new Set(margins.filter((margin) => margin.inHand < 0).map((margin) => -margin.inHand))].sort((a, b) => a - b);
-  if (counts.length === 0) return text;
-  const behind = margins.filter((margin) => margin.inHand < 0).length;
-  const amount = counts.length === 1 ? games(counts[0]) : counts.slice(0, -1).join(", ") + " or " + games(counts.at(-1));
-  return text + " " + name + " has " + amount + " in hand on " + (behind === margins.length ? "all of them." : behind + " of them.");
-}
-
 function ZoneTable({ zone, standings, race, info, nameOf }) {
   const reference = standings.find((entry) => entry.basic.position === zone.reference);
   const margins = reference ? zone.clubs.map((entry) => raceMargin(entry, reference)) : [];
@@ -70,14 +53,20 @@ function ZoneTable({ zone, standings, race, info, nameOf }) {
         {zone.title}{" "}
         <span className="muted text-xs font-semibold tabular-nums">{first === last ? first : first + "-" + last}</span>
       </h4>
-      {reference ? <p className="muted text-xs">{referenceText(reference, zone, margins, nameOf)}</p> : null}
-      <table className="table table-sm w-full max-sm:[&_td]:px-1.5 max-sm:[&_th]:px-1.5">
+      <table className="table table-xs mt-1 w-full max-sm:[&_td]:px-1.5 max-sm:[&_th]:px-1.5">
         <thead>
           <tr className="muted text-xs uppercase">
             <th className="w-6 text-right sm:w-8">#</th>
             <th>Club</th>
             <th className="text-right">W-L</th>
-            {reference ? <th className="whitespace-nowrap text-right normal-case">vs {ordinal(zone.reference)}</th> : null}
+            {reference ? (
+              <th
+                className="whitespace-nowrap text-right normal-case"
+                title={"Wins against " + nameOf(reference) + ", " + ordinal(zone.reference) + " (" + reference.basic.gamesWon + "-" + reference.basic.gamesLost + ")"}
+              >
+                vs {ordinal(zone.reference)}
+              </th>
+            ) : null}
           </tr>
         </thead>
         <tbody>
@@ -90,7 +79,7 @@ function ZoneTable({ zone, standings, race, info, nameOf }) {
                 <td className="muted text-right tabular-nums">{entry.basic.position}</td>
                 <td>
                   <span className="flex min-w-0 items-center gap-1.5 sm:gap-2">
-                    {crestUrl ? <RevealImage src={crestUrl} className="h-6 w-6 flex-none object-contain" /> : <span className="h-6 w-6 flex-none" />}
+                    {crestUrl ? <RevealImage src={crestUrl} className="h-5 w-5 flex-none object-contain" /> : <span className="h-5 w-5 flex-none" />}
                     <span className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-0.5">
                       <span className="min-w-0 font-semibold max-sm:wrap-break-word sm:truncate">{team?.abbreviatedName ?? entry.clubName}</span>
                       {chip ? (
@@ -132,17 +121,13 @@ export default function RacePanel({ standings, teams, race, directSeeds, playInL
   return (
     <Panel className="p-4">
       <p className="eyebrow mb-0.5">THE RACE</p>
-      <h3 className="text-lg font-bold">Race for the bracket</h3>
-      <p className="muted mb-4 mt-1 text-sm">
-        Top {directSeeds}: straight to the Playoffs. {playInLast > directSeeds ? `Ranks ${directSeeds + 1} to ${playInLast}: the Play-In. ` : ""}Every club that can still get a place is listed ({stillIn.length} of {standings.length}), with {gamesLeftText(standings, race)} The
-        margin is wins ahead of the club across the line, with any games in hand. A club is called in or out only when no tiebreaker could change it.
-      </p>
+      <h3 className="mb-3 text-lg font-bold">Race for the bracket</h3>
       <div className={"grid gap-6 " + (zones.length === 3 ? "lg:grid-cols-3" : "lg:grid-cols-2")}>
         {zones.map((zone) => (
           <ZoneTable key={zone.title} zone={zone} standings={standings} race={race} info={info} nameOf={nameOf} />
         ))}
       </div>
-      {anyBadge ? null : <p className="muted mt-3 text-sm">{out.length ? "No club has clinched a place yet." : "No club has clinched a place or been knocked out yet."}</p>}
+      {anyBadge ? null : <p className="muted mt-3 text-sm">{out.length ? "No club has clinched yet." : "No club has clinched or been knocked out yet."}</p>}
       {out.length > 0 ? (
         <p className="muted mt-3 text-sm">
           <span className="font-semibold">Out of the race ({out.length}):</span> {out.map(nameOf).join(", ")}

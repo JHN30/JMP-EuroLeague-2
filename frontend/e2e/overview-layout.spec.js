@@ -237,13 +237,25 @@ test("2004: a leaders card without a photo shows a silhouette in its place", asy
   await expect(row.locator("[data-testid=leader-photo-placeholder]").first()).toBeVisible();
 });
 
-test("both hero cards open the leading team's page", async ({ page }) => {
+test("the leader card opens the leader's page and the scoring card the club with the most points per game", async ({ page }) => {
+  // The page's own league team totals, so the test ranks the same phase the card does.
+  const teamStats = page.waitForResponse((response) => /\/seasons\/[^/]+\/team-stats\?/.test(response.url()) && response.ok());
   await openOverview(page);
   const hero = page.getByTestId("season-hero-kpis");
   test.skip((await hero.count()) === 0, "the default season is finished, so there are no hero cards");
   const chips = hero.locator(".kpi-chip");
   await expect(chips).toHaveCount(2);
+  await expect(chips.nth(1).locator(".label")).toHaveText("Most points per game");
+
+  let top = null;
+  for (const team of (await (await teamStats).json()).teams) {
+    const pointsPerGame = Number(team.own?.points) / Number(team.gamesPlayed);
+    if (Number(team.gamesPlayed) && Number.isFinite(pointsPerGame) && (top === null || pointsPerGame > top.pointsPerGame)) top = { team, pointsPerGame };
+  }
+  expect(top).not.toBeNull();
+
   const hrefs = await chips.evaluateAll((els) => els.map((el) => el.getAttribute("href")));
   expect(hrefs[0]).toMatch(/\/teams\/[^/]+$/);
-  expect(hrefs[1]).toBe(hrefs[0]);
+  expect(hrefs[1]).toMatch(new RegExp(`/teams/${escapeRegExp(top.team.clubCode)}$`));
+  await expect(chips.nth(1).locator(".value")).toHaveText(top.pointsPerGame.toFixed(1));
 });

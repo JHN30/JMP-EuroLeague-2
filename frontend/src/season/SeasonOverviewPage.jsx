@@ -71,7 +71,34 @@ async function fetchAllPlayedGames(seasonCode) {
   return all;
 }
 
-function SeasonHero({ seasonCode, leader, pointsPerGame, format, grouped = false }) {
+// A hero card that opens its club's page when the club is known.
+function HeroChip({ seasonCode, club, label, value }) {
+  const Root = club.clubCode ? MotionLink : "div";
+  const rootProps = club.clubCode
+    ? { to: `/${seasonCode}/teams/${club.clubCode}`, className: "kpi-chip kpi-chip-link", ...cardHover }
+    : { className: "kpi-chip" };
+  return (
+    <Root {...rootProps}>
+      <div className="kpi-chip-body">
+        <span className="label">{label}</span>
+        <span className="name">{club.clubName ?? club.clubCode}</span>
+        <span className="value">{value}</span>
+      </div>
+      {club.crestUrl ? (
+        <img
+          src={club.crestUrl}
+          alt=""
+          className="kpi-chip-image"
+          onError={(event) => {
+            event.currentTarget.style.display = "none";
+          }}
+        />
+      ) : null}
+    </Root>
+  );
+}
+
+function SeasonHero({ seasonCode, leader, topScorer, format, grouped = false }) {
   const status = format?.status ?? null;
   if (!status) return <Panel className="p-4"><p className="muted">Season status is unavailable.</p></Panel>;
   if (status === "cancelled") {
@@ -105,51 +132,21 @@ function SeasonHero({ seasonCode, leader, pointsPerGame, format, grouped = false
     );
   }
 
-  const ppg = pointsPerGame;
-  // Both chips name the leading club, so both open its page, as the player-leader chips open theirs.
-  const ChipRoot = leader.clubCode ? MotionLink : "div";
-  const chipProps = leader.clubCode
-    ? { to: `/${seasonCode}/teams/${leader.clubCode}`, className: "kpi-chip kpi-chip-link", ...cardHover }
-    : { className: "kpi-chip" };
-
+  // Each card opens its own club's page; the top-scoring club falls back to the leader until the team totals load.
   return (
     <div className="season-hero-kpis grid grid-cols-2 gap-3 sm:gap-4" data-testid="season-hero-kpis">
-      <ChipRoot {...chipProps}>
-        <div className="kpi-chip-body">
-          <span className="label">{grouped ? "Most wins · any group" : "League leader"}</span>
-          <span className="name">{leader.clubName ?? leader.clubCode}</span>
-          <span className="value">
-            {leader.basic?.gamesWon ?? "-"}-{leader.basic?.gamesLost ?? "-"}
-          </span>
-        </div>
-        {leader.crestUrl ? (
-          <img
-            src={leader.crestUrl}
-            alt=""
-            className="kpi-chip-image"
-            onError={(event) => {
-              event.currentTarget.style.display = "none";
-            }}
-          />
-        ) : null}
-      </ChipRoot>
-      <ChipRoot {...chipProps}>
-        <div className="kpi-chip-body">
-          <span className="label">Points per game</span>
-          <span className="name">{leader.clubName ?? leader.clubCode}</span>
-          <span className="value">{ppg != null ? formatPerGame(ppg) : "-"}</span>
-        </div>
-        {leader.crestUrl ? (
-          <img
-            src={leader.crestUrl}
-            alt=""
-            className="kpi-chip-image"
-            onError={(event) => {
-              event.currentTarget.style.display = "none";
-            }}
-          />
-        ) : null}
-      </ChipRoot>
+      <HeroChip
+        seasonCode={seasonCode}
+        club={leader}
+        label={grouped ? "Most wins · any group" : "League leader"}
+        value={`${leader.basic?.gamesWon ?? "-"}-${leader.basic?.gamesLost ?? "-"}`}
+      />
+      <HeroChip
+        seasonCode={seasonCode}
+        club={topScorer?.entry ?? leader}
+        label="Most points per game"
+        value={topScorer ? formatPerGame(topScorer.pointsPerGame) : "-"}
+      />
     </div>
   );
 }
@@ -812,13 +809,21 @@ export default function SeasonOverviewPage() {
   // Grouped tables repeat positions, so the hero shows the most wins in any group rather than a league leader.
   const groupedTable = isGroupedTable(tableStandings);
   const leader = (groupedTable ? mostWinsEntry(tableStandings)?.entry : tableStandings.find((entry) => entry.basic?.position === 1)) ?? null;
-  // The leader's points per game from the team totals (overtime counted), not the standings' regulation-only points.
+  // The club with the most points per game from the team totals (overtime counted), not the standings' regulation-only points;
+  // a tie keeps the first club, as the home page's Best offense card does.
   const leagueTeamStatsQuery = useQuery({
     queryKey: ["league-team-stats", seasonCode, tablePhaseCode],
     queryFn: () => getLeagueTeamStats(seasonCode, tablePhaseCode),
   });
-  const leaderTotals = leagueTeamStatsQuery.data?.teams.find((team) => team.clubCode === leader?.clubCode);
-  const leaderPointsPerGame = leaderTotals?.gamesPlayed ? Number(leaderTotals.own?.points) / leaderTotals.gamesPlayed : null;
+  const standingByClub = new Map(tableStandings.map((entry) => [entry.clubCode, entry]));
+  let topScorer = null;
+  for (const team of leagueTeamStatsQuery.data?.teams ?? []) {
+    const entry = standingByClub.get(team.clubCode);
+    const gamesPlayed = Number(team.gamesPlayed);
+    const pointsPerGame = Number(team.own?.points) / gamesPlayed;
+    if (!entry || !gamesPlayed || !Number.isFinite(pointsPerGame)) continue;
+    if (topScorer === null || pointsPerGame > topScorer.pointsPerGame) topScorer = { entry, pointsPerGame };
+  }
 
   const phaseSummaries = {};
   phases.forEach((phase, index) => {
@@ -889,7 +894,7 @@ export default function SeasonOverviewPage() {
       ) : (
         <>
           <motion.div variants={sectionItem}>
-            <SeasonHero seasonCode={seasonCode} leader={leader} pointsPerGame={leaderPointsPerGame} format={format} grouped={groupedTable} />
+            <SeasonHero seasonCode={seasonCode} leader={leader} topScorer={topScorer} format={format} grouped={groupedTable} />
             {hasLoadingIssues(format) ? <p className="muted mt-2 text-sm">{LOADING_ISSUES_NOTE}</p> : null}
           </motion.div>
           <motion.div variants={sectionItem}>

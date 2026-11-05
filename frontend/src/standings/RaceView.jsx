@@ -8,6 +8,7 @@ import EmptyText from "../lib/EmptyText";
 import CompetitionContext from "../lib/CompetitionContext";
 import { sectionContainer, sectionItem } from "../lib/motion";
 import { useMediaQuery } from "../lib/useMediaQuery";
+import { usePrefersReducedMotion } from "../lib/usePrefersReducedMotion";
 import RaceChart from "./RaceChart";
 import RacePlayback from "./RacePlayback";
 import RaceInsightCards from "./RaceInsightCards";
@@ -97,6 +98,7 @@ export default function RaceView({ seasonCode, phaseCode, latestRound, latestSta
   const room = useRoomBelowBar(bar);
   const narrow = useMediaQuery(NARROW_QUERY);
   const sideBySide = useMediaQuery(SIDE_BY_SIDE_QUERY);
+  const reducedMotion = usePrefersReducedMotion();
   const raceRef = useRef(null);
 
   if (isLoading) return <AsyncState status="loading" label="Loading standings race" skeleton={<RaceSkeleton />} />;
@@ -122,13 +124,13 @@ export default function RaceView({ seasonCode, phaseCode, latestRound, latestSta
   const layout = raceLayout({ room: room.height, teamCount: teamOrder.length, narrow, sideBySide });
 
   // Play brings the chart up to just under the playback bar, once per run. It measures on the next frame, once the bar has
-  // re-rendered with its Pause label (which can change how the bar wraps).
+  // re-rendered with its Pause label (which can change how the bar wraps). With Reduce Motion on it jumps instead of gliding.
   const frameRace = () => {
     requestAnimationFrame(() => {
       const race = raceRef.current;
       if (!race || !bar) return;
       const top = race.getBoundingClientRect().top + window.scrollY - stickyBottomOf(bar) - 8;
-      window.scrollTo({ top: Math.max(0, top), behavior: "smooth" });
+      window.scrollTo({ top: Math.max(0, top), behavior: reducedMotion ? "auto" : "smooth" });
     });
   };
 

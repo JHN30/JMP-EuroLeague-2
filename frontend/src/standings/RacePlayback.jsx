@@ -1,14 +1,13 @@
 import { useEffect, useState } from "react";
-import { usePrefersReducedMotion } from "../lib/usePrefersReducedMotion";
 
 const STEP_MS = 1000;
 
 // A controlled scrubber over steps 0..total, where 0 is the stage or season start. Playing steps forward one round at a time.
-// `onPlay` runs when Play or Replay starts a run.
+// `onPlay` runs when Play or Replay starts a run. Play shows and works with Reduce Motion on too: the run is started by the user,
+// one round a second, and the chart's moves already jump instead of glide under that setting (the app's MotionConfig).
 export default function RacePlayback({ total, value, label, endLabel, onChange, onPlay, startLabel = "Start", stageName }) {
-  const reducedMotion = usePrefersReducedMotion();
   const [playing, setPlaying] = useState(false);
-  const isPlaying = playing && !reducedMotion && value < total;
+  const isPlaying = playing && value < total;
 
   useEffect(() => {
     if (!isPlaying) return undefined;
@@ -18,23 +17,21 @@ export default function RacePlayback({ total, value, label, endLabel, onChange, 
 
   return (
     <div className="flex flex-wrap items-center gap-3">
-      {reducedMotion ? null : (
-        <button
-          type="button"
-          className="btn btn-sm"
-          onClick={() => {
-            if (isPlaying) {
-              setPlaying(false);
-              return;
-            }
-            if (value >= total) onChange(0);
-            setPlaying(true);
-            onPlay?.();
-          }}
-        >
-          {isPlaying ? "Pause" : value >= total ? stageName ? `Replay ${stageName}` : "Replay season" : stageName ? `Play ${stageName}` : "Play season"}
-        </button>
-      )}
+      <button
+        type="button"
+        className="btn btn-sm"
+        onClick={() => {
+          if (isPlaying) {
+            setPlaying(false);
+            return;
+          }
+          if (value >= total) onChange(0);
+          setPlaying(true);
+          onPlay?.();
+        }}
+      >
+        {isPlaying ? "Pause" : value >= total ? stageName ? `Replay ${stageName}` : "Replay season" : stageName ? `Play ${stageName}` : "Play season"}
+      </button>
       <span className="text-xs text-base-content/70">{startLabel}</span>
       <input
         type="range"

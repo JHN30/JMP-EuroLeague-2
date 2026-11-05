@@ -231,6 +231,23 @@ test("where the chart cannot fit, the page follows the focused team while the ra
   expect(await page.evaluate(() => Math.round(scrollY))).toBe(settled);
 });
 
+// iOS passes its Reduce Motion setting to Safari; the race must still be playable there, only without gliding.
+test("with Reduce Motion on, a phone still shows Play and plays the race", async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await openRace(page, FINISHED);
+  await page.setViewportSize({ width: 390, height: HEIGHT });
+  const slider = page.getByRole("slider", { name: "Round shown in the race" });
+  const button = page.getByRole("button", { name: /^(Play|Replay) season$/ });
+  await expect(button).toBeVisible();
+
+  await button.click();
+  await expect(page.getByRole("button", { name: "Pause" })).toBeVisible();
+  // Replay goes back to the season start, then steps one round a second.
+  await expect.poll(async () => Number(await slider.inputValue()), { timeout: 5_000 }).toBeGreaterThanOrEqual(2);
+  await page.getByRole("button", { name: "Pause" }).click();
+  await expect(button).toHaveText("Play season");
+});
+
 test("the cards, legend and playback controls stay inside the screen on a phone", async ({ page }) => {
   await openRace(page, FINISHED);
   await atWidths(page, [320, 390], async (width) => {

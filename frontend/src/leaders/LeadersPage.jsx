@@ -15,6 +15,7 @@ import { ToolbarSlot } from "./toolbarSlot";
 import AdvancedLeaders from "./AdvancedLeaders";
 import PlayersLeaders from "./PlayersLeaders";
 import TeamsLeaders from "./TeamsLeaders";
+import { useLatestRound } from "./useLatestRound";
 
 const SCOPES = [
   { key: "players", label: "Players" },
@@ -41,6 +42,14 @@ export default function LeadersPage() {
   const [phaseCode] = usePhaseParam(phases);
   // The node beside the scope tabs that each view's toolbar goes into.
   const [toolbarSlot, setToolbarSlot] = useState(null);
+  // While the stage's latest round is still being played, the header says so: the boards move again once the round is complete.
+  const latestRound = useLatestRound(seasonCode, phaseCode);
+  const roundNote = latestRound.inProgress ? (
+    <p className="muted mt-1 text-sm">
+      Round {latestRound.round} in progress · {latestRound.played} of {latestRound.total} games played. Leaders include every game so far and settle once
+      the round is complete.
+    </p>
+  ) : null;
 
   // An open board has `?metric=`; its way back is the shared back link (above the header from sm, in the sticky bar below). Going back swaps
   // the view on one path, so ScrollToTop does not run and the page goes to the top by itself.
@@ -83,7 +92,7 @@ export default function LeadersPage() {
   return (
     <div>
       {params.get("metric") ? <BackLink to={`/${seasonCode}/leaders${cardsQuery ? `?${cardsQuery}` : ""}`} label="Categories" onBack={backToCards} /> : null}
-      <PageHeader kicker="LEADERBOARDS" title="Leaders" />
+      <PageHeader kicker="LEADERBOARDS" title="Leaders" description={roundNote} />
 
       {/* The scope tabs, then the view's choices: under them below lg, on their right from lg (wrapping when they do not fit). */}
       <div className="mb-6 flex flex-wrap items-end justify-between gap-x-6 gap-y-6 lg:mb-4 lg:gap-y-3">

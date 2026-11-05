@@ -20,8 +20,8 @@ export const GAME_SHARES = [
 export const DEFAULT_SHARE = "50";
 export const gameShareFrom = (value) => (value === "all" || GAME_SHARES.some((entry) => entry.key === value) ? value : DEFAULT_SHARE);
 export const gamesNeeded = (gamesSoFar, entry) => Math.ceil((gamesSoFar * entry.num) / entry.den);
-// "Games: 50% · 5+"; every game has no "+", since nobody can have more.
-export const gameShareLabel = (gamesSoFar, entry) => `Games: ${entry.key}% · ${gamesNeeded(gamesSoFar, entry)}${entry.key === "100" ? "" : "+"}`;
+// "Games: 50% · 5+"; every game has no "+", since nobody can have more, unless `more` says some already have (a round in progress).
+export const gameShareLabel = (gamesSoFar, entry, more = false) => `Games: ${entry.key}% · ${gamesNeeded(gamesSoFar, entry)}${entry.key === "100" && !more ? "" : "+"}`;
 
 // `volume`: what a player needs to be ranked on this stat, `min` of `fields` a game (`noun` names them). In a stage with standings
 // it is a season total, `min` times the rounds played; otherwise an average over the games he played (leaderData's hasVolume).

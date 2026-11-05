@@ -85,3 +85,4 @@ every such change so it can be found later.
 - [page-addresses-tab-titles-and-public-files.md](page-addresses-tab-titles-and-public-files.md)
 - [leaders-totals-on-landing.md](leaders-totals-on-landing.md): Per game / Totals on the Leaders landings, sectioned cards for players, teams and advanced, and the added stats
 - [overview-points-per-game-shows-top-scoring-team.md](overview-points-per-game-shows-top-scoring-team.md): the season overview's second hero card names the club with the most points per game, not the league leader
+- [leaders-round-in-progress-note.md](leaders-round-in-progress-note.md): the Leaders header says when the latest round is still being played, and the ranking bar counts completed rounds instead of calling waiting clubs postponed

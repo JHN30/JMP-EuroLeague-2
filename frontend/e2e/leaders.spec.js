@@ -1,10 +1,13 @@
 import { fileURLToPath } from "node:url";
 import { test, expect } from "@playwright/test";
 
-// The rounds a stage has played (its latest standings round), which the volume minimums are multiplied by.
+// The rounds a stage has completed, which the volume minimums are multiplied by: its latest standings round, or the one before while
+// that round still has a game to play.
 async function roundsPlayed(request, api, phase) {
-  const response = await request.get(api.replace("/season-stats", `/phases/${phase}/standings`));
-  return Number((await response.json()).round);
+  const base = api.replace("/season-stats", "");
+  const round = Number((await (await request.get(`${base}/phases/${phase}/standings`)).json()).round);
+  const { games } = await (await request.get(`${base}/games`, { params: { phase, round, limit: 100 } })).json();
+  return games.some((game) => game.played !== true) ? round - 1 : round;
 }
 // Every player's season three-point attempts in a stage, by person.
 async function seasonAttempts(request, api, phase) {
@@ -224,19 +227,44 @@ test("one row of choices under the scope tabs: the stage, a board's statistic an
   await expect(page.getByRole("group", { name: "Player statistics mode" })).toBeVisible();
 });
 
+test("the header says when the stage's latest round is still being played, and nothing once it is complete", async ({ page, request }) => {
+  const base = "http://localhost:3000/api/seasons/2026";
+  const round = Number((await (await request.get(`${base}/phases/RS/standings`)).json()).round);
+  const { games } = await (await request.get(`${base}/games`, { params: { phase: "RS", round, limit: 100 } })).json();
+  const played = games.filter((game) => game.played === true).length;
+  await page.goto("/2026/leaders?phase=RS");
+  const header = page.locator("main section").first();
+  await expect(header.getByRole("heading", { name: "Leaders" })).toBeVisible();
+  // The postponed-games line is only for clubs missing a game from a completed round, never for the round being played.
+  if (played < games.length) {
+    await expect(header).toContainText(`Round ${round} in progress · ${played} of ${games.length} games played.`, { timeout: 30_000 });
+    await page.getByRole("tab", { name: "Teams" }).click();
+    await expect(header).toContainText(`Round ${round} in progress`);
+  } else {
+    await expect(page.locator("main .board-row-link").first()).toBeVisible({ timeout: 30_000 });
+    await expect(header).not.toContainText("in progress");
+  }
+
+  // A finished season has no round in progress.
+  await page.goto("/2025/leaders?phase=RS");
+  await expect(page.locator("main .board-row-link").first()).toBeVisible({ timeout: 30_000 });
+  await expect(page.locator("main section").first()).not.toContainText("in progress");
+});
+
 test("a player board ranks from a share of the games played, sorts from its value heading and resets its filters", async ({ page }) => {
   await page.goto("/2026/leaders?metric=pointsScored");
   const games = page.getByRole("combobox", { name: "Minimum games played" });
   // Half the games played by default, rounded up.
-  const rounds = Number((await (await page.request.get("http://localhost:3000/api/seasons/2026/phases/RS/standings")).json()).round);
+  const rounds = await roundsPlayed(page.request, "http://localhost:3000/api/seasons/2026/season-stats", "RS");
   await expect(games).toHaveValue("50", { timeout: 30_000 });
   await expect(games.locator("option:checked")).toHaveText(`Games: 50% · ${Math.ceil(rounds / 2)}+`);
   const gamesShown = () => page.locator("main .board-row-link [title='Games played']").allTextContents();
 
-  // Every game: only players who have played them all, and the choice is in the address.
+  // Every game: only players who have played every completed round (a round in progress can give some one more), and the choice
+  // is in the address.
   await games.selectOption("100");
   await expect(page).toHaveURL(/[?&]games=100/);
-  await expect.poll(async () => (await gamesShown()).every((value) => Number(value) === rounds)).toBe(true);
+  await expect.poll(async () => (await gamesShown()).every((value) => Number(value) >= rounds)).toBe(true);
 
   // The value heading flips the order.
   const heading = page.getByRole("button", { name: /^PTS: highest first/ });

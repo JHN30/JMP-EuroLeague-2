@@ -2,7 +2,7 @@ import { useMemo, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { motion } from "motion/react";
 import { Link } from "react-router";
-import { getLeaderForm, getSeasonGames, getSeasonStandings } from "../lib/api";
+import { getLeaderForm, getSeasonGames } from "../lib/api";
 import AsyncState from "../lib/AsyncState";
 import { BoardSkeleton, FormSkeleton } from "./LeadersSkeleton";
 import EmptyText from "../lib/EmptyText";
@@ -16,6 +16,7 @@ import { Avatar, BarSearch, BarSelect, BOARD_AVATAR, BoardBar, BoardHeader, Boar
 import { barShare, fetchQualifiedPool, formatPlayerValue, hasVolume, playerValue, rankRows, statNumber, volumeText } from "./leaderData";
 import { DEFAULT_SHARE, FORM_STATS, GAME_SHARES, gameShareFrom, gameShareLabel, gamesNeeded, PLAYER_CARDS, PLAYER_FAMILIES, PLAYER_STATS, PLAYER_TOTAL_CARDS } from "./leaderDefs";
 import { fetchLeagueLeaderboard, leaderboardQueryKey } from "../players/leagueLeaderboard";
+import { useLatestRound } from "./useLatestRound";
 
 const PAGE_SIZE = 25;
 const FORM_GAMES = 5;
@@ -34,28 +35,30 @@ const displayName = (player) => {
 };
 const teamOf = (player) => ({ code: player.clubCode, name: player.clubName, tvCode: player.clubTvCodes, crestUrl: player.clubImageUrl });
 
-// Who the players' boards rank. A stage with standings has rounds: the round of its latest standings, so a postponed game does not
-// lower the bar; `behind` are the clubs that have played fewer games. A player is ranked from half the rounds in games (rounded up:
-// 5 after 9 rounds), and the volume minimums are totals over the rounds (hasVolume), measured on the season totals since the
-// per-game view's numbers are rounded. A stage without standings (the postseason) has no rounds and keeps the feed's minimum.
+// Who the players' boards rank. A stage with standings has rounds: the latest completed round, so a postponed game does not lower
+// the bar and a round still being played does not raise it (useLatestRound); `behind` are the clubs that have played fewer games.
+// A player is ranked from half the rounds in games (rounded up: 5 after 9 rounds), and the volume minimums are totals over the
+// rounds (hasVolume), measured on the season totals since the per-game view's numbers are rounded. A stage without standings (the
+// postseason), or one whose first round is still being played, has no rounds and keeps the feed's minimum.
 function useRankingRule(seasonCode, phaseCode, mode) {
-  const standingsQuery = useQuery({ queryKey: ["standings", seasonCode, phaseCode], queryFn: () => getSeasonStandings(seasonCode, phaseCode), enabled: Boolean(phaseCode) });
-  const rounds = standingsQuery.data?.standings?.length ? (statNumber(standingsQuery.data.round) ?? 0) : 0;
+  const latest = useLatestRound(seasonCode, phaseCode);
+  const rounds = latest.inProgress ? latest.round - 1 : latest.round;
   const needsTotals = rounds > 0 && mode === "perGame";
   const totalsQuery = useQuery({
     queryKey: leaderboardQueryKey(seasonCode, phaseCode, "accumulated"),
     queryFn: () => fetchLeagueLeaderboard(seasonCode, phaseCode, "accumulated"),
     enabled: Boolean(phaseCode) && needsTotals,
   });
-  const isLoading = standingsQuery.isLoading || (needsTotals && totalsQuery.isLoading);
+  const isLoading = latest.isLoading || (needsTotals && totalsQuery.isLoading);
+  const standings = latest.standingsData?.standings;
   // One object while nothing changes, so the cards do not re-rank on every render.
   return useMemo(() => {
-    const behind = (standingsQuery.data?.standings ?? [])
+    const behind = (standings ?? [])
       .map((row) => ({ name: row.clubName ?? row.clubCode, games: (statNumber(row.basic?.gamesWon) ?? 0) + (statNumber(row.basic?.gamesLost) ?? 0) }))
       .filter((club) => club.games < rounds);
     const totals = new Map((totalsQuery.data ?? []).map((player) => [player.personKey, player]));
-    return { rounds: rounds || null, minGames: rounds ? Math.ceil(rounds / 2) : null, totals, behind, isLoading, standingsLoading: standingsQuery.isLoading };
-  }, [standingsQuery.data, standingsQuery.isLoading, rounds, totalsQuery.data, isLoading]);
+    return { rounds: rounds || null, minGames: rounds ? Math.ceil(rounds / 2) : null, totals, behind, isLoading, roundLoading: latest.isLoading };
+  }, [standings, latest.isLoading, rounds, totalsQuery.data, isLoading]);
 }
 
 // The clubs that have played fewer games than the rounds played, when there are any: their players are held to the same totals.
@@ -221,11 +224,11 @@ function FormSection({ seasonCode, phaseCode, openMetric }) {
 function PlayersLanding({ seasonCode, phaseCode, stage, params, setParams, openMetric }) {
   const mode = params.get("mode") === "accumulated" ? "accumulated" : "perGame";
   const rule = useRankingRule(seasonCode, phaseCode, mode);
-  // The pool waits for the standings, which say how many games qualify.
+  // The pool waits for the latest round, which says how many games qualify.
   const poolQuery = useQuery({
     queryKey: ["leaders-card-pool", seasonCode, phaseCode, mode, rule.minGames],
     queryFn: () => fetchQualifiedPool(seasonCode, phaseCode, mode, rule.minGames),
-    enabled: Boolean(phaseCode) && !rule.standingsLoading,
+    enabled: Boolean(phaseCode) && !rule.roundLoading,
   });
   const setMode = (key) =>
     setParams((current) => {
@@ -305,6 +308,8 @@ function PlayersBoard({ seasonCode, phaseCode, stage, metric, params, setParams 
   const gamesOf = (player) => statNumber(player.traditional?.gamesPlayed) ?? 0;
   // The games played so far: the stage's rounds, or in a stage without them (the postseason) the most games any player has.
   const gamesSoFar = rule.rounds ?? all.reduce((most, player) => Math.max(most, gamesOf(player)), 0);
+  // While a round is being played, some players already have a game more than the completed rounds.
+  const moreThanSoFar = all.some((player) => gamesOf(player) > gamesSoFar);
   const shareEntry = GAME_SHARES.find((entry) => entry.key === share);
   const minGames = shareEntry ? gamesNeeded(gamesSoFar, shareEntry) : 0;
   // The ranked pool: players with the chosen share of the games and enough volume for the stat. Team, position and search only
@@ -382,7 +387,7 @@ function PlayersBoard({ seasonCode, phaseCode, stage, metric, params, setParams 
             <BarSelect label="Minimum games played" value={share} onChange={(value) => update({ games: value === DEFAULT_SHARE ? undefined : value, offset: undefined })}>
               {GAME_SHARES.map((entry) => (
                 <option key={entry.key} value={entry.key}>
-                  {gameShareLabel(gamesSoFar, entry)}
+                  {gameShareLabel(gamesSoFar, entry, moreThanSoFar)}
                 </option>
               ))}
               <option value="all">Games: all players</option>

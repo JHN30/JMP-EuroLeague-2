@@ -246,3 +246,36 @@ export function raceMargin(entry, other) {
   const played = (side) => side.basic.gamesWon + side.basic.gamesLost;
   return { wins: entry.basic.gamesWon - other.basic.gamesWon, inHand: played(other) - played(entry) };
 }
+
+const MAX_MOVERS = 4;
+
+// How far a place is from the line drawn after place `line`: 0 just either side of it, 1 one place further away.
+const lineDistance = (position, line) => (position <= line ? line - position : position - (line + 1));
+
+// The next round's games that decide the projected bracket: both clubs within two places of a qualification line (the
+// line after the direct places, and after the Play-In places when that differs), and neither out of the race. Closest to a
+// line first, at most four.
+export function bracketMovers(games, standings, race, { directSeeds, playInLast }) {
+  const lines = [
+    { at: directSeeds, name: "Playoff line" },
+    ...(playInLast > directSeeds ? [{ at: playInLast, name: "Play-In line" }] : []),
+  ];
+  const place = new Map(standings.map((entry) => [entry.clubCode, entry]));
+  const near = (clubCode) => {
+    const entry = place.get(clubCode);
+    if (!entry || race.get(clubCode)?.status === "out") return [];
+    return lines.filter((line) => lineDistance(entry.basic.position, line.at) <= 1).map((line) => ({ ...line, by: lineDistance(entry.basic.position, line.at) }));
+  };
+  return games
+    .map((game) => {
+      const local = near(game.localClubCode);
+      const road = near(game.roadClubCode);
+      if (local.length === 0 || road.length === 0) return null;
+      const shared = local.find((line) => road.some((other) => other.at === line.at));
+      const closeness = Math.min(...local.map((line) => line.by)) + Math.min(...road.map((line) => line.by));
+      return { ...game, line: shared ? shared.name : "Both lines", closeness };
+    })
+    .filter(Boolean)
+    .sort((a, b) => a.closeness - b.closeness || String(a.scheduledAt).localeCompare(String(b.scheduledAt)))
+    .slice(0, MAX_MOVERS);
+}

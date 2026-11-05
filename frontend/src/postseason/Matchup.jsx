@@ -8,7 +8,19 @@ function Crest({ url }) {
   return url ? <RevealImage src={url} className="h-6 w-6 flex-none object-contain" /> : <span className="h-6 w-6 flex-none" />;
 }
 
-function TeamRow({ slot, side, onSelect, onFocusClub }) {
+// A projected seed's move since an earlier round: "▲2" up, "▼1" down, nothing when it held its place.
+function SeedMove({ by, since }) {
+  if (!by) return null;
+  const places = Math.abs(by) + (Math.abs(by) === 1 ? " place" : " places");
+  return (
+    <span className={"flex-none text-[0.65rem] font-bold tabular-nums " + (by > 0 ? "text-success" : "text-error")}>
+      <span aria-hidden="true">{(by > 0 ? "▲" : "▼") + Math.abs(by)}</span>
+      <span className="sr-only">{(by > 0 ? "up " : "down ") + places + (since ? " since Round " + since : "")}</span>
+    </span>
+  );
+}
+
+function TeamRow({ slot, side, onSelect, onFocusClub, move, movesSince }) {
   // Only a club that has reached the win target has won; a series leader has not.
   const winnerCode = slot.winnerClubCode ?? null;
   const decided = Boolean(winnerCode);
@@ -32,6 +44,7 @@ function TeamRow({ slot, side, onSelect, onFocusClub }) {
       </span>
       <Crest url={side.crestUrl} />
       <span className="min-w-0 flex-1 text-sm max-sm:line-clamp-2 max-sm:wrap-break-word sm:truncate">{side.short}</span>
+      {slot.state === "projected" ? <SeedMove by={move} since={movesSince} /> : null}
       {score !== null ? <span className="flex-none text-base font-black tabular-nums">{score}</span> : null}
     </button>
   );
@@ -39,7 +52,7 @@ function TeamRow({ slot, side, onSelect, onFocusClub }) {
 
 // One matchup of the bracket: the two sides with their regular-season places, and the score once there is one. Hovering a club
 // lets the rest of the bracket pick out where that club plays.
-export default function Matchup({ slot, selected, focusClub, onSelect, onFocusClub }) {
+export default function Matchup({ slot, selected, focusClub, onSelect, onFocusClub, moves = null, movesSince = null }) {
   const involved = focusClub ? slot.participants.some((side) => side.clubCode === focusClub) : true;
   const live = slot.state === "live";
   return (
@@ -64,7 +77,7 @@ export default function Matchup({ slot, selected, focusClub, onSelect, onFocusCl
       </div>
       {slot.participants.map((side, index) =>
         side.clubCode ? (
-          <TeamRow key={side.clubCode} slot={slot} side={side} onSelect={onSelect} onFocusClub={onFocusClub} />
+          <TeamRow key={side.clubCode} slot={slot} side={side} onSelect={onSelect} onFocusClub={onFocusClub} move={moves?.get(side.clubCode)} movesSince={movesSince} />
         ) : (
           <div key={"placeholder-" + index} className="muted flex min-h-11 items-center gap-2 px-3 py-2 text-sm italic sm:min-h-0">
             <span className="w-6 flex-none" />

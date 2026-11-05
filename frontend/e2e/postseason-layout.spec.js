@@ -124,6 +124,73 @@ test("one header carries the status and the stages, and a matchup is open before
   await expect(page.locator(".scroll-mt-28")).toContainText("PLAYOFFS · 4 V 5");
 });
 
+// The places in the race tables, by club name as the tables show it.
+const racePlaces = (page) =>
+  page.locator("main table tbody tr").evaluateAll((rows) =>
+    Object.fromEntries(rows.map((row) => [row.querySelector("td:nth-child(2) .font-semibold").textContent.trim(), Number(row.querySelector("td").textContent)])),
+  );
+
+test("during the regular season, the games that move the bracket sit above the race, each between clubs near a line", async ({ page }) => {
+  test.setTimeout(120_000);
+  await page.setViewportSize({ width: 1280, height: HEIGHT });
+  await page.goto("/2026/postseason");
+  await expect(page.getByRole("heading", { name: "Race for the bracket" })).toBeVisible({ timeout: 45_000 });
+  const list = page.getByRole("list", { name: "Games that move the bracket" });
+  const rows = list.getByRole("listitem");
+  const count = await rows.count();
+  expect(count).toBeGreaterThanOrEqual(1);
+  expect(count).toBeLessThanOrEqual(4);
+
+  // Above the race.
+  const listTop = (await list.boundingBox()).y;
+  expect(listTop).toBeLessThan((await page.getByRole("heading", { name: "Race for the bracket" }).boundingBox()).y);
+
+  // Both clubs within two places of the 6th/7th or the 10th/11th line, and the row opens Compare for that game.
+  const places = await racePlaces(page);
+  const near = (place) => [6, 10].some((line) => (place <= line ? line - place : place - (line + 1)) <= 1);
+  for (let index = 0; index < count; index += 1) {
+    const row = rows.nth(index);
+    const names = await row.locator(".font-semibold").allTextContents();
+    expect(names).toHaveLength(2);
+    for (const name of names) expect(near(places[name.trim()]), name).toBe(true);
+    await expect(row.getByRole("link")).toHaveAttribute("href", /^\/2026\/compare\?view=teams&teamA=.+&teamB=.+&game=/);
+    await expect(row).toContainText(/Playoff line|Play-In line|Both lines/);
+  }
+
+  // A finished season has no next round.
+  await page.goto("/2025/postseason");
+  await expect(page.getByText(/are the champions/)).toBeVisible({ timeout: 45_000 });
+  await expect(page.getByRole("list", { name: "Games that move the bracket" })).toHaveCount(0);
+});
+
+test("projected seeds show their move since an earlier round, and the holders fill the top of the Final column", async ({ page }) => {
+  test.setTimeout(120_000);
+  await page.setViewportSize({ width: 1440, height: HEIGHT });
+  await page.goto("/2026/postseason");
+  await expect(page.getByRole("heading", { name: "Race for the bracket" })).toBeVisible({ timeout: 45_000 });
+  await expect(page.locator(".bk-grid").getByText(/^(up|down) \d+ places? since Round \d+$/).first()).toBeAttached();
+
+  const holders = page.locator(".bk-grid").getByRole("link", { name: /HOLDERS · 2025-26/ });
+  await expect(holders).toBeVisible();
+  await expect(holders).toContainText("Olympiacos Piraeus");
+  await expect(holders).toHaveAttribute("href", "/2025/postseason");
+  // Above the Final, not over it.
+  const final = page.getByRole("group", { name: "Final", exact: true });
+  const holdersBox = await holders.boundingBox();
+  expect(holdersBox.y + holdersBox.height).toBeLessThanOrEqual((await final.boundingBox()).y);
+
+  await page.setViewportSize({ width: 390, height: HEIGHT });
+  await expect(holders).toBeHidden();
+  await expectNoSidewaysScroll(page);
+
+  // A grouped season has no holders card and no arrows.
+  await page.setViewportSize({ width: 1440, height: HEIGHT });
+  await page.goto("/2004/postseason");
+  await expect(page.getByText(/are the champions/)).toBeVisible({ timeout: 45_000 });
+  await expect(page.locator(".bk-grid").getByRole("link", { name: /HOLDERS/ })).toHaveCount(0);
+  await expect(page.locator(".bk-grid").getByText(/since Round/)).toHaveCount(0);
+});
+
 // Each format shows its own stage cards, in the order the season plays them.
 for (const [season, cards] of [
   ["2026", ["Regular season", "Play-In", "Playoffs", "Final Four"]],

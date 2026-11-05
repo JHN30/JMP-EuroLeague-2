@@ -14,22 +14,25 @@ import PanelHeader from "../lib/PanelHeader";
 import { useDocumentTitle } from "../lib/useDocumentTitle";
 import Bracket from "./Bracket";
 import EliminationGrid from "./EliminationGrid";
-import { bracketSeeds, buildBracket, raceStatus } from "./bracketModel";
+import { bracketMovers, bracketSeeds, buildBracket, raceStatus } from "./bracketModel";
 import { hasLoadingIssues, LOADING_ISSUES_NOTE, seasonStatusText, stageDescription, tableTiers } from "../lib/seasonFormat";
 import { useSeasonFormat } from "../lib/useSeasonFormat";
 import ChampionPanel from "./ChampionPanel";
 import MatchupDetail from "./MatchupDetail";
 import RacePanel from "./RacePanel";
+import NextGamesPanel from "./NextGamesPanel";
+import { isChampionshipLabel } from "../lib/phaseSummary";
 import { buildGroupedBracket, GROUPED_POSTSEASON_FAMILIES } from "./groupedBracket";
 import { buildEliminationBracket } from "./eliminationBracket";
 
 const PAGE_LIMIT = 100;
 const MAX_PAGES = 6;
 
-// The regular-season games still to play, paged through (the API caps a page at 100): how many each club has left, and the
-// round the season has reached.
+// The regular-season games still to play, paged through (the API caps a page at 100): how many each club has left, the
+// round the season has reached, and that round's games.
 async function fetchRemaining(seasonCode) {
   const remaining = new Map();
+  const scheduled = [];
   let nextRound = null;
   let total = 0;
   let offset = 0;
@@ -37,6 +40,9 @@ async function fetchRemaining(seasonCode) {
     const data = await getSeasonGames(seasonCode, { phase: "RS", status: "scheduled", order: "asc", limit: PAGE_LIMIT, offset });
     for (const game of data.games) {
       total += 1;
+      if (game.localTeam?.clubCode && game.roadTeam?.clubCode) {
+        scheduled.push({ gameCode: game.gameCode, roundNumber: game.roundNumber, scheduledAt: game.scheduledAt, localClubCode: game.localTeam.clubCode, roadClubCode: game.roadTeam.clubCode });
+      }
       for (const code of [game.localTeam?.clubCode, game.roadTeam?.clubCode]) {
         if (code) remaining.set(code, (remaining.get(code) ?? 0) + 1);
       }
@@ -45,7 +51,14 @@ async function fetchRemaining(seasonCode) {
     if (!data.pagination.hasMore) break;
     offset += PAGE_LIMIT;
   }
-  return { remaining, nextRound, total };
+  return { remaining, nextRound, total, nextGames: scheduled.filter((game) => game.roundNumber === nextRound) };
+}
+
+// Last season's champion: the winner of its played Final Four championship game (the Overview's rule), or null.
+function holdersFrom(games) {
+  const final = games.find((game) => game.played && game.localScore != null && game.roadScore != null && game.localScore !== game.roadScore && isChampionshipLabel(`${game.groupName ?? ""} ${game.roundName ?? ""}`));
+  if (!final) return null;
+  return final.localScore > final.roadScore ? final.localTeam : final.roadTeam;
 }
 
 function stageState(slots) {
@@ -201,12 +214,26 @@ export default function PostseasonPage() {
   );
   const teams = teamsQuery.data?.teams;
   const series = seriesQuery.data?.series;
-  const remaining = remainingQuery.data ?? { remaining: new Map(), nextRound: null, total: 0 };
+  const remaining = remainingQuery.data ?? { remaining: new Map(), nextRound: null, total: 0, nextGames: [] };
   const tiers = useMemo(() => tableTiers(format, "RS"), [format]);
   const regularSeasonStage = format?.stages.find((stage) => stage.code === "RS") ?? null;
   const laterStagePlayed = format?.stages.some((stage) => stage.code !== "RS" && stage.observed.gamesPlayed > 0) ?? false;
   const raceUnavailable = format?.issues?.some((issue) => issue.stage === "RS" || issue.stage === null) ?? false;
   const regularSeasonDone = regularSeasonStage?.dataState === "loaded" || laterStagePlayed;
+  // While the bracket is projected, the standings of the round before the latest one, for the seeds' moves.
+  const movesSince = remaining.nextRound != null && remaining.nextRound - 2 >= 1 ? remaining.nextRound - 2 : null;
+  const earlierQuery = useQuery({
+    queryKey: ["standings", seasonCode, "RS", "round", movesSince],
+    queryFn: () => getSeasonStandings(seasonCode, "RS", { round: movesSince }),
+    enabled: enabled && !grouped && !elimination && !regularSeasonDone && movesSince != null,
+  });
+  // The holders: last season's champion, for the space above the Final.
+  const previousSeason = String(Number(seasonCode) - 1);
+  const holdersQuery = useQuery({
+    queryKey: ["postseason-ff-games", previousSeason],
+    queryFn: () => getSeasonGames(previousSeason, { phase: "FF", limit: PAGE_LIMIT }),
+    enabled: enabled && !grouped && !elimination && Number(seasonCode) > 2000,
+  });
   const bracket = useMemo(
     () => !enabled || !teams || !series ? null : elimination
       ? buildEliminationBracket({ teams, series, games: knockoutGamesQuery.data?.games ?? [], format })
@@ -257,6 +284,19 @@ export default function PostseasonPage() {
   }
 
   const totalRounds = roundsQuery.data?.rounds?.length ?? null;
+  // Places gained since `movesSince` (negative when lost), for the clubs that moved; only while the bracket is projected.
+  const moves = new Map();
+  if (bracket.projected && earlierQuery.data) {
+    const before = new Map(earlierQuery.data.standings.map((entry) => [entry.clubCode, entry.basic?.position]));
+    for (const entry of standings) {
+      const was = before.get(entry.clubCode);
+      if (was != null && was !== entry.basic.position) moves.set(entry.clubCode, was - entry.basic.position);
+    }
+  }
+  const holdersClub = holdersQuery.data ? holdersFrom(holdersQuery.data.games) : null;
+  const holders = holdersClub ? { club: holdersClub, seasonCode: previousSeason, seasonLabel: formatSeasonLabel(previousSeason) } : null;
+  const showRace = !grouped && !elimination && !regularSeasonDone && !raceUnavailable && race;
+  const movers = showRace ? bracketMovers(remaining.nextGames, standings, race, bracketSeeds(tiers)) : [];
   const summary = summaryLine({ bracket, regularSeasonDone, nextRound: remaining.nextRound, totalRounds, series, format });
   const regularStep = {
     title: "Regular season",
@@ -351,14 +391,15 @@ export default function PostseasonPage() {
       ) : null}
       {elimination
         ? <EliminationGrid bracket={bracket} selectedId={selected?.id ?? null} focusClub={focusClub} onSelect={select} onFocusClub={setFocusClub} />
-        : <Bracket bracket={bracket} selectedId={selected?.id ?? null} focusClub={focusClub} onSelect={select} onFocusClub={setFocusClub} />}
+        : <Bracket bracket={bracket} selectedId={selected?.id ?? null} focusClub={focusClub} onSelect={select} onFocusClub={setFocusClub} moves={moves} movesSince={movesSince} holders={grouped ? null : holders} />}
 
       <div ref={detailRef} className="scroll-mt-28">
         {selected ? <MatchupDetail slot={selected} seasonCode={seasonCode} /> : null}
       </div>
 
       {!grouped && !elimination && !regularSeasonDone && raceUnavailable ? <EmptyText>The qualification race is unavailable while regular-season data is incomplete.</EmptyText> : null}
-      {!grouped && !elimination && !regularSeasonDone && !raceUnavailable && race ? <RacePanel standings={standings} teams={teams} race={race} directSeeds={bracket.directSeeds} playInLast={bracket.playInLast} /> : null}
+      {showRace ? <NextGamesPanel seasonCode={seasonCode} round={remaining.nextRound} games={movers} standings={standings} teams={teams} /> : null}
+      {showRace ? <RacePanel standings={standings} teams={teams} race={race} directSeeds={bracket.directSeeds} playInLast={bracket.playInLast} /> : null}
 
       <FormatCards cards={formatCards} />
     </motion.div>

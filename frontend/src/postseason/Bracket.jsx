@@ -1,4 +1,6 @@
 import { motion } from "motion/react";
+import { Link } from "react-router";
+import RevealImage from "../lib/RevealImage";
 import { listContainer, listItem } from "../lib/motion";
 import Matchup from "./Matchup";
 
@@ -43,11 +45,11 @@ const HEADINGS = [
   { id: "F", title: "Final", sub: "The champion", col: "lg:col-start-4" },
 ];
 
-function Cell({ slot, selectedId, focusClub, onSelect, onFocusClub, note, place }) {
+function Cell({ slot, selectedId, focusClub, onSelect, onFocusClub, note, place, moves, movesSince }) {
   return (
     <motion.div variants={listItem} className={"bk-cell " + place[slot.id]}>
       <div className="w-full">
-        <Matchup slot={slot} selected={selectedId === slot.id} focusClub={focusClub} onSelect={onSelect} onFocusClub={onFocusClub} />
+        <Matchup slot={slot} selected={selectedId === slot.id} focusClub={focusClub} onSelect={onSelect} onFocusClub={onFocusClub} moves={moves} movesSince={movesSince} />
         {note ? <p className="muted mt-1 hidden px-1 text-xs lg:block">{note}</p> : null}
       </div>
     </motion.div>
@@ -63,8 +65,25 @@ function Heading({ heading }) {
   );
 }
 
+// Last season's champion, in the empty top of the Final column from lg. It shares the Final's rows without moving the Final,
+// which stays centred on them, so the lines into it do not change. Hidden below lg, where the bracket stacks.
+function Holders({ holders, column }) {
+  return (
+    <div className={"hidden items-start lg:row-start-2 lg:flex " + column}>
+      <Link to={"/" + holders.seasonCode + "/postseason"} className="flex w-full items-center gap-3 rounded-box border border-base-300 bg-base-100 p-3 transition-colors hover:border-primary">
+        {holders.club.crestUrl ? <RevealImage src={holders.club.crestUrl} className="h-10 w-10 flex-none object-contain" /> : null}
+        <span className="min-w-0">
+          <span className="eyebrow block">HOLDERS · {holders.seasonLabel}</span>
+          <span className="block truncate font-semibold">{holders.club.name ?? holders.club.abbreviatedName}</span>
+          <span className="muted block text-xs">Won the {holders.seasonLabel} final</span>
+        </span>
+      </Link>
+    </div>
+  );
+}
+
 // The bracket: Play-In, Playoffs, Final Four and Final as columns joined by lines (stacked stage by stage on a phone).
-export default function Bracket({ bracket, selectedId, focusClub, onSelect, onFocusClub }) {
+export default function Bracket({ bracket, selectedId, focusClub, onSelect, onFocusClub, moves = null, movesSince = null, holders = null }) {
   const hasPlayIn = bracket.playIn.length > 0;
   const place = hasPlayIn ? PLACE : DIRECT_PLACE;
   const groupedOrder = bracket.grouped && bracket.connected ? bracket.semis.flatMap((slot) => slot.sourceSlotIds).map((id) => bracket.playoffs.find((slot) => slot.id === id)) : bracket.playoffs;
@@ -86,7 +105,7 @@ export default function Bracket({ bracket, selectedId, focusClub, onSelect, onFo
   const headings = bracket.direct
     ? [{ id: "SF", title: "Final Four", sub: "Top 16 group winners", col: "lg:col-start-1" }, { id: "F", title: "Final", sub: "The champion", col: "lg:col-start-2" }]
     : hasPlayIn ? sized : sized.slice(1).map((heading, index) => ({ ...heading, col: ["lg:col-start-1", "lg:col-start-2", "lg:col-start-3"][index] }));
-  const cell = (slot) => <Cell key={slot.id} slot={slot} selectedId={selectedId} focusClub={focusClub} onSelect={onSelect} onFocusClub={onFocusClub} note={NOTES[slot.id]} place={bracket.grouped ? groupedPlace : place} />;
+  const cell = (slot) => <Cell key={slot.id} slot={slot} selectedId={selectedId} focusClub={focusClub} onSelect={onSelect} onFocusClub={onFocusClub} note={NOTES[slot.id]} place={bracket.grouped ? groupedPlace : place} moves={moves} movesSince={movesSince} />;
   const [pi1, pi2, pi3] = bracket.playIn;
   const [po1, po2, po3, po4] = bracket.playoffs;
   const [sf1, sf2] = bracket.semis;
@@ -104,6 +123,7 @@ export default function Bracket({ bracket, selectedId, focusClub, onSelect, onFo
       {cell(sf1)}
       {cell(sf2)}
       <Heading heading={headings[bracket.direct ? 1 : hasPlayIn ? 3 : 2]} />
+      {holders && !bracket.grouped ? <Holders holders={holders} column={hasPlayIn ? "lg:col-start-4" : "lg:col-start-3"} /> : null}
       {cell(bracket.final)}
       {bracket.third ? cell(bracket.third) : null}
     </motion.div>

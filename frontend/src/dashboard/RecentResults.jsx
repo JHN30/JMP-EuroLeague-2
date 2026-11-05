@@ -109,6 +109,7 @@ export default function RecentResults() {
   return (
     <WidgetPanel
       kicker="RESULTS"
+      compact
       title="Latest scores"
       isLoading={query.isLoading || !(standingsQuery.isSuccess || standingsQuery.isError)}
       isError={query.isError}

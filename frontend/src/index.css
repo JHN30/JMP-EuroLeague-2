@@ -796,43 +796,19 @@ button {
     }
   }
 }
-/* Below sm the upcoming games are a swipe row that bleeds out to the panel edge (the panel pads
-   1rem there), so the neighbouring cards peek out to the border. The scroll padding keeps the
-   first and last card on the panel's content edge, in line with the heading; the cards in between
-   rest centred, and each swipe locks one card in. */
+/* Below sm the upcoming games stack (the first five, the rest behind a button, as in Latest scores); from sm they fill a grid. */
 .games-row {
   display: flex;
+  flex-direction: column;
   gap: 0.6rem;
-  overflow-x: auto;
-  overscroll-behavior-x: contain;
-  scroll-snap-type: x mandatory;
-  margin-inline: -1rem;
-  padding: 0.25rem 1rem;
-  scroll-padding-inline: 1rem;
-}
-.games-row > .match-card {
-  flex: 0 0 85%;
-  scroll-snap-align: center;
-  scroll-snap-stop: always;
 }
 @media (min-width: 40rem) {
   .games-row {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr));
-    overflow-x: visible;
-    scroll-snap-type: none;
-    margin-inline: 0;
     padding: 0.25rem 0;
-    scroll-padding-inline: 0;
-  }
-  .games-row > .match-card {
-    flex: none;
-    scroll-snap-align: none;
-    scroll-snap-stop: normal;
   }
 }
-.games-row:focus-visible,
-.leaders-row:focus-visible,
 .season-leaders-grid:focus-visible {
   outline: 2px solid var(--color-primary);
   outline-offset: 2px;
@@ -1197,7 +1173,13 @@ button {
 /* Per-stat leader cards (dashboard) */
 /* Same swipe row below sm; two columns from sm; the sideways-scrolling row from lg. The Season overview's
    leaders grid shares everything but the lg row: it stays two columns, and goes to three from xl. */
-.leaders-row,
+/* Home's leader cards sit two by two below sm like its team cards (photo on top, below); from sm two columns, then one row
+   from lg. */
+.leaders-row {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
+}
 .season-leaders-grid {
   display: flex;
   flex-direction: row;
@@ -1209,14 +1191,16 @@ button {
   padding: 0.25rem 1rem;
   scroll-padding-inline: 1rem;
 }
-.leaders-row .kpi-chip,
 .season-leaders-grid .kpi-chip {
   flex: 0 0 85%;
   scroll-snap-align: center;
   scroll-snap-stop: always;
 }
 @media (min-width: 40rem) {
-  .leaders-row,
+  .leaders-row {
+    gap: 1rem;
+    padding: 0.25rem 0;
+  }
   .season-leaders-grid {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -1227,7 +1211,6 @@ button {
     padding: 0.25rem 0;
     scroll-padding-inline: 0;
   }
-  .leaders-row .kpi-chip,
   .season-leaders-grid .kpi-chip {
     scroll-snap-align: none;
     scroll-snap-stop: normal;
@@ -1286,12 +1269,6 @@ button {
   letter-spacing: 0.05em;
   margin-top: 0.3rem;
   display: block;
-}
-.leader-trend-caption {
-  font-size: 0.78rem;
-  color: var(--color-base-content);
-  opacity: 0.7;
-  line-height: 1.4;
 }
 .leader-trend svg {
   min-width: 0;
@@ -1660,6 +1637,19 @@ button {
     font-size: 1.7rem;
   }
 }
+/* From lg Home's team cards are compact: a small crest beside the text instead of the tall one. */
+@media (min-width: 64rem) {
+  .kpi-strip-4 .kpi-chip {
+    align-items: center;
+    padding: 0.9rem 1.1rem;
+  }
+  .kpi-strip-4 .kpi-chip-image {
+    height: 3.5rem;
+    max-width: 3.5rem;
+    align-self: center;
+    margin: 0;
+  }
+}
 
 /* Standings' KPI cards: compact and stacked below sm (crest on top); from sm the standard small card (crest beside the text),
    which is what the plain .kpi-chip rules already give. */
@@ -1691,18 +1681,38 @@ button {
   }
 }
 
-/* Home's leader cards: a smaller photo below sm so the player name fits beside it, the tall card from sm up. */
-.leaders-row .kpi-chip,
+/* Leader cards. Below sm Home's are compact and stacked like its team cards (photo on top), and the Season overview's keep a
+   smaller photo beside the name; the tall card from sm up. */
+.leaders-row .kpi-chip {
+  flex-direction: column-reverse;
+  align-items: flex-start;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  padding: 0.9rem 0.85rem;
+}
+.leaders-row .kpi-chip-image {
+  height: 3.5rem;
+  max-width: 3rem;
+  align-self: flex-start;
+  margin: 0;
+}
 .season-leaders-grid .kpi-chip {
   padding: 1rem;
 }
-.leaders-row .kpi-chip-image,
 .season-leaders-grid .kpi-chip-image {
   height: 6rem;
   max-width: 5.5rem;
   margin: -1rem -0.5rem -1rem 0;
 }
 @media (min-width: 40rem) {
+  .leaders-row .kpi-chip {
+    flex-direction: row;
+    justify-content: space-between;
+    gap: 0.75rem;
+  }
+  .leaders-row .kpi-chip-image {
+    align-self: flex-end;
+  }
   .leaders-row .kpi-chip,
   .season-leaders-grid .kpi-chip {
     padding: 1.5rem 1.35rem;

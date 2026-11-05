@@ -1,5 +1,5 @@
 import { test, expect } from "@playwright/test";
-import { HEIGHT, expectSwipeRowAtRest, expectSwipeRowSettles, findBrokenWords, seasonSlug } from "./support/layout";
+import { HEIGHT, findBrokenWords, seasonSlug } from "./support/layout";
 
 async function openHome(page, width) {
   await page.setViewportSize({ width, height: HEIGHT });
@@ -79,24 +79,40 @@ test.describe("KPI strip", () => {
   });
 });
 
-test.describe("swipe rows below 640px", () => {
-  for (const width of [320, 390]) {
-    for (const { name, group } of [
-      { name: "upcoming games", group: /^Upcoming games$/ },
-      { name: "leader cards", group: /leaders$/ },
-    ]) {
-      test.describe(`${name} at ${width}px`, () => {
-        test("start and end on the panel's content edge with the neighbouring card peeking out", async ({ page }) => {
-          await openHome(page, width);
-          await expectSwipeRowAtRest(page.getByRole("group", { name: group }).first());
-        });
+test.describe("below 640px", () => {
+  const upcoming = (page) => panel(page, "Upcoming games").getByRole("link");
 
-        test("settle on a centred card after a scroll and after ArrowRight", async ({ page }) => {
-          await openHome(page, width);
-          await expectSwipeRowSettles(page, page.getByRole("group", { name: group }).first());
-        });
-      });
-    }
+  test("upcoming games show five and a Show more button", async ({ page }) => {
+    await openHome(page, 390);
+    await expect(upcoming(page)).toHaveCount(5);
+    const more = panel(page, "Upcoming games").getByRole("button", { name: /^Show \d+ more$/ });
+    await expect(more).toHaveAttribute("aria-expanded", "false");
+
+    await more.click();
+    await expect(upcoming(page)).toHaveCount(10);
+    const fewer = panel(page, "Upcoming games").getByRole("button", { name: "Show fewer" });
+    await expect(fewer).toHaveAttribute("aria-expanded", "true");
+
+    await fewer.click();
+    await expect(upcoming(page)).toHaveCount(5);
+  });
+
+  for (const width of [320, 390]) {
+    test(`upcoming games stack and leader cards are a 2x2 grid, with nothing scrolling sideways, at ${width}px`, async ({ page }) => {
+      await openHome(page, width);
+      const lefts = await upcoming(page).evaluateAll((els) => els.map((el) => Math.round(el.getBoundingClientRect().left)));
+      expect(new Set(lefts).size).toBe(1);
+
+      const leaders = page.getByRole("group", { name: /leaders$/ }).first();
+      const boxes = await leaders.locator(".kpi-chip").evaluateAll((els) => els.map((el) => el.getBoundingClientRect()));
+      expect(boxes).toHaveLength(4);
+      expect(new Set(boxes.map((box) => Math.round(box.top))).size).toBe(2);
+      expect(new Set(boxes.map((box) => Math.round(box.left))).size).toBe(2);
+      for (const row of [page.getByRole("group", { name: /^Upcoming games$/ }), leaders]) {
+        expect(await row.evaluate((el) => el.scrollWidth - el.clientWidth)).toBe(0);
+      }
+      expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBeLessThanOrEqual(0);
+    });
   }
 });
 
@@ -125,12 +141,12 @@ test.describe("latest scores", () => {
   test("show five and a Show more button below 640px", async ({ page }) => {
     await openHome(page, 390);
     await expect(cards(page)).toHaveCount(5);
-    const more = page.getByRole("button", { name: "Show 5 more" });
+    const more = panel(page, "Latest scores").getByRole("button", { name: "Show 5 more" });
     await expect(more).toHaveAttribute("aria-expanded", "false");
 
     await more.click();
     await expect(cards(page)).toHaveCount(10);
-    const fewer = page.getByRole("button", { name: "Show fewer" });
+    const fewer = panel(page, "Latest scores").getByRole("button", { name: "Show fewer" });
     await expect(fewer).toHaveAttribute("aria-expanded", "true");
 
     await fewer.click();
@@ -141,6 +157,7 @@ test.describe("latest scores", () => {
     test(`show all ten with no button at ${width}px`, async ({ page }) => {
       await openHome(page, width);
       await expect(cards(page)).toHaveCount(10);
+      await expect(panel(page, "Upcoming games").getByRole("link")).toHaveCount(10);
       await expect(page.getByRole("button", { name: /^Show (\d+ more|fewer)$/ })).toBeHidden();
     });
   }

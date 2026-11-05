@@ -21,11 +21,11 @@ import { roundStatus } from "./roundStatus";
 import UpcomingGames from "./UpcomingGames";
 
 // `skeleton` stands in for the content while it loads (see `AsyncState`).
-export function WidgetPanel({ kicker, title, isLoading, isError, onRetry, isEmpty, emptyMessage, skeleton = null, className = "", style, children }) {
+export function WidgetPanel({ kicker, title, compact = false, isLoading, isError, onRetry, isEmpty, emptyMessage, skeleton = null, className = "", style, children }) {
   const status = isLoading ? "loading" : isError ? "error" : isEmpty ? "empty" : "ready";
   return (
     <Panel as="section" className={`flex flex-col p-4 sm:p-5 lg:p-6 ${className}`} style={style}>
-      <PanelHeader kicker={kicker} title={title} />
+      <PanelHeader kicker={kicker} title={title} compact={compact} />
       <AnimatePresence mode="wait" initial={false}>
         <motion.div
           key={status}
@@ -136,10 +136,11 @@ export default function Dashboard() {
   if (hasLoadingIssues(format)) statusLine = statusLine ? `${statusLine} ${LOADING_ISSUES_NOTE}` : LOADING_ISSUES_NOTE;
 
   return (
-    <motion.div className="flex flex-col gap-6" variants={sectionContainer} initial="hidden" animate="show">
+    <motion.div className="flex flex-col gap-6 lg:gap-4" variants={sectionContainer} initial="hidden" animate="show">
       <motion.div variants={sectionItem}>
         <PageHeader
           stacked
+          compact
           kicker={formatSeasonLabel(seasonCode)}
           title={title}
           description={statusLine ? <p className="muted mt-1 text-sm">{statusLine}</p> : null}
@@ -148,7 +149,7 @@ export default function Dashboard() {
       <motion.div variants={sectionItem}>
         <UpcomingGames />
       </motion.div>
-      <motion.div variants={sectionItem} className="grid items-start gap-6 lg:grid-cols-2">
+      <motion.div variants={sectionItem} className="grid items-start gap-6 lg:grid-cols-2 lg:gap-4">
         <StandingsSnapshot height={resultsHeight} />
         <div ref={resultsRef}>
           <RecentResults />

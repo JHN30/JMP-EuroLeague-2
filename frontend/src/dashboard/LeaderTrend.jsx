@@ -4,26 +4,30 @@ import { useParams } from "react-router";
 import { getSeasonStandings, getTeamGames } from "../lib/api";
 import { teamCode } from "../games/gameUtils";
 import { formatPerGame } from "../lib/format";
+import HeaderTip from "../lib/HeaderTip";
 import { isForfeit } from "../lib/forfeit";
+import { useMediaQuery } from "../lib/useMediaQuery";
 import { useSummaryTableStage } from "../lib/useSummaryTableStage";
 import { isGroupedTable, mostWinsEntry } from "../standings/standingsGroups";
 import { WidgetPanel } from "./Dashboard";
 import { TrendSkeleton } from "./HomeSkeleton";
 
 const WIDTH = 320;
+// The plot keeps the drawing's shape as it widens; from lg a lower drawing keeps the wide plot short (about 12rem) with round dots.
 const HEIGHT = 90;
+const WIDE_HEIGHT = 56;
 const PAD_X = 8;
 const PAD_Y = 8;
 // Axis labels closer together than this share of the plot's height would touch, so the later one is left out.
 const MIN_LABEL_GAP = 12;
 
 // The scale always includes zero, so the baseline is the line between a win and a loss.
-function buildTrend(diffs) {
+function buildTrend(diffs, height) {
   const min = Math.min(0, ...diffs);
   const max = Math.max(0, ...diffs);
   const range = max - min || 1;
   const usableWidth = WIDTH - PAD_X * 2;
-  const usableHeight = HEIGHT - PAD_Y * 2;
+  const usableHeight = height - PAD_Y * 2;
   const step = diffs.length > 1 ? usableWidth / (diffs.length - 1) : 0;
   const yOf = (value) => PAD_Y + usableHeight - ((value - min) / range) * usableHeight;
 
@@ -34,10 +38,10 @@ function buildTrend(diffs) {
   const average = diffs.reduce((sum, d) => sum + d, 0) / diffs.length;
 
   // The labels of the vertical axis: the top and bottom of the scale and zero, each as a share of the plot's height.
-  const labels = [{ value: max, at: (yOf(max) / HEIGHT) * 100 }];
-  const zeroAt = (zeroY / HEIGHT) * 100;
+  const labels = [{ value: max, at: (yOf(max) / height) * 100 }];
+  const zeroAt = (zeroY / height) * 100;
   if (min < 0 && max > 0) labels.push({ value: 0, at: zeroAt });
-  labels.push({ value: min, at: (yOf(min) / HEIGHT) * 100 });
+  labels.push({ value: min, at: (yOf(min) / height) * 100 });
   const yLabels = labels.filter((label, index) => index === 0 || Math.abs(label.at - labels[index - 1].at) >= MIN_LABEL_GAP);
 
   return {
@@ -46,7 +50,7 @@ function buildTrend(diffs) {
     points,
     zeroY,
     averageY: yOf(average),
-    averageAt: (yOf(average) / HEIGHT) * 100,
+    averageAt: (yOf(average) / height) * 100,
     yLabels,
   };
 }
@@ -98,13 +102,16 @@ export default function LeaderTrend() {
     });
   const diffs = rows.map((row) => row.diff);
 
-  const trend = diffs.length > 1 ? buildTrend(diffs) : null;
+  const wide = useMediaQuery("(min-width: 64rem)");
+  const height = wide ? WIDE_HEIGHT : HEIGHT;
+  const trend = diffs.length > 1 ? buildTrend(diffs, height) : null;
   const rawAverage = diffs.length > 0 ? diffs.reduce((sum, d) => sum + d, 0) / diffs.length : null;
   const average = rawAverage != null ? signed(rawAverage) : null;
 
   return (
     <WidgetPanel
       kicker="FORM"
+      compact
       title={leaderName ? `${leaderName} · point margin trend` : grouped ? "Point margin trend" : "League leader's point margin trend"}
       isLoading={standingsQuery.isLoading || (Boolean(leaderClubCode) && gamesQuery.isLoading)}
       isError={standingsQuery.isError || gamesQuery.isError}
@@ -118,7 +125,14 @@ export default function LeaderTrend() {
           <div className="leader-trend-row">
             <div className="leader-trend-stat">
               <span className="value">{average}</span>
-              <span className="label">Avg point diff, last {diffs.length}</span>
+              <span className="label">
+                {/* What the chart shows lives in a tip on its headline, not in a caption under it. */}
+                <HeaderTip
+                  tip={`Each point is one game: how many points ${leaderName ?? "they"} won or lost it by, labelled with the opponent. Above the solid line is a win, below it a loss, and the dashed line is the average margin of these games.`}
+                >
+                  Avg point diff, last {diffs.length}
+                </HeaderTip>
+              </span>
             </div>
             <div className="leader-trend-plot" data-testid="leader-trend-plot">
               <div className="trend-yaxis" aria-hidden="true">
@@ -130,7 +144,7 @@ export default function LeaderTrend() {
               </div>
               <div className="chart-well">
                 <svg
-                  viewBox={`0 0 ${WIDTH} ${HEIGHT}`}
+                  viewBox={`0 0 ${WIDTH} ${height}`}
                   preserveAspectRatio="none"
                   role="img"
                   aria-label={`Point differential per game over the last ${diffs.length} played games, averaging ${average}`}
@@ -182,10 +196,6 @@ export default function LeaderTrend() {
               </div>
             </div>
           </div>
-          <p className="leader-trend-caption">
-            Each point is one game: how many points {leaderName ?? "they"} won or lost it by, labelled with the opponent.
-            Above the solid line is a win, below it a loss, and the dashed line is the average margin of these games.
-          </p>
         </div>
       ) : null}
     </WidgetPanel>

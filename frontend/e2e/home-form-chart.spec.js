@@ -66,7 +66,10 @@ test("the Form chart has a labelled scale, the opponent under each point and an 
     await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
   });
 
-  await expect(page.locator(".leader-trend-caption")).toContainText("Above the solid line is a win, below it a loss");
+  // What the chart shows is a tip on the average's label, not a caption under the chart.
+  await expect(page.locator(".leader-trend-caption")).toHaveCount(0);
+  await page.getByText(/^Avg point diff, last \d+/).focus();
+  await expect(page.getByRole("tooltip")).toContainText("Above the solid line is a win, below it a loss");
 });
 
 test("the leader names on Home and on the Season overview have no comma", async ({ page }) => {

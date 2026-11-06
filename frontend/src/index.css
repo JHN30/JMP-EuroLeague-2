@@ -1178,7 +1178,7 @@ button {
 
 /* Per-stat leader cards (dashboard) */
 /* Home's leader cards and the Season overview's sit two by two below sm like Home's team cards (photo on top, below). From sm
-   two columns; Home's become one row from lg, the overview's three columns from xl. */
+   two columns; Home's become one row from lg, the overview's three columns from lg and six from 2xl (see the compact cards). */
 .leaders-row,
 .season-leaders-grid {
   display: grid;
@@ -1202,11 +1202,6 @@ button {
   .leaders-row .kpi-chip {
     flex: 1 1 0;
     min-width: 15rem;
-  }
-}
-@media (min-width: 80rem) {
-  .season-leaders-grid {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 }
 
@@ -1611,6 +1606,44 @@ button {
   .leaders-row .kpi-chip .value,
   .season-leaders-grid .kpi-chip .value {
     font-size: 1.7rem;
+  }
+}
+
+/* The Season overview's leader and season-high cards are the compact kind: a smaller photo and less padding than Home's, three
+   to a row from lg and all six in one row from 2xl, so the two panels stay short. */
+.season-leaders-grid .kpi-chip {
+  padding: 0.7rem 0.75rem;
+  gap: 0.4rem;
+}
+.season-leaders-grid .kpi-chip-image {
+  height: 2.75rem;
+  max-width: 2.5rem;
+}
+@media (min-width: 40rem) {
+  .season-leaders-grid .kpi-chip {
+    padding: 0.85rem 1rem;
+    gap: 0.5rem;
+  }
+  .season-leaders-grid .kpi-chip-image {
+    height: 5.25rem;
+    max-width: 5rem;
+    margin: -0.85rem -0.5rem -0.85rem 0;
+  }
+  .season-leaders-grid .kpi-chip .name {
+    font-size: 0.9rem;
+  }
+  .season-leaders-grid .kpi-chip .value {
+    font-size: 1.4rem;
+  }
+}
+@media (min-width: 64rem) {
+  .season-leaders-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+@media (min-width: 96rem) {
+  .season-leaders-grid {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
   }
 }
 

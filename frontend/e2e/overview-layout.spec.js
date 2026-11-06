@@ -152,15 +152,15 @@ test.describe("statistical leaders", () => {
       });
     });
 
-    test(`${season ?? "live season"}: two columns, then three from 1280px, with no snapping and no tab stop`, async ({ page }) => {
+    test(`${season ?? "live season"}: two columns, three from 1024px and six from 1536px, with no snapping and no tab stop`, async ({ page }) => {
       await openOverview(page, season, { summary: false });
       const row = page.getByRole("group", { name: /leaders$/ }).first();
 
-      await atWidths(page, [640, 768, 1024, 1280], async (width) => {
+      await atWidths(page, [640, 768, 1023, 1024, 1280, 1535, 1536], async (width) => {
         await expect(row).toHaveCSS("scroll-snap-type", "none");
         await expect(row).not.toHaveAttribute("tabindex", /.*/);
         const lefts = await row.evaluate((el) => [...el.children].map((card) => Math.round(card.getBoundingClientRect().left)));
-        expect(new Set(lefts).size).toBe(width >= 1280 ? 3 : 2);
+        expect(new Set(lefts).size).toBe(width >= 1536 ? 6 : width >= 1024 ? 3 : 2);
       });
     });
   }
@@ -169,7 +169,7 @@ test.describe("statistical leaders", () => {
     await openOverview(page, FINISHED, { summary: false });
     const names = page.getByRole("group", { name: /leaders$/ }).locator(".name, .club");
 
-    await atWidths(page, [320, 390, 639, 640, 768, 1024, 1280], async () => {
+    await atWidths(page, [320, 390, 639, 640, 768, 1024, 1280, 1536, 1920], async () => {
       expect(await findBrokenWords(names)).toEqual([]);
     });
   });

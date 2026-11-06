@@ -7,6 +7,7 @@ import { getLeaderStats, getLeagueTeamStats, getPhases, getPostseasonSeries, get
 import AsyncState from "../lib/AsyncState";
 import { SkeletonChip } from "../lib/Skeleton";
 import OverviewSkeleton, { SummarySkeleton } from "./OverviewSkeleton";
+import { ClubLabel, HomeVsRoad, MostValuable, SeasonHighs } from "./OverviewExtras";
 import { cardHover, listContainer, listItem, sectionContainer, sectionItem } from "../lib/motion";
 import { withoutComma } from "../lib/playerName";
 import Panel from "../lib/Panel";
@@ -566,7 +567,7 @@ function LeaderCard({ seasonCode, category, phaseCode }) {
       <div className="kpi-chip-body">
         <span className="label">{category.label}</span>
         <span className="name">{withoutComma(leader.playerName ?? leader.personKey)}</span>
-        <span className="club">{leader.clubName ?? leader.clubCode}</span>
+        <ClubLabel seasonCode={seasonCode} clubCode={leader.clubCode} tvCodes={leader.clubTvCodes} fullName={leader.clubName} />
         <span className="value">{leader.traditional[category.key] ?? "-"}</span>
       </div>
       <LeaderPhoto imageUrl={leader.playerImageUrl} />
@@ -913,6 +914,18 @@ export default function SeasonOverviewPage() {
           above - it can render before or after them finish. */}
       <motion.div variants={sectionItem}>
         <SeasonLeaders seasonCode={seasonCode} />
+      </motion.div>
+
+      {/* The season highs load on their own, like the leaders, in the same six categories and grid. */}
+      <motion.div variants={sectionItem}>
+        <SeasonHighs seasonCode={seasonCode} />
+      </motion.div>
+
+      {/* Two short panels side by side from lg, at the same height: Most valuable loads on its own, Home and away waits for the
+          played games. */}
+      <motion.div variants={sectionItem} className="grid gap-6 lg:grid-cols-2 lg:gap-4">
+        <MostValuable seasonCode={seasonCode} />
+        {summaryLoading || summaryError ? null : <HomeVsRoad seasonCode={seasonCode} playedGames={playedGames} />}
       </motion.div>
 
       {summaryLoading || summaryError ? null : (

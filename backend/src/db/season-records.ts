@@ -528,9 +528,11 @@ async function bookPlayerSeasons(metric: RecordMetricDef) {
   return best(shaped, () => 0).records;
 }
 
-async function bookSingleGames(metric: RecordMetricDef) {
+// The best single games for one box-score metric, best first, from the given seasons. The record book reads every loaded season;
+// Overview's season highs read one.
+function singleGameRows(metric: RecordMetricDef, seasonCodes: string[], limit: number) {
   const column = boxColumn(gamePlayerStats, metric.key);
-  const rows = await catalogRead(() =>
+  return catalogRead(() =>
     db.select({
       seasonCode: gamePlayerStats.seasonCode,
       gameCode: gamePlayerStats.gameCode,
@@ -540,22 +542,65 @@ async function bookSingleGames(metric: RecordMetricDef) {
       clubCode: gamePlayerStats.clubCode,
       playerImageUrl: gamePlayerStats.headshotUrl,
       scheduledAt: games.scheduledAt,
+      localClubCode: games.localClubCode,
+      roadClubCode: games.roadClubCode,
       value: column,
     })
       .from(gamePlayerStats)
       .innerJoin(games, and(eq(games.competitionCode, gamePlayerStats.competitionCode), eq(games.seasonCode, gamePlayerStats.seasonCode), eq(games.gameCode, gamePlayerStats.gameCode)))
-      .where(and(eq(gamePlayerStats.competitionCode, COMPETITION_CODE), inArray(gamePlayerStats.seasonCode, [...SUPPORTED_SEASONS]), eq(games.played, true), isNotNull(column)))
+      .where(and(eq(gamePlayerStats.competitionCode, COMPETITION_CODE), inArray(gamePlayerStats.seasonCode, seasonCodes), eq(games.played, true), isNotNull(column)))
       .orderBy(desc(column), asc(gamePlayerStats.seasonCode), asc(gamePlayerStats.gameCode), asc(gamePlayerStats.personKey))
-      .limit(BOOK_ROWS),
+      .limit(limit),
   );
+}
+
+async function bookSingleGames(metric: RecordMetricDef) {
+  const rows = await singleGameRows(metric, [...SUPPORTED_SEASONS], BOOK_ROWS);
   const looks = await looksFor(rows.map((row) => row.seasonCode));
-  const shaped = rows.map(({ clubCode, playerImageUrl, ...row }) => ({
+  const shaped = rows.map(({ clubCode, playerImageUrl, localClubCode, roadClubCode, ...row }) => ({
     ...row,
     playerImageUrl: picture(playerImageUrl),
     clubImageUrl: looks.get(row.seasonCode)?.crestOf(clubCode) ?? null,
     clubTvCode: clubCode === null ? null : (looks.get(row.seasonCode)?.tvCodeOf(clubCode) ?? clubCode),
   }));
   return best(shaped, (a, b) => a.gameCode - b.gameCode || a.personKey.localeCompare(b.personKey)).records;
+}
+
+// ---- Season highs ----
+
+// The six categories of Overview's Statistical leaders, in their order.
+const SEASON_HIGH_METRICS = ["pointsScored", "totalRebounds", "assists", "steals", "blocks", "pir"] as const;
+
+// Overview's season highs: one season's best single game for each of the leaders' categories, with the opponent. A tie goes to the
+// earliest game, as in the record book; null when the season has no played game with the number.
+export async function getSeasonHighs(seasonCode: string) {
+  const looks = await clubLooks(seasonCode);
+  const cards = await Promise.all(
+    SEASON_HIGH_METRICS.map(async (key) => {
+      const metric = findRecordMetric("single-games", key)!;
+      const [row] = await singleGameRows(metric, [seasonCode], 1);
+      const opponentCode = row ? (row.clubCode === row.localClubCode ? row.roadClubCode : row.localClubCode) : null;
+      return {
+        metric: key,
+        label: metric.label,
+        record: row
+          ? {
+              personKey: row.personKey,
+              playerName: row.playerName,
+              clubName: row.clubName,
+              clubCode: row.clubCode,
+              clubTvCode: looks.tvCodeOf(row.clubCode),
+              playerImageUrl: picture(row.playerImageUrl),
+              gameCode: row.gameCode,
+              scheduledAt: row.scheduledAt,
+              opponentTvCode: looks.tvCodeOf(opponentCode),
+              value: row.value === null ? null : String(row.value),
+            }
+          : null,
+      };
+    }),
+  );
+  return { cards };
 }
 
 // A team row's own club and its opponent, from the game it belongs to.

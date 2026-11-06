@@ -252,6 +252,12 @@ export async function getTeamSeasonRecords(seasonCode, metric, per) {
 }
 
 // The record book: the headline records of every record type.
+// One season's best single game for points, rebounds, assists, steals, blocks and PIR (Overview's season highs).
+export async function getSeasonHighs(seasonCode) {
+  const { data } = await api.get(`/seasons/${seasonCode}/season-highs`);
+  return data;
+}
+
 export async function getRecordBook(seasonCode) {
   const { data } = await api.get(`/seasons/${seasonCode}/records/book`);
   return data;

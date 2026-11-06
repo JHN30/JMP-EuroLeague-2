@@ -8,7 +8,7 @@ import RecordBar from "./RecordBar";
 import { ClubCell, PositionCell } from "./standingsCells";
 import ScrollingTable from "./ScrollingTable";
 
-function ResultsRibbon({ games, clubName }) {
+export function ResultsRibbon({ games, clubName }) {
   if (!games || games.length === 0) return <span className="muted">—</span>;
   const wins = games.filter((game) => game.pointsFor > game.pointsAgainst).length;
   return (

@@ -26,7 +26,9 @@ function roundLabel(game, format) {
 
 const LIST_ID = "latest-scores-list";
 
-export function MatchCard({ game, standingByClubCode, seasonCode, showScore, className = "" }) {
+// `featuredReason` (Upcoming games only) marks the card as Game of the round: a highlighted card with the label in place of
+// the round and the reason under the teams.
+export function MatchCard({ game, standingByClubCode, seasonCode, showScore, className = "", featuredReason = null }) {
   const format = useSeasonFormat(seasonCode).data;
   const localEntry = game.localTeam?.clubCode ? standingByClubCode.get(game.localTeam.clubCode) : null;
   const roadEntry = game.roadTeam?.clubCode ? standingByClubCode.get(game.roadTeam.clubCode) : null;
@@ -34,9 +36,13 @@ export function MatchCard({ game, standingByClubCode, seasonCode, showScore, cla
   const roadWon = showScore && game.localScore != null && game.roadScore != null && game.roadScore > game.localScore;
 
   return (
-    <MotionLink to={`/${seasonCode}/games/${game.gameCode}`} className={`match-card ${className}`} variants={listItem} {...cardHover}>
+    <MotionLink to={`/${seasonCode}/games/${game.gameCode}`} className={`match-card ${featuredReason ? "match-card-featured" : ""} ${className}`}
+      data-testid={featuredReason ? "game-of-the-round" : undefined}
+      variants={listItem}
+      {...cardHover}
+    >
       <div className="match-card-head">
-        <span>{roundLabel(game, format)}</span>
+        <span className={featuredReason ? "match-card-featured-label" : undefined}>{featuredReason ? "Game of the round" : roundLabel(game, format)}</span>
         <span className={`status-chip ${showScore ? "final" : "upcoming"}`}>
           {showScore ? (isForfeit(game) ? "Forfeit" : "Final") : formatTime(game.scheduledAt)}
         </span>
@@ -85,6 +91,7 @@ export function MatchCard({ game, standingByClubCode, seasonCode, showScore, cla
           {showScore ? <span className="score">{game.roadScore ?? "-"}</span> : null}
         </div>
       </div>
+      {featuredReason ? <p className="muted mt-1 text-xs tabular-nums">{featuredReason}</p> : null}
     </MotionLink>
   );
 }

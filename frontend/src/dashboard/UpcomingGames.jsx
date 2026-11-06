@@ -6,6 +6,7 @@ import { getSeasonGames, getSeasonStandings } from "../lib/api";
 import { listContainer } from "../lib/motion";
 import { seasonStatusText } from "../lib/seasonFormat";
 import { useSeasonFormat } from "../lib/useSeasonFormat";
+import { gameOfTheRound } from "./gameOfTheRound";
 import { MatchCard } from "./RecentResults";
 import { WidgetPanel } from "./Dashboard";
 import { UpcomingGamesSkeleton, VISIBLE_ON_MOBILE } from "./HomeSkeleton";
@@ -24,14 +25,27 @@ export default function UpcomingGames() {
     queryKey: ["standings", seasonCode, "RS"],
     queryFn: () => getSeasonStandings(seasonCode, "RS"),
   });
-  const games = gamesQuery.data?.games ?? [];
-  const hiddenOnMobile = Math.max(0, games.length - VISIBLE_ON_MOBILE);
+  const allGames = gamesQuery.data?.games ?? [];
   const standings = standingsQuery.data?.standings ?? [];
   const standingByClubCode = new Map(standings.map((entry) => [entry.clubCode, entry]));
   const standingsReady = standingsQuery.isSuccess || standingsQuery.isError;
   // The format knows better than the standings: a season can be between stages, or cancelled, with nothing scheduled.
   const formatQuery = useSeasonFormat(seasonCode);
   const format = formatQuery.data ?? null;
+
+  // Game of the round reads the table of the next round's own stage (the regular season's is the request above).
+  const nextPhaseCode = allGames[0]?.phaseCode ?? null;
+  const nextIsTable = format?.stages.find((stage) => stage.code === nextPhaseCode)?.type === "table";
+  const tableQuery = useQuery({
+    queryKey: ["standings", seasonCode, nextPhaseCode],
+    queryFn: () => getSeasonStandings(seasonCode, nextPhaseCode),
+    enabled: nextIsTable,
+  });
+  const tableByClubCode = new Map((tableQuery.data?.standings ?? []).map((entry) => [entry.clubCode, entry]));
+  const featured = nextIsTable ? gameOfTheRound(allGames, tableByClubCode, format) : null;
+  // The featured game leads the grid, highlighted; the rest keep their order.
+  const games = featured ? [featured.game, ...allGames.filter((game) => game.gameCode !== featured.game.gameCode)] : allGames;
+  const hiddenOnMobile = Math.max(0, games.length - VISIBLE_ON_MOBILE);
   const emptyMessage = !format
     ? "Season status is unavailable."
     : format.status === "completed"
@@ -48,11 +62,12 @@ export default function UpcomingGames() {
       isLoading={gamesQuery.isLoading || !standingsReady || formatQuery.isLoading}
       isError={gamesQuery.isError || formatQuery.isError}
       onRetry={() => { gamesQuery.refetch(); formatQuery.refetch(); }}
-      isEmpty={gamesQuery.isSuccess && games.length === 0}
+      isEmpty={gamesQuery.isSuccess && allGames.length === 0}
       emptyMessage={emptyMessage}
       skeleton={<UpcomingGamesSkeleton />}
     >
-      {/* Below sm the first five stack and the rest wait behind a button, as in Latest scores; from sm all show in a grid. */}
+      {/* Below sm the first five stack and the rest wait behind a button, as in Latest scores; from sm all show in a grid.
+          Game of the round, when there is one, is the first card. */}
       <motion.div
         id={LIST_ID}
         className="games-row"
@@ -69,6 +84,7 @@ export default function UpcomingGames() {
             standingByClubCode={standingByClubCode}
             seasonCode={seasonCode}
             showScore={false}
+            featuredReason={featured && game.gameCode === featured.game.gameCode ? featured.reason : null}
             className={index >= VISIBLE_ON_MOBILE && !showAll ? "match-card-extra" : ""}
           />
         ))}

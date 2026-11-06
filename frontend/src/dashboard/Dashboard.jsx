@@ -13,8 +13,8 @@ import PageHeader from "../lib/PageHeader";
 import PanelHeader from "../lib/PanelHeader";
 import { useDocumentTitle } from "../lib/useDocumentTitle";
 import KpiStrip from "./KpiStrip";
-import LeadersPanel from "./LeadersPanel";
-import LeaderTrend from "./LeaderTrend";
+import FormBoard from "./FormBoard";
+import HotRightNow from "./HotRightNow";
 import RecentResults from "./RecentResults";
 import StandingsSnapshot from "./StandingsSnapshot";
 import { roundStatus } from "./roundStatus";
@@ -159,10 +159,10 @@ export default function Dashboard() {
         <KpiStrip />
       </motion.div>
       <motion.div variants={sectionItem}>
-        <LeadersPanel />
+        <HotRightNow />
       </motion.div>
       <motion.div variants={sectionItem}>
-        <LeaderTrend />
+        <FormBoard />
       </motion.div>
     </motion.div>
   );

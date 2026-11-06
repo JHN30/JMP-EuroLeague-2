@@ -1,4 +1,4 @@
-import { SkeletonBlock, SkeletonChip, SkeletonLines, SkeletonPageHeader, SkeletonPanel } from "../lib/Skeleton";
+import { SkeletonChip, SkeletonPageHeader, SkeletonPanel } from "../lib/Skeleton";
 
 // Home's skeletons, shared by each panel (while its data loads) and the whole Home page (while its code loads), so the two
 // always match. This file imports none of Home's code, so the page skeleton stays out of Home's bundle.
@@ -53,20 +53,6 @@ export function LatestScoresSkeleton() {
   );
 }
 
-export function TrendSkeleton() {
-  return (
-    // The loaded trend's own layout: the average beside the plot from 640px, over it below; the plot keeps its shape as it widens.
-    <div className="leader-trend" aria-hidden="true">
-      <div className="leader-trend-row">
-        <div className="leader-trend-stat">
-          <SkeletonLines lines={2} className="w-32" />
-        </div>
-        <SkeletonBlock className="aspect-[14/5] min-w-0 flex-1 sm:aspect-[33/10] lg:aspect-[6/1]" />
-      </div>
-    </div>
-  );
-}
-
 // The whole Home page while its code loads, laid out as `Dashboard` lays out the loaded page.
 export default function HomeSkeleton() {
   return (
@@ -96,7 +82,9 @@ export default function HomeSkeleton() {
         </div>
       </SkeletonPanel>
       <SkeletonPanel>
-        <TrendSkeleton />
+        <div className="flex flex-col gap-1">
+          {Array.from({ length: 8 }, (_, index) => <div key={index} className="skeleton h-7" />)}
+        </div>
       </SkeletonPanel>
     </div>
   );

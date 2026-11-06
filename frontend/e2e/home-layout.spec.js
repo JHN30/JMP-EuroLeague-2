@@ -67,7 +67,7 @@ test.describe("KPI strip", () => {
       const standingsBottom = await panel(page, "League table").evaluate((el) => el.getBoundingClientRect().bottom);
       const stripBox = await strip.evaluate((el) => el.getBoundingClientRect().toJSON());
       expect(stripBox.top).toBeGreaterThanOrEqual(Math.max(resultsBottom, standingsBottom) - 1);
-      expect(await top(page.getByRole("group", { name: /leaders$/ }).first())).toBeGreaterThanOrEqual(stripBox.bottom - 1);
+      expect(await top(page.getByRole("group", { name: "Hot right now" }).first())).toBeGreaterThanOrEqual(stripBox.bottom - 1);
     });
   }
 
@@ -80,7 +80,8 @@ test.describe("KPI strip", () => {
 });
 
 test.describe("below 640px", () => {
-  const upcoming = (page) => panel(page, "Upcoming games").getByRole("link");
+  // The grid of upcoming games (Game of the round, when there is one, is its first card).
+  const upcoming = (page) => page.getByRole("group", { name: /^Upcoming games$/ }).getByRole("link");
 
   test("upcoming games show five and a Show more button", async ({ page }) => {
     await openHome(page, 390);
@@ -103,7 +104,7 @@ test.describe("below 640px", () => {
       const lefts = await upcoming(page).evaluateAll((els) => els.map((el) => Math.round(el.getBoundingClientRect().left)));
       expect(new Set(lefts).size).toBe(1);
 
-      const leaders = page.getByRole("group", { name: /leaders$/ }).first();
+      const leaders = page.getByRole("group", { name: "Hot right now" }).first();
       const boxes = await leaders.locator(".kpi-chip").evaluateAll((els) => els.map((el) => el.getBoundingClientRect()));
       expect(boxes).toHaveLength(4);
       expect(new Set(boxes.map((box) => Math.round(box.top))).size).toBe(2);
@@ -120,7 +121,7 @@ test.describe("rows from 640px", () => {
   for (const width of [640, 768]) {
     test(`do not snap or take a tab stop at ${width}px`, async ({ page }) => {
       await openHome(page, width);
-      for (const group of [/^Upcoming games$/, /leaders$/]) {
+      for (const group of [/^Upcoming games$/, /^Hot right now$/]) {
         const row = page.getByRole("group", { name: group }).first();
         await expect(row).toHaveCSS("scroll-snap-type", "none");
         await expect(row).not.toHaveAttribute("tabindex", /.*/);
@@ -130,7 +131,7 @@ test.describe("rows from 640px", () => {
 
   test("leader cards are two columns at 768px", async ({ page }) => {
     await openHome(page, 768);
-    const cards = await page.getByRole("group", { name: /leaders$/ }).first().evaluate((el) => [...el.children].map((card) => Math.round(card.getBoundingClientRect().left)));
+    const cards = await page.getByRole("group", { name: "Hot right now" }).first().evaluate((el) => [...el.children].map((card) => Math.round(card.getBoundingClientRect().left)));
     expect(new Set(cards).size).toBe(2);
   });
 });
@@ -163,30 +164,34 @@ test.describe("latest scores", () => {
   }
 });
 
-test.describe("form trend", () => {
-  const stat = (page) => page.getByText(/^Avg point diff/);
-  const chart = (page) => page.getByRole("img", { name: /^Point differential per game/ });
+test.describe("form board", () => {
+  const rows = (page) => panel(page, "Last 5 games").getByRole("listitem");
 
-  test("puts the stat above the chart at 639px and beside it at 640px", async ({ page }) => {
-    await openHome(page, 639);
-    const above = { stat: await stat(page).boundingBox(), chart: await chart(page).boundingBox() };
-    expect(above.stat.y + above.stat.height).toBeLessThanOrEqual(above.chart.y + 1);
-
-    await page.setViewportSize({ width: 640, height: HEIGHT });
-    await expect
-      .poll(async () => {
-        const beside = { stat: await stat(page).boundingBox(), chart: await chart(page).boundingBox() };
-        return beside.stat.x + beside.stat.width <= beside.chart.x + 1;
-      })
-      .toBe(true);
+  test("shows eight clubs and a Show more button below 640px", async ({ page }) => {
+    await openHome(page, 390);
+    await expect(rows(page)).toHaveCount(8);
+    const more = panel(page, "Last 5 games").getByRole("button", { name: /^Show \d+ more$/ });
+    await more.click();
+    await expect.poll(() => rows(page).count()).toBeGreaterThan(8);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBeLessThanOrEqual(0);
   });
+
+  for (const width of [768, 1280]) {
+    test(`shows every club in columns with no button at ${width}px`, async ({ page }) => {
+      await openHome(page, width);
+      const lefts = await rows(page).evaluateAll((els) => els.map((el) => Math.round(el.getBoundingClientRect().left)));
+      expect(lefts.length).toBeGreaterThan(8);
+      expect(new Set(lefts).size).toBe(width >= 1024 ? 3 : 2);
+      await expect(panel(page, "Last 5 games").getByRole("button", { name: /^Show/ })).toBeHidden();
+    });
+  }
 });
 
 // An older season has no player photos: a leaders card shows a silhouette in the photo's place, so it keeps its shape.
 test("2004: a leaders card without a photo shows a silhouette in its place", async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: HEIGHT });
   await page.goto("/2004/home");
-  const row = page.getByRole("group", { name: /leaders$/ }).first();
+  const row = page.getByRole("group", { name: "Hot right now" }).first();
   await expect(row.getByRole("link")).toHaveCount(4, { timeout: 30_000 });
   // Every card has a photo or the silhouette, never neither.
   await expect(row.locator("img.kpi-chip-image, [data-testid=leader-photo-placeholder]")).toHaveCount(4);

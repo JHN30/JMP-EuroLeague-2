@@ -1,7 +1,7 @@
 import { test, expect } from "@playwright/test";
 import { HEIGHT, seasonSlug } from "./support/layout";
 
-// The Home Form chart (the league leader's point margin over the last games) and the leaders' names, read with the live data.
+// Home's live-data sections (the Form board, Game of the round and the player names), read against the API.
 const API = "http://localhost:3000/api/seasons";
 
 async function liveSeason(page) {
@@ -9,67 +9,62 @@ async function liveSeason(page) {
   const slug = await seasonSlug(page);
   const { seasons } = await (await page.request.get(API)).json();
   const code = seasons.map((season) => season.seasonCode).find((seasonCode) => seasonCode.endsWith(slug));
-  const { teams } = await (await page.request.get(`${API}/${code}/teams`)).json();
-  return { slug, codes: new Set(teams.map((team) => team.tvCode)) };
+  return { slug, code };
 }
 
-async function atWidths(page, widths, check) {
-  for (const width of widths) {
-    await test.step(`${width}px`, async () => {
-      await page.setViewportSize({ width, height: HEIGHT });
-      await check(width);
-    });
-  }
-}
+const get = async (page, path) => (await page.request.get(`${API}/${path}`)).json();
 
-const shown = (locator) =>
-  locator.evaluateAll((els) => els.filter((el) => el.getBoundingClientRect().width > 1).map((el) => el.textContent.trim()));
+test("the Form board lists every club by wins in its last five games, each with its own results", async ({ page }) => {
+  const { slug, code } = await liveSeason(page);
+  const { standings } = await get(page, `${code}/phases/RS/standings`);
+  const { results } = await get(page, `${code}/phases/RS/results`);
+  const lastFive = new Map(results.map((club) => [club.clubCode, club.games.slice(-5)]));
 
-const insideBox = (locator, box) =>
-  locator.evaluateAll(
-    (els, outer) => els.every((el) => {
-      const rect = el.getBoundingClientRect();
-      return rect.left >= outer.left - 1 && rect.right <= outer.right + 1 && rect.top >= outer.top - 1 && rect.bottom <= outer.bottom + 1;
-    }),
-    box,
-  );
-
-test("the Form chart has a labelled scale, the opponent under each point and an average line that matches the headline", async ({ page }) => {
-  const { slug, codes } = await liveSeason(page);
   await page.goto(`/${slug}/home`);
-  const plot = page.getByTestId("leader-trend-plot");
-  await expect(plot).toBeVisible({ timeout: 30_000 });
-  const games = await plot.locator(".trend-xaxis span").count();
-  expect(games).toBeGreaterThan(1);
-  const headline = (await page.locator(".leader-trend-stat .value").textContent()).trim();
+  const list = page.getByRole("list", { name: /^Clubs by wins in their last 5 games$/ });
+  await expect(list.getByRole("listitem").first()).toBeVisible({ timeout: 30_000 });
+  const rows = await list.getByRole("listitem").evaluateAll((els) =>
+    els.map((el) => ({ code: el.querySelector("a").getAttribute("href").split("/").at(-1), record: el.lastElementChild.textContent.trim(), dots: el.querySelectorAll(".ribbon-dot").length })),
+  );
+  expect(rows.length).toBe(standings.filter((entry) => (lastFive.get(entry.clubCode) ?? []).length > 0).length);
 
-  await atWidths(page, [320, 390, 768, 1280], async (width) => {
-    // The scale: its top and bottom, and the zero line between a win and a loss.
-    const scale = await shown(plot.locator(".trend-yaxis span"));
-    expect(scale.length).toBeGreaterThanOrEqual(2);
-    expect(scale.every((text) => /^[+-]?\d+$/.test(text))).toBe(true);
-    expect(scale).toContain("0");
+  let previousWins = Infinity;
+  for (const row of rows) {
+    const games = lastFive.get(row.code) ?? [];
+    const wins = games.filter((game) => game.pointsFor > game.pointsAgainst).length;
+    expect(row.record, row.code).toBe(`${wins}-${games.length - wins}`);
+    expect(row.dots, row.code).toBe(games.length);
+    expect(wins).toBeLessThanOrEqual(previousWins);
+    previousWins = wins;
+  }
+});
 
-    // One opponent TV code under each point, every other one on a phone.
-    const opponents = await shown(plot.locator(".trend-xaxis span"));
-    expect(opponents.length).toBe(width < 640 ? Math.ceil(games / 2) : games);
-    for (const code of opponents) expect(codes.has(code), code).toBe(true);
+test("Game of the round is the next round's game with the most combined wins, highlighted as the first card", async ({ page }) => {
+  const { slug, code } = await liveSeason(page);
+  const { games } = await get(page, `${code}/games?status=scheduled&order=asc&limit=10`);
+  test.skip(games.length === 0 || games[0].phaseCode !== "RS", "No regular-season round is scheduled");
+  const { standings } = await get(page, `${code}/phases/RS/standings`);
+  const wins = new Map(standings.map((entry) => [entry.clubCode, entry.basic]));
+  const round = games.filter((game) => game.phaseCode === "RS" && game.roundNumber === games[0].roundNumber);
+  const played = round.filter((game) => wins.get(game.localTeam.clubCode)?.gamesPlayed && wins.get(game.roadTeam.clubCode)?.gamesPlayed);
+  test.skip(played.length === 0, "No club has played yet");
+  const combined = (game) => wins.get(game.localTeam.clubCode).gamesWon + wins.get(game.roadTeam.clubCode).gamesWon;
+  const most = Math.max(...played.map(combined));
 
-    // The average label says what the headline says, and everything sits inside its box.
-    await expect(plot.locator(".trend-average-label")).toHaveText(`Avg ${headline}`);
-    const wellBox = await plot.locator(".chart-well").evaluate((el) => el.getBoundingClientRect().toJSON());
-    expect(await insideBox(plot.locator(".trend-average-label"), wellBox)).toBe(true);
-    const plotBox = await plot.evaluate((el) => el.getBoundingClientRect().toJSON());
-    expect(await insideBox(plot.locator(".trend-yaxis span"), plotBox)).toBe(true);
-    expect(await insideBox(plot.locator(".trend-xaxis span").locator("visible=true"), plotBox)).toBe(true);
-    await expect(plot.locator("svg")).toHaveAttribute("aria-label", new RegExp(`averaging ${headline.replace("+", "\\+")}`));
-    await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
-  });
-
-  // What the chart shows is a tip on the average's label, not a caption under the chart.
-  await expect(page.locator(".leader-trend-caption")).toHaveCount(0);
-  await page.getByText(/^Avg point diff, last \d+/).focus();
-  await expect(page.getByRole("tooltip")).toContainText("Above the solid line is a win, below it a loss");
+  await page.goto(`/${slug}/home`);
+  const grid = page.getByRole("group", { name: /^Upcoming games$/ });
+  const featured = grid.getByTestId("game-of-the-round");
+  await expect(featured).toBeVisible({ timeout: 30_000 });
+  await expect(featured).toContainText("Game of the round");
+  await expect(featured).toContainText(/\d+(st|nd|rd|th) vs \d+(st|nd|rd|th) · \d+-\d+ vs \d+-\d+/);
+  const href = await featured.getAttribute("href");
+  const gameCode = Number(href.split("/").at(-1));
+  const pick = round.find((game) => game.gameCode === gameCode);
+  expect(pick).toBeTruthy();
+  expect(combined(pick)).toBe(most);
+  // The first card, and in the grid only once.
+  await expect(grid.getByRole("link").first()).toHaveAttribute("href", href);
+  await expect(grid.locator(`a[href="${href}"]`)).toHaveCount(1);
 });
 
 test("the leader names on Home and on the Season overview have no comma", async ({ page }) => {

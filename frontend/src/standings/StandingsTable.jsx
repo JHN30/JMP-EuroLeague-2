@@ -26,13 +26,14 @@ const VIEW_RECORD_FIELD = {
   last10: "lastTenRecord",
 };
 
-function sortForView(standings, view) {
+function sortForView(standings, view, splitByClub) {
   if (view === "overall") return standings;
   const field = VIEW_RECORD_FIELD[view];
   const ranked = [];
   const unranked = [];
   for (const entry of standings) {
-    const pct = recordWinPct(entry.basic?.[field]);
+    const split = splitByClub?.get(entry.clubCode);
+    const pct = splitByClub ? (split?.gamesPlayed ? split.gamesWon / split.gamesPlayed : null) : recordWinPct(entry.basic?.[field]);
     if (pct === null) {
       unranked.push(entry);
     } else {
@@ -41,8 +42,9 @@ function sortForView(standings, view) {
   }
   ranked.sort((a, b) => {
     if (b.pct !== a.pct) return b.pct - a.pct;
-    const aDiff = a.entry.basic?.pointsDifference ?? -Infinity;
-    const bDiff = b.entry.basic?.pointsDifference ?? -Infinity;
+    const diffOf = (entry) => (splitByClub ? splitByClub.get(entry.clubCode)?.pointsDifference : entry.basic?.pointsDifference) ?? -Infinity;
+    const aDiff = diffOf(a.entry);
+    const bDiff = diffOf(b.entry);
     return bDiff - aDiff;
   });
   return [...ranked.map((r) => r.entry), ...unranked];
@@ -83,8 +85,25 @@ const VIEW_NET_FIELD = {
   last10: "last10NetRating",
 };
 
-function OverviewTable({ standings, seasonCode, view, showTiers, tierLines, tierLabels, netByClub, shortNames, showQualification }) {
-  const sorted = sortForView(standings, view);
+// Header tips for the figure columns; the Home and Away views say the figures cover only those games.
+function figureTips(view) {
+  const only = view === "home" ? " in home games only" : view === "away" ? " in away games only" : "";
+  return {
+    gp: `Games played${only}`,
+    w: `Wins${only}`,
+    l: `Losses${only}`,
+    pct: `Win percentage: wins divided by games played${only}`,
+    pf: `Points for: total points scored${only}`,
+    pa: `Points against: total points allowed${only}`,
+    diff: `Points difference: points for minus points against${only}`,
+  };
+}
+
+function OverviewTable({ standings, seasonCode, view, showTiers, tierLines, tierLabels, netByClub, shortNames, showQualification, splitByClub }) {
+  const sorted = sortForView(standings, view, splitByClub);
+  // The Home and Away views count every figure column from the club's home (or away) games only.
+  const splitView = view === "home" || view === "away";
+  const tips = figureTips(view);
   // The tier rows follow the season's qualification lines (from its format); without them no tier row is drawn.
   const tiersActive = showTiers && view === "overall" && Boolean(tierLines);
   const tiers = tiersActive ? sorted.map((entry) => tierForPosition(entry.basic?.position, tierLines)) : [];
@@ -96,13 +115,13 @@ function OverviewTable({ standings, seasonCode, view, showTiers, tierLines, tier
         <tr>
           <th><HeaderTip tip="Position: rank in the standings">#</HeaderTip></th>
           <th>Team</th>
-          <th className="hidden sm:table-cell"><HeaderTip tip="Games played">GP</HeaderTip></th>
-          <th><HeaderTip tip="Wins">W</HeaderTip></th>
-          <th><HeaderTip tip="Losses">L</HeaderTip></th>
-          <th><HeaderTip tip="Win percentage: wins divided by games played">PCT</HeaderTip></th>
-          <th><HeaderTip tip="Points for: total points scored">PF</HeaderTip></th>
-          <th><HeaderTip tip="Points against: total points allowed">PA</HeaderTip></th>
-          <th><HeaderTip tip="Points difference: points for minus points against">DIFF</HeaderTip></th>
+          <th className="hidden sm:table-cell"><HeaderTip tip={tips.gp}>GP</HeaderTip></th>
+          <th><HeaderTip tip={tips.w}>W</HeaderTip></th>
+          <th><HeaderTip tip={tips.l}>L</HeaderTip></th>
+          <th><HeaderTip tip={tips.pct}>PCT</HeaderTip></th>
+          <th><HeaderTip tip={tips.pf}>PF</HeaderTip></th>
+          <th><HeaderTip tip={tips.pa}>PA</HeaderTip></th>
+          <th><HeaderTip tip={tips.diff}>DIFF</HeaderTip></th>
           <th><HeaderTip tip="Home record: wins and losses at home">Home</HeaderTip></th>
           <th><HeaderTip tip="Away record: wins and losses on the road">Away</HeaderTip></th>
           <th><HeaderTip tip="Last 10: record in the last 10 games">L10</HeaderTip></th>
@@ -116,6 +135,8 @@ function OverviewTable({ standings, seasonCode, view, showTiers, tierLines, tier
           const tier = tiersActive ? tiers[index] : null;
           const showTierHeader = tiersActive && tier !== null && tier !== tiers[index - 1];
           const displayRank = view === "overall" ? position : index + 1;
+          // Until the results arrive (or when they fail) a split view shows dashes, never the overall figures.
+          const figures = splitView ? splitByClub?.get(entry.clubCode) : entry.basic;
 
           return (
             <Fragment key={entry.clubCode}>
@@ -129,13 +150,13 @@ function OverviewTable({ standings, seasonCode, view, showTiers, tierLines, tier
                   <ClubCell entry={entry} seasonCode={seasonCode} shortName={shortNames?.get(entry.clubCode)} />
                   {entry.bestSixth ? <span className="badge badge-xs badge-secondary ml-1 whitespace-nowrap" title="Best sixth-placed club">Best 6th<span className="sr-only">, best sixth-placed club, qualified</span></span> : null}
                 </td>
-                <td className="hidden sm:table-cell">{entry.basic?.gamesPlayed ?? "-"}</td>
-                <td>{entry.basic?.gamesWon ?? "-"}</td>
-                <td>{entry.basic?.gamesLost ?? "-"}</td>
-                <td>{entry.basic?.winPercentage ?? "-"}</td>
-                <td>{formatCount(entry.basic?.pointsFor)}</td>
-                <td>{formatCount(entry.basic?.pointsAgainst)}</td>
-                <td className="font-semibold">{formatSignedDiff(entry.basic?.pointsDifference)}</td>
+                <td className="hidden sm:table-cell">{figures?.gamesPlayed ?? "-"}</td>
+                <td>{figures?.gamesWon ?? "-"}</td>
+                <td>{figures?.gamesLost ?? "-"}</td>
+                <td>{figures?.winPercentage ?? "-"}</td>
+                <td>{formatCount(figures?.pointsFor)}</td>
+                <td>{formatCount(figures?.pointsAgainst)}</td>
+                <td className="font-semibold">{formatSignedDiff(figures?.pointsDifference)}</td>
                 <td>{entry.basic?.homeRecord ?? "-"}</td>
                 <td>{entry.basic?.awayRecord ?? "-"}</td>
                 <td>{entry.basic?.lastTenRecord ?? "-"}</td>
@@ -164,6 +185,7 @@ export default function StandingsTable({
   tierLabels,
   netByClub,
   shortNames,
+  splitByClub = null,
   breakdown = "overview",
   resultsQuery,
   resultsByClub,
@@ -203,6 +225,7 @@ export default function StandingsTable({
           tierLabels={tierLabels}
           netByClub={netByClub}
           shortNames={shortNames}
+          splitByClub={splitByClub}
         />
       </ScrollingTable>
       <StandingsFooterBadges showQualification={showQualification} />

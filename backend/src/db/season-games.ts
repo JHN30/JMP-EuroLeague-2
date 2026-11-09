@@ -1121,6 +1121,10 @@ export type PhaseResult = {
   home: boolean;
   pointsFor: number;
   pointsAgainst: number;
+  // Points in the four regulation quarters only (null when a quarter score is missing). The published standings'
+  // points for, against and difference leave overtime out, so totals that must match them use these.
+  regulationPointsFor: number | null;
+  regulationPointsAgainst: number | null;
   edges: CategoryEdges;
   // The club's margin in each of the four regulation quarters (null when a quarter score is missing).
   quarterMargins: number[] | null;
@@ -1242,6 +1246,17 @@ export async function getPhaseResults(seasonCode: string, phaseCode: string): Pr
     }
     return margins;
   };
+  const regulationPointsOf = (gameCode: number, side: "local" | "road"): number | null => {
+    const scores = periodScores.get(gameCode)?.[side];
+    if (!scores) return null;
+    let total = 0;
+    for (const quarter of [1, 2, 3, 4]) {
+      const score = scores.get(quarter);
+      if (score === undefined) return null;
+      total += score;
+    }
+    return total;
+  };
 
   const byClub = new Map<string, PhaseResult[]>();
   const add = (clubCode: string, result: PhaseResult) => {
@@ -1251,8 +1266,8 @@ export async function getPhaseResults(seasonCode: string, phaseCode: string): Pr
   };
   for (const row of rows) {
     if (row.localClubCode === null || row.roadClubCode === null || row.localScore === null || row.roadScore === null) continue;
-    add(row.localClubCode, { gameCode: row.gameCode, roundNumber: row.roundNumber, opponentCode: row.roadClubCode, home: true, pointsFor: row.localScore, pointsAgainst: row.roadScore, edges: edgesOf(row.local, row.road), quarterMargins: quarterMarginsOf(row.gameCode, "local") });
-    add(row.roadClubCode, { gameCode: row.gameCode, roundNumber: row.roundNumber, opponentCode: row.localClubCode, home: false, pointsFor: row.roadScore, pointsAgainst: row.localScore, edges: edgesOf(row.road, row.local), quarterMargins: quarterMarginsOf(row.gameCode, "road") });
+    add(row.localClubCode, { gameCode: row.gameCode, roundNumber: row.roundNumber, opponentCode: row.roadClubCode, home: true, pointsFor: row.localScore, pointsAgainst: row.roadScore, regulationPointsFor: regulationPointsOf(row.gameCode, "local"), regulationPointsAgainst: regulationPointsOf(row.gameCode, "road"), edges: edgesOf(row.local, row.road), quarterMargins: quarterMarginsOf(row.gameCode, "local") });
+    add(row.roadClubCode, { gameCode: row.gameCode, roundNumber: row.roundNumber, opponentCode: row.localClubCode, home: false, pointsFor: row.roadScore, pointsAgainst: row.localScore, regulationPointsFor: regulationPointsOf(row.gameCode, "road"), regulationPointsAgainst: regulationPointsOf(row.gameCode, "local"), edges: edgesOf(row.road, row.local), quarterMargins: quarterMarginsOf(row.gameCode, "road") });
   }
   return [...byClub.entries()].map(([clubCode, clubGames]) => ({ clubCode, games: clubGames }));
 }

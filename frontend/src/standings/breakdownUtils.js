@@ -49,6 +49,49 @@ export function marginStats(results) {
   };
 }
 
+// From 2016-17 the published standings leave overtime out of points for, against and difference; earlier seasons
+// count the final score. (Checked against every regular season's published totals.)
+const REGULATION_POINTS_FROM_SEASON = 2016;
+
+export function countsRegulationPoints(seasonCode) {
+  return Number(String(seasonCode ?? "").slice(1)) >= REGULATION_POINTS_FROM_SEASON;
+}
+
+// A club's totals over only its home (home = true) or only its away games, from its own results, counted the way the
+// published standings count them: games after `throughRound` and games against clubs outside the table (`opponents`,
+// such as the annulled 2021-22 games with the removed Russian clubs) are left out, and points follow the season's
+// overtime rule, falling back to the final score when a game's quarter scores are missing.
+export function splitTotals(results, home, { throughRound = null, opponents = null, regulationPoints = false } = {}) {
+  const games = (results ?? []).filter(
+    (game) =>
+      game.home === home &&
+      (throughRound == null || game.roundNumber == null || game.roundNumber <= throughRound) &&
+      (!opponents || opponents.has(game.opponentCode)),
+  );
+  const wins = games.filter((game) => game.pointsFor > game.pointsAgainst).length;
+  const pointsOf = (game, regulation, final) => (regulationPoints ? (game[regulation] ?? game[final]) : game[final]);
+  const pointsFor = games.reduce((sum, game) => sum + pointsOf(game, "regulationPointsFor", "pointsFor"), 0);
+  const pointsAgainst = games.reduce((sum, game) => sum + pointsOf(game, "regulationPointsAgainst", "pointsAgainst"), 0);
+  return {
+    gamesPlayed: games.length,
+    gamesWon: wins,
+    gamesLost: games.length - wins,
+    // Same 0-100, one-decimal form as the published win percentage ("68.4").
+    winPercentage: games.length > 0 ? ((wins / games.length) * 100).toFixed(1) : null,
+    pointsFor,
+    pointsAgainst,
+    pointsDifference: pointsFor - pointsAgainst,
+  };
+}
+
+// Each phase club's home (view "home") or away (view "away") totals, or null for other views and until results arrive.
+export function splitFiguresByClub(standings, view, resultsData, { round = null, seasonCode } = {}) {
+  if ((view !== "home" && view !== "away") || !resultsData) return null;
+  const games = resultsByClub(resultsData);
+  const options = { throughRound: round, opponents: new Set(standings.map((entry) => entry.clubCode)), regulationPoints: countsRegulationPoints(seasonCode) };
+  return new Map(standings.map((entry) => [entry.clubCode, splitTotals(games.get(entry.clubCode), view === "home", options)]));
+}
+
 export function resultsByClub(resultsData) {
   return new Map((resultsData?.results ?? []).map((club) => [club.clubCode, club.games]));
 }

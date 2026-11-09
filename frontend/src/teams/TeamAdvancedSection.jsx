@@ -11,6 +11,7 @@ import { formatDecimal, formatFractionPercent, formatSignedDecimal } from "../li
 import { barFill, EASE_OUT, sectionContainer, sectionItem } from "../lib/motion";
 import Panel from "../lib/Panel";
 import PanelHeader from "../lib/PanelHeader";
+import { displayName, nameParts } from "../lib/playerName";
 import { TabPanel, TabStrip } from "../lib/TabStrip";
 import RatingsChart from "./RatingsChart";
 import {
@@ -581,19 +582,15 @@ function GameFlowCard({ pbp, flowRows, clubCode }) {
   );
 }
 
-function titleCase(text) {
-  return text.toLowerCase().replace(/(^|[\s'-])(\p{L})/gu, (_, lead, letter) => lead + letter.toUpperCase());
-}
-
 function initials(fullName) {
-  const [last = "", first = ""] = fullName.split(",").map((part) => part.trim());
+  const { last, first } = nameParts(fullName);
   return `${first.charAt(0)}${last.charAt(0)}`.toUpperCase();
 }
 
 function PlayerFace({ name, imageUrl }) {
   return (
     <span
-      title={titleCase(name.split(",").reverse().join(" ").trim())}
+      title={displayName(name)}
       className="relative flex h-11 w-11 flex-none items-center justify-center overflow-hidden rounded-full bg-base-300 text-xs font-bold ring-2 ring-base-100"
     >
       {initials(name)}
@@ -639,7 +636,7 @@ function LineupRow({ lineup, photos, maxAbsNet, badges }) {
           ) : null}
         </div>
         <p className="muted mt-1 truncate text-sm" title={lineup.lineupNames ?? undefined}>
-          {names.map((name) => titleCase(name.split(",")[0])).join(" · ")}
+          {names.map((name) => nameParts(name).last).join(" · ")}
         </p>
       </div>
 
@@ -665,8 +662,6 @@ function LineupRow({ lineup, photos, maxAbsNet, badges }) {
 
 // 100 minutes on court is the sample the impact charts show; fewer swing too much.
 const IMPACT_MIN_SECONDS = 100 * 60;
-
-const displayName = (name) => titleCase((name ?? "").split(",").reverse().join(" ").trim());
 
 function PlayerName({ seasonCode, player }) {
   return (

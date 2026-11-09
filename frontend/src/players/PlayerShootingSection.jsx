@@ -3,7 +3,7 @@ import AsyncState from "../lib/AsyncState";
 import { SkeletonShooting } from "../lib/Skeleton";
 import EmptyText from "../lib/EmptyText";
 import { formatCount } from "../lib/format";
-import { displayName, nameParts, titleCase } from "../lib/playerName";
+import { displayName, nameParts } from "../lib/playerName";
 import { usePlayerShots, usePositionShots } from "../lib/shootingData";
 import { shotZone } from "../lib/shotZones";
 import ShootingStudio from "../games/ShootingStudio";
@@ -23,7 +23,7 @@ function positionLabel(position) {
 }
 
 const plural = (label) => `${label}s`;
-const surname = (fullName) => titleCase(nameParts(fullName).last);
+const surname = (fullName) => nameParts(fullName).last;
 
 // A player's shot profile: attempts, and the share of his located attempts in each kind of zone (left and right count as
 // one, so the profile is where on the floor he shoots from, not which side).

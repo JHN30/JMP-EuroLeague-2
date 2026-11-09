@@ -13,7 +13,7 @@ import Panel from "../lib/Panel";
 import PanelHeader from "../lib/PanelHeader";
 import RevealImage from "../lib/RevealImage";
 import ShortLabel from "../lib/ShortLabel";
-import { nameParts, titleCase } from "../lib/playerName";
+import { displayName, nameParts } from "../lib/playerName";
 import { Avatar } from "../leaders/LeaderParts";
 import { formatAdvancedValue } from "../leaders/leaderData";
 import { advancedScopeForPhase } from "../teams/teamLeague";
@@ -183,8 +183,7 @@ function RosterProfile({ a, b, entityA, entityB }) {
 
 // A player's name in a pinned table cell: below sm the last name only (the full name stays for screen readers), from sm the full name.
 function PlayerName({ name, to }) {
-  const { last, first } = nameParts(name);
-  const label = <ShortLabel short={titleCase(last)} full={`${titleCase(first)} ${titleCase(last)}`.trim()} />;
+  const label = <ShortLabel short={nameParts(name).last} full={displayName(name)} />;
   const className = "block leading-tight font-semibold max-sm:max-w-24 max-sm:wrap-break-word";
   return to ? (
     <Link to={to} className={`${className} hover:underline`}>
@@ -217,11 +216,6 @@ function positionGroup(rows, position) {
     height: average(group.map((row) => row.heightCm)),
     weight: average(group.map((row) => row.weightKg)),
   };
-}
-
-function displayName(name) {
-  const { last, first } = nameParts(name);
-  return `${titleCase(first)} ${titleCase(last)}`.trim();
 }
 
 function BestPlayer({ player, alignEnd }) {

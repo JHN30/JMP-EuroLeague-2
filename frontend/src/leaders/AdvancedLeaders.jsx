@@ -8,7 +8,7 @@ import EmptyText from "../lib/EmptyText";
 import { listContainer } from "../lib/motion";
 import Panel from "../lib/Panel";
 import PanelHeader from "../lib/PanelHeader";
-import { nameParts, titleCase } from "../lib/playerName";
+import { displayName as fullName } from "../lib/playerName";
 import { Avatar, BarSelect, BOARD_AVATAR, BoardBar, BoardHeader, BoardPager, BoardRow, CardGrid, CategoryCard, LeadersToolbar, StageSelect, StatSelect, TeamTag } from "./LeaderParts";
 import { barShare, formatAdvancedValue } from "./leaderData";
 import { ADVANCED_FAMILIES, ADVANCED_SCOPES, ADVANCED_STATS, DEFAULT_SHARE, GAME_SHARES, gameShareFrom, gameShareLabel } from "./leaderDefs";
@@ -16,10 +16,7 @@ import { ADVANCED_FAMILIES, ADVANCED_SCOPES, ADVANCED_STATS, DEFAULT_SHARE, GAME
 const PAGE_SIZE = 25;
 
 const statByKey = (key) => ADVANCED_STATS.find((stat) => stat.key === key);
-const displayName = (entry) => {
-  const { last, first } = nameParts(entry.playerName ?? entry.personKey);
-  return `${titleCase(first)} ${titleCase(last)}`.trim();
-};
+const displayName = (entry) => fullName(entry.playerName ?? entry.personKey);
 const teamOf = (entry) => ({ code: entry.clubCode, name: entry.clubName, tvCode: entry.clubTvCode, crestUrl: entry.crestUrl });
 const order = (stat) => (stat.lowerIsBetter ? "asc" : "desc");
 const FIXED_ORDER = ["rapm", "onOff", "per", "winShares", "offWinShares", "defWinShares", "winSharesPer40"];

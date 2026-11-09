@@ -2,6 +2,12 @@ import { expect } from "@playwright/test";
 
 export const SEASON = "2025";
 
+// A stored "Surname, Given" as the box score shows it: "Given Surname".
+export function shownName(personName) {
+  const [last, first = ""] = personName.split(",").map((part) => part.trim());
+  return `${first} ${last}`.trim();
+}
+
 export function player(side, personKey, personName, overrides) {
   return {
     side,

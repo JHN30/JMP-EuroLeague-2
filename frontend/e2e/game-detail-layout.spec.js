@@ -219,10 +219,10 @@ test("the header's arena, attendance and officials, with long names, wrap inside
   const long = (number, name, countryName) => ({ number, code: `O${number}`, name, countryCode: "XXX", countryName });
   await openGame(page, {
     officials: [
-      long(1, "VAN DER BERGHE-KONSTANTINOPOULOS, MAXIMILIAN-ALEXANDER", "Bosnia and Herzegovina"),
-      long(2, "ALIAGA, JORDI", "Spain"),
-      long(3, "GIOVANNETTI, GUIDO", "Italy"),
-      long(4, "JAVOR, DAMIR", "Slovenia"),
+      long(1, "Van Der Berghe-Konstantinopoulos, Maximilian-Alexander", "Bosnia and Herzegovina"),
+      long(2, "Aliaga, Jordi", "Spain"),
+      long(3, "Giovannetti, Guido", "Italy"),
+      long(4, "Javor, Damir", "Slovenia"),
     ],
     venue: { name: "PABELLON MUNICIPAL DE DEPORTES FUENTE DE SAN LUIS VALENCIA", capacity: 21000, attendance: 18342, neutral: true },
   });

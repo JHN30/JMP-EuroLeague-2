@@ -20,7 +20,7 @@ test("the team reply carries the club's city, website, home arena and history", 
   const { team, club } = await (await request.get(`${API}/seasons/2025/teams/PAN`)).json();
   expect(team.clubCode).toBe("PAN");
   expect(club).toEqual({
-    city: "ATHENS",
+    city: "Athens",
     website: "http://www.paobc.gr",
     arena: "TELEKOM CENTER ATHENS",
     firstSeasonCode: "E2001",

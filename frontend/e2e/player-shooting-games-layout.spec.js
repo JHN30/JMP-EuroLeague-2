@@ -408,9 +408,9 @@ function positionShotsFor(personCode) {
   for (let index = 0; index < 15; index += 1) rows.push([-500, 480, "3FGA", 15, 0, "P3"]);
   return {
     players: [
-      { personCode, name: "ONE, AL", club: "AAA", games: 3 },
-      { personCode: "P2", name: "TWO, PAT", club: "BBB", games: 2 },
-      { personCode: "P3", name: "THREE, SAM", club: "CCC", games: 4 },
+      { personCode, name: "One, Al", club: "AAA", games: 3 },
+      { personCode: "P2", name: "Two, Pat", club: "BBB", games: 2 },
+      { personCode: "P3", name: "Three, Sam", club: "CCC", games: 4 },
     ],
     shots: rows,
   };

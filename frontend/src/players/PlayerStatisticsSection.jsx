@@ -139,10 +139,9 @@ function Highlights({ groups }) {
   );
 }
 
-// The surname from the feed's "SURNAME, NAME", as the column heading over the player's numbers.
+// The surname from "Surname, Given", as the column heading over the player's numbers.
 function surname(playerName) {
-  const last = (playerName ?? "").split(",")[0].trim();
-  return last ? last.charAt(0) + last.slice(1).toLowerCase() : "Player";
+  return (playerName ?? "").split(",")[0].trim() || "Player";
 }
 
 export default function PlayerStatisticsSection({ seasonCode, personKey, phases, phaseCode, onPhaseChange }) {

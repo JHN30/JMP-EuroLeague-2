@@ -1,12 +1,12 @@
 import { test, expect } from "@playwright/test";
-import { ADVANCED, BOX_SCORE, SEASON, mockGameApi, player } from "./support/game-fixtures";
+import { ADVANCED, BOX_SCORE, SEASON, mockGameApi, player, shownName } from "./support/game-fixtures";
 import { HEIGHT, findPageOverflow } from "./support/layout";
 
 const crest = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='10'/>";
 const headshot = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='30' height='40'><rect width='30' height='40' fill='gray'/></svg>";
-// The feed writes "LAST, FIRST"; the table shows "LAST FIRST".
+// Names are stored as "Surname, Given"; the table shows "Given Surname".
 const FEED_LONG_NAME = "MILLER-MCINTYRE-WHITAKER-ALEXANDROPOULOS, CODI";
-const LONG_NAME = "MILLER-MCINTYRE-WHITAKER-ALEXANDROPOULOS CODI";
+const LONG_NAME = "CODI MILLER-MCINTYRE-WHITAKER-ALEXANDROPOULOS";
 
 // The two shown players come first: one with a very long hyphenated name, no jersey number and a three-digit stat, one with a
 // headshot and a jersey number; the fixture's own players follow (and have advanced rows).
@@ -126,7 +126,7 @@ for (const view of ["Traditional", "Advanced"]) {
       expect(names.every((entry) => entry.inside)).toBe(true);
       // A word is never cut across two lines (the long name above is the one exception: its first word is wider than the column).
       for (const { personName } of ORDINARY) {
-        const words = await table.getByRole("link", { name: personName.replace(",", "") }).evaluate((a) => {
+        const words = await table.getByRole("link", { name: shownName(personName) }).evaluate((a) => {
           const split = [];
           let index = 0;
           for (const word of a.firstChild.textContent.split(/(\s+)/)) {
@@ -158,7 +158,7 @@ for (const view of ["Traditional", "Advanced"]) {
       expect(away.pinnedLeft).toBe(0);
       expect(away.stickyAll).toBe(true);
       // Folded, the headshot takes the jersey number's place and stays inside the cell; a player without a headshot keeps the number.
-      const photo = await table.locator("tbody tr", { hasText: "LIGHTY DAVID" }).locator("td:first-child").evaluate((cell) => {
+      const photo = await table.locator("tbody tr", { hasText: "DAVID LIGHTY" }).locator("td:first-child").evaluate((cell) => {
         const image = cell.querySelector(".box-score-photo");
         const rect = image.getBoundingClientRect();
         const box = cell.getBoundingClientRect();

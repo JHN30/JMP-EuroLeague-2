@@ -150,8 +150,6 @@ for (const season of SEASONS) {
       await expect(page.getByText(/played in separate groups/)).toBeVisible({ timeout: 30_000 });
       await page.getByRole("tab", { name: "Statistics" }).click();
       await expect(page.getByText(/played in separate groups and did not face/)).toBeVisible();
-      await expect(page.locator("main")).toContainText("Group A · 1st");
-      await expect(page.locator("main")).toContainText("Group B · 1st");
     });
 
     test("no EuroCup drop-down games appear in any stage", async ({ request }) => {

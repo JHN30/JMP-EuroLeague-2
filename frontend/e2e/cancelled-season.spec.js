@@ -24,7 +24,8 @@ test("the cancelled archive separates planned games, suspension standings and pl
   const { format } = await get(request, "/format");
   expect(format).toMatchObject({ status: "cancelled", plannedClubs: 18, issues: [] });
   expect(format.stages.map((stage) => stage.code)).toEqual(["RS"]);
-  expect(format.stages[0]).toMatchObject({ gamesPerClub: 34, qualification: [], dataState: "partial", observed: { gamesPlayed: 252, gamesTotal: 306 } });
+  // The 54 unplayed games are cancelled (`status`), so they are not owed and the stage counts as loaded.
+  expect(format.stages[0]).toMatchObject({ gamesPerClub: 34, qualification: [], dataState: "loaded", observed: { gamesPlayed: 252, gamesTotal: 306 } });
   expect(format.exceptions[0]).toMatchObject({ kind: "cancelled", suspendedOn: "2020-03-12", cancelledOn: "2020-05-25" });
   expect(tableTiers({ ...format, stages: [{ ...format.stages[0], qualification: [{ positions: [1, 8], within: "table", kind: "direct" }] }] }, "RS")).toBeNull();
   expect(competitionNotes(format, "2020", { gameCode: 253 })).toEqual([]);
@@ -63,7 +64,7 @@ test("the cancelled archive separates planned games, suspension standings and pl
   expect(players.length).toBeGreaterThan(0);
   expect(players.every((row) => row.qualified && row.minGames === 15 && Number(row.traditional.gamesPlayed) >= 15)).toBe(true);
   const per = await get(request, "/records/player-seasons?metric=per");
-  expect(per.minGames).toBe(20);
+  expect(per.minGames).toBe(23);
   expect(per.records).toEqual(expect.arrayContaining([expect.objectContaining({ seasonCode: "E2019", personKey: "007200", gamesPlayed: 25 })]));
   for (const kind of ["player-seasons", "team-seasons", "single-games", "team-games"]) expect((await get(request, `/records/${kind}?metric=pointsScored`)).records.length).toBeGreaterThan(0);
   const scoring = await get(request, "/records/single-games?metric=pointsScored");

@@ -5,12 +5,12 @@ import { Link } from "react-router";
 import { shortTeamName, teamCode } from "../games/gameUtils";
 import { getPlayerGames, getTeamGames } from "../lib/api";
 import AsyncState from "../lib/AsyncState";
-import { PlayerFormBodySkeleton, PlayerOverviewSkeleton } from "./CompareSkeleton";
+import { PlayerFormBodySkeleton, PlayerHighsBodySkeleton, PlayerMeetingsBodySkeleton, PlayerOverviewSkeleton } from "./CompareSkeleton";
 import { formatDate, formatDateTime, formatPerGame } from "../lib/format";
 import { barFill, listContainer, listItem, sectionContainer, sectionItem } from "../lib/motion";
 import Panel from "../lib/Panel";
 import PanelHeader from "../lib/PanelHeader";
-import { nameParts, titleCase } from "../lib/playerName";
+import { displayName } from "../lib/playerName";
 import ShortLabel from "../lib/ShortLabel";
 import { fetchLeagueLeaderboard, leaderboardQueryKey } from "../players/leagueLeaderboard";
 import { PROFILE_AXES, SEASON_LINE, rankPlayer, statNumber } from "../players/playerOverview";
@@ -40,8 +40,7 @@ const LINE_KEYS = LINE_STATS.map((stat) => stat.key);
 
 const nameOf = (player, fallback) => {
   if (!player) return fallback;
-  const { last, first } = nameParts(player.playerName);
-  return `${titleCase(first)} ${titleCase(last)}`.trim();
+  return displayName(player.playerName);
 };
 
 // The short names of the two players across the tab, as the radar names them: their last names, or their full names when the last
@@ -429,7 +428,7 @@ function MeetingsPanel({ games, entityA, entityB, playerA, playerB, seasonCode }
   const [nameA, nameB] = shortNames(entityA, entityB, playerA, playerB);
   let body;
   if (games.status !== "ready") {
-    body = <GamesState games={games} />;
+    body = <GamesState games={games} skeleton={<PlayerMeetingsBodySkeleton />} />;
   } else {
     const { met, together } = sharedGames(games.viewsA, games.viewsB);
     const pirOf = (side) => met.reduce((sum, meeting) => sum + meeting[side].pir, 0) / met.length;
@@ -520,7 +519,7 @@ function HighsPanel({ games, entityA, entityB, playerA, playerB, seasonCode }) {
   const [nameA, nameB] = shortNames(entityA, entityB, playerA, playerB);
   let body;
   if (games.status !== "ready") {
-    body = <GamesState games={games} />;
+    body = <GamesState games={games} skeleton={<PlayerHighsBodySkeleton />} />;
   } else {
     const highsA = seasonHighGames(games.viewsA, LINE_KEYS);
     const highsB = seasonHighGames(games.viewsB, LINE_KEYS);

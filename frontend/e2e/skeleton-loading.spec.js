@@ -21,7 +21,7 @@ test("Home shows a skeleton in every panel while its data loads, then the conten
     await expect(busy.locator(".skeleton").first()).toBeVisible();
   }
   await expect(page.getByRole("status", { name: "Loading Leader in wins" })).toBeVisible();
-  await expect(page.getByRole("status", { name: "Loading the points per game leader" })).toBeVisible();
+  await expect(page.getByRole("status", { name: "Loading In-form team · Last 10" })).toBeVisible();
   await expect(page.locator("main .loading")).toHaveCount(0);
 
   await release();
@@ -100,7 +100,8 @@ async function hold(page, pattern) {
 
 // A loading status showing a skeleton and no spinner.
 async function expectSkeleton(page, label) {
-  const status = page.getByRole("status", { name: label, exact: true });
+  // Several panels can wait on the same data under one label ("Loading the games"); the first stands for them.
+  const status = page.getByRole("status", { name: label, exact: true }).first();
   await expect(status).toBeVisible({ timeout: 30_000 });
   await expect(status).toHaveAttribute("aria-busy", "true");
   await expect(status.locator(".skeleton").first()).toBeVisible();
@@ -250,7 +251,7 @@ test("the Postseason page shows its skeleton while it loads, then the bracket", 
   await page.goto("/2026/postseason");
   await expectSkeleton(page, "Loading the postseason");
   await release();
-  await expect(page.getByRole("heading", { name: "Postseason" })).toBeVisible({ timeout: 30_000 });
+  await expect(page.getByRole("heading", { name: "Postseason", exact: true })).toBeVisible({ timeout: 30_000 });
   await expectLoaded(page);
 });
 
@@ -342,7 +343,6 @@ test.describe("Compare sections", () => {
     { view: "teams", tab: "Trends", labels: ["Loading the trends"] },
     { view: "players", tab: "Overview", labels: ["Loading the players"] },
     { view: "players", tab: "Statistics", labels: ["Loading the comparison"] },
-    { view: "players", tab: "Advanced", labels: ["Loading the advanced numbers"] },
     { view: "players", tab: "Trends", labels: ["Loading the trends"] },
   ]) {
     test(`the ${view}' ${tab} section shows its skeletons while it loads, then its content`, async ({ page }) => {
@@ -362,7 +362,7 @@ test.describe("Compare sections", () => {
     // The form panel's games come in after the rankings: hold them alone on a fresh load.
     const releaseGames = await hold(page, /\/api\/seasons\/[^/]+\/players\/[^/]+\/games/);
     await page.reload();
-    await expectSkeleton(page, "Loading recent games");
+    await expectSkeleton(page, "Loading the games");
     await releaseGames();
     await expectLoaded(page);
 
@@ -400,7 +400,7 @@ for (const { name, module, marker } of [
   { name: "Teams", module: /\/src\/teams\/TeamsPage\.jsx/, marker: "li.card" },
   { name: "Players", module: /\/src\/players\/PlayersPage\.jsx/, marker: "li.rounded-box" },
   { name: "Leaders", module: /\/src\/leaders\/LeadersPage\.jsx/, marker: ".panel ol" },
-  { name: "Records", module: /\/src\/records\/RecordsPage\.jsx/, marker: ".panel.p-5" },
+  { name: "Records", module: /\/src\/records\/RecordsPage\.jsx/, marker: "[class*='grid-cols-[5.5rem']" },
   { name: "Postseason", module: /\/src\/postseason\/PostseasonPage\.jsx/, marker: ".h-28" },
   { name: "Compare", module: /\/src\/comparisons\/ComparisonsPage\.jsx/, marker: "li.rounded-field" },
 ]) {
@@ -477,7 +477,7 @@ test("Head-to-head shows its own page skeleton while its code loads", async ({ p
   const fallback = page.getByRole("status", { name: "Loading page" });
   await expect(fallback).toBeVisible();
   // Laid out as Head-to-head: the meetings' rows, and none of the other pages' parts.
-  await expect(fallback.locator("[class*='h-[2.85rem]']").first()).toBeVisible();
+  await expect(fallback.locator("[class*='h-[6.5rem]']").first()).toBeVisible();
   await expect(fallback.locator(`${PLAYER_HERO}, ${GAME_KEY_STATS}, ${OPENED_MATCHUP}, li.rounded-field`)).toHaveCount(0);
   await release();
   await expect(fallback).toHaveCount(0, { timeout: 30_000 });

@@ -259,19 +259,23 @@ test("the roster table pins a narrow player column below 640px, swipes inside it
   const links = box.locator("tbody td:first-child a");
   await expect(links.first()).toBeVisible({ timeout: 30_000 });
 
-  // The names as the feed has them ("LAST, FIRST"), to compare with.
+  // The names as stored ("Surname, Given"), to compare with.
   const { registrations } = await (await page.request.get(`${API}/${code}/teams/${team.clubCode}/roster?limit=100`)).json();
   const feedNames = registrations.filter((entry) => entry.player?.name).map((entry) => entry.player.name);
   expect(feedNames.length).toBeGreaterThan(5);
-  // The last name is what the feed has before the comma ("ALSTON JR., ALAN" is ALSTON JR.).
-  const lastNames = new Map(feedNames.map((name) => [name.replace(/\s*,\s*/g, " "), name.split(",")[0].trim()]));
+  // The full name reads given name first ("Alston Jr., Alan" is "Alan Alston Jr."); the last name is what comes before the comma.
+  const fullName = (name) => {
+    const [last, first = ""] = name.split(",").map((part) => part.trim());
+    return `${first} ${last}`.trim();
+  };
+  const lastNames = new Map(feedNames.map((name) => [fullName(name), name.split(",")[0].trim()]));
 
   await atWidths(page, WIDTHS, async (width) => {
     const phone = width < 640;
-    // Every player's link is titled by the full name without a comma, and shows the last name only on a phone.
+    // Every player's link is titled by the full name, given name first, and shows the last name only on a phone.
     const names = await links.evaluateAll((els) => els.map((el) => el.getAttribute("title")));
     for (const name of names) expect(name).not.toContain(",");
-    expect(new Set(names)).toEqual(new Set(feedNames.map((name) => name.replace(/\s*,\s*/g, " "))));
+    expect(new Set(names)).toEqual(new Set(feedNames.map(fullName)));
     const shown = await links.evaluateAll((els) =>
       els.map((el) =>
         [...el.querySelectorAll(".relative > span")]
@@ -391,8 +395,8 @@ test("awkward rosters keep their cards and table tidy at 320px: a long name, no 
     ROSTER([
       player("p1", LONG),
       player("p2", "NO NUMBER, NED", { dorsal: null }),
-      player("p3", "BENCH, BEN"),
-      player("p4", "FORMER, FRANK", { active: false }),
+      player("p3", "Bench, Ben"),
+      player("p4", "Former, Frank", { active: false }),
       player("p5", "ONENAME"),
     ]),
   );
@@ -425,7 +429,7 @@ test("awkward rosters keep their cards and table tidy at 320px: a long name, no 
   const rows = page.locator("#team-roster-panel tbody tr");
   await expect(rows).toHaveCount(5);
   await expect(page.locator("#team-roster-panel .badge", { hasText: "Former" })).toBeVisible();
-  await expect(page.getByRole("link", { name: "MILLER-MCINTYRE-WHITAKER-ALEXANDROPOULOS CODI-JEREMIAH" })).toHaveCount(1);
+  await expect(page.getByRole("link", { name: "CODI-JEREMIAH MILLER-MCINTYRE-WHITAKER-ALEXANDROPOULOS" })).toHaveCount(1);
   // The pinned column does not grow with a long name.
   const widest = await page.locator("#team-roster-panel tbody td:first-child").evaluateAll((els) => Math.max(...els.map((el) => el.getBoundingClientRect().width)));
   const panelWidth = (await page.locator("#team-roster-panel .panel").boundingBox()).width;

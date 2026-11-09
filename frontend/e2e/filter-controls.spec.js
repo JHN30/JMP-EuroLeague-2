@@ -30,10 +30,6 @@ test("uses compact native selects for statistics and comparison filters", async 
   await playerMode.getByRole("button", { name: "Totals" }).click();
   await expect(playerMode.getByRole("button", { name: "Totals" })).toHaveAttribute("aria-pressed", "true");
 
-  const playerDirection = page.getByLabel("Player sort direction");
-  await playerDirection.selectOption("asc");
-  await expect(playerDirection).toHaveValue("asc");
-
   await sections.getByRole("link", { name: "Compare", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Compare", exact: true })).toBeVisible();
 

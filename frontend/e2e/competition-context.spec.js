@@ -178,8 +178,9 @@ for (const season of ["2020", "2022"]) {
       expect(data.records.length).toBeLessThanOrEqual(50);
     }
     const data = await get(request, season, "/records/player-seasons?metric=per");
-    expect(data.minGames).toBe(20);
+    // Records count 67% of the 34 regular-season games.
+    expect(data.minGames).toBe(23);
     expect(data.records.every((row) => row.gamesPlayed >= row.minGames)).toBe(true);
-    for (const row of data.records.filter((row) => row.seasonCode === `E${season}` || row.seasonCode === season)) expect(row.minGames).toBe(20);
+    for (const row of data.records.filter((row) => row.seasonCode === `E${season}` || row.seasonCode === season)) expect(row.minGames).toBe(23);
   });
 }

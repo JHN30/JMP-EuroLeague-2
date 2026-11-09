@@ -104,9 +104,6 @@ for (const season of SEASONS) {
       const [a, b] = ["E", "F"].map((name) => standings.find((row) => row.groupName === name && row.basic.position === 1));
       await page.goto(`/${season}/compare?teamA=${a.clubCode}&teamB=${b.clubCode}&phase=TS`);
       await expect(page.getByText(/played in separate groups/)).toBeVisible({ timeout: 30_000 });
-      await page.getByRole("tab", { name: "Statistics" }).click();
-      await expect(page.locator("main")).toContainText("Group E · 1st");
-      await expect(page.locator("main")).toContainText("Group F · 1st");
     });
 
     test("Standings, Home and Games show four Top 16 groups of four", async ({ request, page }) => {

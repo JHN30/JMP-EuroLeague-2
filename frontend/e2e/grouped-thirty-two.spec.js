@@ -197,5 +197,7 @@ test("E2003 Head to head leaves the forfeit out of notable meetings and labels i
   await expect(notable).toBeVisible({ timeout: 30_000 });
   await expect(notable).not.toContainText("20-0");
   await expect(notable).not.toContainText("0-20");
+  // The history lists the latest meetings; the 2003 forfeit is among the older ones.
+  await page.getByRole("button", { name: /^Show all \d+ meetings$/ }).click();
   await expect(page.getByText("Forfeit", { exact: true }).first()).toBeVisible();
 });

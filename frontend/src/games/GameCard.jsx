@@ -3,7 +3,7 @@ import { Link } from "react-router";
 import { formatShortDate, formatTimeOfDay } from "../lib/format";
 import { centerPop, listItem, wideCardHover } from "../lib/motion";
 import PlayerPortrait from "../lib/PlayerPortrait";
-import { displayName, nameParts, titleCase } from "../lib/playerName";
+import { displayName, nameParts } from "../lib/playerName";
 import ShortLabel from "../lib/ShortLabel";
 import { FormCell } from "../standings/standingsCells";
 import { groupPositionLabel } from "../standings/standingsGroups";
@@ -14,7 +14,7 @@ const MotionLink = motion.create(Link);
 // A side's top scorer, as plain text: the card is already one link to the game. The surname alone below sm.
 function TopScorer({ scorer }) {
   const full = displayName(scorer.personName ?? scorer.personKey);
-  const surname = titleCase(nameParts(scorer.personName ?? scorer.personKey).last) || full;
+  const surname = nameParts(scorer.personName ?? scorer.personKey).last || full;
   return (
     <span className="fixture-scorer" title={`${full}, ${scorer.points} points`}>
       <PlayerPortrait imageUrl={scorer.headshotUrl} className="fixture-scorer-photo" />

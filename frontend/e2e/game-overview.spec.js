@@ -24,9 +24,9 @@ test("the game page opens on the Overview tab with a line score and totals", asy
 });
 
 const OFFICIALS = [
-  { number: 1, code: "O1", name: "JAVOR, DAMIR", countryCode: "SLO", countryName: "Slovenia" },
-  { number: 2, code: "O2", name: "ALIAGA, JORDI", countryCode: "ESP", countryName: "Spain" },
-  { number: 3, code: "O3", name: "GIOVANNETTI, GUIDO", countryCode: "ITA", countryName: "Italy" },
+  { number: 1, code: "O1", name: "Javor, Damir", countryCode: "SLO", countryName: "Slovenia" },
+  { number: 2, code: "O2", name: "Aliaga, Jordi", countryCode: "ESP", countryName: "Spain" },
+  { number: 3, code: "O3", name: "Giovannetti, Guido", countryCode: "ITA", countryName: "Italy" },
 ];
 // The officials' entry in the game header's match information.
 const officialsInHeader = (page) => page.locator("dl > div", { has: page.locator("dt", { hasText: /^Officials$/ }) }).locator("dd");
@@ -41,9 +41,9 @@ test("the game reply lists its officials in the feed's order, and an empty list 
     expect(Object.keys(official).sort()).toEqual(["code", "countryCode", "countryName", "name", "number"]);
     expect(official.name).toMatch(/^[^,]+, .+$/);
   }
-  expect(officials[0]).toMatchObject({ name: "JAVOR, DAMIR", countryName: "Slovenia" });
+  expect(officials[0]).toMatchObject({ name: "Javor, Damir", countryName: "Slovenia" });
   // The furthest-off game still to come in the season in progress: officials are assigned only shortly before a game.
-  const { games } = await (await request.get("http://localhost:3000/api/seasons/2026/games?limit=100")).json();
+  const { games } = await (await request.get("http://localhost:3000/api/seasons/2026/games?status=scheduled&limit=100")).json();
   const unplayed = games.filter((entry) => !entry.played).sort((a, b) => new Date(b.scheduledAt) - new Date(a.scheduledAt))[0];
   const later = await (await request.get(`http://localhost:3000/api/seasons/2026/games/${unplayed.gameCode}`)).json();
   expect(later.game.gameCode).toBe(unplayed.gameCode);

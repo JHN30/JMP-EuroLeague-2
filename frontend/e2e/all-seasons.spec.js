@@ -121,7 +121,7 @@ test.describe("every season", () => {
         const name = teams.find((team) => team.clubCode === CHAMPION[year]).name;
         await expect(page.getByText(`${name} are the champions`)).toBeVisible({ timeout: TIMEOUT });
       } else {
-        await expect(page.getByRole("heading", { name: "Postseason" })).toBeVisible({ timeout: TIMEOUT });
+        await expect(page.getByRole("heading", { name: "Postseason", exact: true })).toBeVisible({ timeout: TIMEOUT });
         await expect(page.getByText(/are the champions/)).toHaveCount(0);
       }
     });

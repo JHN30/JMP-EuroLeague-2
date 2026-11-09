@@ -38,7 +38,7 @@ type GameRow = {
   phaseCode: string | null;
   roundNumber: number | null;
   played: boolean | null;
-  gameStatus: string | null;
+  status: string | null;
   localClubCode: string | null;
   roadClubCode: string | null;
 };
@@ -47,7 +47,7 @@ type StandingRow = { clubCode: string; groupName: string | null; gamesPlayed: nu
 
 const sorted = (values: Iterable<string>) => [...values].sort((left, right) => (left < right ? -1 : left > right ? 1 : 0));
 // A game the league cancelled is not owed, so it neither counts against loading nor keeps a stage open.
-const owed = (game: GameRow) => game.gameStatus !== "Cancelled";
+const owed = (game: GameRow) => game.status !== "cancelled";
 
 async function latestStandings(seasonCode: string, phaseCode: string): Promise<StandingRow[]> {
   const round = await getLatestStandingsRound(seasonCode, phaseCode);
@@ -90,7 +90,7 @@ export async function getSeasonFormat(seasonCode: string): Promise<SeasonFormatR
         phaseCode: games.phaseCode,
         roundNumber: games.roundNumber,
         played: games.played,
-        gameStatus: games.gameStatus,
+        status: games.status,
         localClubCode: games.localClubCode,
         roadClubCode: games.roadClubCode,
       })

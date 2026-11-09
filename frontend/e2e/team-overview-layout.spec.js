@@ -343,7 +343,7 @@ test("a club without a crest or a TV code, with a long name, keeps its header ti
   const leaders = page.getByRole("group", { name: "Team leaders" });
   await expect(leaders.locator("a")).toHaveCount(4, { timeout: 30_000 });
   await expect(page.getByRole("heading", { level: 1 })).toHaveText(long);
-  await expect(leaders.locator(".name").first()).toHaveText(LONG_PLAYER.replace(", ", " "));
+  await expect(leaders.locator(".name").first()).toHaveText("CODI MILLER-MCINTYRE-WHITAKER-ALEXANDROPOULOS");
 
   await atWidths(page, [320, 390, 639, 640, 1024], async () => {
     const heading = page.getByRole("heading", { level: 1 });

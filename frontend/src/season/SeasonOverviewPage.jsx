@@ -9,7 +9,7 @@ import { SkeletonChip } from "../lib/Skeleton";
 import OverviewSkeleton, { SummarySkeleton } from "./OverviewSkeleton";
 import { ClubLabel, HomeVsRoad, MostValuable, SeasonHighs } from "./OverviewExtras";
 import { cardHover, listContainer, listItem, sectionContainer, sectionItem } from "../lib/motion";
-import { withoutComma } from "../lib/playerName";
+import { displayName } from "../lib/playerName";
 import Panel from "../lib/Panel";
 import PanelHeader from "../lib/PanelHeader";
 import PageHeader from "../lib/PageHeader";
@@ -566,7 +566,7 @@ function LeaderCard({ seasonCode, category, phaseCode }) {
     >
       <div className="kpi-chip-body">
         <span className="label">{category.label}</span>
-        <span className="name">{withoutComma(leader.playerName ?? leader.personKey)}</span>
+        <span className="name">{displayName(leader.playerName ?? leader.personKey)}</span>
         <ClubLabel seasonCode={seasonCode} clubCode={leader.clubCode} tvCodes={leader.clubTvCodes} fullName={leader.clubName} />
         <span className="value">{leader.traditional[category.key] ?? "-"}</span>
       </div>

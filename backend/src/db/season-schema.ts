@@ -43,6 +43,7 @@ export const games = pgTable(
     scheduledAt: timestamp("scheduled_at", { withTimezone: true }),
     played: boolean("played"),
     gameStatus: text("game_status"),
+    status: text("status"),
     localClubCode: text("local_club_code"),
     localClubName: text("local_club_name"),
     localClubAbbreviatedName: text("local_club_abbreviated_name"),

@@ -491,6 +491,24 @@ function MirroredRows({ rows }) {
   ));
 }
 
+// The player Overview's "When they met" body while the game logs load.
+export function PlayerMeetingsBodySkeleton() {
+  return (
+    <div aria-hidden="true">
+      <MirroredRows rows={2} />
+    </div>
+  );
+}
+
+// The player Overview's "Season highs" body while the game logs load: one row per stat (PTS, REB, AST, STL, BLK, PIR).
+export function PlayerHighsBodySkeleton() {
+  return (
+    <div aria-hidden="true">
+      <MirroredRows rows={6} />
+    </div>
+  );
+}
+
 // The player Overview, as `ComparePlayerOverview` lays it out: the slim pair header, the profile radar beside the season line, recent
 // form, then the games they met in beside their season highs.
 export function PlayerOverviewSkeleton() {
@@ -530,11 +548,11 @@ export function PlayerOverviewSkeleton() {
       <div className="grid items-start gap-6 lg:grid-cols-2">
         <div className="panel p-4">
           <SkeletonPanelHead title="w-32" />
-          <MirroredRows rows={2} />
+          <PlayerMeetingsBodySkeleton />
         </div>
         <div className="panel p-4">
           <SkeletonPanelHead title="w-28" />
-          <MirroredRows rows={4} />
+          <PlayerHighsBodySkeleton />
         </div>
       </div>
     </div>

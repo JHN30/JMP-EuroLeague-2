@@ -75,7 +75,7 @@ test.describe("pages", () => {
       await expect(note(page), path).toHaveCount(0);
     }
     await page.goto("/2010/postseason");
-    await expect(page.getByRole("heading", { name: "Postseason" })).toBeVisible({ timeout: 30_000 });
+    await expect(page.getByRole("heading", { name: "Postseason", exact: true })).toBeVisible({ timeout: 30_000 });
     await expect(note(page)).toHaveCount(0);
   });
 

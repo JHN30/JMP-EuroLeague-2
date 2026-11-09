@@ -1,23 +1,19 @@
-// The feed writes names as "LAUVERGNE, JOFFREY" -> { last: "LAUVERGNE", first: "JOFFREY" }.
-// "ALSTON JR." -> "Alston Jr.": the feed writes names in capitals, which reads as shouting inside a sentence.
-export function titleCase(text) {
+// Person names arrive in display form, "Surname, Given" ("Brown III, John", "Dozier, PJ"), and are shown as stored:
+// re-casing them would break suffixes and inner capitals ("III" -> "Iii", "McCarty" -> "Mccarty").
+
+// Venue names still arrive in capitals ("BELGRADE ARENA"); the occasional name with its own lower-case letters is kept.
+function titleCase(text) {
   return (text ?? "").toLowerCase().replace(/(^|[\s-])(\p{L})/gu, (match, lead, letter) => lead + letter.toUpperCase());
 }
 
-// The feed writes some names in capitals ("ATHENS") and some as they read ("Madrid"): only the capitals are recased.
 export function readableName(name) {
   return /[a-z]/.test(name) ? name : titleCase(name);
 }
 
-// "JONES, CARLIK" as it reads in a title or a sentence: "Carlik Jones".
+// "Jones, Carlik" as it reads in a title or a sentence: "Carlik Jones".
 export function displayName(fullName) {
   const { last, first } = nameParts(fullName);
-  return (titleCase(first) + " " + titleCase(last)).trim();
-}
-
-// "HIFI, NADIR" without the feed's comma: "HIFI NADIR".
-export function withoutComma(fullName) {
-  return (fullName ?? "").replace(/\s*,\s*/g, " ");
+  return `${first} ${last}`.trim();
 }
 
 export function nameParts(fullName) {

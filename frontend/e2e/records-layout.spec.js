@@ -160,7 +160,7 @@ test("the metric select on a phone lists every metric in two sections and a choi
 const LONG = {
   seasonCode: "2025",
   personKey: "p1",
-  playerName: "WOLFESCHLEGELSTEINHAUSENBERGERDORFF, HUBERTMAXIMILIANALEXANDER",
+  playerName: "Wolfeschlegelsteinhausenbergerdorff, Hubertmaximilianalexander",
   clubName: "Very Long Club Name Of The Anadolu Efes Istanbul Basketball Association",
   clubTvCodes: "VLC",
   playerImageUrl: null,

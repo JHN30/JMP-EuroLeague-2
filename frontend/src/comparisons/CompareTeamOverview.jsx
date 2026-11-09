@@ -8,7 +8,7 @@ import { TeamFormBodySkeleton, TeamMatchupSkeleton, TeamWatchBodySkeleton } from
 import { formatSeasonLabel, formatShortDate } from "../lib/format";
 import { sectionContainer, sectionItem } from "../lib/motion";
 import Panel from "../lib/Panel";
-import { nameParts, titleCase } from "../lib/playerName";
+import { displayName as fullName } from "../lib/playerName";
 import RevealImage from "../lib/RevealImage";
 import { isForfeit } from "../lib/forfeit";
 import ShortLabel from "../lib/ShortLabel";
@@ -253,10 +253,7 @@ function topScorers(statsByPersonKey) {
     .slice(0, 3);
 }
 
-function displayName(player) {
-  const { last, first } = nameParts(player.playerName);
-  return `${titleCase(first)} ${titleCase(last)}`.trim();
-}
+const displayName = (player) => fullName(player.playerName);
 
 function ScorerList({ players, seasonCode, club }) {
   return (

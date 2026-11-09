@@ -145,8 +145,8 @@ const recordLine = (card) => card.locator("p.muted.text-xs");
 test("each card shows the club's city with its country and its regular-season place and record", async ({ page }) => {
   const { slug } = await liveSeason(page);
   await mockTeams(page, [
-    team("AAA", { city: "ATHENS" }),
-    team("BBB", { city: "ROMA", countryCode: "ITA" }),
+    team("AAA", { city: "Athens" }),
+    team("BBB", { city: "Roma", countryCode: "ITA" }),
     team("CCC", { city: null }),
     team("DDD", { city: "Saint Petersburg", countryCode: "RUS" }),
     team("EEE", { city: "Madrid", countryCode: null }),
@@ -156,7 +156,7 @@ test("each card shows the club's city with its country and its regular-season pl
   await expect(cards(page)).toHaveCount(5);
   await expect(recordLine(cards(page).nth(0))).toHaveText("3rd · 22-12");
 
-  // Capitals are recased, a known bad value is corrected, and a missing city or country leaves the other alone.
+  // The stored city is shown as is, a local spelling reads in English, and a missing city or country leaves the other alone.
   await expect(placeLine(cards(page).nth(0))).toHaveText("Athens · GRE");
   await expect(placeLine(cards(page).nth(1))).toHaveText("Rome · ITA");
   await expect(placeLine(cards(page).nth(2))).toHaveText("GRE");

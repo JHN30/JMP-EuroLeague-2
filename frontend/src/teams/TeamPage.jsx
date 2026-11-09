@@ -22,7 +22,7 @@ import HomeAwayIcon from "../lib/HomeAwayIcon";
 import { barFill, cardHover, listContainer, listItem } from "../lib/motion";
 import Panel from "../lib/Panel";
 import PageHeader from "../lib/PageHeader";
-import { readableName, withoutComma } from "../lib/playerName";
+import { displayName, readableName } from "../lib/playerName";
 import PanelHeader from "../lib/PanelHeader";
 import RevealImage from "../lib/RevealImage";
 import ShortLabel from "../lib/ShortLabel";
@@ -31,6 +31,7 @@ import { useDocumentTitle } from "../lib/useDocumentTitle";
 import { useMediaQuery } from "../lib/useMediaQuery";
 import { usePhaseParam } from "../lib/usePhaseParam";
 import { useSeasonFormat } from "../lib/useSeasonFormat";
+import { cityName } from "./cityName";
 import TeamAdvancedSection from "./TeamAdvancedSection";
 import TeamGamesSection from "./TeamGamesSection";
 import TeamLeagueProfile from "./TeamLeagueProfile";
@@ -89,7 +90,7 @@ function ClubFacts({ club, countryCode }) {
       : `${club.seasonsPlayed} EuroLeague seasons since ${formatSeasonLabel(club.firstSeasonCode)}`
     : null;
   const facts = [
-    club?.city ? readableName(club.city) : null,
+    cityName(club?.city),
     countryCode ?? null,
     club?.arena ? readableName(club.arena) : null,
     host ? (
@@ -306,7 +307,7 @@ function TeamSnapshot({ standingsQuery, teamStatsQuery, clubCode, phaseGames, st
     .sort((a, b) => new Date(a.scheduledAt) - new Date(b.scheduledAt))
     .slice(-FORM_PILL_COUNT)
     .map((game) => gameResult(game, clubCode));
-  const gamesRemaining = phaseGames.filter((game) => !game.played && game.gameStatus !== "Cancelled").length;
+  const gamesRemaining = phaseGames.filter((game) => !game.played && game.status !== "cancelled").length;
 
   // Points per game from the team totals, which count overtime like the Statistics tab; the standings' points are
   // regulation time only.
@@ -442,7 +443,7 @@ function TeamLeaders({ seasonCode, rosterStatsQuery, stageName }) {
           >
             <div className="kpi-chip-body">
               <span className="label">{category.label}</span>
-              <span className="name">{withoutComma(leader.player.playerName ?? leader.player.personKey)}</span>
+              <span className="name">{displayName(leader.player.playerName ?? leader.player.personKey)}</span>
               <span className="value">{formatPerGame(leader.value)}</span>
             </div>
             {leader.player.playerImageUrl ? (

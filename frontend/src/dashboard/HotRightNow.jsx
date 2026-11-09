@@ -6,7 +6,7 @@ import AsyncState from "../lib/AsyncState";
 import { cardHover, listContainer, listItem } from "../lib/motion";
 import { PHASE_NAMES } from "../lib/phaseSummary";
 import { useCurrentPhaseCode } from "../lib/useCurrentPhaseCode";
-import { withoutComma } from "../lib/playerName";
+import { displayName } from "../lib/playerName";
 import LeaderPhoto from "../lib/LeaderPhoto";
 import { SkeletonChip } from "../lib/Skeleton";
 import { WidgetPanel } from "./Dashboard";
@@ -50,7 +50,7 @@ function HotCard({ seasonCode, stat, player }) {
     <MotionLink to={`/${seasonCode}/players/${player.personKey}`} className="kpi-chip kpi-chip-link" variants={listItem} {...cardHover}>
       <div className="kpi-chip-body">
         <span className="label">{stat.label} · last {FORM_GAMES}</span>
-        <span className="name">{withoutComma(player.playerName ?? player.personKey)}</span>
+        <span className="name">{displayName(player.playerName ?? player.personKey)}</span>
         <span className="club">{player.clubName ?? player.clubCode}</span>
         <span className="value">{recent.toFixed(1)}</span>
         {season != null ? <span className="muted text-xs tabular-nums">Season {season.toFixed(1)}</span> : null}

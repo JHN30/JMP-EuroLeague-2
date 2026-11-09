@@ -36,6 +36,9 @@ export type Game = {
   scheduledAt: string | null;
   played: boolean | null;
   gameStatus: string | null;
+  // The warehouse's derived status (completed, scheduled, awaiting_result, postponed, cancelled); `gameStatus` is the raw source
+  // label, which can contradict the facts and is read only for "Walkover" (a forfeit, which has no status of its own).
+  status: string | null;
   localTeam: GameTeam | null;
   roadTeam: GameTeam | null;
   localScore: number | null;
@@ -61,6 +64,7 @@ const gameFields = {
   scheduledAt: games.scheduledAt,
   played: games.played,
   gameStatus: games.gameStatus,
+  status: games.status,
   localClubCode: games.localClubCode,
   localClubName: games.localClubName,
   localClubAbbreviatedName: games.localClubAbbreviatedName,
@@ -104,6 +108,7 @@ function toGame(row: {
   scheduledAt: Date | null;
   played: boolean | null;
   gameStatus: string | null;
+  status: string | null;
   localClubCode: string | null;
   localClubName: string | null;
   localClubAbbreviatedName: string | null;
@@ -128,6 +133,7 @@ function toGame(row: {
     scheduledAt: row.scheduledAt?.toISOString() ?? null,
     played: row.played,
     gameStatus: row.gameStatus,
+    status: row.status,
     localTeam: gameTeam(row.localClubCode, row.localClubName, row.localClubAbbreviatedName, row.localClubCrestUrl, codes),
     roadTeam: gameTeam(row.roadClubCode, row.roadClubName, row.roadClubAbbreviatedName, row.roadClubCrestUrl, codes),
     localScore: row.localScore,
@@ -141,7 +147,7 @@ function scheduledCondition(seasonCode: string) {
   if (seasonFormat(seasonCode)?.cancelled) return sql`false`;
   return and(
     or(eq(games.played, false), isNull(games.played)),
-    or(isNull(games.gameStatus), sql`${games.gameStatus} <> 'Cancelled'`),
+    or(isNull(games.status), sql`${games.status} <> 'cancelled'`),
   )!;
 }
 

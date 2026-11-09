@@ -11,7 +11,7 @@ import { EASE_OUT, cardHover, listContainer, listItem } from "../lib/motion";
 import Panel from "../lib/Panel";
 import PlayerPortrait from "../lib/PlayerPortrait";
 import ShortLabel from "../lib/ShortLabel";
-import { displayName, nameParts, withoutComma } from "../lib/playerName";
+import { displayName, nameParts } from "../lib/playerName";
 import { TabPanel, TabStrip } from "../lib/TabStrip";
 import StatBarCell from "../statistics/StatBarCell";
 import { barWidthScale } from "../statistics/statBarScale";
@@ -425,10 +425,10 @@ function RosterTable({ registrations, statsByPersonKey, seasonCode, clubCode }) 
                               <Link
                                 to={`/${seasonCode}/players/${entry.player.personKey}`}
                                 className="link link-hover max-w-20 truncate sm:max-w-48"
-                                title={withoutComma(entry.player.name ?? "TBD")}
+                                title={displayName(entry.player.name ?? "TBD")}
                               >
                                 {/* Below sm the pinned column has room for the last name only; the full name stays for screen readers. */}
-                                <ShortLabel short={nameParts(entry.player.name).last} full={withoutComma(entry.player.name ?? "TBD")} />
+                                <ShortLabel short={nameParts(entry.player.name).last} full={displayName(entry.player.name ?? "TBD")} />
                               </Link>
                             ) : (
                               <span className="max-w-32 truncate sm:max-w-48">TBD</span>

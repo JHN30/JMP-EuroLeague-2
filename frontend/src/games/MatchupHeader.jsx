@@ -4,14 +4,17 @@ import { Link } from "react-router";
 import { getSeasonStandings } from "../lib/api";
 import Panel from "../lib/Panel";
 import { formatCount } from "../lib/format";
-import { displayName, titleCase } from "../lib/playerName";
+import { displayName, readableName } from "../lib/playerName";
 import { groupedStageCodes } from "../lib/seasonFormat";
 import { useSeasonFormat } from "../lib/useSeasonFormat";
 import { eliminationStageLabel } from "../postseason/eliminationBracket";
 import { groupPositionLabel } from "../standings/standingsGroups";
 import { teamCode, teamName } from "./gameUtils";
 
-const DATE_FORMAT = { weekday: "short", day: "numeric", month: "short", year: "numeric" };
+// The badge of a game not yet played, from the warehouse's derived status (the source's own label can still say "Confirmed").
+const STATUS_LABELS = { scheduled: "Scheduled", awaiting_result: "Awaiting result", postponed: "Postponed", cancelled: "Cancelled" };
+
+const DATE_FORMAT ={ weekday: "short", day: "numeric", month: "short", year: "numeric" };
 
 function formatGameDate(scheduledAt) {
   return scheduledAt ? new Date(scheduledAt).toLocaleDateString(undefined, DATE_FORMAT) : "TBD";
@@ -80,7 +83,7 @@ function arenaValue(venue, showCapacity) {
   if (!venue?.name) return null;
   return (
     <>
-      {/[a-z]/.test(venue.name) ? venue.name : titleCase(venue.name)}
+      {readableName(venue.name)}
       {showCapacity && venue.capacity ? <span className="muted block text-xs font-normal">Capacity {formatCount(venue.capacity)}</span> : null}
       {venue.neutral ? <span className="muted block text-xs font-normal">Neutral venue</span> : null}
     </>
@@ -130,7 +133,7 @@ export default function MatchupHeader({ game, officials = [], venue = null, seas
           ) : (
             <>
               <p className="text-3xl leading-none font-extrabold tabular-nums sm:text-5xl">{formatTipOff(game.scheduledAt)}</p>
-              <span className="stat-badge stat-badge-neutral inline-flex">{game.gameStatus ?? "Scheduled"}</span>
+              <span className="stat-badge stat-badge-neutral inline-flex">{STATUS_LABELS[game.status] ?? "Scheduled"}</span>
             </>
           )}
         </div>

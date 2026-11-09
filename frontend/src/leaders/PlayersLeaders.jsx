@@ -10,7 +10,7 @@ import { formatSignedDecimal } from "../lib/format";
 import { listContainer } from "../lib/motion";
 import Panel from "../lib/Panel";
 import PanelHeader from "../lib/PanelHeader";
-import { nameParts, titleCase } from "../lib/playerName";
+import { displayName as fullName } from "../lib/playerName";
 import { TabStrip } from "../lib/TabStrip";
 import { Avatar, BarSearch, BarSelect, BOARD_AVATAR, BoardBar, BoardHeader, BoardPager, BoardRow, CardGrid, CategoryCard, LeadersToolbar, ModeToggle, RankBadge, StatSelect, TeamTag } from "./LeaderParts";
 import { barShare, fetchQualifiedPool, formatPlayerValue, hasVolume, playerValue, rankRows, statNumber, volumeText } from "./leaderData";
@@ -29,10 +29,7 @@ const minutesPerGame = (player, mode) => {
   if (minutes === null) return "—";
   return (mode === "perGame" ? minutes : games ? minutes / games : 0).toFixed(1);
 };
-const displayName = (player) => {
-  const { last, first } = nameParts(player.playerName ?? player.personKey);
-  return `${titleCase(first)} ${titleCase(last)}`.trim();
-};
+const displayName = (player) => fullName(player.playerName ?? player.personKey);
 const teamOf = (player) => ({ code: player.clubCode, name: player.clubName, tvCode: player.clubTvCodes, crestUrl: player.clubImageUrl });
 
 // Who the players' boards rank. A stage with standings has rounds: the latest completed round, so a postponed game does not lower

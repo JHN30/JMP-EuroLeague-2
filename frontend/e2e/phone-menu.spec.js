@@ -10,20 +10,26 @@ const logo = (page) => page.locator("header a[aria-label='Home']");
 const expectNoSidewaysScroll = (page) =>
   expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
 
-// The panel's opacity on every animation frame for a while after the click, to see it fade in.
+// The panel's opacity on every animation frame for 700ms from when it appears, to see it fade in. The window starts with the
+// panel, not the click, so a slow click under load cannot use it up before the fade ends.
 async function opacityWhileOpening(page) {
   await page.evaluate(() => {
     window.__samples = [];
-    const start = performance.now();
+    window.__sampling = true;
+    let start = null;
     const tick = () => {
       const el = document.getElementById("site-menu");
-      if (el) window.__samples.push(Number(getComputedStyle(el).opacity));
-      if (performance.now() - start < 700) requestAnimationFrame(tick);
+      if (el) {
+        start ??= performance.now();
+        window.__samples.push(Number(getComputedStyle(el).opacity));
+      }
+      if (start === null || performance.now() - start < 700) requestAnimationFrame(tick);
+      else window.__sampling = false;
     };
     requestAnimationFrame(tick);
   });
   await menuButton(page).click();
-  await page.waitForTimeout(750);
+  await page.waitForFunction(() => window.__sampling === false);
   return page.evaluate(() => window.__samples);
 }
 

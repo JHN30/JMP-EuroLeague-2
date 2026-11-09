@@ -63,7 +63,7 @@ export function buildGroupedBracket({ standings = [], teams = [], series = [], g
     if (entry && (entry.clubAWins ?? 0) >= winTarget && (entry.clubBWins ?? 0) >= winTarget) winnerClubCode = null;
     let displaySeries = entry;
     if (stage === "FF") {
-      const scoreWinner = game?.played && game.gameStatus !== "Cancelled" && game.localScore != null && game.roadScore != null && game.localScore !== game.roadScore
+      const scoreWinner = game?.played && game.status !== "cancelled" && game.localScore != null && game.roadScore != null && game.localScore !== game.roadScore
         ? (game.localScore > game.roadScore ? game.localTeam?.clubCode : game.roadTeam?.clubCode) : null;
       if (!scoreWinner || winnerClubCode !== scoreWinner || entry?.games.length !== 1) winnerClubCode = null;
       if (entry && game) displaySeries = { ...entry, games: entry.games.map((row) => ({ ...row, localScore: game.played ? game.localScore : null, roadScore: game.played ? game.roadScore : null, winnerClubCode: scoreWinner })) };

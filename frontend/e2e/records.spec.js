@@ -4,10 +4,10 @@ import { test, expect } from "@playwright/test";
 // Mocked records: what the page does with the API's answers. The API itself is records-api.spec.js.
 const ROWS = {
   player: [
-    { seasonCode: "2026", personKey: "p3", playerName: "THREE, CAL", clubName: "Club C", clubTvCodes: "CCC", playerImageUrl: "/logo-header.png", clubImageUrl: "/favicon-32x32.png", numericValue: 820 },
-    { seasonCode: "2025", personKey: "p2", playerName: "TWO, BEN", clubName: "Club B", clubTvCodes: "BBB", playerImageUrl: "/logo-header.png", clubImageUrl: "/favicon-32x32.png", numericValue: 780 },
-    { seasonCode: "2024", personKey: "p1", playerName: "ONE, AL", clubName: "Club A", clubTvCodes: "AAA", playerImageUrl: null, clubImageUrl: null, numericValue: 700 },
-    { seasonCode: "2025", personKey: "p4", playerName: "FOUR, DEE", clubName: "Club D", clubTvCodes: "DDD", playerImageUrl: null, clubImageUrl: null, numericValue: 650 },
+    { seasonCode: "2026", personKey: "p3", playerName: "Three, Cal", clubName: "Club C", clubTvCodes: "CCC", playerImageUrl: "/logo-header.png", clubImageUrl: "/favicon-32x32.png", numericValue: 820 },
+    { seasonCode: "2025", personKey: "p2", playerName: "Two, Ben", clubName: "Club B", clubTvCodes: "BBB", playerImageUrl: "/logo-header.png", clubImageUrl: "/favicon-32x32.png", numericValue: 780 },
+    { seasonCode: "2024", personKey: "p1", playerName: "One, Al", clubName: "Club A", clubTvCodes: "AAA", playerImageUrl: null, clubImageUrl: null, numericValue: 700 },
+    { seasonCode: "2025", personKey: "p4", playerName: "Four, Dee", clubName: "Club D", clubTvCodes: "DDD", playerImageUrl: null, clubImageUrl: null, numericValue: 650 },
   ],
   game: [{ seasonCode: "2025", gameCode: 42, personKey: "p2", playerName: "Game Player", clubName: "Club", playerImageUrl: null, clubImageUrl: null, numericValue: 35, scheduledAt: "2025-01-15T19:00:00.000Z" }],
   team: [{ seasonCode: "2025", clubCode: "OLY", clubName: "Olympiacos", clubTvCode: "OLY", clubImageUrl: "/logo-header.png", numericValue: 2400 }],
@@ -29,7 +29,7 @@ const ROWS = {
 };
 // The best of each season and the progression the API sends with the rows. The player lists open with a 2005 season that is not among the rows,
 // as an early season that never reaches the best 50 does; the other families send their rows as both.
-const OLD = { seasonCode: "2005", personKey: "p0", playerName: "ZERO, OLD", clubName: "Club Z", clubTvCodes: "ZZZ", playerImageUrl: null, clubImageUrl: null, numericValue: 400 };
+const OLD = { seasonCode: "2005", personKey: "p0", playerName: "Zero, Old", clubName: "Club Z", clubTvCodes: "ZZZ", playerImageUrl: null, clubImageUrl: null, numericValue: 400 };
 const PLAYER_LISTS = [OLD, ROWS.player[2], ROWS.player[1], ROWS.player[0]];
 const LISTS = { player: { bySeason: PLAYER_LISTS, progression: PLAYER_LISTS } };
 const ROUTES = { "player-seasons": "player", "single-games": "game", "team-seasons": "team", "team-games": "teamgame" };
@@ -231,7 +231,7 @@ const MANY = Array.from({ length: 30 }, (_, index) => ({
   ...ROWS.player[3],
   seasonCode: "2026",
   personKey: `m${index % 20}`,
-  playerName: `NAME${index % 20}, PLAYER`,
+  playerName: `Name${index % 20}, Player`,
   numericValue: 900 - index,
 }));
 

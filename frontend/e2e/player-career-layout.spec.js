@@ -171,8 +171,8 @@ test("the highs, the opened profile, the table views and the clubs fit", async (
   });
 });
 
-// Sergio Llull: Real Madrid since 2007-08, with old 10-game regular seasons, a 2017-18 of playoff games only, and a
-// registered 2026-27 without games so far. Isaac Bonga: Bayern, Partizan and Panathinaikos.
+// Sergio Llull: Real Madrid since 2007-08, with old 10-game regular seasons and a 2017-18 of playoff games only. Isaac Bonga:
+// Bayern, Partizan and Panathinaikos.
 const LLULL = "/2025-26/players/TGB";
 const BONGA = "/2025-26/players/006760";
 
@@ -191,14 +191,13 @@ test("the tab opens on all games, and the regular season drops the seasons witho
   const summary = page.locator('section[aria-label="Career summary"]');
   await expect(summary).toContainText("every phase");
 
-  // Every phase: 30 games in 2014-15, the 4 playoff games of 2017-18, and no row for 2026-27 (no games yet).
+  // Every phase: 30 games in 2014-15 and the 4 playoff games of 2017-18.
   expect(await gamesOf(page, "2014-15")).toBe(30);
   // Under the total, the games after the regular season: 10 + 14 Top 16 + 6 postseason.
   await expect(gamesCell(page, "2014-15")).toContainText("14 Top 16");
   await expect(gamesCell(page, "2014-15")).toContainText("6 postseason");
   expect(await gamesOf(page, "2017-18")).toBe(4);
   await expect(gamesCell(page, "2017-18")).toContainText("4 postseason");
-  await expect(seasonLinks(page).filter({ hasText: "2026-27" })).toHaveCount(0);
   const games = () => summary.locator("p").nth(1).innerText().then((text) => Number(text.replace(/\D/g, "")));
   expect(await games()).toBeGreaterThan(326);
 
@@ -208,7 +207,11 @@ test("the tab opens on all games, and the regular season drops the seasons witho
   expect(await gamesOf(page, "2014-15")).toBe(10);
   await expect(gamesCell(page, "2014-15")).not.toContainText("postseason");
   await expect(seasonLinks(page).filter({ hasText: "2017-18" })).toHaveCount(0);
-  expect(await games()).toBe(326);
+  // The total is the sum of the seasons in the table (2026-27 keeps adding games).
+  const seasonGames = await page.getByRole("region", { name: "Season by season table" }).locator("tbody tr")
+    .evaluateAll((rows) => rows.reduce((sum, row) => sum + Number(row.children[3].innerText.split("\n")[0]), 0));
+  expect(await games()).toBe(seasonGames);
+  expect(seasonGames).toBeGreaterThanOrEqual(326);
   await expect(summary.locator("p").first()).toHaveText(String(await seasonLinks(page).count()));
 });
 
@@ -249,17 +252,18 @@ test("the clubs are stints, and the radar starts on the last three seasons and k
   const chips = profile.getByRole("group", { name: "Seasons on the radar" }).getByRole("button");
   await expect(chips).toHaveCount(await seasonLinks(page).count());
   const pressed = profile.locator("[aria-pressed=true]");
-  await expect(pressed).toHaveText(["2023-24", "2024-25", "2025-26"]);
+  const lastThree = (await seasonLinks(page).allInnerTexts()).map((season) => season.trim()).sort().slice(-3);
+  await expect(pressed).toHaveText(lastThree);
   await expect(profile.locator("canvas")).toBeVisible({ timeout: 60_000 });
 
   // Turning seasons off stops at the last one; turning one on adds it.
-  for (const season of ["2023-24", "2024-25"]) await chips.filter({ hasText: season }).click();
-  const lastOn = chips.filter({ hasText: "2025-26" });
+  for (const season of lastThree.slice(0, 2)) await chips.filter({ hasText: season }).click();
+  const lastOn = chips.filter({ hasText: lastThree[2] });
   await expect(lastOn).toBeDisabled();
   await lastOn.click({ force: true });
-  await expect(pressed).toHaveText(["2025-26"]);
+  await expect(pressed).toHaveText([lastThree[2]]);
   await chips.filter({ hasText: "2014-15" }).click();
-  await expect(pressed).toHaveText(["2014-15", "2025-26"]);
+  await expect(pressed).toHaveText(["2014-15", lastThree[2]]);
   await expect(profile.locator("canvas")).toBeVisible({ timeout: 60_000 });
 
   await openCareer(page, BONGA);

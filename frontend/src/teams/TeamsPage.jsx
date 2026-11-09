@@ -6,35 +6,16 @@ import AsyncState from "../lib/AsyncState";
 import { TeamListSkeleton } from "./TeamsSkeleton";
 import EmptyText from "../lib/EmptyText";
 import { cardHover, listContainer, listItem } from "../lib/motion";
-import { readableName } from "../lib/playerName";
 import RevealImage from "../lib/RevealImage";
 import ShortLabel from "../lib/ShortLabel";
 import PageHeader from "../lib/PageHeader";
 import { useDocumentTitle } from "../lib/useDocumentTitle";
 import { shortTeamName } from "../games/gameUtils";
 import { groupPositionLabel, isGroupedTable } from "../standings/standingsGroups";
+import { cityName } from "./cityName";
 import { ordinal } from "./teamLeague";
 
 const MotionLink = motion.create(Link);
-
-// Cities the feed spells wrongly or unlike the rest (after recasing), shown corrected until the warehouse is fixed.
-const CITY_NAMES = {
-  Ovarense: "Ovar",
-  Roma: "Rome",
-  Napoli: "Naples",
-  "St Petersburg": "Saint Petersburg",
-  "Nizhni Nóvgorod": "Nizhny Novgorod",
-  Cantu: "Cantù",
-  Malaga: "Málaga",
-  Kiev: "Kyiv",
-  "Karsıyaka, İzmir": "İzmir",
-};
-
-function cityName(city) {
-  if (!city) return null;
-  const name = readableName(city);
-  return CITY_NAMES[name] ?? name;
-}
 
 // "3rd · 22-12", or "Group A · 2nd · 22-12" when the regular season is split into groups. Nothing before the club's first game.
 function recordLine(entry, grouped) {

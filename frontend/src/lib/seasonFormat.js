@@ -32,7 +32,7 @@ export function competitionNotes(format, seasonCode, { gameCode, phaseCode, roun
       if (gameCode != null && !game) return false;
       if (!game) return entry.clubs.includes(clubCode);
       return game.phaseCode === "RS" && [game.localTeam?.clubCode, game.roadTeam?.clubCode].some((code) => entry.clubs.includes(code))
-        && (game.played === true || game.gameStatus === "Cancelled");
+        && (game.played === true || game.status === "cancelled");
     }
     return false;
   }).map((entry) => entry.kind === "walkover" ? {

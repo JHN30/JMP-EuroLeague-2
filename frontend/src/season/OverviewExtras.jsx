@@ -9,7 +9,7 @@ import LeaderPhoto from "../lib/LeaderPhoto";
 import { cardHover, listContainer, listItem } from "../lib/motion";
 import Panel from "../lib/Panel";
 import PanelHeader from "../lib/PanelHeader";
-import { withoutComma } from "../lib/playerName";
+import { displayName } from "../lib/playerName";
 import ShortLabel from "../lib/ShortLabel";
 import { SkeletonChip } from "../lib/Skeleton";
 import { Avatar, BOARD_AVATAR, RankBadge, TeamTag } from "../leaders/LeaderParts";
@@ -53,7 +53,7 @@ function HighCard({ seasonCode, card }) {
     <MotionLink to={`/${seasonCode}/games/${record.gameCode}`} className="kpi-chip kpi-chip-link" variants={listItem} {...cardHover}>
       <div className="kpi-chip-body">
         <span className="label">{label}</span>
-        <span className="name">{withoutComma(record.playerName ?? record.personKey)}</span>
+        <span className="name">{displayName(record.playerName ?? record.personKey)}</span>
         <ClubLabel seasonCode={seasonCode} clubCode={record.clubCode} tvCodes={record.clubTvCode} fullName={record.clubName} />
         <span className="value">{Number(record.value)}</span>
         <span className="muted text-xs">
@@ -141,7 +141,7 @@ export function MostValuable({ seasonCode }) {
                   <RankBadge rank={index + 1} compact />
                   <Avatar optimize imageUrl={entry.imageUrl} size={BOARD_AVATAR} />
                   <div className="min-w-0 flex-1">
-                    <p className="font-semibold max-sm:line-clamp-2 sm:truncate">{withoutComma(entry.playerName ?? entry.personKey)}</p>
+                    <p className="font-semibold max-sm:line-clamp-2 sm:truncate">{displayName(entry.playerName ?? entry.personKey)}</p>
                     <TeamTag code={entry.clubCode} name={entry.clubName} tvCode={entry.clubTvCode} crestUrl={entry.crestUrl} />
                   </div>
                   <div className="flex-none text-right">

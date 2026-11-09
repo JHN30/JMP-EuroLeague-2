@@ -85,9 +85,11 @@ const VIEW_NET_FIELD = {
   last10: "last10NetRating",
 };
 
-// Header tips for the figure columns; the Home and Away views say the figures cover only those games.
+// Header tips for the figure columns; the Home, Away and Last 10 views say the figures cover only those games.
+const SPLIT_TIP = { home: " in home games only", away: " in away games only", last10: " in the last 10 games only" };
+
 function figureTips(view) {
-  const only = view === "home" ? " in home games only" : view === "away" ? " in away games only" : "";
+  const only = SPLIT_TIP[view] ?? "";
   return {
     gp: `Games played${only}`,
     w: `Wins${only}`,
@@ -101,8 +103,8 @@ function figureTips(view) {
 
 function OverviewTable({ standings, seasonCode, view, showTiers, tierLines, tierLabels, netByClub, shortNames, showQualification, splitByClub }) {
   const sorted = sortForView(standings, view, splitByClub);
-  // The Home and Away views count every figure column from the club's home (or away) games only.
-  const splitView = view === "home" || view === "away";
+  // The Home, Away and Last 10 views count every figure column from the club's home (away, last 10) games only.
+  const splitView = view in SPLIT_TIP;
   const tips = figureTips(view);
   // The tier rows follow the season's qualification lines (from its format); without them no tier row is drawn.
   const tiersActive = showTiers && view === "overall" && Boolean(tierLines);

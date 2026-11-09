@@ -14,7 +14,7 @@ import { usePhaseParam } from "../lib/usePhaseParam";
 import { crossGroupQualifier, crossGroupQualifiers, tableTiers } from "../lib/seasonFormat";
 import { useSeasonFormat } from "../lib/useSeasonFormat";
 import { TabPanel, TabStrip } from "../lib/TabStrip";
-import { resultsByClub, splitFiguresByClub } from "./breakdownUtils";
+import { resultsByClub, SPLIT_VIEWS, splitFiguresByClub } from "./breakdownUtils";
 import StandingsKpiStrip from "./StandingsKpiStrip";
 import StandingsSkeleton, { StandingsBodySkeleton } from "./StandingsSkeleton";
 import StandingsTable from "./StandingsTable";
@@ -145,11 +145,11 @@ export default function StandingsPage() {
     enabled: Boolean(phaseCode) && standings.length > 0,
   });
   // The breakdowns work from each club's own results (and quarter scores): the ribbon, margin bars, form line and
-  // quarter profile are all drawn or derived from them. The Home and Away views count their table figures from them too.
+  // quarter profile are all drawn or derived from them. The Home, Away and Last 10 views count their table figures from them too.
   const resultsQuery = useQuery({
     queryKey: ["phase-results", seasonCode, phaseCode],
     queryFn: () => getPhaseResults(seasonCode, phaseCode),
-    enabled: Boolean(phaseCode) && standings.length > 0 && mode === "table" && (breakdown !== "overview" || view === "home" || view === "away"),
+    enabled: Boolean(phaseCode) && standings.length > 0 && mode === "table" && (breakdown !== "overview" || SPLIT_VIEWS.includes(view)),
   });
   // Time spent in front comes from play-by-play, which the ahead/behind breakdown shows for the phase.
   const gameFlowQuery = useQuery({
@@ -158,8 +158,8 @@ export default function StandingsPage() {
     enabled: Boolean(phaseCode) && standings.length > 0 && mode === "table" && breakdown === "aheadBehind",
   });
   const netByClub = new Map((netQuery.data?.standings ?? []).map((row) => [row.clubCode, row]));
-  // Home and Away views: every club's home (or away) figures, worked out over the whole phase so games with clubs in
-  // another group still count, and only games with clubs in the table count.
+  // Home, Away and Last 10 views: every club's home (away, last-10) figures, worked out over the whole phase so games
+  // with clubs in another group still count, and only games with clubs in the table count.
   const splitByClub = splitFiguresByClub(standings, view, resultsQuery.data, { round, seasonCode });
 
   if (phasesQuery.isLoading) return <AsyncState status="loading" label="Loading phases" skeleton={<StandingsSkeleton />} />;

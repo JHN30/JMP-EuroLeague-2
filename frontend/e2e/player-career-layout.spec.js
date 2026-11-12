@@ -274,46 +274,73 @@ test("the clubs are stints, and the radar starts on the last three seasons and k
   await expect(stints.nth(2)).toContainText("Panathinaikos");
 });
 
-// Answers the career requests: the first request for the player's own page is live, later ones follow `answer`.
-async function shapeCareer(page, answer) {
-  let first = null;
-  await page.route(/\/api\/seasons\/[^/]+\/players\/[^/?]+$/, async (route) => {
-    const code = new URL(route.request().url()).pathname.split("/")[3];
-    first ??= code;
-    const verdict = answer(code === first);
-    if (verdict === "live") return route.continue();
-    return route.fulfill({ status: verdict, json: { error: "Mocked" } });
+const CAREER = /\/api\/seasons\/[^/]+\/players\/[^/?]+\/career$/;
+
+// Answers the Career tab's one request: "current" keeps only the season the page is on (`slug`), a number answers with that status.
+async function shapeCareer(page, answer, slug) {
+  await page.route(CAREER, async (route) => {
+    if (answer !== "current") return route.fulfill({ status: answer, json: { error: "Mocked" } });
+    const response = await route.fetch();
+    const { seasons } = await response.json();
+    return route.fulfill({ response, json: { seasons: seasons.filter((card) => card.seasonCode.endsWith(slug)) } });
   });
 }
 
 test("a player with one season, no seasons, or a failing history keeps the tab tidy", async ({ page }) => {
   test.setTimeout(120_000);
-  const { href } = await veteranPlayer(page);
+  const { href, slug } = await veteranPlayer(page);
   await page.setViewportSize({ width: 320, height: HEIGHT });
 
   // One season: only the current one answers, so the table has no Career row and the radar one outline.
-  await shapeCareer(page, (isCurrent) => (isCurrent ? "live" : 404));
+  await shapeCareer(page, "current", slug);
   await openCareer(page, href);
   await expect(page.getByRole("region", { name: "Season by season table" }).locator("tfoot")).toHaveCount(0);
   await expectNoSidewaysScroll(page);
   expect(await holdsContent(page.locator('#player-detail-panel section[aria-label="Career summary"] div.grid > div, #player-detail-panel section[aria-label="Trends"] .panel'))).toBe(true);
-  await page.unroute(/\/api\/seasons\/[^/]+\/players\/[^/?]+$/);
+  await page.unroute(CAREER);
 
   // No seasons at all after the page itself has loaded.
   await page.goto(href);
   await expect(page.getByRole("tab", { name: "Overview" })).toBeVisible({ timeout: 30_000 });
-  await shapeCareer(page, () => 404);
+  await shapeCareer(page, 404);
   await page.getByRole("tab", { name: "Season by season" }).click();
   await expect(page.getByText("No archived seasons found for this player.")).toBeVisible({ timeout: 60_000 });
   await expectNoSidewaysScroll(page);
-  await page.unroute(/\/api\/seasons\/[^/]+\/players\/[^/?]+$/);
+  await page.unroute(CAREER);
 
   // A failing history.
   await page.goto(href);
   await expect(page.getByRole("tab", { name: "Overview" })).toBeVisible({ timeout: 30_000 });
-  await shapeCareer(page, () => 500);
+  await shapeCareer(page, 500);
   await page.getByRole("tab", { name: "Season by season" }).click();
   await expect(page.getByText("Could not load season history.")).toBeVisible({ timeout: 60_000 });
   await expect(page.getByRole("button", { name: /retry/i })).toBeVisible();
   await expectNoSidewaysScroll(page);
+});
+
+test("a failing advanced request leaves the tab standing, with an error and a Retry that fills PER, WS and USG% in", async ({ page }) => {
+  test.setTimeout(120_000);
+  const { href } = await veteranPlayer(page);
+  const ADVANCED = /\/api\/seasons\/[^/]+\/players\/[^/?]+\/career\/advanced$/;
+  let failing = true;
+  await page.route(ADVANCED, (route) => (failing ? route.fulfill({ status: 500, json: { error: "Mocked" } }) : route.fallback()));
+  await openCareer(page, href);
+
+  // Everything else renders, with the advanced columns empty.
+  const table = page.getByRole("region", { name: "Season by season table" });
+  await expect(page.locator('section[aria-label="Trends"] .panel').first()).toBeVisible();
+  await expect(page.locator('section[aria-label="Career summary"]')).toBeVisible();
+  const alert = page.getByRole("alert").filter({ hasText: "Could not load PER, win shares and USG%." });
+  // The query retries before it gives up, as every query does.
+  await expect(alert).toBeVisible({ timeout: 30_000 });
+  await page.getByRole("tab", { name: "Role", exact: true }).click();
+  // USG% is the sixth column of the Role view.
+  const usage = () => table.locator("tbody tr").evaluateAll((rows) => rows.map((row) => row.children[5].textContent.trim()));
+  expect((await usage()).every((value) => !/\d/.test(value))).toBe(true);
+  await expectNoSidewaysScroll(page);
+
+  failing = false;
+  await alert.getByRole("button", { name: "Retry" }).click();
+  await expect(alert).toHaveCount(0);
+  await expect.poll(async () => (await usage()).some((value) => /\d%$/.test(value))).toBe(true);
 });

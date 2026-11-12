@@ -1,11 +1,10 @@
 // A player across every season in the archive: one card per season they appear in, and the numbers worked out
 // from those cards (career averages, changes from one season to the next, career highs, club stints). Each card
 // holds both the regular season and every phase, so the tab switches between them without loading again.
-import { getPlayer, getPlayerAdvanced, getPlayerGames, getPlayerRegistrations, getPlayerSeasonStats } from "../lib/api";
+import { getPlayerCareer, getPlayerCareerAdvanced } from "../lib/api";
 import { formatSeasonLabel } from "../lib/format";
+import { seasonSlug } from "../lib/seasonSlug";
 import { statNumber } from "./playerOverview";
-
-const GAMES_LIMIT = 100;
 
 // Fewer games than this and a season's averages are mostly noise: it is shown, but never compared.
 export const SMALL_SAMPLE_GAMES = 10;
@@ -16,44 +15,49 @@ export const CAREER_PHASES = [
   { key: "RS", label: "Regular season" },
 ];
 
-// Oldest season first. A season the player is not in (404) is left out; any other failure fails the whole tab.
-export async function fetchPlayerCareer(seasons, personKey) {
-  const ordered = [...seasons].sort((a, b) => a.startYear - b.startYear);
-  const cards = await Promise.all(
-    ordered.map(async (season) => {
-      try {
-        const { player } = await getPlayer(season.seasonCode, personKey);
-        const [registrationsData, regularStats, allStats, gamesData, regularAdvanced, allAdvanced] = await Promise.all([
-          getPlayerRegistrations(season.seasonCode, personKey),
-          getPlayerSeasonStats(season.seasonCode, personKey, { phase: "RS", mode: "perGame" }),
-          getPlayerSeasonStats(season.seasonCode, personKey, { phase: "all", mode: "perGame" }),
-          getPlayerGames(season.seasonCode, personKey, { limit: GAMES_LIMIT }),
-          // Only some seasons have advanced statistics; a season without them just has no PER column.
-          getPlayerAdvanced(season.seasonCode, personKey, { scope: "RS" }).catch(() => null),
-          getPlayerAdvanced(season.seasonCode, personKey, { scope: "all" }).catch(() => null),
-        ]);
-        return {
-          seasonCode: season.seasonCode,
-          label: formatSeasonLabel(season.seasonCode),
-          player,
-          registrations: registrationsData.registrations ?? [],
-          entries: { RS: regularStats.players?.[0] ?? null, all: allStats.players?.[0] ?? null },
-          games: (gamesData.games ?? []).filter((game) => game.played && statNumber(game.timePlayed) > 0),
-          advanced: { RS: lastRound(regularAdvanced), all: lastRound(allAdvanced) },
-        };
-      } catch (error) {
-        if (error?.response?.status === 404) return null;
-        throw error;
-      }
-    }),
-  );
-  return cards.filter(Boolean);
+const NO_ADVANCED = { RS: null, all: null };
+
+// The answers span every season, so they are always asked of the latest one, whichever season the page shows. A player in
+// no season answers 404, which is no data rather than a failure.
+async function fromLatestSeason(seasons, request) {
+  const latest = [...seasons].sort((a, b) => b.startYear - a.startYear)[0];
+  if (!latest) return [];
+  try {
+    return (await request(latest.seasonCode)).seasons ?? [];
+  } catch (error) {
+    if (error?.response?.status === 404) return [];
+    throw error;
+  }
 }
 
-// The last round's running totals are the season's value.
-function lastRound(advancedData) {
-  const rounds = advancedData?.rounds ?? [];
-  return rounds.length > 0 ? rounds[rounds.length - 1] : null;
+// Oldest season first, one card per archived season the player is in. The advanced figures come separately (see
+// `withAdvanced`), so until then every card has none.
+export async function fetchPlayerCareer(seasons, personKey) {
+  const cardSeasons = await fromLatestSeason(seasons, (seasonCode) => getPlayerCareer(seasonCode, personKey));
+  return cardSeasons.map((season) => {
+    const seasonCode = seasonSlug(season.seasonCode);
+    return {
+      seasonCode,
+      label: formatSeasonLabel(seasonCode),
+      player: season.player,
+      registrations: season.registrations ?? [],
+      entries: { RS: season.entries?.RS ?? null, all: season.entries?.all ?? null },
+      games: (season.games ?? []).filter((game) => game.played && statNumber(game.timePlayed) > 0),
+      advanced: NO_ADVANCED,
+    };
+  });
+}
+
+// Each season's advanced figures by its year-form code.
+export async function fetchPlayerCareerAdvanced(seasons, personKey) {
+  const advancedSeasons = await fromLatestSeason(seasons, (seasonCode) => getPlayerCareerAdvanced(seasonCode, personKey));
+  return new Map(advancedSeasons.map((season) => [seasonSlug(season.seasonCode), { RS: season.advanced?.RS ?? null, all: season.advanced?.all ?? null }]));
+}
+
+// The cards with their advanced figures, where they have loaded.
+export function withAdvanced(cards, advancedBySeason) {
+  if (!advancedBySeason) return cards;
+  return cards.map((card) => ({ ...card, advanced: advancedBySeason.get(card.seasonCode) ?? NO_ADVANCED }));
 }
 
 // The games a view counts: every phase, or the regular season alone.

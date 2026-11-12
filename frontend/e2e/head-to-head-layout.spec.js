@@ -76,8 +76,17 @@ function meetingsOf(seasonCode) {
   });
 }
 
+// Every meeting as the head-to-head games endpoint answers it: each game with its season, oldest first. `met` lists the seasons with
+// meetings; a season Club A was not in has none.
+function meetingsAnswer(met = SEASONS.map(({ seasonCode }) => seasonCode)) {
+  const games = met
+    .flatMap((seasonCode) => meetingsOf(seasonCode).map((game) => ({ ...game, seasonCode })))
+    .sort((x, y) => new Date(x.scheduledAt) - new Date(y.scheduledAt));
+  return { games };
+}
+
 // `games` is "ok", "error" (a 500), "empty" (no meetings), "sparse" (meetings in two of the five seasons only) or a promise that holds the
-// games back until it settles.
+// games back until it settles. `absent` lists the seasons Club A was not in.
 async function mockApi(page, { seasons = "ok", games = "ok", absent = [] } = {}) {
   await page.route("**/api/**", async (route) => {
     const { pathname } = new URL(route.request().url());
@@ -85,15 +94,13 @@ async function mockApi(page, { seasons = "ok", games = "ok", absent = [] } = {})
       return seasons === "error" ? route.fulfill({ status: 500, json: {} }) : route.fulfill({ json: { seasons: SEASONS } });
     }
     if (/\/teams$/.test(pathname)) return route.fulfill({ json: { teams: CLUBS } });
-    const match = /\/seasons\/(\d{4})\/teams\/[AB]\/games$/.exec(pathname);
-    if (match) {
-      // Club A was not in this season: the API answers 404 TEAM_NOT_FOUND.
-      if (absent.includes(match[1])) return route.fulfill({ status: 404, json: { error: { code: "TEAM_NOT_FOUND", message: "Team not found" } } });
+    if (/\/head-to-head\/games$/.test(pathname)) {
       if (games === "error") return route.fulfill({ status: 500, json: {} });
       if (games instanceof Promise) await games;
-      const met = games === "sparse" ? ["2022", "2024"].includes(match[1]) : games !== "empty";
-      const list = met ? meetingsOf(`E${match[1]}`) : [];
-      return route.fulfill({ json: { games: list, pagination: { limit: 100, offset: 0, total: list.length, hasMore: false } } });
+      const met = SEASONS.map(({ seasonCode }) => seasonCode)
+        .filter((seasonCode) => !absent.includes(seasonCode.slice(1)))
+        .filter((seasonCode) => (games === "sparse" ? ["E2022", "E2024"].includes(seasonCode) : games !== "empty"));
+      return route.fulfill({ json: meetingsAnswer(met) });
     }
     return route.fulfill({ status: 404, json: {} });
   });
@@ -271,7 +278,7 @@ test("the Season breakdown lists only the seasons in which the clubs met, with t
 
 test("a club that was not in some of the seasons still has its meetings from the others", async ({ page }) => {
   test.setTimeout(60_000);
-  // Club A missing from the first two of five seasons: the API answers 404 TEAM_NOT_FOUND for them, which means no games, not a failure.
+  // Club A missing from the first two of five seasons: the API has no games, and so no meetings, for them; not a failure.
   await mockApi(page, { absent: ["2021", "2022"] });
   await page.setViewportSize({ width: 1280, height: HEIGHT });
   await page.goto(OPEN);
@@ -347,7 +354,7 @@ test("the error fills the content width, centred, with a full-size Retry that lo
   let failing = true;
   await mockApi(page, { games: "error" });
   // Once Retry is pressed the games load.
-  await page.route("**/api/seasons/*/teams/*/games*", (route) => (failing ? route.fallback() : route.fulfill({ json: { games: meetingsOf("E2025"), pagination: { limit: 100, offset: 0, total: 40, hasMore: false } } })));
+  await page.route("**/api/seasons/*/head-to-head/games*", (route) => (failing ? route.fallback() : route.fulfill({ json: meetingsAnswer() })));
   await page.goto(OPEN);
   const alert = page.getByRole("alert").filter({ hasText: "Could not load head-to-head history." });
   await expect(alert).toBeVisible({ timeout: 45_000 });

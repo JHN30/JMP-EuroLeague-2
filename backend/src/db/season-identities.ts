@@ -164,6 +164,24 @@ export async function getTeams(seasonCode: string): Promise<TeamListItem[]> {
   return rows.map(({ city, ...team }) => ({ ...withTvCode(team, codes), city: city?.trim() || null }));
 }
 
+// Every club across these seasons, one item per club code in the `getTeams` shape, taken from the latest season the club
+// appears in (with that season's TV code). Ordered by club code.
+export async function getTeamsAcrossSeasons(seasonCodes: string[]): Promise<TeamListItem[]> {
+  if (seasonCodes.length === 0) return [];
+  const rows = await catalogRead(() =>
+    db.selectDistinctOn([clubs.clubCode], { ...teamFields, city: clubs.city, seasonCode: clubs.seasonCode })
+      .from(clubs)
+      .where(and(eq(clubs.competitionCode, COMPETITION_CODE), inArray(clubs.seasonCode, seasonCodes)))
+      .orderBy(asc(clubs.clubCode), desc(clubs.seasonCode)),
+  );
+  const latestSeasons = [...new Set(rows.map((row) => row.seasonCode))];
+  const codesBySeason = new Map(await Promise.all(latestSeasons.map(async (seasonCode) => [seasonCode, await getClubTvCodes(seasonCode)] as const)));
+  return rows.map(({ city, seasonCode, ...team }) => ({
+    ...withTvCode(team, codesBySeason.get(seasonCode) ?? new Map()),
+    city: city?.trim() || null,
+  }));
+}
+
 export async function getTeam(seasonCode: string, clubCode: string): Promise<Team | null> {
   const rows = await catalogRead(() =>
     db.select(teamFields)
@@ -383,6 +401,28 @@ export async function getPlayer(seasonCode: string, personKey: string): Promise<
   if (!player) return null;
   const [details, codes] = await Promise.all([getPlayerListDetails(seasonCode, [personKey]), getClubTvCodes(seasonCode)]);
   return { ...player, ...listEntryDetails(details, personKey, codes) };
+}
+
+// The seasons among these in which the person is a player (the same test `getPlayer` applies to one season), in one query.
+export async function getPlayerSeasonCodes(personKey: string, seasonCodes: string[]): Promise<string[]> {
+  if (seasonCodes.length === 0) return [];
+  const rows = await catalogRead(() =>
+    db.selectDistinct({ seasonCode: people.seasonCode })
+      .from(people)
+      .where(and(
+        eq(people.competitionCode, COMPETITION_CODE),
+        inArray(people.seasonCode, seasonCodes),
+        eq(people.personKey, personKey),
+        or(eq(people.isReferee, false), isNull(people.isReferee)),
+        exists(db.select({ one: sql`1` }).from(registrations).where(and(
+          eq(registrations.competitionCode, COMPETITION_CODE),
+          eq(registrations.seasonCode, people.seasonCode),
+          eq(registrations.personKey, people.personKey),
+          eq(registrations.roleCode, PLAYER_ROLE_CODE),
+        ))),
+      )),
+  );
+  return rows.map((row) => row.seasonCode);
 }
 
 export async function getTeamRoster(

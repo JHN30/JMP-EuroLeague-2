@@ -380,10 +380,10 @@ test.describe("Head-to-head", () => {
   const H2H = "/2026/compare/head-to-head?teamA=PAN&teamB=OLY";
 
   test("the whole page shows its skeleton while the clubs load, then the history its own", async ({ page }) => {
-    const releaseClubs = await hold(page, /\/api\/seasons\/[^/]+\/teams(\?|$)/);
+    const releaseClubs = await hold(page, /\/api\/seasons\/[^/]+\/head-to-head\/teams(\?|$)/);
     await page.goto(H2H);
     await expectSkeleton(page, "Loading seasons");
-    const releaseHistory = await hold(page, /\/api\/seasons\/[^/]+\/teams\/[^/]+\/games/);
+    const releaseHistory = await hold(page, /\/api\/seasons\/[^/]+\/head-to-head\/games/);
     await releaseClubs();
     await expectSkeleton(page, "Loading head-to-head history");
     await releaseHistory();
@@ -583,7 +583,7 @@ test.describe("Player page", () => {
   });
 
   for (const { tab, pattern, label, early = false } of [
-    { tab: "Season by season", pattern: "season-stats", label: "Loading season history" },
+    { tab: "Season by season", pattern: "players/[^/]+/career", label: "Loading season history" },
     { tab: "Statistics", pattern: "season-stats", label: "Loading season statistics" },
     { tab: "Advanced", pattern: "players/[^/]+/advanced", label: "Loading advanced player stats" },
     // The Shooting tab reads the player's shots and his position's.

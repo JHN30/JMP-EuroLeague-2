@@ -1,7 +1,7 @@
 import { useMemo, useRef, useState } from "react";
-import { useQueries, useQuery } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { motion } from "motion/react";
-import { getRounds, getSeasonStandings } from "../lib/api";
+import { getRounds, getStandingsRace } from "../lib/api";
 import AsyncState from "../lib/AsyncState";
 import { RaceSkeleton } from "./StandingsSkeleton";
 import EmptyText from "../lib/EmptyText";
@@ -14,14 +14,6 @@ import RacePlayback from "./RacePlayback";
 import RaceInsightCards from "./RaceInsightCards";
 import RaceSnapshotTable from "./RaceSnapshotTable";
 import { NARROW_QUERY, SIDE_BY_SIDE_QUERY, raceLayout, stickyBottomOf, useRoomBelowBar } from "./raceSizing";
-
-function combineSnapshots(results) {
-  return {
-    isLoading: results.some((result) => result.isLoading),
-    isError: results.some((result) => result.isError),
-    data: results.map((result) => result.data),
-  };
-}
 
 // `latestRound` is the last round with standings. The phase lists every scheduled round, but only the played ones
 // have a snapshot, so the race stops there instead of running to the end of the schedule.
@@ -41,32 +33,31 @@ export default function RaceView({ seasonCode, phaseCode, latestRound, latestSta
     [roundsQuery.data, latestRound],
   );
 
-  const snapshots = useQueries({
-    queries: playedRounds.map((roundNumber) => ({
-      queryKey: ["standings", seasonCode, phaseCode, "round", roundNumber],
-      queryFn: () => getSeasonStandings(seasonCode, phaseCode, { round: roundNumber }),
-    })),
-    combine: combineSnapshots,
+  const raceQuery = useQuery({
+    queryKey: ["standings-race", seasonCode, phaseCode],
+    queryFn: () => getStandingsRace(seasonCode, phaseCode),
+    enabled: Boolean(phaseCode) && latestRound != null,
   });
 
-  const isLoading = roundsQuery.isLoading || snapshots.isLoading;
-  const isError = roundsQuery.isError || snapshots.isError;
+  const isLoading = roundsQuery.isLoading || raceQuery.isLoading;
+  const isError = roundsQuery.isError || raceQuery.isError;
 
   // Each round's snapshot: where every club stood and its record at that point.
   const { rounds, positionsByRound, recordsByRound } = useMemo(() => {
     const played = [];
     const positions = new Map();
     const records = new Map();
-    playedRounds.forEach((roundNumber, index) => {
-      const data = snapshots.data[index];
-      if (!data || data.standings.length === 0) return;
+    const standingsByRound = new Map((raceQuery.data?.rounds ?? []).map((entry) => [entry.round, entry.standings]));
+    playedRounds.forEach((roundNumber) => {
+      const standings = standingsByRound.get(roundNumber);
+      if (!standings || standings.length === 0) return;
       const roundPositions = new Map();
       const roundRecords = new Map();
-      for (const entry of data.standings) {
+      for (const entry of standings) {
         if (groupName !== undefined && entry.groupName !== groupName) continue;
-        if (entry.basic?.position == null) continue;
-        roundPositions.set(entry.clubCode, entry.basic.position);
-        roundRecords.set(entry.clubCode, { won: entry.basic.gamesWon, lost: entry.basic.gamesLost });
+        if (entry.position == null) continue;
+        roundPositions.set(entry.clubCode, entry.position);
+        roundRecords.set(entry.clubCode, { won: entry.gamesWon, lost: entry.gamesLost });
       }
       if (roundPositions.size === 0) return;
       played.push(roundNumber);
@@ -74,7 +65,7 @@ export default function RaceView({ seasonCode, phaseCode, latestRound, latestSta
       records.set(roundNumber, roundRecords);
     });
     return { rounds: played, positionsByRound: positions, recordsByRound: records };
-  }, [playedRounds, snapshots.data, groupName]);
+  }, [playedRounds, raceQuery.data, groupName]);
 
   const teamOrder = useMemo(
     () =>
@@ -107,7 +98,10 @@ export default function RaceView({ seasonCode, phaseCode, latestRound, latestSta
       <AsyncState
         status="error"
         message="Could not load round-by-round standings."
-        onRetry={() => roundsQuery.refetch()}
+        onRetry={() => {
+          roundsQuery.refetch();
+          raceQuery.refetch();
+        }}
       />
     );
   }

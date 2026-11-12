@@ -15,7 +15,7 @@ import RevealImage from "../lib/RevealImage";
 import ShortLabel from "../lib/ShortLabel";
 import { TabPanel, TabStrip } from "../lib/TabStrip";
 import { ProfileComparison, TrendGrid } from "./PlayerCareerCharts";
-import { CAREER_PHASES, careerAverages, careerHighs, careerTotals, clubStints, fetchPlayerCareer, seasonLine } from "./careerData";
+import { CAREER_PHASES, careerAverages, careerHighs, careerTotals, clubStints, fetchPlayerCareer, fetchPlayerCareerAdvanced, seasonLine, withAdvanced } from "./careerData";
 
 const PANEL_ID = "player-career-panel";
 const TABLE_ID = "player-career-table";
@@ -368,8 +368,15 @@ export default function PlayerCareerSection({ personKey, seasonCode }) {
     queryFn: () => fetchPlayerCareer(seasons, personKey),
     enabled: Boolean(seasons),
   });
+  // PER, Win Shares and USG% load on their own: until they arrive, or if they fail, the tab shows everything else without them.
+  const advancedQuery = useQuery({
+    queryKey: ["player-career-advanced", personKey, seasons?.map((season) => season.seasonCode).join(",")],
+    queryFn: () => fetchPlayerCareerAdvanced(seasons, personKey),
+    enabled: Boolean(seasons),
+  });
 
   const cards = careerQuery.data;
+  const advancedBySeason = advancedQuery.data;
   // Highs and clubs cover every game and season; the rest follows the view.
   const career = useMemo(() => {
     if (!cards) return null;
@@ -378,9 +385,9 @@ export default function PlayerCareerSection({ personKey, seasonCode }) {
   const derived = useMemo(() => {
     if (!cards) return null;
     // A season with no games in the view leaves the table, the trends, the radar and the count.
-    const lines = cards.map((card) => seasonLine(card, phase)).filter((line) => line.played);
+    const lines = withAdvanced(cards, advancedBySeason).map((card) => seasonLine(card, phase)).filter((line) => line.played);
     return { lines, averages: careerAverages(lines), totals: careerTotals(lines) };
-  }, [cards, phase]);
+  }, [cards, advancedBySeason, phase]);
 
   if (seasonsQuery.isError) {
     return <AsyncState status="error" message="Could not load the seasons." onRetry={() => seasonsQuery.refetch()} />;
@@ -410,6 +417,9 @@ export default function PlayerCareerSection({ personKey, seasonCode }) {
                 <CareerSummary averages={derived.averages} totals={derived.totals} seasonCount={lines.length} phase={phase} />
               </motion.section>
               <motion.section variants={sectionItem} aria-label="Seasons">
+                {advancedQuery.isError ? (
+                  <AsyncState compact status="error" errorClassName="mb-4" message="Could not load PER, win shares and USG%." onRetry={() => advancedQuery.refetch()} />
+                ) : null}
                 <SeasonTable
                   lines={lines}
                   cardsByCode={career.cardsByCode}

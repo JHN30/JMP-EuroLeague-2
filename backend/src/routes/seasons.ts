@@ -13,6 +13,7 @@ import {
   getPlayer,
   getPlayerRegistrations,
   getPlayerImages,
+  getPlayerSeasonCodes,
   getPlayers,
   PLAYER_POSITIONS,
   getTeam,
@@ -20,11 +21,12 @@ import {
   getTeamRef,
   getTeamRoster,
   getTeams,
+  getTeamsAcrossSeasons,
 } from "../db/season-identities";
-import { getBoxScore, getGame, getGameOfficials, getGames, getGameVenue, getLeagueTeamStats, getPhaseResults, getPlayByPlay, getPlayerGameLog, getPlayerShots, getPositionShots, getPostseasonSeries, getShots, getTeamGames, getTeamStatsSummary } from "../db/season-games";
+import { getBoxScore, getGame, getGameOfficials, getGames, getGameVenue, getHeadToHeadGames, getLeagueTeamStats, getPhaseResults, getPlayByPlay, getPlayerGameLog, getPlayerShots, getPositionShots, getPostseasonSeries, getShots, getTeamGames, getTeamStatsSummary } from "../db/season-games";
 import { getSeasonFormat } from "../db/season-format";
 import { seasonScopes, seasonStageCodes } from "../db/season-format-registry";
-import { getLatestStandingsRound, getStandings } from "../db/season-standings";
+import { getLatestStandingsRound, getStandings, getStandingsRace } from "../db/season-standings";
 import {
   getGameAdvanced,
   getGameFlow,
@@ -44,6 +46,7 @@ import {
   getUsageLeaders,
   getPlayerClubs,
   getPlayerGames,
+  getPlayerLastAdvancedRound,
   getPlayerOnOff,
   getPlayerRapm,
   getPlayerRoundRatings,
@@ -309,6 +312,20 @@ seasonRouter.get("/:seasonCode/phases/:phaseCode/standings", async (req, res) =>
   }
 
   res.json({ round, standings: await getStandings(season.seasonCode, phaseCode, round) });
+});
+
+// The standings race: where every club stood, and its record, after each round of the phase that has standings.
+seasonRouter.get("/:seasonCode/phases/:phaseCode/standings/race", async (req, res) => {
+  const season = await requestedSeason(req, res);
+  if (!season) return;
+  const phaseCode = req.params.phaseCode;
+  if (typeof phaseCode === "string" && !inSeasonFormat(season.seasonCode, phaseCode, res)) return;
+  const phases = await getPhases(season.seasonCode);
+  if (typeof phaseCode !== "string" || !phases.some((phase) => phase.code === phaseCode)) {
+    sendError(res, 404, "PHASE_NOT_FOUND", "Phase not found");
+    return;
+  }
+  res.json({ rounds: await getStandingsRace(season.seasonCode, phaseCode) });
 });
 
 seasonRouter.get("/:seasonCode/phases/:phaseCode/results", async (req, res) => {
@@ -624,6 +641,25 @@ seasonRouter.get("/:seasonCode/season-highs", async (req, res) => {
 seasonRouter.get("/:seasonCode/teams", async (req, res) => {
   const season = await requestedSeason(req, res);
   if (season) res.json({ teams: await getTeams(season.seasonCode) });
+});
+
+// The head-to-head page's clubs and meetings span every loaded season, whichever season is in the address.
+seasonRouter.get("/:seasonCode/head-to-head/teams", async (req, res) => {
+  if (!await requestedSeason(req, res)) return;
+  const seasonCodes = (await getSeasons()).map((season) => season.seasonCode);
+  const teams = await getTeamsAcrossSeasons(seasonCodes);
+  res.json({ teams: teams.sort((a, b) => (a.name ?? "").localeCompare(b.name ?? "")) });
+});
+
+seasonRouter.get("/:seasonCode/head-to-head/games", async (req, res) => {
+  if (!await requestedSeason(req, res)) return;
+  const { teamA, teamB } = req.query;
+  if (!validIdentity(teamA) || !validIdentity(teamB)) {
+    sendError(res, 400, "INVALID_TEAM_CODE", "Invalid team code");
+    return;
+  }
+  const seasonCodes = (await getSeasons()).map((season) => season.seasonCode);
+  res.json({ games: await getHeadToHeadGames(seasonCodes, teamA, teamB) });
 });
 
 seasonRouter.get("/:seasonCode/teams/:clubCode", async (req, res) => {
@@ -1095,6 +1131,79 @@ seasonRouter.get("/:seasonCode/players/:personKey/games", async (req, res) => {
   if (!page) return;
   const result = await getPlayerGameLog(season.seasonCode, personKey, page.limit, page.offset);
   res.json({ games: result.items, pagination: { ...page, hasMore: result.hasMore } });
+});
+
+const CAREER_GAMES_LIMIT = 100;
+
+// The loaded seasons the player is in, oldest first, for the Season by season tab's two requests; null (with the error
+// sent) for an invalid key.
+async function careerSeasonCodes(req: Request, res: Response): Promise<{ personKey: string; seasonCodes: string[] } | null> {
+  if (!await requestedSeason(req, res)) return null;
+  const personKey = req.params.personKey;
+  if (!validIdentity(personKey)) {
+    sendError(res, 400, "INVALID_PLAYER_KEY", "Invalid player key");
+    return null;
+  }
+  const loaded = (await getSeasons()).sort((a, b) => (a.startYear ?? 0) - (b.startYear ?? 0));
+  const playerSeasons = new Set(await getPlayerSeasonCodes(personKey, loaded.map((season) => season.seasonCode)));
+  return { personKey, seasonCodes: loaded.map((season) => season.seasonCode).filter((code) => playerSeasons.has(code)) };
+}
+
+// The player's Season by season tab in one answer: a card for every loaded season the player is in, oldest first,
+// whichever season is in the address. Each card holds what the tab used to fetch per season: the player, his
+// registrations, his per-game season statistics for the regular season and for every phase, and his game log.
+seasonRouter.get("/:seasonCode/players/:personKey/career", async (req, res) => {
+  const career = await careerSeasonCodes(req, res);
+  if (!career) return;
+  const { personKey } = career;
+  const cards = await Promise.all(
+    career.seasonCodes.map(async (seasonCode) => {
+      const [player, registrations, regularStats, allStats, gameLog] = await Promise.all([
+        getPlayer(seasonCode, personKey),
+        getPlayerRegistrations(seasonCode, personKey),
+        getSeasonStats(seasonCode, "RS", "perGame", 50, 0, personKey),
+        getSeasonStats(seasonCode, "all", "perGame", 50, 0, personKey),
+        getPlayerGameLog(seasonCode, personKey, CAREER_GAMES_LIMIT, 0),
+      ]);
+      if (!player) return null;
+      return {
+        seasonCode,
+        player,
+        registrations,
+        entries: { RS: regularStats.items[0] ?? null, all: allStats.items[0] ?? null },
+        games: gameLog.items,
+      };
+    }),
+  );
+  const seasons = cards.filter((card) => card !== null);
+  if (seasons.length === 0) {
+    sendError(res, 404, "PLAYER_NOT_FOUND", "Player not found");
+    return;
+  }
+  res.json({ seasons });
+});
+
+// The Season by season tab's PER, Win Shares and USG%: the last round of the player's advanced figures in each season,
+// for the regular season and for every phase (null where the season has none). Apart from the cards so that a failure
+// here leaves the rest of the tab standing, and a failed answer is never cached, so a retry reaches the database.
+seasonRouter.get("/:seasonCode/players/:personKey/career/advanced", async (req, res) => {
+  const career = await careerSeasonCodes(req, res);
+  if (!career) return;
+  const { personKey } = career;
+  if (career.seasonCodes.length === 0) {
+    sendError(res, 404, "PLAYER_NOT_FOUND", "Player not found");
+    return;
+  }
+  const seasons = await Promise.all(
+    career.seasonCodes.map(async (seasonCode) => {
+      const [regular, all] = await Promise.all([
+        getPlayerLastAdvancedRound(seasonCode, "RS", personKey),
+        getPlayerLastAdvancedRound(seasonCode, "all", personKey),
+      ]);
+      return { seasonCode, advanced: { RS: regular, all } };
+    }),
+  );
+  res.json({ seasons });
 });
 
 seasonRouter.get("/:seasonCode/players/:personKey/shots", async (req, res) => {

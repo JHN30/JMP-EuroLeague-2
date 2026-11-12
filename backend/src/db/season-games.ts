@@ -297,6 +297,46 @@ export async function getTeamGames(
   return { items: rows.slice(0, limit).map((row) => toGame(row, codes)), hasMore: rows.length > limit };
 }
 
+// Every game between two clubs across these seasons, each in the `getTeamGames` shape with that season's TV codes and its
+// season code. A season where club A has no club entry is left out, as its team games answer 404 there. Ordered by season,
+// then by date with an undated game first (as the head-to-head page always sorted them).
+export async function getHeadToHeadGames(seasonCodes: string[], teamA: string, teamB: string): Promise<(Game & { seasonCode: string })[]> {
+  if (seasonCodes.length === 0) return [];
+  const rows = await catalogRead(() =>
+    db.select({ ...gameFields, seasonCode: games.seasonCode })
+      .from(games)
+      .leftJoin(localClubs, and(
+        eq(localClubs.competitionCode, games.competitionCode),
+        eq(localClubs.seasonCode, games.seasonCode),
+        eq(localClubs.clubCode, games.localClubCode),
+      ))
+      .leftJoin(roadClubs, and(
+        eq(roadClubs.competitionCode, games.competitionCode),
+        eq(roadClubs.seasonCode, games.seasonCode),
+        eq(roadClubs.clubCode, games.roadClubCode),
+      ))
+      .where(and(
+        eq(games.competitionCode, COMPETITION_CODE),
+        inArray(games.seasonCode, seasonCodes),
+        or(
+          and(eq(games.localClubCode, teamA), eq(games.roadClubCode, teamB)),
+          and(eq(games.localClubCode, teamB), eq(games.roadClubCode, teamA)),
+        ),
+        exists(db.select({ one: sql`1` }).from(clubs).where(and(
+          eq(clubs.competitionCode, games.competitionCode),
+          eq(clubs.seasonCode, games.seasonCode),
+          eq(clubs.clubCode, teamA),
+        ))),
+      ))
+      .orderBy(asc(games.seasonCode), asc(games.scheduledAt), asc(games.gameCode)),
+  );
+  const seasons = [...new Set(rows.map((row) => row.seasonCode))];
+  const codesBySeason = new Map(await Promise.all(seasons.map(async (seasonCode) => [seasonCode, await getClubTvCodes(seasonCode)] as const)));
+  const items = rows.map(({ seasonCode, ...row }) => ({ ...toGame(row, codesBySeason.get(seasonCode) ?? new Map()), seasonCode }));
+  const time = (game: Game) => (game.scheduledAt === null ? 0 : Date.parse(game.scheduledAt));
+  return items.sort((x, y) => time(x) - time(y));
+}
+
 export async function getPlayerGameLog(
   seasonCode: string,
   personKey: string,

@@ -4,10 +4,10 @@ import { Chart } from "chart.js/auto";
 import { Link, useParams } from "react-router";
 import { useLiveSearchParams } from "../lib/useLiveSearchParams";
 import { shortTeamName, teamCode } from "../games/gameUtils";
-import { getSeasonTeams, getSeasons, getTeamGames } from "../lib/api";
+import { getHeadToHeadGames, getHeadToHeadTeams, getSeasons } from "../lib/api";
+import { seasonSlug } from "../lib/seasonSlug";
 import AsyncState from "../lib/AsyncState";
 import HeadToHeadSkeleton, { HeadToHeadHistorySkeleton, SeriesFiguresSkeleton } from "./HeadToHeadSkeleton";
-import { absentFromSeason } from "./teamCompare";
 import { isForfeit } from "../lib/forfeit";
 import BackLink from "../lib/BackLink";
 import CompactFilterSelect from "../lib/CompactFilterSelect";
@@ -22,7 +22,6 @@ import { useElementWidth } from "../lib/useElementWidth";
 import { useDocumentTitle } from "../lib/useDocumentTitle";
 import { thinAxisLabels } from "../lib/chartHelpers";
 
-const GAMES_LIMIT = 100;
 // The latest played meetings the history shows before the rest are folded away, and the meetings in the form strip.
 const HISTORY_SHOWN = 10;
 const FORM_SHOWN = 10;
@@ -42,15 +41,15 @@ function teamLabel(team) {
   return team?.abbreviatedName ?? team?.name ?? "TBD";
 }
 
+// The clubs and meetings span every archived season, so they are asked of the latest one, whichever season the page shows.
+function latestSeasonCode(seasons) {
+  return seasons[seasons.length - 1].seasonCode;
+}
+
+// Every club across the archived seasons, as it appears in the latest season it played.
 async function fetchCrossSeasonTeams(seasons) {
-  const results = await Promise.all(seasons.map((season) => getSeasonTeams(season.seasonCode)));
-  const byClubCode = new Map();
-  for (const data of results) {
-    for (const team of data.teams ?? []) {
-      byClubCode.set(team.clubCode, team);
-    }
-  }
-  return [...byClubCode.values()].sort((a, b) => (a.name ?? "").localeCompare(b.name ?? ""));
+  const data = await getHeadToHeadTeams(latestSeasonCode(seasons));
+  return [...(data.teams ?? [])].sort((a, b) => (a.name ?? "").localeCompare(b.name ?? ""));
 }
 
 function useActiveTheme() {
@@ -624,20 +623,10 @@ function MeetingHistory({ matchups, teamA, teamB, teamAId }) {
   );
 }
 
-// A club that was not in a season answers 404 TEAM_NOT_FOUND for it: it simply had no games, and so no meetings, that season.
-async function fetchMergedMatchups(seasonCodes, teamAId, teamBId) {
-  const perSeason = await Promise.all(
-    seasonCodes.map(async (seasonCode) => {
-      const data = await getTeamGames(seasonCode, teamAId, { limit: GAMES_LIMIT, order: "asc" }).catch((error) => {
-        if (absentFromSeason(error)) return { games: [] };
-        throw error;
-      });
-      return (data.games ?? [])
-        .filter((game) => game.localTeam?.clubCode === teamBId || game.roadTeam?.clubCode === teamBId)
-        .map((game) => ({ ...game, seasonCode }));
-    }),
-  );
-  return perSeason.flat().sort((x, y) => new Date(x.scheduledAt ?? 0) - new Date(y.scheduledAt ?? 0));
+// Every meeting, oldest first, each with its season in the year form the page's addresses use.
+async function fetchMergedMatchups(seasons, teamAId, teamBId) {
+  const data = await getHeadToHeadGames(latestSeasonCode(seasons), teamAId, teamBId);
+  return (data.games ?? []).map((game) => ({ ...game, seasonCode: seasonSlug(game.seasonCode) }));
 }
 
 function HeadToHeadBody({ seasonCode, seasons, allTeams }) {
@@ -672,7 +661,7 @@ function HeadToHeadBody({ seasonCode, seasons, allTeams }) {
 
   const matchupsQuery = useQuery({
     queryKey: ["head-to-head", teamAId, teamBId, seasonCodes.join(",")],
-    queryFn: () => fetchMergedMatchups(seasonCodes, teamAId, teamBId),
+    queryFn: () => fetchMergedMatchups(seasons, teamAId, teamBId),
     enabled: Boolean(teamAId) && Boolean(teamBId) && seasonCodes.length > 0,
   });
 

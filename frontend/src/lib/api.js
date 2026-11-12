@@ -89,6 +89,12 @@ export async function getSeasonStandings(seasonCode, phaseCode, { round } = {}) 
   return data;
 }
 
+// Where every club stood, and its record, after each round of the phase that has standings.
+export async function getStandingsRace(seasonCode, phaseCode) {
+  const { data } = await api.get(`/seasons/${seasonCode}/phases/${phaseCode}/standings/race`);
+  return data;
+}
+
 export async function getPhaseResults(seasonCode, phaseCode) {
   const { data } = await api.get(`/seasons/${seasonCode}/phases/${phaseCode}/results`);
   return data;
@@ -135,6 +141,18 @@ export async function getLeaderStats(seasonCode, { phase, mode, limit, offset, s
 
 export async function getSeasonTeams(seasonCode) {
   const { data } = await api.get(`/seasons/${seasonCode}/teams`);
+  return data;
+}
+
+// Every club across the loaded seasons, from the latest season each appears in.
+export async function getHeadToHeadTeams(seasonCode) {
+  const { data } = await api.get(`/seasons/${seasonCode}/head-to-head/teams`);
+  return data;
+}
+
+// Every meeting of two clubs across the loaded seasons, each game carrying the season it belongs to.
+export async function getHeadToHeadGames(seasonCode, teamA, teamB) {
+  const { data } = await api.get(`/seasons/${seasonCode}/head-to-head/games`, { params: { teamA, teamB } });
   return data;
 }
 
@@ -213,6 +231,18 @@ export async function getPlayerAdvanced(seasonCode, personKey, { scope, extended
   const { data } = await api.get(`/seasons/${seasonCode}/players/${personKey}/advanced`, {
     params: { scope, extended: extended ? "true" : undefined },
   });
+  return data;
+}
+
+// One card per loaded season the player is in, oldest first, with what the Season by season tab shows.
+export async function getPlayerCareer(seasonCode, personKey) {
+  const { data } = await api.get(`/seasons/${seasonCode}/players/${personKey}/career`);
+  return data;
+}
+
+// The Season by season tab's PER, Win Shares and USG%, per season the player is in.
+export async function getPlayerCareerAdvanced(seasonCode, personKey) {
+  const { data } = await api.get(`/seasons/${seasonCode}/players/${personKey}/career/advanced`);
   return data;
 }
 

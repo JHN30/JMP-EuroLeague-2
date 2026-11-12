@@ -216,6 +216,43 @@ export async function getLatestStandingsRound(seasonCode: string, phaseCode: str
   return rows[0]?.round ?? null;
 }
 
+export type RaceStanding = {
+  clubCode: string;
+  groupName: string | null;
+  position: number | null;
+  gamesWon: number | null;
+  gamesLost: number | null;
+};
+
+// Where every club stood after each round of a phase that has standings, oldest round first, in one query. Within a round
+// the rows keep the order `getStandings` gives them.
+export async function getStandingsRace(seasonCode: string, phaseCode: string): Promise<{ round: number; standings: RaceStanding[] }[]> {
+  const rows = await catalogRead(() =>
+    db.select({
+      round: standings.roundNumber,
+      clubCode: standings.clubCode,
+      groupName: standings.groupName,
+      position: standings.basicPosition,
+      gamesWon: standings.basicGamesWon,
+      gamesLost: standings.basicGamesLost,
+    })
+      .from(standings)
+      .where(and(
+        eq(standings.competitionCode, COMPETITION_CODE),
+        eq(standings.seasonCode, seasonCode),
+        eq(standings.phaseCode, phaseCode),
+      ))
+      .orderBy(asc(standings.roundNumber), asc(standings.groupName), asc(standings.basicPosition), asc(standings.clubCode)),
+  );
+  const rounds: { round: number; standings: RaceStanding[] }[] = [];
+  for (const { round, ...standing } of rows) {
+    const last = rounds[rounds.length - 1];
+    if (last?.round === round) last.standings.push(standing);
+    else rounds.push({ round, standings: [standing] });
+  }
+  return rounds;
+}
+
 export async function getStandings(
   seasonCode: string,
   phaseCode: string,

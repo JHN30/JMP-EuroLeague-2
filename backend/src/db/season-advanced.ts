@@ -184,6 +184,43 @@ export async function getPlayerRoundWinShares(seasonCode: string, scope: string,
   );
 }
 
+export type PlayerAdvancedRound = {
+  round: number;
+  clubCode: string | null;
+  gamesPlayed: number | null;
+  secondsPlayed: number | null;
+  usgPct: number | null;
+  per: number | null;
+  winShares: number | null;
+  winSharesPer40: number | null;
+};
+
+// The player's running PER, Win Shares and USG% after the scope's last round, as the last item of the player advanced
+// route's `rounds`; null when the player has no rows in the scope.
+export async function getPlayerLastAdvancedRound(seasonCode: string, scope: string, personKey: string): Promise<PlayerAdvancedRound | null> {
+  const available = await getPlayerStatsScopes(seasonCode, personKey);
+  if (!available.includes(scope)) return null;
+  const [stats, ratings, winShares] = await Promise.all([
+    getPlayerRoundStats(seasonCode, scope, personKey),
+    getPlayerRoundRatings(seasonCode, scope, personKey),
+    getPlayerRoundWinShares(seasonCode, scope, personKey),
+  ]);
+  const row = stats[stats.length - 1];
+  if (!row) return null;
+  const rating = new Map(ratings.map((entry) => [entry.roundNumber, entry])).get(row.roundNumber);
+  const shares = new Map(winShares.map((entry) => [entry.roundNumber, entry])).get(row.roundNumber);
+  return {
+    round: row.roundNumber,
+    clubCode: row.clubCode,
+    gamesPlayed: row.gamesPlayed,
+    secondsPlayed: row.secondsPlayed,
+    usgPct: row.usgPct,
+    per: rating?.per ?? null,
+    winShares: shares?.winShares ?? null,
+    winSharesPer40: shares?.winSharesPer40 ?? null,
+  };
+}
+
 // Leaderboards read one round only: each player's row there already holds his cumulative totals, so
 // rounds are never added together. `minSeconds` drops small samples before ranking and limiting.
 export async function getPerLeaders(

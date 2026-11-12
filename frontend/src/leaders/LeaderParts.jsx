@@ -2,7 +2,7 @@ import { useContext, useState } from "react";
 import { createPortal } from "react-dom";
 import IconArrowDown from "@tabler/icons-react/dist/esm/icons/IconArrowDown.mjs";
 import IconSearch from "@tabler/icons-react/dist/esm/icons/IconSearch.mjs";
-import { motion } from "motion/react";
+import { m } from "motion/react";
 import { Link } from "react-router";
 import AsyncState from "../lib/AsyncState";
 import { CategoryRowsSkeleton } from "./LeadersSkeleton";
@@ -114,7 +114,7 @@ export function RankBadge({ rank, compact = false }) {
 function ShareBar({ share, className }) {
   return (
     <div aria-hidden="true" className={`overflow-hidden rounded-full bg-base-300 ${className}`}>
-      <motion.div
+      <m.div
         className="h-full rounded-full bg-primary/70"
         initial={{ width: 0 }}
         animate={{ width: `${share}%` }}
@@ -148,14 +148,14 @@ export function CategoryCard({ title, tip, entries, isLoading, isError, onRetry,
       ) : entries.length === 0 ? (
         <EmptyText>{emptyText}</EmptyText>
       ) : (
-        <motion.ol className="flex flex-1 flex-col" variants={listContainer} initial="hidden" animate="show">
+        <m.ol className="flex flex-1 flex-col" variants={listContainer} initial="hidden" animate="show">
           {entries.map((entry) => {
             // A row with a `to` is one link; the team tag inside stays text, since links do not nest.
             const Row = entry.to ? Link : "div";
             const rowProps = entry.to ? { to: entry.to, className: "board-row-link block" } : {};
             const top = entry.rank === 1;
             return (
-              <motion.li key={entry.key} variants={listItem} className="border-b border-base-300 py-2 last:border-0 lg:py-1">
+              <m.li key={entry.key} variants={listItem} className="border-b border-base-300 py-2 last:border-0 lg:py-1">
                 <Row {...rowProps}>
                   <div className="flex items-center gap-2 sm:gap-3 lg:gap-2">
                     <RankBadge rank={entry.rank} compact />
@@ -176,10 +176,10 @@ export function CategoryCard({ title, tip, entries, isLoading, isError, onRetry,
                   </div>
                   <ShareBar share={entry.share} className="mt-1.5 ml-10 h-1 lg:hidden" />
                 </Row>
-              </motion.li>
+              </m.li>
             );
           })}
-        </motion.ol>
+        </m.ol>
       )}
       {footnote ? <p className="muted mt-2 text-xs lg:mt-1">{footnote}</p> : null}
       <button type="button" className="btn btn-ghost btn-sm mt-3 justify-between lg:hidden" onClick={onOpen}>
@@ -353,7 +353,7 @@ export function BoardRow({ rank, change, avatar, name, sub, columns = [], valueT
       ))}
       <span className="flex items-center gap-2">
         <span aria-hidden="true" className="hidden h-2 min-w-0 flex-1 overflow-hidden rounded-full bg-base-300 sm:block">
-          <motion.span
+          <m.span
             className="block h-full rounded-full bg-primary"
             initial={{ width: 0 }}
             animate={{ width: `${share}%` }}
@@ -366,7 +366,7 @@ export function BoardRow({ rank, change, avatar, name, sub, columns = [], valueT
   );
   const style = { "--extra": columns.length };
   return (
-    <motion.li variants={listItem} className="border-b border-base-300 last:border-0">
+    <m.li variants={listItem} className="border-b border-base-300 last:border-0">
       {to ? (
         <Link to={to} className="board-row board-row-link" style={style}>
           {content}
@@ -376,6 +376,6 @@ export function BoardRow({ rank, change, avatar, name, sub, columns = [], valueT
           {content}
         </div>
       )}
-    </motion.li>
+    </m.li>
   );
 }

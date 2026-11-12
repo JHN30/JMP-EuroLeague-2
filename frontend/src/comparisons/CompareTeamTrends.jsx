@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { motion } from "motion/react";
+import { m } from "motion/react";
 import { shortTeamName, teamCode } from "../games/gameUtils";
 import { getSeasonStandings, getSeasonTeams, getTeamGames } from "../lib/api";
 import AsyncState from "../lib/AsyncState";
@@ -71,7 +71,7 @@ function FormLine({ label, crestUrl, games }) {
   const compare = real.length > recentReal.length;
   const streak = streakOf(games);
   return (
-    <motion.li variants={listItem} className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-4 gap-y-1.5 border-b border-base-300 py-2.5 last:border-0 sm:grid-cols-[minmax(0,13rem)_7.5rem_minmax(0,1fr)_auto_auto]">
+    <m.li variants={listItem} className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-4 gap-y-1.5 border-b border-base-300 py-2.5 last:border-0 sm:grid-cols-[minmax(0,13rem)_7.5rem_minmax(0,1fr)_auto_auto]">
       <span className="flex min-w-0 items-center gap-2 font-bold">
         {crestUrl ? <RevealImage src={crestUrl} className="h-7 w-7 flex-none object-contain" /> : <span className="h-7 w-7 flex-none" />}
         <span className="min-w-0 wrap-break-word">{label}</span>
@@ -91,7 +91,7 @@ function FormLine({ label, crestUrl, games }) {
       <span className="text-right text-sm whitespace-nowrap">
         <span className="muted text-xs">Allowed</span> <b className="tabular-nums">{formatPerGame(recentAllowed)}</b> {compare ? <Delta value={recentAllowed - allowed} lowerIsBetter /> : null}
       </span>
-    </motion.li>
+    </m.li>
   );
 }
 
@@ -131,13 +131,13 @@ function TypeRow({ label, tip, a, b }) {
     </span>
   );
   return (
-    <motion.li variants={listItem} data-better={better ?? undefined} className="grid grid-cols-[minmax(0,1fr)_4.5rem_4.5rem] items-center gap-x-2 border-b border-base-300 py-2 text-sm last:border-0">
+    <m.li variants={listItem} data-better={better ?? undefined} className="grid grid-cols-[minmax(0,1fr)_4.5rem_4.5rem] items-center gap-x-2 border-b border-base-300 py-2 text-sm last:border-0">
       <span className="min-w-0 font-medium">
         <HeaderTip tip={tip}>{label}</HeaderTip>
       </span>
       {show(a, "a")}
       {show(b, "b")}
-    </motion.li>
+    </m.li>
   );
 }
 
@@ -162,11 +162,11 @@ function GameTypes({ gamesA, gamesB, entityA, entityB, halves }) {
         <ClubCode entity={entityA} />
         <ClubCode entity={entityB} />
       </div>
-      <motion.ul variants={listContainer} initial="hidden" animate="show">
+      <m.ul variants={listContainer} initial="hidden" animate="show">
         {rows.map((row) => (
           <TypeRow key={row.label} label={row.label} tip={row.tip} a={recordOf(row.pick(row.real ? realA : gamesA))} b={recordOf(row.pick(row.real ? realB : gamesB))} />
         ))}
-      </motion.ul>
+      </m.ul>
       {halves ? null : <p className="muted mt-2 text-xs">The records against the top and bottom of the table need one regular-season table.</p>}
     </Panel>
   );
@@ -234,18 +234,18 @@ function CommonOpponents({ gamesA, gamesB, entityA, entityB, order }) {
             <ClubCode entity={entityA} />
             <ClubCode entity={entityB} />
           </div>
-          <motion.ul className="grid gap-x-6 lg:grid-cols-2" variants={listContainer} initial="hidden" animate="show">
+          <m.ul className="grid gap-x-6 lg:grid-cols-2" variants={listContainer} initial="hidden" animate="show">
             {rows.map((row) => (
-              <motion.li key={row.code} variants={listItem} data-better={row.better ?? undefined} className="grid grid-cols-[minmax(0,1fr)_5.5rem_5.5rem] items-center gap-x-2 border-b border-base-300 py-1.5 text-sm">
+              <m.li key={row.code} variants={listItem} data-better={row.better ?? undefined} className="grid grid-cols-[minmax(0,1fr)_5.5rem_5.5rem] items-center gap-x-2 border-b border-base-300 py-1.5 text-sm">
                 <span className="flex min-w-0 items-center gap-2">
                   {row.opponent?.crestUrl ? <RevealImage src={row.opponent.crestUrl} className="h-5 w-5 flex-none object-contain" /> : <span className="h-5 w-5 flex-none" />}
                   <ShortLabel short={teamCode(row.opponent)} full={shortTeamName(row.opponent)} />
                 </span>
                 <Margins games={row.a} better={row.better === "a"} />
                 <Margins games={row.b} better={row.better === "b"} />
-              </motion.li>
+              </m.li>
             ))}
-          </motion.ul>
+          </m.ul>
         </>
       )}
     </Panel>
@@ -304,28 +304,28 @@ export default function CompareTeamTrends({ seasonCode, phaseCode, entityA: pick
   const order = new Map(standings.map((entry, index) => [entry.clubCode, entry.basic?.position ?? index + 1]));
   const gameNote = "Every game, in order. Hover or tap a point for the game. The bold line is the average of the last 3 games.";
   return (
-    <motion.div className="flex flex-col gap-6" variants={sectionContainer} initial="hidden" animate="show">
-      <motion.div variants={sectionItem}>
+    <m.div className="flex flex-col gap-6" variants={sectionContainer} initial="hidden" animate="show">
+      <m.div variants={sectionItem}>
         <Panel as="section" aria-label="Recent form" className="p-4">
           <PanelHeader compact level="h2" kicker="FORM" title={`The last ${WINDOW} games against the season`} />
-          <motion.ul variants={listContainer} initial="hidden" animate="show">
+          <m.ul variants={listContainer} initial="hidden" animate="show">
             <FormLine label={entityA.label} crestUrl={crestOf(entityA.id)} games={gamesA} />
             <FormLine label={entityB.label} crestUrl={crestOf(entityB.id)} games={gamesB} />
-          </motion.ul>
+          </m.ul>
         </Panel>
-      </motion.div>
-      <motion.div className="grid grid-cols-[minmax(0,1fr)] gap-6 xl:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]" variants={sectionItem}>
+      </m.div>
+      <m.div className="grid grid-cols-[minmax(0,1fr)] gap-6 xl:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]" variants={sectionItem}>
         <GameTypes gamesA={gamesA} gamesB={gamesB} entityA={entityA} entityB={entityB} halves={standingsQuery.isSuccess ? halves : null} />
         <CommonOpponents gamesA={gamesA} gamesB={gamesB} entityA={entityA} entityB={entityB} order={order} />
-      </motion.div>
-      <motion.div className="grid grid-cols-[minmax(0,1fr)] gap-6 xl:grid-cols-2" variants={sectionItem}>
+      </m.div>
+      <m.div className="grid grid-cols-[minmax(0,1fr)] gap-6 xl:grid-cols-2" variants={sectionItem}>
         <LineTrend compact rolling={ROLLING} kicker="SCORING" title="Points scored" note={gameNote} subtitle={`Bold: ${ROLLING}-game average`} labels={labels} series={charts.scored} markers />
         <LineTrend compact rolling={ROLLING} kicker="DEFENSE" title="Points allowed" note={gameNote} subtitle={`Lower is better · bold: ${ROLLING}-game average`} labels={labels} series={charts.allowed} markers />
-      </motion.div>
-      <motion.div className="grid grid-cols-[minmax(0,1fr)] gap-6 xl:grid-cols-2" variants={sectionItem}>
+      </m.div>
+      <m.div className="grid grid-cols-[minmax(0,1fr)] gap-6 xl:grid-cols-2" variants={sectionItem}>
         <MarginTrend compact kicker={entityA.label.toUpperCase()} title="Margin in every game" note="Green: won. Red: lost." labels={labels.slice(0, gamesA.length)} margins={gamesA.map((game) => game.margin)} notes={gamesA.map((game) => game.note)} label={entityA.label} />
         <MarginTrend compact kicker={entityB.label.toUpperCase()} title="Margin in every game" note="Green: won. Red: lost." labels={labels.slice(0, gamesB.length)} margins={gamesB.map((game) => game.margin)} notes={gamesB.map((game) => game.note)} label={entityB.label} />
-      </motion.div>
-    </motion.div>
+      </m.div>
+    </m.div>
   );
 }

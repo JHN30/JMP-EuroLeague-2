@@ -1,6 +1,6 @@
 import { useEffect, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { motion } from "motion/react";
+import { m } from "motion/react";
 import { getAdvancedLeaders } from "../lib/api";
 import AsyncState from "../lib/AsyncState";
 import { BoardSkeleton, LandingSkeleton } from "./LeadersSkeleton";
@@ -148,7 +148,7 @@ function AdvancedBoard({ seasonCode, scope, stage, metric, params, setParams }) 
           ) : (
             <>
           <BoardHeader columns={["GP", "MIN"]} valueLabel={stat.label.length > 8 ? "VALUE" : stat.label} sort={sortable ? { direction, onToggle: toggleOrder } : undefined} />
-          <motion.ol variants={listContainer} initial="hidden" animate="show" key={`${stat.key}-${direction}-${offset}-${share}-${scope}`}>
+          <m.ol variants={listContainer} initial="hidden" animate="show" key={`${stat.key}-${direction}-${offset}-${share}-${scope}`}>
             {entries.map((entry, index) => (
               <BoardRow
                 key={`${entry.personKey}-${entry.clubCode}`}
@@ -165,7 +165,7 @@ function AdvancedBoard({ seasonCode, scope, stage, metric, params, setParams }) 
                 to={`/${seasonCode}/players/${entry.personKey}`}
               />
             ))}
-          </motion.ol>
+          </m.ol>
           <BoardPager offset={offset} pageSize={PAGE_SIZE} total={total} onChange={(next) => changePage(next || undefined)} />
             </>
           )}

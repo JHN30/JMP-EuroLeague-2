@@ -1,4 +1,4 @@
-import { motion } from "motion/react";
+import { m } from "motion/react";
 import { EASE_OUT } from "../lib/motion";
 import { ZONES, verdictFor } from "./advancedVerdict";
 
@@ -23,7 +23,7 @@ export default function AdvancedGauge({ percentile, spread, format, neutral = fa
             <div key={zone.label} className={neutral ? zone.neutralZone : zone.zone} style={{ width: `${width}%` }} />
           ))}
         </div>
-        <motion.span
+        <m.span
           aria-hidden="true"
           className="absolute top-1/2 h-4 w-4 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-base-content bg-base-100 shadow"
           initial={{ left: "0%", opacity: 0 }}

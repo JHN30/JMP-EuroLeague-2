@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { motion } from "motion/react";
+import { m } from "motion/react";
 import { Link } from "react-router";
 import { getSeasons } from "../lib/api";
 import AsyncState from "../lib/AsyncState";
@@ -27,18 +27,18 @@ const PHASE_TEXT = { all: "Every phase", RS: "Regular season" };
 
 function SummaryStat({ label, value, sub }) {
   return (
-    <motion.div className="rounded-box border border-base-300 bg-base-100 p-3" variants={listItem}>
+    <m.div className="rounded-box border border-base-300 bg-base-100 p-3" variants={listItem}>
       <span className="muted text-xs font-bold uppercase tracking-wide">{label}</span>
       <p className="mt-1 text-2xl font-black leading-none tabular-nums">{value}</p>
       {sub ? <p className="muted mt-1 text-xs">{sub}</p> : null}
-    </motion.div>
+    </m.div>
   );
 }
 
 function CareerSummary({ averages, totals, seasonCount, phase }) {
   const each = (key) => (averages[key] === null ? "—" : formatDecimal(averages[key]));
   return (
-    <motion.div className="grid grid-cols-2 gap-3 sm:grid-cols-4 xl:grid-cols-8" variants={listContainer} initial="hidden" animate="show">
+    <m.div className="grid grid-cols-2 gap-3 sm:grid-cols-4 xl:grid-cols-8" variants={listContainer} initial="hidden" animate="show">
       <SummaryStat label="Seasons" value={seasonCount} />
       <SummaryStat label="Games" value={totals.gp.toLocaleString()} sub={phase === "all" ? "every phase" : "regular season"} />
       <SummaryStat label="Minutes" value={totals.min.toLocaleString()} sub="played" />
@@ -47,7 +47,7 @@ function CareerSummary({ averages, totals, seasonCount, phase }) {
       <SummaryStat label="REB" value={each("reb")} sub="career per game" />
       <SummaryStat label="AST" value={each("ast")} sub="career per game" />
       <SummaryStat label="PIR" value={each("pir")} sub="career per game" />
-    </motion.div>
+    </m.div>
   );
 }
 
@@ -214,11 +214,11 @@ function SeasonTable({ lines, cardsByCode, averages, totals, phase, currentSeaso
                 ))}
               </tr>
             </thead>
-            <motion.tbody key={view} variants={listContainer} initial="hidden" animate="show">
+            <m.tbody key={view} variants={listContainer} initial="hidden" animate="show">
               {lines.map((line) => {
                 const calculated = line.calculated && view !== "totals";
                 return (
-                  <motion.tr key={line.seasonCode} variants={listItem} className={line.seasonCode === currentSeasonCode ? "bg-base-200/60" : ""}>
+                  <m.tr key={line.seasonCode} variants={listItem} className={line.seasonCode === currentSeasonCode ? "bg-base-200/60" : ""}>
                     <td className="whitespace-nowrap font-semibold">
                       <Link to={`/${line.seasonCode}/players/${personKey}`} className="link link-hover">
                         {line.label}
@@ -247,10 +247,10 @@ function SeasonTable({ lines, cardsByCode, averages, totals, phase, currentSeaso
                         {column.cell(line)}
                       </td>
                     ))}
-                  </motion.tr>
+                  </m.tr>
                 );
               })}
-            </motion.tbody>
+            </m.tbody>
             {lines.length > 1 ? (
               <tfoot>
                 <tr className="font-bold">
@@ -280,7 +280,7 @@ function HighCard({ high }) {
   if (!best) return null;
   const opponent = best.game.side === "local" ? best.game.roadTeam : best.game.localTeam;
   return (
-    <motion.div variants={listItem}>
+    <m.div variants={listItem}>
       <Link
         to={`/${best.seasonCode}/games/${best.game.gameCode}`}
         className="flex h-full flex-col gap-1 rounded-box border border-base-300 bg-base-100 p-3 transition-colors hover:border-primary"
@@ -298,7 +298,7 @@ function HighCard({ high }) {
           {best.label} · {best.game.phaseCode === "RS" ? (best.game.roundName ?? best.game.phaseName) : best.game.phaseName}
         </span>
       </Link>
-    </motion.div>
+    </m.div>
   );
 }
 
@@ -306,11 +306,11 @@ function CareerHighs({ highs }) {
   return (
     <Panel className="p-4">
       <PanelHeader kicker="BEST SINGLE GAMES" title="Career highs" />
-      <motion.div className="grid grid-cols-2 gap-3 lg:grid-cols-4" variants={listContainer} initial="hidden" animate="show">
+      <m.div className="grid grid-cols-2 gap-3 lg:grid-cols-4" variants={listContainer} initial="hidden" animate="show">
         {highs.map((high) => (
           <HighCard key={high.field} high={high} />
         ))}
-      </motion.div>
+      </m.div>
       <p className="muted mt-3 text-xs">Across every game in the archive, playoffs included. A tie goes to the most recent game.</p>
     </Panel>
   );
@@ -323,13 +323,13 @@ function TeamsTimeline({ stints, currentSeasonCode }) {
     <Panel className="p-4">
       <PanelHeader kicker="CLUBS" title="Teams by season" />
       <div className="overflow-x-auto overscroll-x-contain pb-2" role="region" aria-label="Clubs by season" tabIndex={0}>
-        <motion.ol className="flex gap-6" variants={listContainer} initial="hidden" animate="show">
+        <m.ol className="flex gap-6" variants={listContainer} initial="hidden" animate="show">
           {stints.map((stint) => {
             const first = stint.seasons[0];
             const last = stint.seasons[stint.seasons.length - 1];
             const current = stint.seasons.some((card) => card.seasonCode === currentSeasonCode);
             return (
-              <motion.li key={stint.key} className="min-w-44 flex-none" variants={listItem}>
+              <m.li key={stint.key} className="min-w-44 flex-none" variants={listItem}>
                 <div className="relative mb-3 flex items-center">
                   <span aria-hidden="true" className={`z-10 h-3 w-3 flex-none rounded-full ${current ? "bg-primary" : "border-2 border-primary bg-base-100"}`} />
                   <span aria-hidden="true" className="absolute left-3 right-[-1.5rem] h-0.5 bg-base-300" />
@@ -348,10 +348,10 @@ function TeamsTimeline({ stints, currentSeasonCode }) {
                     {stint.roles.length > 0 ? ` · ${stint.roles.join(", ")}` : ""}
                   </span>
                 </div>
-              </motion.li>
+              </m.li>
             );
           })}
-        </motion.ol>
+        </m.ol>
       </div>
     </Panel>
   );
@@ -406,17 +406,17 @@ export default function PlayerCareerSection({ personKey, seasonCode }) {
     <>
       <TabStrip ariaLabel="Games counted" level={2} panelId={PANEL_ID} activeKey={phase} onChange={setPhase} className="mb-4 w-fit" tabs={CAREER_PHASES} />
       <TabPanel id={PANEL_ID} focusKey={phase} scroll={false}>
-        <motion.div className="flex flex-col gap-6" variants={sectionContainer} initial="hidden" animate="show">
+        <m.div className="flex flex-col gap-6" variants={sectionContainer} initial="hidden" animate="show">
           {lines.length === 0 ? (
-            <motion.div variants={sectionItem}>
+            <m.div variants={sectionItem}>
               <EmptyText>{phase === "RS" ? "No regular-season games recorded." : "No games recorded."}</EmptyText>
-            </motion.div>
+            </m.div>
           ) : (
             <>
-              <motion.section variants={sectionItem} aria-label="Career summary">
+              <m.section variants={sectionItem} aria-label="Career summary">
                 <CareerSummary averages={derived.averages} totals={derived.totals} seasonCount={lines.length} phase={phase} />
-              </motion.section>
-              <motion.section variants={sectionItem} aria-label="Seasons">
+              </m.section>
+              <m.section variants={sectionItem} aria-label="Seasons">
                 {advancedQuery.isError ? (
                   <AsyncState compact status="error" errorClassName="mb-4" message="Could not load PER, win shares and USG%." onRetry={() => advancedQuery.refetch()} />
                 ) : null}
@@ -429,20 +429,20 @@ export default function PlayerCareerSection({ personKey, seasonCode }) {
                   currentSeasonCode={seasonCode}
                   personKey={personKey}
                 />
-              </motion.section>
-              <motion.section variants={sectionItem} aria-label="Trends">
+              </m.section>
+              <m.section variants={sectionItem} aria-label="Trends">
                 <TrendGrid lines={lines} />
-              </motion.section>
+              </m.section>
             </>
           )}
-          <motion.section className="grid grid-cols-1 gap-4 xl:grid-cols-2" variants={sectionItem} aria-label="Highs and profile">
+          <m.section className="grid grid-cols-1 gap-4 xl:grid-cols-2" variants={sectionItem} aria-label="Highs and profile">
             <CareerHighs highs={career.highs} />
             {lines.length > 0 ? <ProfileComparison lines={lines} personKey={personKey} phase={phase} /> : null}
-          </motion.section>
-          <motion.section variants={sectionItem} aria-label="Teams">
+          </m.section>
+          <m.section variants={sectionItem} aria-label="Teams">
             <TeamsTimeline stints={career.stints} currentSeasonCode={seasonCode} />
-          </motion.section>
-        </motion.div>
+          </m.section>
+        </m.div>
       </TabPanel>
     </>
   );

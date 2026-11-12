@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { motion } from "motion/react";
+import { m } from "motion/react";
 import AsyncState from "../lib/AsyncState";
 import { RotationsSkeleton, TwoBlocksSkeleton } from "./GamePageSkeleton";
 import EmptyText from "../lib/EmptyText";
@@ -180,21 +180,21 @@ function ConnectionsSection({ game, seasonCode, playByPlayQuery }) {
 // assists is built from the play-by-play. Each section loads, fails and retries on its own.
 export default function RotationsTab({ game, seasonCode, boxScoreQuery, playByPlayQuery, lineupsQuery }) {
   return (
-    <motion.div className="flex flex-col gap-6 lg:gap-4" variants={sectionContainer} initial="hidden" animate="show">
-      <motion.section variants={sectionItem}>
+    <m.div className="flex flex-col gap-6 lg:gap-4" variants={sectionContainer} initial="hidden" animate="show">
+      <m.section variants={sectionItem}>
         <PanelHeader kicker="ROTATIONS" title="Minutes on the court" compact />
         <TimelineSection game={game} seasonCode={seasonCode} boxScoreQuery={boxScoreQuery} lineupsQuery={lineupsQuery} />
-      </motion.section>
+      </m.section>
 
-      <motion.section variants={sectionItem}>
+      <m.section variants={sectionItem}>
         <PanelHeader kicker="CONNECTIONS" title="Assist connections" compact />
         <ConnectionsSection game={game} seasonCode={seasonCode} playByPlayQuery={playByPlayQuery} />
-      </motion.section>
+      </m.section>
 
-      <motion.section variants={sectionItem}>
+      <m.section variants={sectionItem}>
         <PanelHeader kicker="LINEUPS" title="Five-man units" compact />
         <LineupsSection game={game} seasonCode={seasonCode} boxScoreQuery={boxScoreQuery} lineupsQuery={lineupsQuery} />
-      </motion.section>
-    </motion.div>
+      </m.section>
+    </m.div>
   );
 }

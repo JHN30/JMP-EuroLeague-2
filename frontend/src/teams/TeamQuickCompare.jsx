@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { motion } from "motion/react";
+import { m } from "motion/react";
 import { Link } from "react-router";
 import AsyncState from "../lib/AsyncState";
 import { QuickCompareSkeleton } from "./TeamPageSkeleton";
@@ -126,13 +126,13 @@ export default function TeamQuickCompare({ seasonCode, clubCode, team, nextOppon
         {own && other ? (
           // Keyed by the chosen opponent, so each switch replays the entrance instead of swapping numbers in place. The rows
           // share any height the panel gets from taller form and fixtures beside it (at lg, where those two are stacked).
-          <motion.div key={active.key} className="flex flex-1 flex-col" variants={listContainer} initial="hidden" animate="show">
-            <motion.div variants={listItem} className="mb-1 grid grid-cols-2 gap-4">
+          <m.div key={active.key} className="flex flex-1 flex-col" variants={listContainer} initial="hidden" animate="show">
+            <m.div variants={listItem} className="mb-1 grid grid-cols-2 gap-4">
               <div className="flex justify-end">
                 <ClubLabel club={self} />
               </div>
               <ClubLabel club={active.club} to={`/${seasonCode}/teams/${active.club.clubCode}`} />
-            </motion.div>
+            </m.div>
             {COMPARE_ROWS.map(({ field, format, ...row }) => (
               <ComparisonRow
                 key={row.label}
@@ -145,10 +145,10 @@ export default function TeamQuickCompare({ seasonCode, clubCode, team, nextOppon
                 displayB={format(other[field])}
               />
             ))}
-            <motion.p variants={listItem} className="muted mt-3 text-sm">
+            <m.p variants={listItem} className="muted mt-3 text-sm">
               Ratings are per 100 possessions. The highlighted side has the edge.
-            </motion.p>
-          </motion.div>
+            </m.p>
+          </m.div>
         ) : (
           <EmptyText>{`Advanced numbers for this comparison aren't available yet for the ${stageName}.`}</EmptyText>
         )}

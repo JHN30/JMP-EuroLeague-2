@@ -1,9 +1,9 @@
-import { motion } from "motion/react";
+import { m } from "motion/react";
 import { Link } from "react-router";
 import { cardHover } from "./motion";
 import { SkeletonChip } from "./Skeleton";
 
-const MotionLink = motion.create(Link);
+const MotionLink = m.create(Link);
 
 // `to` makes the whole chip a link (a team's or player's page), styled and lifting on hover like the other linked chips.
 // `tone` colours the value ("positive" green, "negative" red) for good or bad news; pair it with an arrow or sign

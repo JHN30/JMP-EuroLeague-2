@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { motion } from "motion/react";
+import { m } from "motion/react";
 import { Link, useParams } from "react-router";
 import { getSeasonStandings, getSeasonTeams } from "../lib/api";
 import AsyncState from "../lib/AsyncState";
@@ -15,7 +15,7 @@ import { groupPositionLabel, isGroupedTable } from "../standings/standingsGroups
 import { cityName } from "./cityName";
 import { ordinal } from "./teamLeague";
 
-const MotionLink = motion.create(Link);
+const MotionLink = m.create(Link);
 
 // "3rd · 22-12", or "Group A · 2nd · 22-12" when the regular season is split into groups. Nothing before the club's first game.
 function recordLine(entry, grouped) {
@@ -55,7 +55,7 @@ export default function TeamsPage() {
       ) : teams.length === 0 ? (
         <EmptyText>No teams available for this season.</EmptyText>
       ) : (
-        <motion.ul
+        <m.ul
           className="grid grid-cols-2 gap-3 lg:grid-cols-3"
           variants={listContainer}
           initial="hidden"
@@ -89,7 +89,7 @@ export default function TeamsPage() {
               </li>
             );
           })}
-        </motion.ul>
+        </m.ul>
       )}
     </div>
   );

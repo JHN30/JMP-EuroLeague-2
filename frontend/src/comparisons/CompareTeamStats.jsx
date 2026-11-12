@@ -1,4 +1,4 @@
-import { motion } from "motion/react";
+import { m } from "motion/react";
 import AsyncState from "../lib/AsyncState";
 import { TeamStatsSkeleton } from "./CompareSkeleton";
 import EmptyText from "../lib/EmptyText";
@@ -47,7 +47,7 @@ function betterSide(stat, a, b) {
 function HalfBar({ share, side, better }) {
   return (
     <div aria-hidden="true" className="h-2 min-w-0 overflow-hidden rounded-full bg-base-300">
-      <motion.div
+      <m.div
         className={`h-full rounded-full ${better ? "bg-primary" : "bg-base-content/45"} ${side === "a" ? "ml-auto" : ""}`}
         style={{ width: `${share}%`, originX: side === "a" ? 1 : 0 }}
         {...barFill}
@@ -74,7 +74,7 @@ function StatRow({ row, rows }) {
   const neutral = directionOf(stat) === "neutral";
   const tip = stat.tip ?? TEAM_STAT_TIPS[stat.key];
   return (
-    <motion.li variants={listItem} data-better={better ?? undefined} className={`${ROW_GRID} gap-y-0.5 border-b border-base-300 py-2 text-sm last:border-0`}>
+    <m.li variants={listItem} data-better={better ?? undefined} className={`${ROW_GRID} gap-y-0.5 border-b border-base-300 py-2 text-sm last:border-0`}>
       <span className="col-span-2 col-start-2 row-start-1 text-center text-xs font-bold tracking-wide uppercase sm:col-span-1 sm:col-start-1 sm:text-left sm:text-sm sm:font-medium sm:tracking-normal sm:normal-case">
         {tip ? <HeaderTip tip={tip}>{stat.label}</HeaderTip> : stat.label}
         {stat.lowerIsBetter ? (
@@ -94,7 +94,7 @@ function StatRow({ row, rows }) {
       </div>
       <Value stat={stat} place={b} better={better === "b"} className="col-start-4 row-start-2 text-left sm:col-start-6 sm:row-start-1" />
       <Rank place={b} neutral={neutral} className="col-start-4 row-start-1 text-right sm:col-start-7" />
-    </motion.li>
+    </m.li>
   );
 }
 
@@ -111,11 +111,11 @@ function StatGroup({ group, rows, entityA, entityB }) {
           <ShortLabel short={entityB.tvCode ?? entityB.label} full={entityB.label} />
         </span>
       </div>
-      <motion.ul variants={listContainer} initial="hidden" animate="show">
+      <m.ul variants={listContainer} initial="hidden" animate="show">
         {group.rows.map((row) => (
           <StatRow key={row.stat.key} row={row} rows={rows} />
         ))}
-      </motion.ul>
+      </m.ul>
     </section>
   );
 }

@@ -1,4 +1,4 @@
-import { motion } from "motion/react";
+import { m } from "motion/react";
 import AsyncState from "../lib/AsyncState";
 import { LeagueProfileSkeleton } from "./TeamPageSkeleton";
 import EmptyText from "../lib/EmptyText";
@@ -26,7 +26,7 @@ function ProfileRow({ metric, own, standing }) {
         </span>
       </div>
       <div aria-hidden="true" className="h-1.5 w-full overflow-hidden rounded-full bg-base-300 lg:order-2 lg:min-w-0 lg:flex-1">
-        <motion.div
+        <m.div
           className={`h-full origin-left rounded-full ${tier.bar}`}
           style={{ width: `${fill}%` }}
           {...barFill}

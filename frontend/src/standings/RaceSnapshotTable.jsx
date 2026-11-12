@@ -1,4 +1,4 @@
-import { motion } from "motion/react";
+import { m } from "motion/react";
 import { Link } from "react-router";
 import HeaderTip from "../lib/HeaderTip";
 import { tierForPosition } from "../lib/seasonFormat";
@@ -88,7 +88,7 @@ export default function RaceSnapshotTable({
             const isFocused = focusedClub === team.clubCode;
 
             return (
-              <motion.tr
+              <m.tr
                 key={team.clubCode}
                 layout={reducedMotion ? false : "position"}
                 transition={{ duration: 0.4 }}
@@ -124,7 +124,7 @@ export default function RaceSnapshotTable({
                 <td>
                   <MovementIndicator change={change} />
                 </td>
-              </motion.tr>
+              </m.tr>
             );
           })}
         </tbody>

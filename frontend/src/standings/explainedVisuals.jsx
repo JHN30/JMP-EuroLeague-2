@@ -1,4 +1,4 @@
-import { motion } from "motion/react";
+import { m } from "motion/react";
 import { EASE_OUT } from "../lib/motion";
 
 // Small, reusable pictures for the "Explained" tab. They play once when scrolled into view.
@@ -45,7 +45,7 @@ export function DotStrip({ entries, valueOf, exampleCode, format, includeZero = 
           const isExample = point.entry.clubCode === exampleCode;
           if (isExample) return null;
           return (
-            <motion.circle
+            <m.circle
               key={point.entry.clubCode}
               cx={x(point.value)}
               cy={axisY - 8 - (index % 3) * 7}
@@ -57,10 +57,10 @@ export function DotStrip({ entries, valueOf, exampleCode, format, includeZero = 
               transition={{ duration: 0.35, delay: 0.05 + index * 0.02, ease: EASE_OUT }}
             >
               <title>{`${point.entry.clubName ?? point.entry.clubCode}: ${format(point.value)}`}</title>
-            </motion.circle>
+            </m.circle>
           );
         })}
-        <motion.g
+        <m.g
           initial={{ scale: 0 }}
           whileInView={{ scale: 1 }}
           viewport={inView}
@@ -70,7 +70,7 @@ export function DotStrip({ entries, valueOf, exampleCode, format, includeZero = 
           <circle cx={x(example.value)} cy={axisY - 16} r={7} style={{ fill: "var(--color-primary)", stroke: "var(--color-base-100)", strokeWidth: 2 }}>
             <title>{`${example.entry.clubName ?? example.entry.clubCode}: ${format(example.value)}`}</title>
           </circle>
-        </motion.g>
+        </m.g>
         <text x={x(example.value)} y={10} textAnchor="middle" style={{ fill: "var(--color-primary)" }}>
           {example.entry.clubTvCode ?? example.entry.clubCode} {format(example.value)}
         </text>
@@ -98,7 +98,7 @@ export function Waffle({ share, describe }) {
       <div className="waffle" role="img" aria-label={describe(filled)}>
         {Array.from({ length: 100 }, (_, index) =>
           index < filled ? (
-            <motion.i
+            <m.i
               key={index}
               className="is-filled"
               initial={{ scale: 0 }}
@@ -130,7 +130,7 @@ export function ShotGrid() {
           <span className="shot-row-label">{row.label}</span>
           <span className="shot-dots" role="img" aria-label={`${row.label}: 16 shots, ${row.sum} made`}>
             {row.shots.map((shot, index) => (
-              <motion.i
+              <m.i
                 key={index}
                 className={`shot shot-${shot}`}
                 initial={{ scale: 0 }}
@@ -163,7 +163,7 @@ export function ScaleBars({ rows, min, max, caption }) {
         <div key={row.label} className="scale-row">
           <span className="scale-row-label">{row.label}</span>
           <span className="scale-track">
-            <motion.i
+            <m.i
               className={row.tone === "bad" ? "is-bad" : "is-good"}
               style={{ width: `${Math.max(0, Math.min(100, ((row.value - min) / (max - min)) * 100))}%`, originX: 0 }}
               initial={{ scaleX: 0 }}
@@ -197,7 +197,7 @@ export function DivergingBars({ rows, caption }) {
             <span className="scale-row-label">{row.label}</span>
             <span className="diverge-track">
               {missing ? null : (
-                <motion.i
+                <m.i
                   className={row.neutral ? "is-neutral" : (value >= 0) !== Boolean(row.invert) ? "is-good" : "is-bad"}
                   style={{ width: `${share}%`, [value >= 0 ? "left" : "right"]: "50%", originX: value >= 0 ? 0 : 1 }}
                   initial={{ scaleX: 0 }}

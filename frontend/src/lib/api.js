@@ -1,4 +1,4 @@
-import api from "./axios";
+import api from "./apiClient";
 import { seasonSlug } from "./seasonSlug";
 
 // The seasons come back with the year as their code ("2026"), the same form the site's addresses and the API accept.

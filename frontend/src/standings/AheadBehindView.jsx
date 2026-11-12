@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { motion } from "motion/react";
+import { m } from "motion/react";
 import HeaderTip from "../lib/HeaderTip";
 import AsyncState from "../lib/AsyncState";
 import { BreakdownSkeleton } from "./StandingsSkeleton";
@@ -33,9 +33,9 @@ function QuarterCell({ value, maxAbs }) {
     <div className="quarter-cell" title={`Average margin in this quarter: ${formatSignedDecimal(value)}`}>
       <span className={`quarter-num ${tone(value)}`}>{formatSignedDecimal(value)}</span>
       <span className="quarter-bar">
-        <span className="half is-left">{value < 0 ? <motion.i style={{ width: share, originX: 1 }} {...barFill} /> : null}</span>
+        <span className="half is-left">{value < 0 ? <m.i style={{ width: share, originX: 1 }} {...barFill} /> : null}</span>
         <span className="mid" />
-        <span className="half is-right">{value > 0 ? <motion.i style={{ width: share, originX: 0 }} {...barFill} /> : null}</span>
+        <span className="half is-right">{value > 0 ? <m.i style={{ width: share, originX: 0 }} {...barFill} /> : null}</span>
       </span>
     </div>
   );
@@ -70,7 +70,7 @@ function ShapeChart({ profile, scale, clubName }) {
         </g>
       ))}
       <line className="zero" x1={padLeft} x2={width - padRight} y1={middle} y2={middle} />
-      <motion.polyline className="line" initial={{ pathLength: 0 }} animate={{ pathLength: 1 }} transition={{ duration: 0.8, delay: 0.2, ease: EASE_OUT }} points={cumulative.map((value, index) => `${x(index).toFixed(1)},${y(value).toFixed(1)}`).join(" ")} />
+      <m.polyline className="line" initial={{ pathLength: 0 }} animate={{ pathLength: 1 }} transition={{ duration: 0.8, delay: 0.2, ease: EASE_OUT }} points={cumulative.map((value, index) => `${x(index).toFixed(1)},${y(value).toFixed(1)}`).join(" ")} />
       {cumulative.map((value, index) =>
         index === 0 ? null : (
           <circle key={index} className={`point ${value >= 0 ? "is-up" : "is-down"}`} cx={x(index).toFixed(1)} cy={y(value).toFixed(1)} r="3.4">
@@ -91,11 +91,11 @@ function TimeInFront({ flow }) {
   const share = (seconds) => `${((seconds / total) * 100).toFixed(1)}%`;
   return (
     <>
-      <motion.div className="state-bar" style={{ originX: 0 }} {...barFill} role="img" aria-label={`In front for ${share(flow.timeLeadingSeconds)} of the game`}>
+      <m.div className="state-bar" style={{ originX: 0 }} {...barFill} role="img" aria-label={`In front for ${share(flow.timeLeadingSeconds)} of the game`}>
         <i className="is-lead" style={{ width: share(flow.timeLeadingSeconds) }} title={`Leading ${share(flow.timeLeadingSeconds)} of the time`} />
         <i className="is-tied" style={{ width: share(flow.timeTiedSeconds) }} title={`Tied ${share(flow.timeTiedSeconds)} of the time`} />
         <i className="is-trail" style={{ width: share(flow.timeTrailingSeconds) }} title={`Trailing ${share(flow.timeTrailingSeconds)} of the time`} />
-      </motion.div>
+      </m.div>
       <div className="state-bar-text">
         <b>{Math.round((flow.timeLeadingSeconds / total) * 100)}%</b> of the game in front
       </div>
@@ -195,9 +195,9 @@ export default function AheadBehindView({ standings, seasonCode, shortNames, res
           ) : (
             <Panel className="p-2">
               <PanelHeader kicker="GAME SHAPE" title="The shape of a typical game" />
-              <motion.div className="shape-cards" variants={listContainer} initial="hidden" animate="show">
+              <m.div className="shape-cards" variants={listContainer} initial="hidden" animate="show">
                 {rows.map(({ entry, profile }) => (
-                  <motion.div key={entry.clubCode} className="shape-card" variants={listItem}>
+                  <m.div key={entry.clubCode} className="shape-card" variants={listItem}>
                     <div className="shape-card-head">
                       {entry.crestUrl ? <img src={entry.crestUrl} alt="" onError={(event) => { event.currentTarget.style.display = "none"; }} /> : null}
                       <b title={entry.clubName ?? entry.clubCode}>{entry.clubName ?? entry.clubCode}</b>
@@ -210,9 +210,9 @@ export default function AheadBehindView({ standings, seasonCode, shortNames, res
                     ) : (
                       <p className="muted text-sm">No quarter scores yet.</p>
                     )}
-                  </motion.div>
+                  </m.div>
                 ))}
-              </motion.div>
+              </m.div>
             </Panel>
           )}
         </TabPanel>

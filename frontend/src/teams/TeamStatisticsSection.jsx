@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { motion } from "motion/react";
+import { m } from "motion/react";
 import { teamCode } from "../games/gameUtils";
 import { getLeagueTeamStats } from "../lib/api";
 import AsyncState from "../lib/AsyncState";
@@ -24,7 +24,7 @@ const LABEL_CELL = "col-span-4 sm:col-span-1";
 function HalfBar({ share, side, fillClass }) {
   return (
     <div aria-hidden="true" className="h-2 min-w-0 overflow-hidden rounded-full bg-base-300">
-      <motion.div
+      <m.div
         className={`h-full rounded-full ${fillClass} ${side === "team" ? "ml-auto" : ""}`}
         style={{ width: `${Math.min(100, Math.max(0, share))}%`, originX: side === "team" ? 1 : 0 }}
         {...barFill}
@@ -39,7 +39,7 @@ function StatRow({ stat, own, opponent, gamesPlayed, standing }) {
   const biggest = Math.max(teamValue ?? 0, opponentValue ?? 0) || 1;
 
   return (
-    <motion.li variants={listItem} className={`${ROW_GRID} gap-y-0.5 border-b border-base-300 py-2 text-sm last:border-0`}>
+    <m.li variants={listItem} className={`${ROW_GRID} gap-y-0.5 border-b border-base-300 py-2 text-sm last:border-0`}>
       <span className={`${LABEL_CELL} col-start-1 row-start-1 text-center text-xs font-bold tracking-wide uppercase sm:col-auto sm:row-auto sm:text-left sm:text-sm sm:normal-case sm:tracking-normal sm:font-medium`}>
         {stat.tip ? <HeaderTip tip={stat.tip}>{stat.label}</HeaderTip> : stat.label}
       </span>
@@ -53,7 +53,7 @@ function StatRow({ stat, own, opponent, gamesPlayed, standing }) {
       <HalfBar share={((teamValue ?? 0) / biggest) * 100} side="team" fillClass="bg-primary" />
       <HalfBar share={((opponentValue ?? 0) / biggest) * 100} side="opponent" fillClass="bg-base-content/45" />
       <span className="text-left font-semibold tabular-nums">{stat.format(opponentValue)}</span>
-    </motion.li>
+    </m.li>
   );
 }
 
@@ -74,7 +74,7 @@ function StatGroup({ group, teamName, teamTag, own, opponent, gamesPlayed, leagu
         </span>
         <span className="max-sm:hidden" />
       </div>
-      <motion.ul variants={listContainer} initial="hidden" animate="show">
+      <m.ul variants={listContainer} initial="hidden" animate="show">
         {group.stats.map((stat) => (
           <StatRow
             key={stat.key}
@@ -85,7 +85,7 @@ function StatGroup({ group, teamName, teamTag, own, opponent, gamesPlayed, leagu
             standing={leagueTeams.length > 0 ? leagueRank(stat, leagueTeams, clubCode) : null}
           />
         ))}
-      </motion.ul>
+      </m.ul>
     </section>
   );
 }

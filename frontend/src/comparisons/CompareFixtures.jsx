@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { motion } from "motion/react";
+import { m } from "motion/react";
 import { Link } from "react-router";
 import { getGame, getSeasonStandings } from "../lib/api";
 import AsyncState from "../lib/AsyncState";
@@ -56,8 +56,8 @@ function GameRow({ game, standingByClubCode, onPick }) {
   const roadName = game.roadTeam?.name ?? game.roadTeam?.abbreviatedName ?? "the away team";
   const comparable = Boolean(game.localTeam?.clubCode && game.roadTeam?.clubCode);
   return (
-    <motion.li variants={listItem}>
-      <motion.button
+    <m.li variants={listItem}>
+      <m.button
         type="button"
         {...(comparable ? wideCardHover : {})}
         disabled={!comparable}
@@ -85,8 +85,8 @@ function GameRow({ game, standingByClubCode, onPick }) {
         <span aria-hidden="true" className="hidden text-primary sm:block">
           ›
         </span>
-      </motion.button>
-    </motion.li>
+      </m.button>
+    </m.li>
   );
 }
 
@@ -128,11 +128,11 @@ export default function CompareFixtures({ seasonCode, onPick }) {
         <p className="eyebrow mb-0.5">UPCOMING GAMES</p>
         <h2 className="text-lg font-bold">{games[0].roundName ?? `Round ${roundNumber}`}</h2>
       </div>
-      <motion.ul className="grid gap-2 lg:grid-cols-2" variants={listContainer} initial="hidden" animate="show">
+      <m.ul className="grid gap-2 lg:grid-cols-2" variants={listContainer} initial="hidden" animate="show">
         {games.map((game) => (
           <GameRow key={game.gameCode} game={game} standingByClubCode={standingByClubCode} onPick={onPick} />
         ))}
-      </motion.ul>
+      </m.ul>
     </Panel>
   );
 }

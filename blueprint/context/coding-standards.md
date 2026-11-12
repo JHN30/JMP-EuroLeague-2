@@ -2,7 +2,7 @@
 
 The backend is Node.js, Express, and strict TypeScript. The frontend is Vite,
 React, and JavaScript. PostgreSQL access uses Drizzle ORM and `pg`; frontend
-server state uses TanStack Query and HTTP requests use Axios. Follow the
+server state uses TanStack Query and HTTP requests use a small fetch client. Follow the
 existing small project structure until a feature needs more folders.
 
 Both apps use npm with separate `package-lock.json` files. Run package
@@ -49,9 +49,11 @@ commands from the corresponding `backend` or `frontend` directory.
 - Use React Router for client-side navigation as routes are added.
 - Use local React state for UI state and TanStack Query for remote server state.
   Avoid copying query data into local state without a specific need.
-- Use the shared Axios client in `frontend/src/lib/axios.js` for backend
+- Use the shared fetch client in `frontend/src/lib/apiClient.js` for backend
   requests. Keep endpoint calls separate from presentation components when
   they are reused.
+- Animate with `m` components from `motion/react` (`m.div`, `m.create(Link)`). The app renders inside
+  `LazyMotion strict`, so a `motion` component throws.
 - Give each query a stable array key that includes every parameter affecting
   its result. Use mutations for writes and update or invalidate affected query
   data after success.

@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { motion } from "motion/react";
+import { m } from "motion/react";
 import { useState } from "react";
 import { Link, useParams } from "react-router";
 import { getPhaseResults, getSeasonStandings } from "../lib/api";
@@ -62,11 +62,11 @@ export default function FormBoard() {
         </div>
       }
     >
-      <motion.ol id={LIST_ID} className="form-board" aria-label={`Clubs by wins in their last ${LAST} games`} variants={listContainer} initial="hidden" animate="show">
+      <m.ol id={LIST_ID} className="form-board" aria-label={`Clubs by wins in their last ${LAST} games`} variants={listContainer} initial="hidden" animate="show">
         {rows.map(({ entry, games, wins }, index) => {
           const name = entry.clubName ?? entry.clubCode;
           return (
-            <motion.li key={entry.clubCode} variants={listItem} className={`form-board-row${index >= VISIBLE_ON_MOBILE && !showAll ? " form-board-extra" : ""}`}>
+            <m.li key={entry.clubCode} variants={listItem} className={`form-board-row${index >= VISIBLE_ON_MOBILE && !showAll ? " form-board-extra" : ""}`}>
               <Link to={`/${seasonCode}/teams/${entry.clubCode}`} className="link-hover flex min-w-0 flex-1 items-center gap-2 font-medium">
                 {entry.crestUrl ? (
                   <img
@@ -84,10 +84,10 @@ export default function FormBoard() {
               <span className="muted w-8 flex-none text-right font-semibold tabular-nums">
                 {wins}-{games.length - wins}
               </span>
-            </motion.li>
+            </m.li>
           );
         })}
-      </motion.ol>
+      </m.ol>
       {hiddenOnMobile > 0 ? (
         <button
           type="button"

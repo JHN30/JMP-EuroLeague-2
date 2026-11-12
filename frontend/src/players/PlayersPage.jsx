@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
-import { motion } from "motion/react";
+import { m } from "motion/react";
 import { Link, useParams } from "react-router";
 import { getSeasonPlayers, getSeasonTeams } from "../lib/api";
 import { useDebouncedValue } from "../lib/useDebouncedValue";
@@ -17,7 +17,7 @@ import ShortLabel from "../lib/ShortLabel";
 import { useDocumentTitle } from "../lib/useDocumentTitle";
 import { ageAtSeasonStart } from "../lib/playerAge";
 
-const MotionLink = motion.create(Link);
+const MotionLink = m.create(Link);
 
 // Divisible by 2, 3, 4 and 5, so every row of the grid is full at every width.
 const PAGE_SIZE = 60;
@@ -175,7 +175,7 @@ export default function PlayersPage() {
             Showing {offset + 1}-{offset + players.length} of {playersQuery.data?.pagination.total} players
           </p>
           {/* Keyed on the page's content, so a new page or search plays the entrance again, and a refetch does not. */}
-          <motion.ul
+          <m.ul
             key={`${seasonCode}-${players[0].personKey}-${players.length}`}
             className="grid grid-cols-2 gap-2.5 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5"
             variants={denseListContainer}
@@ -187,7 +187,7 @@ export default function PlayersPage() {
                 <PlayerCard player={player} seasonCode={seasonCode} />
               </li>
             ))}
-          </motion.ul>
+          </m.ul>
 
           <div className="mt-6 flex justify-center gap-2">
             <button

@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { motion } from "motion/react";
+import { m } from "motion/react";
 import { Link, useParams } from "react-router";
 import { getSeasonStandings } from "../lib/api";
 import { listContainer, listItem } from "../lib/motion";
@@ -13,7 +13,7 @@ import { groupLabel, groupStandings, isGroupedTable } from "../standings/standin
 import { WidgetPanel } from "./Dashboard";
 import { LeagueTableSkeleton } from "./HomeSkeleton";
 
-const MotionLink = motion.create(Link);
+const MotionLink = m.create(Link);
 
 // The line under the last place of a tier, in the Standings page's tier colours, with its meaning for screen readers.
 const LINE = { postseason: "border-success/70", playin: "border-warning/70" };
@@ -27,7 +27,7 @@ function tierLines(standings, tiers) {
 
 function StandingRow({ entry, seasonCode, line = null, labels }) {
   return (
-      <motion.li variants={listItem} className={`flex items-center gap-3 ${line ? `border-b-2 pb-1 ${LINE[line]}` : ""}`}>
+      <m.li variants={listItem} className={`flex items-center gap-3 ${line ? `border-b-2 pb-1 ${LINE[line]}` : ""}`}>
         <span className={`rank ${entry.basic?.position === 1 ? "rank-1" : ""}`}>
           {entry.basic?.position ?? "-"}
         </span>
@@ -52,7 +52,7 @@ function StandingRow({ entry, seasonCode, line = null, labels }) {
           {entry.basic?.gamesWon ?? "-"}-{entry.basic?.gamesLost ?? "-"}
         </span>
         {line ? <span className="sr-only">Last {labels[line]} place</span> : null}
-      </motion.li>
+      </m.li>
   );
 }
 
@@ -91,7 +91,7 @@ export default function StandingsSnapshot({ height }) {
       style={height != null ? { "--results-height": `${height}px` } : undefined}
     >
       {grouped ? (
-        <motion.div
+        <m.div
           className="min-h-0 flex-1 space-y-4 lg:overflow-y-auto lg:overscroll-y-contain lg:pr-4"
           variants={listContainer}
           initial="hidden"
@@ -108,9 +108,9 @@ export default function StandingsSnapshot({ height }) {
               </ol>
             </section>
           ))}
-        </motion.div>
+        </m.div>
       ) : (
-        <motion.ol
+        <m.ol
           className="min-h-0 flex-1 space-y-1 lg:overflow-y-auto lg:overscroll-y-contain lg:pr-4"
           variants={listContainer}
           initial="hidden"
@@ -119,7 +119,7 @@ export default function StandingsSnapshot({ height }) {
           {tierLines(standings, tiers).map((line, index) => (
             <StandingRow key={standings[index].clubCode} entry={standings[index]} seasonCode={seasonCode} line={line} labels={labels} />
           ))}
-        </motion.ol>
+        </m.ol>
       )}
       {shownTiers.length > 0 ? (
         <p className="muted mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs" aria-hidden="true">

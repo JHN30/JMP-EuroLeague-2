@@ -1,4 +1,4 @@
-import { motion } from "motion/react";
+import { m } from "motion/react";
 import { barFill } from "../lib/motion";
 import { formatShare, parseRecord, recordGames, recordShare } from "./breakdownUtils";
 
@@ -14,7 +14,7 @@ export default function RecordBar({ record, label }) {
         {parsed.w}-{parsed.l}
       </span>
       <span className="record-bar-track" aria-hidden="true">
-        <motion.i style={{ width: `${(recordShare(parsed) * 100).toFixed(1)}%`, originX: 0 }} {...barFill} />
+        <m.i style={{ width: `${(recordShare(parsed) * 100).toFixed(1)}%`, originX: 0 }} {...barFill} />
       </span>
     </div>
   );

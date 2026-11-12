@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { motion } from "motion/react";
+import { m } from "motion/react";
 import { Link } from "react-router";
 import { shortTeamName, teamCode } from "../games/gameUtils";
 import { getPlayerGames, getTeamGames } from "../lib/api";
@@ -167,7 +167,7 @@ const LINE_GRID = "grid items-center gap-x-2 grid-cols-[3.25rem_1fr_1fr_3.25rem]
 function HalfBar({ percentile, side, better }) {
   return (
     <div aria-hidden="true" className="bg-base-300 h-2 min-w-0 overflow-hidden rounded-full">
-      <motion.div
+      <m.div
         className={`h-full rounded-full ${better ? SIDE_BG[side] : "bg-base-content/45"} ${side === "a" ? "ml-auto" : ""}`}
         style={{ width: `${Math.max(4, percentile ?? 0)}%`, originX: side === "a" ? 1 : 0 }}
         {...barFill}
@@ -204,7 +204,7 @@ function LineRow({ stat, a, b }) {
     <span className={`font-semibold tabular-nums ${better === side ? `font-bold ${SIDE_TEXT[side]}` : ""} ${className}`}>{formatPerGame(ranking.value)}</span>
   );
   return (
-    <motion.li variants={listItem} data-better={better ?? undefined} className={`${LINE_GRID} border-base-300 gap-y-0.5 border-b py-2 text-sm last:border-0`}>
+    <m.li variants={listItem} data-better={better ?? undefined} className={`${LINE_GRID} border-base-300 gap-y-0.5 border-b py-2 text-sm last:border-0`}>
       <span className="col-span-2 col-start-2 row-start-1 text-center text-xs font-bold tracking-wide uppercase sm:col-span-1 sm:col-start-1 sm:text-left">
         <HeaderTip tip={stat.title}>{stat.label}</HeaderTip>
       </span>
@@ -218,7 +218,7 @@ function LineRow({ stat, a, b }) {
       </div>
       {value(b, "b", "col-start-4 row-start-2 text-left sm:col-start-6 sm:row-start-1")}
       <Place ranking={b} className="col-start-4 row-start-1 text-right sm:col-start-7" />
-    </motion.li>
+    </m.li>
   );
 }
 
@@ -235,7 +235,7 @@ function SeasonLinePanel({ pool, entityA, entityB, playerA, playerB }) {
           <span className={SIDE_TEXT.b}>{nameB}</span>
         </span>
       </div>
-      <motion.ul variants={listContainer} initial="hidden" animate="show">
+      <m.ul variants={listContainer} initial="hidden" animate="show">
         {SEASON_LINE.map((stat) => (
           <LineRow
             key={stat.label}
@@ -244,7 +244,7 @@ function SeasonLinePanel({ pool, entityA, entityB, playerA, playerB }) {
             b={rankPlayer(pool, entityB.id, stat, { qualifiedOnly: true })}
           />
         ))}
-      </motion.ul>
+      </m.ul>
       <p className="muted mt-2 text-xs">The place is among the players with enough games; a bar is the player's percentile.</p>
     </Panel>
   );
@@ -569,21 +569,21 @@ export default function ComparePlayerOverview({ seasonCode, phaseCode, entityA, 
   const props = { pool, entityA, entityB, playerA, playerB, seasonCode };
   const gameProps = { games, entityA, entityB, playerA, playerB, seasonCode };
   return (
-    <motion.div className="flex flex-col gap-6" variants={sectionContainer} initial="hidden" animate="show">
-      <motion.div variants={sectionItem}>
+    <m.div className="flex flex-col gap-6" variants={sectionContainer} initial="hidden" animate="show">
+      <m.div variants={sectionItem}>
         <HeaderPanel {...props} />
-      </motion.div>
-      <motion.div variants={sectionItem} className="grid grid-cols-[minmax(0,1fr)] items-start gap-6 lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]">
+      </m.div>
+      <m.div variants={sectionItem} className="grid grid-cols-[minmax(0,1fr)] items-start gap-6 lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]">
         <ProfilePanel {...props} />
         <SeasonLinePanel {...props} />
-      </motion.div>
-      <motion.div variants={sectionItem}>
+      </m.div>
+      <m.div variants={sectionItem}>
         <FormPanel {...gameProps} />
-      </motion.div>
-      <motion.div variants={sectionItem} className="grid grid-cols-[minmax(0,1fr)] gap-6 lg:grid-cols-2">
+      </m.div>
+      <m.div variants={sectionItem} className="grid grid-cols-[minmax(0,1fr)] gap-6 lg:grid-cols-2">
         <MeetingsPanel {...gameProps} />
         <HighsPanel {...gameProps} />
-      </motion.div>
-    </motion.div>
+      </m.div>
+    </m.div>
   );
 }

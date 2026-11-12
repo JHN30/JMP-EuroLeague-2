@@ -1,4 +1,4 @@
-import { motion } from "motion/react";
+import { m } from "motion/react";
 import { comparisonBand, markerPosition, winnerSide } from "./comparisonMath";
 import HeaderTip from "./HeaderTip";
 import { barFill, listItem } from "./motion";
@@ -7,7 +7,7 @@ import { barFill, listItem } from "./motion";
 // the caller prints the same value as text, so the tick is never the only carrier of the information. `animated` grows
 // the bar from its anchored end.
 function Track({ width, position, anchor, title, animated }) {
-  const Fill = animated ? motion.div : "div";
+  const Fill = animated ? m.div : "div";
   return (
     <div className="relative">
       <div className="h-1.5 w-full overflow-hidden rounded-full bg-base-300">
@@ -63,7 +63,7 @@ export default function ComparisonRow({
   const { widthA, widthB } = comparisonBand(rawA, rawB);
   const aMissing = rawA === null || rawA === undefined;
   const bMissing = rawB === null || rawB === undefined;
-  const Root = animated ? motion.div : "div";
+  const Root = animated ? m.div : "div";
 
   if (inline) {
     const side = (key, missing, display, width, marker, avg, anchor) => {

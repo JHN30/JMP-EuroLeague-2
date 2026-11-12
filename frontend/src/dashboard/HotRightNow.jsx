@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { motion } from "motion/react";
+import { m } from "motion/react";
 import { Link, useParams } from "react-router";
 import { getLeaderForm, getSeasonGames } from "../lib/api";
 import AsyncState from "../lib/AsyncState";
@@ -11,7 +11,7 @@ import LeaderPhoto from "../lib/LeaderPhoto";
 import { SkeletonChip } from "../lib/Skeleton";
 import { WidgetPanel } from "./Dashboard";
 
-const MotionLink = motion.create(Link);
+const MotionLink = m.create(Link);
 
 // The Leaders page's form window and rule: only players who played all of their last five games count.
 const FORM_GAMES = 5;
@@ -99,9 +99,9 @@ export default function HotRightNow() {
         </div>
       }
     >
-      <motion.div className="leaders-row" role="group" aria-label="Hot right now" variants={listContainer} initial="hidden" animate="show">
+      <m.div className="leaders-row" role="group" aria-label="Hot right now" variants={listContainer} initial="hidden" animate="show">
         {STATS.map((stat) => <HotCard key={stat.key} seasonCode={seasonCode} stat={stat} player={hottest(stat.key)} />)}
-      </motion.div>
+      </m.div>
     </WidgetPanel>
   );
 }

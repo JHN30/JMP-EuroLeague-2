@@ -1,4 +1,4 @@
-import { motion } from "motion/react";
+import { m } from "motion/react";
 import { Link } from "react-router";
 import { EASE_OUT, sectionContainer, sectionItem } from "../lib/motion";
 import Panel from "../lib/Panel";
@@ -11,11 +11,11 @@ import { statNumber } from "./playerOverview";
 
 function Fact({ label, value, sub }) {
   return (
-    <motion.div className="flex flex-col max-sm:w-1/3 max-sm:items-center max-sm:text-center" variants={sectionItem}>
+    <m.div className="flex flex-col max-sm:w-1/3 max-sm:items-center max-sm:text-center" variants={sectionItem}>
       <span className="muted text-xs font-bold uppercase tracking-wide">{label}</span>
       <span className="text-lg font-semibold tabular-nums">{value}</span>
       {sub ? <span className="muted text-xs">{sub}</span> : null}
-    </motion.div>
+    </m.div>
   );
 }
 
@@ -76,8 +76,8 @@ export default function PlayerHero({ player, registrations, stats, seasonCode })
     <Panel as="section" className="relative mb-6 grid overflow-hidden sm:grid-cols-[11rem_1fr]">
       <div aria-hidden="true" className="absolute inset-x-0 top-0 z-10 h-0.5 bg-primary" />
       <PlayerPortrait imageUrl={photoUrl} className="max-sm:mx-auto max-sm:mt-5 max-sm:aspect-4/5 max-sm:w-36 max-sm:rounded-box sm:row-span-2 sm:w-full" />
-      <motion.div className="min-w-0 p-3 pb-0 max-sm:text-center sm:p-5 sm:pb-0" variants={sectionContainer} initial="hidden" animate="show">
-        <motion.div className="flex flex-col items-center gap-1 sm:flex-row sm:items-start sm:justify-between sm:gap-3" variants={sectionItem}>
+      <m.div className="min-w-0 p-3 pb-0 max-sm:text-center sm:p-5 sm:pb-0" variants={sectionContainer} initial="hidden" animate="show">
+        <m.div className="flex flex-col items-center gap-1 sm:flex-row sm:items-start sm:justify-between sm:gap-3" variants={sectionItem}>
           <div className="min-w-0">
             <p className="eyebrow mb-1">PLAYER{player.positionName ? ` · ${player.positionName.toUpperCase()}` : ""}</p>
             <h1 className="min-w-0 break-words">
@@ -86,7 +86,7 @@ export default function PlayerHero({ player, registrations, stats, seasonCode })
             </h1>
           </div>
           {player.dorsal ? (
-            <motion.p
+            <m.p
               className="flex-none text-3xl font-black leading-none tabular-nums sm:text-6xl"
               initial={{ opacity: 0, scale: 0.8 }}
               animate={{ opacity: 1, scale: 1 }}
@@ -94,14 +94,14 @@ export default function PlayerHero({ player, registrations, stats, seasonCode })
             >
               <span className="muted mr-0.5 text-xl font-bold sm:text-3xl">#</span>
               {player.dorsal}
-            </motion.p>
+            </m.p>
           ) : null}
-        </motion.div>
-      </motion.div>
+        </m.div>
+      </m.div>
 
-      <motion.div className="flex min-w-0 flex-col gap-3 p-3 sm:px-5 sm:pb-5 sm:pt-3" variants={sectionContainer} initial="hidden" animate="show">
+      <m.div className="flex min-w-0 flex-col gap-3 p-3 sm:px-5 sm:pb-5 sm:pt-3" variants={sectionContainer} initial="hidden" animate="show">
         {/* From sm the Compare button shares the club row, on its right, instead of taking a row of its own. */}
-        <motion.div className="flex flex-wrap items-center justify-center gap-x-5 gap-y-2 sm:justify-between" variants={sectionItem}>
+        <m.div className="flex flex-wrap items-center justify-center gap-x-5 gap-y-2 sm:justify-between" variants={sectionItem}>
           {clubs.length > 0 ? (
             <div className="flex min-w-0 flex-wrap justify-center gap-x-5 gap-y-2 sm:justify-start">
               {clubs.map((registration) => (
@@ -110,7 +110,7 @@ export default function PlayerHero({ player, registrations, stats, seasonCode })
             </div>
           ) : null}
           <CompareLink player={player} seasonCode={seasonCode} className="max-sm:hidden sm:ml-auto" />
-        </motion.div>
+        </m.div>
 
         <div className="flex flex-wrap justify-center gap-y-3 sm:justify-start sm:gap-x-8">
           <Fact label="Country" value={player.countryCode ?? "—"} />
@@ -124,10 +124,10 @@ export default function PlayerHero({ player, registrations, stats, seasonCode })
           {wins !== null && losses !== null ? <Fact label="Team record" value={`${wins}–${losses}`} sub="with the player" /> : null}
         </div>
         {/* Below sm it is the last row, full width, under the facts. */}
-        <motion.div className="sm:hidden" variants={sectionItem}>
+        <m.div className="sm:hidden" variants={sectionItem}>
           <CompareLink player={player} seasonCode={seasonCode} className="w-full" />
-        </motion.div>
-      </motion.div>
+        </m.div>
+      </m.div>
     </Panel>
   );
 }

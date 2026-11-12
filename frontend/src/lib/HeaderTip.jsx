@@ -1,6 +1,6 @@
 import { useEffect, useId, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { AnimatePresence, motion } from "motion/react";
+import { AnimatePresence, m } from "motion/react";
 import { EASE_OUT } from "./motion";
 
 const GAP = 8;
@@ -24,7 +24,7 @@ function TipBubble({ id, tip, anchor }) {
   const offset = above ? 6 : -6;
 
   return (
-    <motion.div
+    <m.div
       ref={ref}
       id={id}
       role="tooltip"
@@ -41,7 +41,7 @@ function TipBubble({ id, tip, anchor }) {
       transition={{ duration: 0.18, ease: EASE_OUT }}
     >
       {tip}
-    </motion.div>
+    </m.div>
   );
 }
 

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { motion } from "motion/react";
+import { m } from "motion/react";
 import { Link } from "react-router";
 import AsyncState from "../lib/AsyncState";
 import { TeamRosterSkeleton } from "./TeamPageSkeleton";
@@ -18,7 +18,7 @@ import { barWidthScale } from "../statistics/statBarScale";
 import { ROSTER_TABLE_LEVELS, usesPerRound } from "./rosterTableColumns";
 import { fetchTeamRosterStats, playedForOtherClubs } from "./teamRosterStats";
 
-const MotionLink = motion.create(Link);
+const MotionLink = m.create(Link);
 
 const PANEL_ID = "team-roster-panel";
 const VIEW_TABS = [
@@ -131,7 +131,7 @@ function RosterCard({ entry, stats, seasonCode }) {
             </p>
             <div className="flex items-center gap-2" title={`${formatPerGame(minutes)} minutes a game`}>
               <div aria-hidden="true" className="h-1.5 flex-1 overflow-hidden rounded-full bg-base-300">
-                <motion.div
+                <m.div
                   className="h-full rounded-full bg-primary"
                   initial={{ width: 0 }}
                   animate={{ width: `${Math.min(100, ((minutes ?? 0) / FULL_GAME_MINUTES) * 100)}%` }}
@@ -153,9 +153,9 @@ function RosterCard({ entry, stats, seasonCode }) {
       {body}
     </MotionLink>
   ) : (
-    <motion.div className={className} variants={listItem}>
+    <m.div className={className} variants={listItem}>
       {body}
-    </motion.div>
+    </m.div>
   );
 }
 
@@ -165,7 +165,7 @@ const COACH_ROLES = { E: "Head coach", A: "Assistant coach" };
 // the role and the country.
 function CoachLine({ coach }) {
   return (
-    <motion.li
+    <m.li
       className="flex min-w-0 items-baseline gap-2 rounded-field border border-base-300 bg-base-100 px-3 py-2 text-sm"
       variants={listItem}
     >
@@ -174,7 +174,7 @@ function CoachLine({ coach }) {
       </span>
       <span className="flex-none text-xs font-bold uppercase tracking-wide text-primary">{COACH_ROLES[coach.roleCode] ?? "Staff"}</span>
       {coach.countryCode ? <span className="muted flex-none text-xs">{coach.countryCode}</span> : null}
-    </motion.li>
+    </m.li>
   );
 }
 
@@ -186,11 +186,11 @@ function CoachingStaff({ coaches }) {
         Coaching staff
         <span className="muted text-sm font-semibold">{coaches.length}</span>
       </h3>
-      <motion.ul className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4" variants={listContainer} initial="hidden" animate="show">
+      <m.ul className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4" variants={listContainer} initial="hidden" animate="show">
         {coaches.map((coach) => (
           <CoachLine key={`${coach.roleCode}-${coach.personKey}`} coach={coach} />
         ))}
-      </motion.ul>
+      </m.ul>
     </section>
   );
 }
@@ -237,7 +237,7 @@ function RosterCards({ registrations, statsByPersonKey, coaches, seasonCode }) {
               <span className="muted text-sm font-semibold">{entries.length}</span>
             </h3>
             {played.length > 0 ? (
-              <motion.div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4" variants={listContainer} initial="hidden" animate="show">
+              <m.div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4" variants={listContainer} initial="hidden" animate="show">
                 {played.map((entry) => (
                   <RosterCard
                     key={entry.registrationKey}
@@ -246,7 +246,7 @@ function RosterCards({ registrations, statsByPersonKey, coaches, seasonCode }) {
                     seasonCode={seasonCode}
                   />
                 ))}
-              </motion.div>
+              </m.div>
             ) : null}
             <NotPlayedLine entries={notPlayed} seasonCode={seasonCode} afterCards={played.length > 0} />
           </section>

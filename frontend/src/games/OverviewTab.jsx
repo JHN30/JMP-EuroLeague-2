@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { motion } from "motion/react";
+import { m } from "motion/react";
 import { Link } from "react-router";
 import AsyncState from "../lib/AsyncState";
 import { GameOverviewSkeleton, PanelBlockSkeleton } from "./GamePageSkeleton";
@@ -184,13 +184,13 @@ export default function OverviewTab({ game, seasonCode, boxScoreQuery, playByPla
   // Below lg the sections stack in reading order: the line score, the two team cards, the key stats, the score flow. From lg
   // the line score and the score flow share the top row, and the key stats sit between the two team cards under them.
   return (
-    <motion.div className="grid grid-cols-1 gap-6 lg:grid-cols-2 lg:gap-4" variants={sectionContainer} initial="hidden" animate="show">
-      <motion.section variants={sectionItem} className="lg:col-start-1 lg:row-start-1 lg:flex lg:flex-col">
+    <m.div className="grid grid-cols-1 gap-6 lg:grid-cols-2 lg:gap-4" variants={sectionContainer} initial="hidden" animate="show">
+      <m.section variants={sectionItem} className="lg:col-start-1 lg:row-start-1 lg:flex lg:flex-col">
         <PanelHeader kicker="LINE SCORE" title="Score by period" compact />
         <PeriodTable periodScores={boxScore.periodScores} localTeam={game.localTeam} roadTeam={game.roadTeam} forfeit={game.gameStatus === "Walkover"} fill />
-      </motion.section>
+      </m.section>
 
-      <motion.section variants={sectionItem} className="lg:col-span-2 lg:row-start-2">
+      <m.section variants={sectionItem} className="lg:col-span-2 lg:row-start-2">
         <PanelHeader kicker="SUMMARY" title="Best players, leaders and key stats" compact />
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.3fr)_minmax(0,1fr)]">
           {hasPlayers ? (
@@ -214,12 +214,12 @@ export default function OverviewTab({ game, seasonCode, boxScoreQuery, playByPla
             )}
           </section>
         </div>
-      </motion.section>
+      </m.section>
 
-      <motion.section variants={sectionItem} className="lg:col-start-2 lg:row-start-1">
+      <m.section variants={sectionItem} className="lg:col-start-2 lg:row-start-1">
         <PanelHeader kicker="FLOW" title="Score flow" compact />
         <FlowSection game={game} playByPlayQuery={playByPlayQuery} />
-      </motion.section>
-    </motion.div>
+      </m.section>
+    </m.div>
   );
 }

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { motion } from "motion/react";
+import { m } from "motion/react";
 import { Link } from "react-router";
 import { getSeasons, getSeasonTeams, getTeamPlayersAdvanced, getTeamRoster } from "../lib/api";
 import AsyncState from "../lib/AsyncState";
@@ -100,7 +100,7 @@ const ROW_GRID = "grid items-center gap-x-2 grid-cols-[minmax(0,1fr)_4rem_4rem] 
 function HalfBar({ share, side, better }) {
   return (
     <div aria-hidden="true" className="h-2 min-w-0 overflow-hidden rounded-full bg-base-300">
-      <motion.div
+      <m.div
         className={`h-full rounded-full ${better ? "bg-primary" : "bg-base-content/45"} ${side === "a" ? "ml-auto" : ""}`}
         style={{ width: `${share}%`, originX: side === "a" ? 1 : 0 }}
         {...barFill}
@@ -117,7 +117,7 @@ function ProfileRow({ row }) {
   const share = (value) => (biggest > 0 && value !== null ? Math.max(4, (value / biggest) * 100) : 0);
   const tip = ROSTER_SUMMARY_TIPS[row.label];
   return (
-    <motion.li variants={listItem} data-better={better ?? undefined} className={`${ROW_GRID} border-b border-base-300 py-1.5 text-sm last:border-0 sm:py-2`}>
+    <m.li variants={listItem} data-better={better ?? undefined} className={`${ROW_GRID} border-b border-base-300 py-1.5 text-sm last:border-0 sm:py-2`}>
       <span className="min-w-0 font-medium">{tip ? <HeaderTip tip={tip}>{row.label}</HeaderTip> : row.label}</span>
       <span className={`text-right font-semibold tabular-nums ${better === "a" ? "font-bold text-primary" : ""}`}>{row.show(a)}</span>
       <div className="max-sm:hidden">
@@ -127,7 +127,7 @@ function ProfileRow({ row }) {
         <HalfBar share={share(b)} side="b" better={better === "b"} />
       </div>
       <span className={`font-semibold tabular-nums max-sm:text-right sm:text-left ${better === "b" ? "font-bold text-primary" : ""}`}>{row.show(b)}</span>
-    </motion.li>
+    </m.li>
   );
 }
 
@@ -143,11 +143,11 @@ function ProfileGroup({ title, rows, entityA, entityB }) {
           <ShortLabel short={entityB.tvCode ?? entityB.id} full={entityB.label} />
         </span>
       </div>
-      <motion.ul variants={listContainer} initial="hidden" animate="show">
+      <m.ul variants={listContainer} initial="hidden" animate="show">
         {rows.map((row) => (
           <ProfileRow key={row.label} row={row} />
         ))}
-      </motion.ul>
+      </m.ul>
     </section>
   );
 }
@@ -261,7 +261,7 @@ function PositionMatchups({ seasonCode, rowsA, rowsB }) {
     <Panel as="section" aria-label="Position matchups" className="h-full p-4">
       <PanelHeader compact level="h2" kicker="BY POSITION" title="Position matchups" />
       <p className="muted mb-2 text-xs">The best player at each position by PIR per game, over what the position group carries: its share of the club&apos;s minutes and points, its average age, height and weight.</p>
-      <motion.ul className="flex flex-col" variants={listContainer} initial="hidden" animate="show">
+      <m.ul className="flex flex-col" variants={listContainer} initial="hidden" animate="show">
         {POSITIONS.map((position) => {
           const a = positionGroup(rowsA, position.key);
           const b = positionGroup(rowsB, position.key);
@@ -275,7 +275,7 @@ function PositionMatchups({ seasonCode, rowsA, rowsB }) {
           );
           const className = "grid grid-cols-2 gap-x-4 gap-y-1.5 rounded-field px-2 py-2.5";
           return (
-            <motion.li key={position.key} variants={listItem} className="border-b border-base-300 last:border-0">
+            <m.li key={position.key} variants={listItem} className="border-b border-base-300 last:border-0">
               {a.best && b.best ? (
                 <Link
                   to={`/${seasonCode}/compare?view=players&playerA=${encodeURIComponent(a.best.personKey)}&playerB=${encodeURIComponent(b.best.personKey)}`}
@@ -287,10 +287,10 @@ function PositionMatchups({ seasonCode, rowsA, rowsB }) {
               ) : (
                 <div className={className}>{body}</div>
               )}
-            </motion.li>
+            </m.li>
           );
         })}
-      </motion.ul>
+      </m.ul>
     </Panel>
   );
 }
@@ -335,10 +335,10 @@ function ImpactTable({ seasonCode, entity, crestUrl, players, imageOf }) {
                 ))}
               </tr>
             </thead>
-            <motion.tbody variants={tableBody} initial="hidden" animate="show">
+            <m.tbody variants={tableBody} initial="hidden" animate="show">
               {top.map((player) => {
                 return (
-                  <motion.tr key={player.personKey} variants={tableRow}>
+                  <m.tr key={player.personKey} variants={tableRow}>
                     <td>
                       <div className="flex min-w-0 items-center gap-2">
                         <Avatar imageUrl={imageOf(player.personKey)} size="h-7 w-7 max-sm:hidden" />
@@ -355,10 +355,10 @@ function ImpactTable({ seasonCode, entity, crestUrl, players, imageOf }) {
                         {formatAdvancedValue(column, player[column.key])}
                       </td>
                     ))}
-                  </motion.tr>
+                  </m.tr>
                 );
               })}
-            </motion.tbody>
+            </m.tbody>
           </table>
         </div>
       )}
@@ -390,12 +390,12 @@ function RosterTable({ seasonCode, entity, crestUrl, rows }) {
               <th className="text-right">PIR</th>
             </tr>
           </thead>
-          <motion.tbody variants={tableBody} initial="hidden" animate="show">
+          <m.tbody variants={tableBody} initial="hidden" animate="show">
             {shown.map((row) => {
               const played = row.games > 0;
               // A player who has not played is dimmed cell by cell: dimming the row would let the swiped numbers show through the pinned player.
               return (
-                <motion.tr key={row.key} variants={tableRow} className={played ? "" : "[&>td:not(:first-child)]:opacity-60"}>
+                <m.tr key={row.key} variants={tableRow} className={played ? "" : "[&>td:not(:first-child)]:opacity-60"}>
                   <td>
                     <div className={`flex min-w-0 items-center gap-2 ${played ? "" : "opacity-60"}`}>
                       <span className="muted w-6 flex-none text-right tabular-nums">{row.dorsal ?? "—"}</span>
@@ -412,10 +412,10 @@ function RosterTable({ seasonCode, entity, crestUrl, rows }) {
                   <td className="text-right tabular-nums">{formatPerGame(row.rebounds)}</td>
                   <td className="text-right tabular-nums">{formatPerGame(row.assists)}</td>
                   <td className="text-right tabular-nums">{formatPerGame(row.pir)}</td>
-                </motion.tr>
+                </m.tr>
               );
             })}
-          </motion.tbody>
+          </m.tbody>
         </table>
       </div>
       {unplayed > 0 ? (

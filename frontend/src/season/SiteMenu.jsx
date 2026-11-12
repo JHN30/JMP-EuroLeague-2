@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { AnimatePresence, motion } from "motion/react";
+import { AnimatePresence, m } from "motion/react";
 import { NavLink, useLocation, useParams } from "react-router";
 import { EASE_OUT } from "../lib/motion";
 import { usePrefersReducedMotion } from "../lib/usePrefersReducedMotion";
@@ -38,9 +38,9 @@ function MenuIcon({ open, reduced }) {
   const bar = { x1: 4, x2: 20, stroke: "currentColor", strokeWidth: 2, strokeLinecap: "round", style: { transformBox: "fill-box", transformOrigin: "center" } };
   return (
     <svg viewBox="0 0 24 24" fill="none" aria-hidden="true" className="h-5 w-5">
-      <motion.line {...bar} y1={7} y2={7} initial={false} animate={open ? { y: 5, rotate: 45 } : { y: 0, rotate: 0 }} transition={transition} />
-      <motion.line {...bar} y1={12} y2={12} initial={false} animate={open ? { opacity: 0, scaleX: 0.3 } : { opacity: 1, scaleX: 1 }} transition={transition} />
-      <motion.line {...bar} y1={17} y2={17} initial={false} animate={open ? { y: -5, rotate: -45 } : { y: 0, rotate: 0 }} transition={transition} />
+      <m.line {...bar} y1={7} y2={7} initial={false} animate={open ? { y: 5, rotate: 45 } : { y: 0, rotate: 0 }} transition={transition} />
+      <m.line {...bar} y1={12} y2={12} initial={false} animate={open ? { opacity: 0, scaleX: 0.3 } : { opacity: 1, scaleX: 1 }} transition={transition} />
+      <m.line {...bar} y1={17} y2={17} initial={false} animate={open ? { y: -5, rotate: -45 } : { y: 0, rotate: 0 }} transition={transition} />
     </svg>
   );
 }
@@ -102,7 +102,7 @@ export default function SiteMenu({ children }) {
       <AnimatePresence>
         {open ? (
           <>
-            <motion.div
+            <m.div
               key="overlay"
               aria-hidden="true"
               className="fixed inset-x-0 bottom-0 top-(--app-nav-height) bg-black/40"
@@ -113,7 +113,7 @@ export default function SiteMenu({ children }) {
               transition={fade}
               onClick={() => setOpen(false)}
             />
-            <motion.div
+            <m.div
               key="panel"
               ref={panelRef}
               id={MENU_ID}
@@ -123,7 +123,7 @@ export default function SiteMenu({ children }) {
               exit={{ opacity: 0, y: -12, pointerEvents: "none" }}
               transition={fade}
             >
-              <motion.nav
+              <m.nav
                 aria-label="Sections"
                 className="divide-y divide-base-300"
                 variants={rowsContainer}
@@ -134,7 +134,7 @@ export default function SiteMenu({ children }) {
                   const Icon = TAB_ICONS[tab.path];
                   return (
                   // One column of rows with a hairline between them.
-                  <motion.div key={tab.label} variants={reduced ? undefined : row}>
+                  <m.div key={tab.label} variants={reduced ? undefined : row}>
                     <NavLink
                       to={`/${seasonCode}/${tab.path}`}
                       onClick={() => setOpen(false)}
@@ -151,10 +151,10 @@ export default function SiteMenu({ children }) {
                         </>
                       )}
                     </NavLink>
-                  </motion.div>
+                  </m.div>
                   );
                 })}
-              </motion.nav>
+              </m.nav>
               <div className="site-menu-footer border-t border-base-300 p-3">
                 <p aria-hidden="true" className="eyebrow mb-2">
                   Season
@@ -163,7 +163,7 @@ export default function SiteMenu({ children }) {
                   {children}
                 </div>
               </div>
-            </motion.div>
+            </m.div>
           </>
         ) : null}
       </AnimatePresence>

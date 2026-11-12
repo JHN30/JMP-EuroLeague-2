@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { motion } from "motion/react";
+import { m } from "motion/react";
 import { useState } from "react";
 import { Link } from "react-router";
 import { getRecordBook } from "../lib/api";
@@ -31,7 +31,7 @@ function BookRow({ seasonCode, family, card }) {
   const sameHolder = Boolean(second) && holderOf(card.records[0]) === holderOf(card.records[1]);
   const details = first ? [whenText(first), second ? leadText(first, second, sameHolder) : null].filter(Boolean) : [];
   return (
-    <motion.li variants={listItem} className="grid grid-cols-[5.5rem_minmax(0,1fr)] items-center gap-x-3 py-2 sm:grid-cols-[7.5rem_4.5rem_minmax(0,1fr)]">
+    <m.li variants={listItem} className="grid grid-cols-[5.5rem_minmax(0,1fr)] items-center gap-x-3 py-2 sm:grid-cols-[7.5rem_4.5rem_minmax(0,1fr)]">
       <div className="flex flex-col items-start sm:contents">
         <div className="flex flex-col items-start gap-1">
           <Link to={`/${seasonCode}/records?type=${family}&metric=${card.metric}`} className="text-sm font-semibold hover:underline">
@@ -59,7 +59,7 @@ function BookRow({ seasonCode, family, card }) {
           <p className="muted text-sm">No record yet</p>
         )}
       </div>
-    </motion.li>
+    </m.li>
   );
 }
 
@@ -122,11 +122,11 @@ export default function RecordBook({ seasonCode }) {
             <h3 id={`book-${family}`} className="panel-title">
               <HeaderTip tip={info.description}>{info.label}</HeaderTip>
             </h3>
-            <motion.ol className="mt-1 divide-y divide-base-300" variants={listContainer} initial="hidden" animate="show">
+            <m.ol className="mt-1 divide-y divide-base-300" variants={listContainer} initial="hidden" animate="show">
               {section.cards.map((card) => (
                 <BookRow key={card.metric} seasonCode={seasonCode} family={family} card={card} />
               ))}
-            </motion.ol>
+            </m.ol>
           </Panel>
         );
       })}

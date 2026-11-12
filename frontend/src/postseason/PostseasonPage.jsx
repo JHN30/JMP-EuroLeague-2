@@ -1,6 +1,6 @@
 import { useMemo, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { motion } from "motion/react";
+import { m } from "motion/react";
 import { Link, useParams } from "react-router";
 import { getPostseasonSeries, getRounds, getSeasonGames, getSeasonStandings, getSeasonTeams } from "../lib/api";
 import AsyncState from "../lib/AsyncState";
@@ -367,7 +367,7 @@ export default function PostseasonPage() {
 
   const seasonLabel = formatSeasonLabel(seasonCode);
   return (
-    <motion.div className="flex flex-col gap-6 lg:gap-4" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3, ease: EASE_OUT }}>
+    <m.div className="flex flex-col gap-6 lg:gap-4" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3, ease: EASE_OUT }}>
       <PageHeader stacked compact kicker={summary.kicker} title="Postseason" description={<p className="mt-1 font-semibold">{summary.title}</p>}>
         <div className="basis-full">
           <Steps steps={steps} />
@@ -402,6 +402,6 @@ export default function PostseasonPage() {
       {showRace ? <RacePanel standings={standings} teams={teams} race={race} directSeeds={bracket.directSeeds} playInLast={bracket.playInLast} /> : null}
 
       <FormatCards cards={formatCards} />
-    </motion.div>
+    </m.div>
   );
 }

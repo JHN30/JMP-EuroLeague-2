@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
-import { motion } from "motion/react";
+import { m } from "motion/react";
 import { Link } from "react-router";
 import { getAdvancedStandings, getGameFlow, getTeamAdvanced, getTeamLineups, getTeamPlayersAdvanced } from "../lib/api";
 import AsyncState from "../lib/AsyncState";
@@ -57,7 +57,7 @@ function DivergingBar({ value, maxAbs }) {
   const positive = (value ?? 0) >= 0;
   return (
     <div aria-hidden="true" className="relative h-2 w-full overflow-hidden rounded-full bg-base-300">
-      <motion.div
+      <m.div
         className={`absolute inset-y-0 rounded-full ${positive ? "bg-success" : "bg-error"}`}
         style={positive ? { left: "50%" } : { right: "50%" }}
         initial={{ width: 0 }}
@@ -301,7 +301,7 @@ function FactorRow({ row, leagueRows, own, clubCode }) {
         {/* From the league's worst on the left to its best on the right. */}
         <div aria-hidden="true" className="h-1.5 min-w-0 flex-1 overflow-hidden rounded-full bg-base-300">
           {position === null ? null : (
-            <motion.div className={`h-full origin-left rounded-full ${tier?.bar ?? "bg-base-content/40"}`} style={{ width: `${Math.max(4, position * 100)}%` }} {...barFill} />
+            <m.div className={`h-full origin-left rounded-full ${tier?.bar ?? "bg-base-content/40"}`} style={{ width: `${Math.max(4, position * 100)}%` }} {...barFill} />
           )}
         </div>
         <span className="muted w-24 flex-none text-right text-xs tabular-nums">League {row.format(leagueAverage(leagueRows, row.field))}</span>
@@ -521,7 +521,7 @@ function GameFlowCard({ pbp, flowRows, clubCode }) {
               </div>
               <div aria-hidden="true" className="flex h-3 overflow-hidden rounded-full bg-base-300">
                 {TIME_SEGMENTS.map((segment) => (
-                  <motion.div
+                  <m.div
                     key={segment.key}
                     className={segment.fill}
                     initial={{ width: 0 }}
@@ -548,7 +548,7 @@ function GameFlowCard({ pbp, flowRows, clubCode }) {
                 <span className="text-error">{pbp.clutchPointsAgainst}</span>
               </div>
               <div aria-hidden="true" className="flex h-3 overflow-hidden rounded-full bg-base-300">
-                <motion.div
+                <m.div
                   className="bg-success"
                   initial={{ width: 0 }}
                   animate={{ width: `${clutchTotal === 0 ? 50 : (pbp.clutchPointsFor / clutchTotal) * 100}%` }}
@@ -613,7 +613,7 @@ function LineupRow({ lineup, photos, maxAbsNet, badges }) {
   const names = (lineup.lineupNames ?? "").split("; ");
 
   return (
-    <motion.li
+    <m.li
       variants={sectionItem}
       className="grid items-center gap-x-10 gap-y-2 border-b border-base-300 py-3 last:border-0 lg:grid-cols-[24rem_minmax(0,1fr)]"
     >
@@ -656,7 +656,7 @@ function LineupRow({ lineup, photos, maxAbsNet, badges }) {
           <span>{lineup.games} GP</span>
         </p>
       </div>
-    </motion.li>
+    </m.li>
   );
 }
 
@@ -733,8 +733,8 @@ function WinSharesChart({ seasonCode, players }) {
               <li key={player.personKey} className={IMPACT_ROW}>
                 <PlayerName seasonCode={seasonCode} player={player} />
                 <div aria-hidden="true" className="flex h-2 overflow-hidden rounded-full bg-base-300">
-                  <motion.div className="h-full bg-primary" {...grow} animate={{ width: width(player.offWinShares) }} />
-                  <motion.div className="h-full bg-secondary" {...grow} animate={{ width: width(player.defWinShares) }} />
+                  <m.div className="h-full bg-primary" {...grow} animate={{ width: width(player.offWinShares) }} />
+                  <m.div className="h-full bg-secondary" {...grow} animate={{ width: width(player.defWinShares) }} />
                 </div>
                 <span className="text-right font-bold tabular-nums">{formatDecimal(player.winShares)}</span>
                 <p className="muted col-span-3 mt-0.5 text-xs tabular-nums">
@@ -868,7 +868,7 @@ function LineupsCard({ seasonCode, clubCode, scope }) {
                 </span>
               </p>
             ) : null}
-            <motion.ul
+            <m.ul
               key={`${size}-${usedPossessions}`}
               variants={sectionContainer}
               initial="hidden"
@@ -883,7 +883,7 @@ function LineupsCard({ seasonCode, clubCode, scope }) {
                   badges={badgesFor(lineup, index)}
                 />
               ))}
-            </motion.ul>
+            </m.ul>
           </Panel>
         )}
       </TabPanel>
@@ -941,29 +941,29 @@ export default function TeamAdvancedSection({ seasonCode, clubCode }) {
         tabs={scopes.map((code) => ({ key: code, label: SCOPE_LABELS[code] ?? code }))}
       />
       <TabPanel id="team-advanced-panel" focusKey={activeScope} scroll={false}>
-        <motion.div key={activeScope} className="flex flex-col gap-8" variants={sectionContainer} initial="hidden" animate="show">
-          <motion.div variants={sectionItem}>
+        <m.div key={activeScope} className="flex flex-col gap-8" variants={sectionContainer} initial="hidden" animate="show">
+          <m.div variants={sectionItem}>
             <StrengthSection standingsQuery={standingsQuery} clubCode={clubCode} />
-          </motion.div>
-          <motion.div variants={sectionItem}>
+          </m.div>
+          <m.div variants={sectionItem}>
             <FourFactorsSection standingsQuery={standingsQuery} clubCode={clubCode} />
-          </motion.div>
-          <motion.div variants={sectionItem}>
+          </m.div>
+          <m.div variants={sectionItem}>
             <RatingsCard trend={trend} />
-          </motion.div>
-          <motion.div variants={sectionItem}>
+          </m.div>
+          <m.div variants={sectionItem}>
             <SplitsTable splits={splits} own={own} />
-          </motion.div>
-          <motion.div variants={sectionItem}>
+          </m.div>
+          <m.div variants={sectionItem}>
             <GameFlowCard pbp={pbp} flowRows={flowRows} clubCode={clubCode} />
-          </motion.div>
-          <motion.div variants={sectionItem}>
+          </m.div>
+          <m.div variants={sectionItem}>
             <PlayerImpact seasonCode={seasonCode} clubCode={clubCode} scope={activeScope} />
-          </motion.div>
-          <motion.div variants={sectionItem}>
+          </m.div>
+          <m.div variants={sectionItem}>
             <LineupsCard seasonCode={seasonCode} clubCode={clubCode} scope={activeScope} />
-          </motion.div>
-        </motion.div>
+          </m.div>
+        </m.div>
       </TabPanel>
     </div>
   );

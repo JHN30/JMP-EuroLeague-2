@@ -1,4 +1,4 @@
-import { motion } from "motion/react";
+import { m } from "motion/react";
 import { Link } from "react-router";
 import { formatShortDate, formatTimeOfDay } from "../lib/format";
 import { centerPop, listItem, wideCardHover } from "../lib/motion";
@@ -9,7 +9,7 @@ import { FormCell } from "../standings/standingsCells";
 import { groupPositionLabel } from "../standings/standingsGroups";
 import { shortTeamName, teamCode } from "./gameUtils";
 
-const MotionLink = motion.create(Link);
+const MotionLink = m.create(Link);
 
 // A side's top scorer, as plain text: the card is already one link to the game. The surname alone below sm.
 function TopScorer({ scorer }) {
@@ -86,7 +86,7 @@ export default function GameCard({ game, seasonCode, standingByClubCode, cancell
       {caption ?? (showGroup ? game.groupName : null) ? <span className="muted block text-center text-xs font-semibold tracking-wide uppercase">{caption ?? game.groupName}</span> : null}
       <div className="fixture-card-body">
         <FixtureTeam team={game.localTeam} entry={localEntry} won={localWon} showGroup={showGroup} scorer={game.played ? game.topScorers?.local : null} showForm={upcoming} />
-        <motion.div className="fixture-center" variants={centerPop}>
+        <m.div className="fixture-center" variants={centerPop}>
           {game.played ? (
             <>
               <span
@@ -106,7 +106,7 @@ export default function GameCard({ game, seasonCode, standingByClubCode, cancell
               <span className="fixture-time">{formatTimeOfDay(game.scheduledAt)}</span>
             </>
           )}
-        </motion.div>
+        </m.div>
         <FixtureTeam team={game.roadTeam} entry={roadEntry} won={roadWon} showGroup={showGroup} scorer={game.played ? game.topScorers?.road : null} showForm={upcoming} />
       </div>
       {upcoming && game.venueName ? <span className="fixture-venue" title={game.venueName}>{game.venueName}</span> : null}

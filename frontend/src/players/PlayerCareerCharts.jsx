@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useQueries } from "@tanstack/react-query";
 import { Chart } from "chart.js/auto";
-import { motion } from "motion/react";
+import { m } from "motion/react";
 import AsyncState from "../lib/AsyncState";
 import { CareerRadarSkeleton } from "./PlayerPageSkeleton";
 import { formatDecimal, formatSignedDecimal } from "../lib/format";
@@ -93,7 +93,7 @@ function TrendBars({ lines, metric, average, best }) {
                   {value === null ? "—" : formatDecimal(value, metric.digits)}
                 </span>
                 {value === null ? null : (
-                  <motion.div
+                  <m.div
                     className={`w-full max-w-10 rounded-t-sm ${isBest ? "bg-primary" : line.small ? "trend-bar-small" : "bg-primary/40"}`}
                     style={{ height: height(value), transformOrigin: "bottom" }}
                     initial={{ scaleY: 0 }}

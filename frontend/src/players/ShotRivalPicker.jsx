@@ -1,5 +1,5 @@
 import { useId, useRef, useState } from "react";
-import { motion } from "motion/react";
+import { m } from "motion/react";
 import { EASE_OUT } from "../lib/motion";
 import PickerPanel, { PickerOption } from "../comparisons/PickerPanel";
 
@@ -105,9 +105,9 @@ export default function ShotRivalPicker({ label, options, value, onChange }) {
           }}
         />
         {!open && chosen?.short ? <span className="muted flex-none text-xs">{chosen.short}</span> : null}
-        <motion.span aria-hidden="true" animate={{ rotate: open ? 180 : 0 }} transition={{ duration: 0.18, ease: EASE_OUT }} className="muted flex-none text-xs">
+        <m.span aria-hidden="true" animate={{ rotate: open ? 180 : 0 }} transition={{ duration: 0.18, ease: EASE_OUT }} className="muted flex-none text-xs">
           ▾
-        </motion.span>
+        </m.span>
       </div>
       {/* The list floats over the court under the box, so nothing below it moves while it is open; it stays under the sticky
           filters (z-20) and the navigation when the page scrolls. */}

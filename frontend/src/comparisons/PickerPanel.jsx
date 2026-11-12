@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import { AnimatePresence, motion, useReducedMotion } from "motion/react";
+import { AnimatePresence, m, useReducedMotion } from "motion/react";
 import { Avatar } from "../leaders/LeaderParts";
 import { EASE_OUT } from "../lib/motion";
 import RevealImage from "../lib/RevealImage";
@@ -27,7 +27,7 @@ export default function PickerPanel({ open, listId, label, heading, note, childr
   return (
     <AnimatePresence initial={false}>
       {open ? (
-        <motion.div
+        <m.div
           ref={panelRef}
           initial={PANEL_MOTION.initial}
           animate={reduceMotion ? { ...PANEL_MOTION.animate, transition: instant } : PANEL_MOTION.animate}
@@ -44,7 +44,7 @@ export default function PickerPanel({ open, listId, label, heading, note, childr
             </ul>
             {note ? <p className="muted px-2.5 py-2 text-sm">{note}</p> : null}
           </div>
-        </motion.div>
+        </m.div>
       ) : null}
     </AnimatePresence>
   );

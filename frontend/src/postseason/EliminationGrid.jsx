@@ -1,5 +1,5 @@
 import { Fragment } from "react";
-import { motion } from "motion/react";
+import { m } from "motion/react";
 import { listContainer, listItem } from "../lib/motion";
 import Matchup from "./Matchup";
 
@@ -9,7 +9,7 @@ import Matchup from "./Matchup";
 export default function EliminationGrid({ bracket, selectedId, focusClub, onSelect, onFocusClub }) {
   const last = bracket.rounds.length - 1;
   return (
-    <motion.div className="bk-grid elim-grid grid grid-cols-1 gap-x-9 gap-y-3 lg:grid-cols-4" variants={listContainer} initial="hidden" animate="show">
+    <m.div className="bk-grid elim-grid grid grid-cols-1 gap-x-9 gap-y-3 lg:grid-cols-4" variants={listContainer} initial="hidden" animate="show">
       {bracket.rounds.map((round, stageIndex) => (
         <Fragment key={round.id}>
           <div className="elim-head" style={{ "--c": stageIndex + 1 }}>
@@ -17,7 +17,7 @@ export default function EliminationGrid({ bracket, selectedId, focusClub, onSele
             <h3 className="text-lg font-bold">{round.title}</h3>
           </div>
           {round.slots.map((slot, index) => (
-            <motion.div
+            <m.div
               key={slot.id}
               variants={listItem}
               className={"bk-cell elim-cell" + (bracket.connected && stageIndex < last ? " bk-out" : "") + (bracket.connected && stageIndex > 0 ? " bk-in" : "")}
@@ -26,10 +26,10 @@ export default function EliminationGrid({ bracket, selectedId, focusClub, onSele
               <div className="w-full">
                 <Matchup slot={slot} selected={selectedId === slot.id} focusClub={focusClub} onSelect={onSelect} onFocusClub={onFocusClub} />
               </div>
-            </motion.div>
+            </m.div>
           ))}
         </Fragment>
       ))}
-    </motion.div>
+    </m.div>
   );
 }

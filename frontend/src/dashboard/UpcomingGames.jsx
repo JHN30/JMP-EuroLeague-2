@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { motion } from "motion/react";
+import { m } from "motion/react";
 import { useState } from "react";
 import { useParams } from "react-router";
 import { getSeasonGames, getSeasonStandings } from "../lib/api";
@@ -68,7 +68,7 @@ export default function UpcomingGames() {
     >
       {/* Below sm the first five stack and the rest wait behind a button, as in Latest scores; from sm all show in a grid.
           Game of the round, when there is one, is the first card. */}
-      <motion.div
+      <m.div
         id={LIST_ID}
         className="games-row"
         role="group"
@@ -88,7 +88,7 @@ export default function UpcomingGames() {
             className={index >= VISIBLE_ON_MOBILE && !showAll ? "match-card-extra" : ""}
           />
         ))}
-      </motion.div>
+      </m.div>
       {hiddenOnMobile > 0 ? (
         <button
           type="button"

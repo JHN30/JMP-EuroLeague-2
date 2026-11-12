@@ -1,4 +1,4 @@
-import { motion } from "motion/react";
+import { m } from "motion/react";
 import { Link } from "react-router";
 import RevealImage from "../lib/RevealImage";
 import { listContainer, listItem } from "../lib/motion";
@@ -47,12 +47,12 @@ const HEADINGS = [
 
 function Cell({ slot, selectedId, focusClub, onSelect, onFocusClub, note, place, moves, movesSince }) {
   return (
-    <motion.div variants={listItem} className={"bk-cell " + place[slot.id]}>
+    <m.div variants={listItem} className={"bk-cell " + place[slot.id]}>
       <div className="w-full">
         <Matchup slot={slot} selected={selectedId === slot.id} focusClub={focusClub} onSelect={onSelect} onFocusClub={onFocusClub} moves={moves} movesSince={movesSince} />
         {note ? <p className="muted mt-1 hidden px-1 text-xs lg:block">{note}</p> : null}
       </div>
-    </motion.div>
+    </m.div>
   );
 }
 
@@ -110,7 +110,7 @@ export default function Bracket({ bracket, selectedId, focusClub, onSelect, onFo
   const [po1, po2, po3, po4] = bracket.playoffs;
   const [sf1, sf2] = bracket.semis;
   return (
-    <motion.div
+    <m.div
       className={"bk-grid grid grid-cols-1 gap-x-9 gap-y-3 lg:grid-rows-[auto_repeat(4,7.6rem)_auto] " + (hasPlayIn ? "lg:grid-cols-4" : bracket.direct ? "lg:grid-cols-2" : "lg:grid-cols-3")}
       variants={listContainer}
       initial="hidden"
@@ -126,6 +126,6 @@ export default function Bracket({ bracket, selectedId, focusClub, onSelect, onFo
       {holders && !bracket.grouped ? <Holders holders={holders} column={hasPlayIn ? "lg:col-start-4" : "lg:col-start-3"} /> : null}
       {cell(bracket.final)}
       {bracket.third ? cell(bracket.third) : null}
-    </motion.div>
+    </m.div>
   );
 }

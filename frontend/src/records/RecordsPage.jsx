@@ -1,5 +1,5 @@
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
-import { motion } from "motion/react";
+import { m } from "motion/react";
 import { useMemo, useState } from "react";
 import { useParams } from "react-router";
 import { useLiveSearchParams } from "../lib/useLiveSearchParams";
@@ -55,7 +55,7 @@ function RecordsContent({ data, seasonCode, unique, onUniqueChange }) {
   }
   const holders = FAMILIES.find((entry) => entry.key === data.family)?.club ? "clubs" : "players";
   return (
-    <motion.div key={`${data.family}-${data.metricKey}-${data.per}`} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3, ease: EASE_OUT }}>
+    <m.div key={`${data.family}-${data.metricKey}-${data.per}`} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3, ease: EASE_OUT }}>
       {/* The minimum is two thirds of a season's regular-season games (the group stage and the Top 16 where there was one); each row has its
           season's minimum. `volume` is a further minimum of minutes or shots, worded by the API. */}
       {data.minGames || data.lowerIsBetter || data.volume ? (
@@ -81,7 +81,7 @@ function RecordsContent({ data, seasonCode, unique, onUniqueChange }) {
           onUniqueChange={onUniqueChange}
         />
       </div>
-    </motion.div>
+    </m.div>
   );
 }
 

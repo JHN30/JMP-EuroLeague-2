@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
-import { motion } from "motion/react";
+import { m } from "motion/react";
 import { getAdvancedStandings } from "../lib/api";
 import AsyncState from "../lib/AsyncState";
 import { AdvancedStandingsSkeleton } from "./StandingsSkeleton";
@@ -353,7 +353,7 @@ export default function AdvancedStandingsView({ seasonCode, shortNames }) {
       />
 
       <TabPanel id="advanced-standings-panel" focusKey={`${activeScope}-${view.key}`} scroll={false}>
-        <motion.div key={view.key} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.25 }}>
+        <m.div key={view.key} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.25 }}>
           {explained ? (
             <AdvancedExplainedView standings={standings} scopeLabel={SCOPE_LABELS[activeScope] ?? activeScope} round={query.data.round} />
           ) : (
@@ -464,7 +464,7 @@ export default function AdvancedStandingsView({ seasonCode, shortNames }) {
           </Panel>
           </>
           )}
-        </motion.div>
+        </m.div>
       </TabPanel>
     </div>
   );

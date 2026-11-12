@@ -1,5 +1,5 @@
 import { Fragment, useState } from "react";
-import { motion } from "motion/react";
+import { m } from "motion/react";
 import { formatDecimal, formatFractionPercent, formatSignedDecimal } from "../lib/format";
 import Panel from "../lib/Panel";
 import { DivergingBars, DotStrip, Dumbbells, ScaleBars, ShotGrid, Waffle } from "./explainedVisuals";
@@ -393,7 +393,7 @@ export default function AdvancedExplainedView({ standings, scopeLabel, round }) 
                   {section.rows.map((row) => {
                     const example = row.example(selected, entries);
                     return (
-                      <motion.tr
+                      <m.tr
                         key={row.key}
                         initial={{ opacity: 0, y: 12 }}
                         whileInView={{ opacity: 1, y: 0 }}
@@ -432,7 +432,7 @@ export default function AdvancedExplainedView({ standings, scopeLabel, round }) 
                             <div className="explained-visual">{row.visual(selected, entries)}</div>
                           </div>
                         </td>
-                      </motion.tr>
+                      </m.tr>
                     );
                   })}
                 </Fragment>

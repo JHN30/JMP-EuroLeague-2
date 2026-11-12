@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { motion } from "motion/react";
+import { m } from "motion/react";
 import { useParams } from "react-router";
 import { getPhases } from "../lib/api";
 import BackLink from "../lib/BackLink";
@@ -101,7 +101,7 @@ export default function LeadersPage() {
       </div>
 
       <ToolbarSlot.Provider value={toolbarSlot}>
-        <motion.div id="leaders-panel" key={scope} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3, ease: EASE_OUT }}>
+        <m.div id="leaders-panel" key={scope} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3, ease: EASE_OUT }}>
           {scope === "players" ? (
             <PlayersLeaders seasonCode={seasonCode} phaseCode={phaseCode} stage={stage} params={params} setParams={setParams} />
           ) : scope === "teams" ? (
@@ -109,7 +109,7 @@ export default function LeadersPage() {
           ) : (
             <AdvancedLeaders seasonCode={seasonCode} params={params} setParams={setParams} />
           )}
-        </motion.div>
+        </m.div>
       </ToolbarSlot.Provider>
     </div>
   );

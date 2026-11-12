@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { motion } from "motion/react";
+import { m } from "motion/react";
 import { Link, useParams } from "react-router";
 import {
   getAdvancedStandings,
@@ -45,7 +45,7 @@ import TeamPageSkeleton, { SnapshotSkeleton, TeamLeadersSkeleton, TeamOverviewSk
 import { groupLabel, isGroupedTable } from "../standings/standingsGroups";
 import { advancedScopeForPhase, ordinal } from "./teamLeague";
 
-const MotionLink = motion.create(Link);
+const MotionLink = m.create(Link);
 
 const ROSTER_LIMIT = 100;
 const GAMES_LIMIT = 100;
@@ -266,7 +266,7 @@ const FORM_PILL_COUNT = 5;
 function ShareBar({ share, fillClass, trackClass }) {
   return (
     <div aria-hidden="true" className={`h-2.5 w-full overflow-hidden rounded-full ${trackClass}`}>
-      <motion.div
+      <m.div
         className={`h-full origin-left rounded-full ${fillClass}`}
         style={{ width: `${Math.min(100, Math.max(0, share * 100))}%` }}
         {...barFill}
@@ -408,7 +408,7 @@ function TeamLeaders({ seasonCode, rosterStatsQuery, stageName }) {
   }
 
   return (
-    <motion.div
+    <m.div
       className="team-leaders-grid grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4"
       role="group"
       aria-label="Team leaders"
@@ -452,7 +452,7 @@ function TeamLeaders({ seasonCode, rosterStatsQuery, stageName }) {
           </MotionLink>
         );
       })}
-    </motion.div>
+    </m.div>
   );
 }
 

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { motion } from "motion/react";
+import { m } from "motion/react";
 import { Link, useParams } from "react-router";
 import { useLiveSearchParams } from "../lib/useLiveSearchParams";
 import { getAdvancedStandings, getGameFlow, getPhaseResults, getPhases, getRounds, getSeasonStandings, getSeasonTeams } from "../lib/api";
@@ -238,14 +238,14 @@ export default function StandingsPage() {
             {grouped && mode === "table" && roundsQuery.isError ? <AsyncState compact status="error" message="Round context is unavailable." onRetry={() => roundsQuery.refetch()} /> : null}
 
             {mode === "advanced" ? (
-              <motion.div
+              <m.div
                 key="advanced-mode"
                 initial={{ opacity: 0, y: 8 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.3, ease: EASE_OUT }}
               >
                 <AdvancedStandingsView key={seasonCode} seasonCode={seasonCode} shortNames={shortNames} />
-              </motion.div>
+              </m.div>
             ) : mode === "race" ? (
               displayedGroups.map((group, index) => (
                 <section key={`${seasonCode}-${phaseCode}-${groupName ?? "all"}-${group.name}`} aria-label={grouped ? groupLabel(group.name) : undefined} className="flex min-w-0 flex-col gap-4">
@@ -268,7 +268,7 @@ export default function StandingsPage() {
                 </section>
               ))
             ) : (
-              <motion.div
+              <m.div
                 key="table-mode"
                 className="flex flex-col gap-4"
                 initial={{ opacity: 0, y: 8 }}
@@ -318,7 +318,7 @@ export default function StandingsPage() {
                   </label>
                 </div>
 
-                <motion.div key={breakdown} className="flex flex-col gap-6" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.25 }}>
+                <m.div key={breakdown} className="flex flex-col gap-6" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.25 }}>
                 {displayedGroups.map((group) => {
                   if (grouped && group.name === null) return <section key="unavailable" aria-label="Group unavailable"><h2 className="text-lg font-semibold">Group unavailable</h2><EmptyText>Group assignments are unavailable for {group.standings.length} clubs.</EmptyText></section>;
                   const clubs = new Set(group.standings.map((row) => row.clubCode));
@@ -349,8 +349,8 @@ export default function StandingsPage() {
                     </section>
                   );
                 })}
-                </motion.div>
-              </motion.div>
+                </m.div>
+              </m.div>
             )}
           </div>
         )}

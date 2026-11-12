@@ -1,4 +1,4 @@
-import { motion } from "motion/react";
+import { m } from "motion/react";
 import { efficiencyRamp } from "./chartHelpers";
 import EmptyText from "./EmptyText";
 import { formatPercentage } from "./format";
@@ -21,7 +21,7 @@ export function MetricCard({ label, value, detail }) {
     <Panel className="p-3 text-center">
       <p className="eyebrow mb-1">{label}</p>
       {/* Keyed by the value, so a changed number eases in instead of swapping. */}
-      <motion.p
+      <m.p
         key={value}
         className="text-xl font-semibold"
         initial={{ opacity: 0, y: 6 }}
@@ -29,7 +29,7 @@ export function MetricCard({ label, value, detail }) {
         transition={{ duration: 0.3, ease: EASE_OUT }}
       >
         {value}
-      </motion.p>
+      </m.p>
       {detail ? <p className="muted text-xs">{detail}</p> : null}
     </Panel>
   );
@@ -64,9 +64,9 @@ function BreakdownTable({ firstColumn, shareHeader = "Share", columns, rows, dot
           </span>
         ))}
       </div>
-      <motion.ul variants={listContainer} initial="hidden" animate="show">
+      <m.ul variants={listContainer} initial="hidden" animate="show">
         {rows.map((row) => (
-          <motion.li
+          <m.li
             key={row.key}
             variants={listItem}
             layout="position"
@@ -84,7 +84,7 @@ function BreakdownTable({ firstColumn, shareHeader = "Share", columns, rows, dot
             </span>
             <div aria-hidden="true" className="h-2 min-w-0 overflow-hidden rounded-full bg-base-300">
               {/* Grows from nothing on arrival and slides to the new width when a filter changes. */}
-              <motion.div
+              <m.div
                 className="h-full rounded-full bg-primary"
                 initial={{ width: 0 }}
                 animate={{ width: `${(row.share / biggest) * 100}%` }}
@@ -97,9 +97,9 @@ function BreakdownTable({ firstColumn, shareHeader = "Share", columns, rows, dot
                 {column.render(row)}
               </span>
             ))}
-          </motion.li>
+          </m.li>
         ))}
-      </motion.ul>
+      </m.ul>
     </div>
   );
 }
@@ -219,7 +219,7 @@ export default function ShootingBreakdown({
           style={{ "--court-width": COURT_MAX_WIDTH }}
         >
           <div className={`flex flex-col justify-center gap-3 rounded-field border border-base-300 bg-base-100/60 ${phoneLayout ? "p-2 sm:p-3" : "p-3"}`}>
-            <motion.div
+            <m.div
               key={presentation}
               className="flex flex-col gap-3"
               initial={{ opacity: 0 }}
@@ -237,7 +237,7 @@ export default function ShootingBreakdown({
                 ariaLabel={courtLabel}
               />
               {presentation === "heatmap" ? <HeatmapLegend /> : <ShootingLegend teams={[]} resultColors />}
-            </motion.div>
+            </m.div>
           </div>
           <div className="flex flex-col gap-4">
             <ZonesPanel key={`zones-${resetKey}`} rows={zoneRows} title={zonesTitle} favorable={favorable} stackBadges={phoneLayout} plainWording={plainWording} adaptive={phoneLayout} />

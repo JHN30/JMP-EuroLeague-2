@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { motion } from "motion/react";
+import { m } from "motion/react";
 import { useState } from "react";
 import { Link, useParams } from "react-router";
 import { getSeasonGames, getSeasonStandings } from "../lib/api";
@@ -13,7 +13,7 @@ import { shortTeamName, teamCode } from "../games/gameUtils";
 import { WidgetPanel } from "./Dashboard";
 import { LatestScoresSkeleton, VISIBLE_ON_MOBILE } from "./HomeSkeleton";
 
-const MotionLink = motion.create(Link);
+const MotionLink = m.create(Link);
 
 function roundLabel(game, format) {
   const stage = eliminationStageLabel(format, game);
@@ -126,7 +126,7 @@ export default function RecentResults() {
       skeleton={<LatestScoresSkeleton />}
     >
       <div className="games-list-box">
-        <motion.div id={LIST_ID} className="games-list" variants={listContainer} initial="hidden" animate="show">
+        <m.div id={LIST_ID} className="games-list" variants={listContainer} initial="hidden" animate="show">
           {games.map((game, index) => (
             <MatchCard
               key={game.gameCode}
@@ -137,7 +137,7 @@ export default function RecentResults() {
               className={index >= VISIBLE_ON_MOBILE && !showAll ? "match-card-extra" : ""}
             />
           ))}
-        </motion.div>
+        </m.div>
         {hiddenOnMobile > 0 ? (
           <button
             type="button"

@@ -1,6 +1,6 @@
 import { useEffect, useId, useRef, useState } from "react";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
-import { motion } from "motion/react";
+import { m } from "motion/react";
 import { useLocation, useParams, useSearchParams } from "react-router";
 import { useLiveSearchParams } from "../lib/useLiveSearchParams";
 import AsyncState from "../lib/AsyncState";
@@ -140,9 +140,9 @@ function TeamPicker({ label, allTeams, teamsPending, selected, excludeId, onSele
         <span className={`min-w-0 flex-1 truncate ${chosen ? "font-semibold" : "muted"}`}>
           {chosen ? <ShortLabel short={chosen.tvCode ?? chosen.clubCode} full={chosen.name ?? chosen.clubCode} /> : "Select a team"}
         </span>
-        <motion.span aria-hidden="true" animate={{ rotate: open ? 180 : 0 }} transition={{ duration: 0.18, ease: EASE_OUT }} className="muted flex-none text-xs">
+        <m.span aria-hidden="true" animate={{ rotate: open ? 180 : 0 }} transition={{ duration: 0.18, ease: EASE_OUT }} className="muted flex-none text-xs">
           ▾
-        </motion.span>
+        </m.span>
       </button>
       <PickerPanel open={open} listId={listId} label={label}>
         {options.map((option, index) => (
@@ -492,7 +492,7 @@ function ComparisonsBody({
   // the pickers for any two players.
   if (!bothSelected) {
     return (
-      <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3, ease: EASE_OUT }}>
+      <m.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3, ease: EASE_OUT }}>
         <PageHeader kicker="HEAD-TO-HEAD" title="Compare" />
         <TabStrip
           scrolling
@@ -528,7 +528,7 @@ function ComparisonsBody({
             </div>
           )}
         </div>
-      </motion.div>
+      </m.div>
     );
   }
 
@@ -559,7 +559,7 @@ function ComparisonsBody({
           { key: "trends", label: "Trends" },
         ];
   return (
-    <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3, ease: EASE_OUT }}>
+    <m.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3, ease: EASE_OUT }}>
       {cameFromGame ? (
         <BackLink to={`/${seasonCode}/games/${fromGame}`} label="Game" />
       ) : (
@@ -628,7 +628,7 @@ function ComparisonsBody({
           )
         )}
       </TabPanel>
-    </motion.div>
+    </m.div>
   );
 }
 

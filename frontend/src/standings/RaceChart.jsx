@@ -1,5 +1,5 @@
 import { useEffect, useId, useRef, useState } from "react";
-import { motion } from "motion/react";
+import { m } from "motion/react";
 import { thinAxisLabels } from "../lib/chartHelpers";
 import { tierEnd } from "../lib/seasonFormat";
 import { teamHue } from "../lib/teamHue";
@@ -141,7 +141,7 @@ export default function RaceChart({ rounds, visibleCount, standingsByRound, team
             >
               <defs>
                 <clipPath id={clipId}>
-                  <motion.rect x={0} y={0} height={height} initial={{ width: 0 }} animate={{ width: revealWidth }} transition={move} />
+                  <m.rect x={0} y={0} height={height} initial={{ width: 0 }} animate={{ width: revealWidth }} transition={move} />
                 </clipPath>
                 <clipPath id={crestClipId}>
                   <circle r={crestInner} />
@@ -188,7 +188,7 @@ export default function RaceChart({ rounds, visibleCount, standingsByRound, team
                     .map((point, index) => `${index === 0 ? "M" : "L"}${point}`)
                     .join(" ");
                   return (
-                    <motion.g key={team.clubCode} initial={false} animate={{ opacity: focusedClub && !isFocused ? 0.12 : 1 }}>
+                    <m.g key={team.clubCode} initial={false} animate={{ opacity: focusedClub && !isFocused ? 0.12 : 1 }}>
                       <path d={path} fill="none" stroke={stroke} strokeWidth={isFocused ? 5 : 2} strokeLinejoin="round" />
                       {series.map((position, index) =>
                         position == null ? null : (
@@ -200,7 +200,7 @@ export default function RaceChart({ rounds, visibleCount, standingsByRound, team
                           </g>
                         ),
                       )}
-                    </motion.g>
+                    </m.g>
                   );
                 })}
               </g>
@@ -212,7 +212,7 @@ export default function RaceChart({ rounds, visibleCount, standingsByRound, team
                 const at = { x: x(crestIndex), y: y(position) };
                 const name = team.clubName ?? team.clubCode;
                 return (
-                  <motion.g
+                  <m.g
                     key={team.clubCode}
                     initial={{ ...at, opacity: 0 }}
                     animate={{ ...at, opacity: visibleCount === 0 ? 0 : focusedClub && !isFocused ? 0.35 : 1 }}
@@ -233,7 +233,7 @@ export default function RaceChart({ rounds, visibleCount, standingsByRound, team
                       />
                     ) : null}
                     <title>{`${name}: position ${position}`}</title>
-                  </motion.g>
+                  </m.g>
                 );
               })}
             </svg>

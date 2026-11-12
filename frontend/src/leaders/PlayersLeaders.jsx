@@ -1,6 +1,6 @@
 import { useMemo, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { motion } from "motion/react";
+import { m } from "motion/react";
 import { Link } from "react-router";
 import { getLeaderForm, getSeasonGames } from "../lib/api";
 import AsyncState from "../lib/AsyncState";
@@ -158,7 +158,7 @@ function FormSection({ seasonCode, phaseCode, openMetric }) {
         <Panel className="p-4 lg:p-3">
           <h3 className="mb-1 text-lg font-bold lg:mb-0 lg:text-base">{stat.label}: the last {FORM_GAMES} games</h3>
           <p className="muted mb-3 text-sm lg:mb-1">Last {FORM_GAMES} games, against the season average.</p>
-          <motion.ol className="flex flex-col" variants={listContainer} initial="hidden" animate="show" key={`${statKey}-${phaseCode}`}>
+          <m.ol className="flex flex-col" variants={listContainer} initial="hidden" animate="show" key={`${statKey}-${phaseCode}`}>
             {hot.map((player, index) => {
               const recent = player.recent[statKey];
               const difference = recent - player.season[statKey];
@@ -181,7 +181,7 @@ function FormSection({ seasonCode, phaseCode, openMetric }) {
                 </li>
               );
             })}
-          </motion.ol>
+          </m.ol>
         </Panel>
         <Panel className="p-4 lg:p-3">
           <h3 className="mb-1 text-lg font-bold lg:mb-0 lg:text-base">{stat.label}: who has moved</h3>
@@ -412,7 +412,7 @@ function PlayersBoard({ seasonCode, phaseCode, stage, metric, params, setParams 
           ) : (
             <>
               <BoardHeader columns={["GP", "MIN"]} valueLabel={stat.short} sort={{ direction, onToggle: toggleOrder }} />
-              <motion.ol variants={listContainer} initial="hidden" animate="show" key={`${stat.key}-${mode}-${direction}-${offset}-${team}-${position}-${search}-${share}`}>
+              <m.ol variants={listContainer} initial="hidden" animate="show" key={`${stat.key}-${mode}-${direction}-${offset}-${team}-${position}-${search}-${share}`}>
                 {page.map(({ row, rank, value }) => {
                   const move = movement.get(row.personKey);
                   return (
@@ -438,7 +438,7 @@ function PlayersBoard({ seasonCode, phaseCode, stage, metric, params, setParams 
                     />
                   );
                 })}
-              </motion.ol>
+              </m.ol>
               <BoardPager offset={offset} pageSize={PAGE_SIZE} total={shown.length} onChange={changePage} />
             </>
           )}

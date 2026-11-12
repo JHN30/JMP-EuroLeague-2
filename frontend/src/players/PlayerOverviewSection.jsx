@@ -1,6 +1,6 @@
 import { useEffect, useRef } from "react";
 import { Chart } from "chart.js/auto";
-import { motion } from "motion/react";
+import { m } from "motion/react";
 import { Link } from "react-router";
 import AsyncState from "../lib/AsyncState";
 import { FormBodySkeleton, PlayerOverviewSkeleton } from "./PlayerPageSkeleton";
@@ -27,12 +27,12 @@ function RankedStat({ stat, ranking, minGames }) {
   const fill = rank && of > 1 ? ((of - rank) / (of - 1)) * 100 : 0;
 
   return (
-    <motion.div className="rounded-box border border-base-300 bg-base-100 px-3 py-2" variants={listItem} title={stat.title}>
+    <m.div className="rounded-box border border-base-300 bg-base-100 px-3 py-2" variants={listItem} title={stat.title}>
       <span className="muted text-xs font-bold uppercase tracking-wide">{stat.label}</span>
       <p className="mt-0.5 text-2xl font-black leading-none tabular-nums">{formatPerGame(value)}</p>
       <div aria-hidden="true" className="mt-2 h-1 overflow-hidden rounded-full bg-base-300">
         {rank ? (
-          <motion.div
+          <m.div
             className={`h-full rounded-full ${tier.bar}`}
             style={{ width: `${Math.max(fill, 4)}%`, transformOrigin: "left" }}
             {...barFill}
@@ -42,13 +42,13 @@ function RankedStat({ stat, ranking, minGames }) {
       <p className={`mt-1 text-xs ${rank ? `font-semibold ${tier.text}` : "muted"}`}>
         {rank ? `${ordinal(rank)} of ${of}` : unqualified ? `Not ranked: under ${minGames} games` : "No recorded stats"}
       </p>
-    </motion.div>
+    </m.div>
   );
 }
 
 function SeasonLine({ players, personKey, minGames }) {
   return (
-    <motion.div
+    <m.div
       className="grid grid-cols-2 gap-3 sm:grid-cols-4 xl:grid-cols-7"
       variants={listContainer}
       initial="hidden"
@@ -57,7 +57,7 @@ function SeasonLine({ players, personKey, minGames }) {
       {SEASON_LINE.map((stat) => (
         <RankedStat key={stat.label} stat={stat} ranking={rankPlayer(players, personKey, stat, { qualifiedOnly: true })} minGames={minGames} />
       ))}
-    </motion.div>
+    </m.div>
   );
 }
 
@@ -143,7 +143,7 @@ function PercentileBars({ axes }) {
             </span>
             <div aria-hidden="true" className="col-span-2 h-1.5 overflow-hidden rounded-full bg-base-300">
               {axis.percentile === null ? null : (
-                <motion.div className={`h-full rounded-full ${tier.bar}`} style={{ width: `${Math.max(axis.percentile, 3)}%`, transformOrigin: "left" }} {...barFill} />
+                <m.div className={`h-full rounded-full ${tier.bar}`} style={{ width: `${Math.max(axis.percentile, 3)}%`, transformOrigin: "left" }} {...barFill} />
               )}
             </div>
           </li>
@@ -235,7 +235,7 @@ function FormBar({ game, seasonCode, height }) {
   }`;
 
   return (
-    <motion.li className="min-w-0 flex-1" variants={listItem}>
+    <m.li className="min-w-0 flex-1" variants={listItem}>
       <Link
         to={`/${seasonCode}/games/${game.gameCode}`}
         title={label}
@@ -244,7 +244,7 @@ function FormBar({ game, seasonCode, height }) {
       >
         <span className="text-sm font-bold tabular-nums">{points}</span>
         <div className="flex h-20 w-full items-end justify-center">
-          <motion.div
+          <m.div
             className={`w-full max-w-7 rounded-t-field ${tone}`}
             style={{ height: `${height}%`, transformOrigin: "bottom" }}
             initial={{ scaleY: 0 }}
@@ -259,7 +259,7 @@ function FormBar({ game, seasonCode, height }) {
         )}
         <HomeAwayIcon home={home} className="h-3.5 w-3.5 text-base-content/60" />
       </Link>
-    </motion.li>
+    </m.li>
   );
 }
 
@@ -292,11 +292,11 @@ function FormPanel({ gamesQuery, own, seasonCode }) {
             <FormDelta label="AST" recent={averageOf(recent, "assistances")} season={statNumber(season?.assists)} compare={compare} />
             <FormDelta label="PIR" recent={averageOf(recent, "valuation")} season={statNumber(season?.pir)} compare={compare} />
           </div>
-          <motion.ol className="flex gap-1" variants={listContainer} initial="hidden" animate="show">
+          <m.ol className="flex gap-1" variants={listContainer} initial="hidden" animate="show">
             {recent.map((game) => (
               <FormBar key={game.gameCode} game={game} seasonCode={seasonCode} height={Math.max(4, ((statNumber(game.points) ?? 0) / top) * 100)} />
             ))}
-          </motion.ol>
+          </m.ol>
           <Link
             to={`/${seasonCode}/games/${best.gameCode}`}
             className="mt-3 flex flex-wrap items-baseline gap-x-2 rounded-field border border-base-300 px-3 py-2 text-sm hover:border-primary"
@@ -331,7 +331,7 @@ function ShotRow({ label, made, attempted, percentage }) {
       <span className="text-sm font-bold">{label}</span>
       <div aria-hidden="true" className="h-2 overflow-hidden rounded-full bg-base-300">
         {pct !== null ? (
-          <motion.div className="h-full rounded-full bg-primary" style={{ width: `${Math.min(100, pct)}%`, transformOrigin: "left" }} {...barFill} />
+          <m.div className="h-full rounded-full bg-primary" style={{ width: `${Math.min(100, pct)}%`, transformOrigin: "left" }} {...barFill} />
         ) : null}
       </div>
       <span className="w-28 text-right text-sm tabular-nums">
@@ -392,7 +392,7 @@ function ShootingPanel({ own, players, personKey }) {
           <>
             <div className="flex h-5 overflow-hidden rounded-full bg-base-300" role="img" aria-label={sources.map((source) => `${source.label} ${formatPercentage(source.value)}`).join(", ")}>
               {sources.map((source) => (
-                <motion.div
+                <m.div
                   key={source.key}
                   className={`h-full ${source.bar}`}
                   style={{ width: `${source.value ?? 0}%`, transformOrigin: "left" }}
@@ -436,8 +436,8 @@ export default function PlayerOverviewSection({ leaderboardQuery, gamesQuery, pe
   const hasProfile = axes.some((axis) => axis.percentile !== null);
 
   return (
-    <motion.div className="flex flex-col gap-6" variants={sectionContainer} initial="hidden" animate="show">
-      <motion.section variants={sectionItem} aria-label="Season line">
+    <m.div className="flex flex-col gap-6" variants={sectionContainer} initial="hidden" animate="show">
+      <m.section variants={sectionItem} aria-label="Season line">
         {own.qualified === false ? (
           <p className="mb-3 rounded-field border border-base-300 bg-base-100 px-3 py-2 text-sm">
             <span className="font-semibold">Not ranked yet:</span> {statNumber(own.traditional?.gamesPlayed)} games played, and the league ranks players
@@ -445,14 +445,14 @@ export default function PlayerOverviewSection({ leaderboardQuery, gamesQuery, pe
           </p>
         ) : null}
         <SeasonLine players={players} personKey={personKey} minGames={own.minGames} />
-      </motion.section>
-      <motion.section className={`grid grid-cols-1 gap-4 ${hasProfile ? "lg:grid-cols-2" : ""}`} variants={sectionItem} aria-label="Profile and form">
+      </m.section>
+      <m.section className={`grid grid-cols-1 gap-4 ${hasProfile ? "lg:grid-cols-2" : ""}`} variants={sectionItem} aria-label="Profile and form">
         {hasProfile ? <ProfilePanel axes={axes} /> : null}
         <FormPanel gamesQuery={gamesQuery} own={own} seasonCode={seasonCode} />
-      </motion.section>
-      <motion.section variants={sectionItem} aria-label="Shooting">
+      </m.section>
+      <m.section variants={sectionItem} aria-label="Shooting">
         <ShootingPanel own={own} players={players} personKey={personKey} />
-      </motion.section>
-    </motion.div>
+      </m.section>
+    </m.div>
   );
 }

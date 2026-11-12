@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { motion } from "motion/react";
+import { m } from "motion/react";
 import { getPlayerGames } from "../lib/api";
 import AsyncState from "../lib/AsyncState";
 import { TrendsSkeleton } from "./CompareSkeleton";
@@ -240,9 +240,9 @@ function RowsPanel({ label, kicker, title, names, grid, children }) {
         <span className="min-w-0 wrap-break-word text-primary">{names[0]}</span>
         <span className="min-w-0 wrap-break-word text-accent">{names[1]}</span>
       </div>
-      <motion.ul variants={listContainer} initial="hidden" animate="show">
+      <m.ul variants={listContainer} initial="hidden" animate="show">
         {children}
-      </motion.ul>
+      </m.ul>
     </Panel>
   );
 }
@@ -250,11 +250,11 @@ function RowsPanel({ label, kicker, title, names, grid, children }) {
 function Row({ grid, label, tip, better, a, b }) {
   const cell = (content, side) => <span className={`text-right tabular-nums ${better === side ? `font-bold ${SIDE_TEXT[side]}` : "font-semibold"}`}>{content}</span>;
   return (
-    <motion.li variants={listItem} data-better={better ?? undefined} className={`${grid} border-b border-base-300 py-1.5 text-sm last:border-0`}>
+    <m.li variants={listItem} data-better={better ?? undefined} className={`${grid} border-b border-base-300 py-1.5 text-sm last:border-0`}>
       <span className="min-w-0 font-medium">{tip ? <HeaderTip tip={tip}>{label}</HeaderTip> : label}</span>
       {cell(a, "a")}
       {cell(b, "b")}
-    </motion.li>
+    </m.li>
   );
 }
 
@@ -411,13 +411,13 @@ export default function ComparePlayerTrends({ seasonCode, phaseCode, entityA, en
     formSide("b", fullName(rowB?.playerName ?? entityB.label), rowB?.playerImageUrl, viewsB),
   ];
   return (
-    <motion.div className="flex flex-col gap-6" variants={sectionContainer} initial="hidden" animate="show">
-      <motion.div variants={sectionItem}>
+    <m.div className="flex flex-col gap-6" variants={sectionContainer} initial="hidden" animate="show">
+      <m.div variants={sectionItem}>
         <Panel className="p-4">
           <PlayerPairHeader compact seasonCode={seasonCode} entityA={entityA} entityB={entityB} rowA={rowA} rowB={rowB} />
         </Panel>
-      </motion.div>
-      <motion.div variants={sectionItem}>
+      </m.div>
+      <m.div variants={sectionItem}>
         <Panel as="section" aria-label="Recent form" className="p-4">
           <PanelHeader compact level="h2" kicker="FORM" title={`The last ${WINDOW} games against the season`} />
           <div className="grid grid-cols-[minmax(0,1fr)] gap-3 sm:grid-cols-2 sm:gap-6">
@@ -427,12 +427,12 @@ export default function ComparePlayerTrends({ seasonCode, phaseCode, entityA, en
           </div>
           <FormChart sides={sides} />
         </Panel>
-      </motion.div>
-      <motion.div className="grid grid-cols-[minmax(0,1fr)] gap-6 xl:grid-cols-2" variants={sectionItem}>
+      </m.div>
+      <m.div className="grid grid-cols-[minmax(0,1fr)] gap-6 xl:grid-cols-2" variants={sectionItem}>
         <Splits viewsA={viewsA} viewsB={viewsB} names={names} />
         <Consistency viewsA={viewsA} viewsB={viewsB} names={names} />
-      </motion.div>
-      <motion.div data-charts className={`grid grid-cols-[minmax(0,1fr)] gap-6 ${chartCount % 3 === 0 ? "xl:grid-cols-3" : "xl:grid-cols-2"}`} variants={sectionItem}>
+      </m.div>
+      <m.div data-charts className={`grid grid-cols-[minmax(0,1fr)] gap-6 ${chartCount % 3 === 0 ? "xl:grid-cols-3" : "xl:grid-cols-2"}`} variants={sectionItem}>
         <LineTrend
           compact
           stretch
@@ -464,7 +464,7 @@ export default function ComparePlayerTrends({ seasonCode, phaseCode, entityA, en
             />
           </>
         ) : null}
-      </motion.div>
-    </motion.div>
+      </m.div>
+    </m.div>
   );
 }

@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { motion } from "motion/react";
+import { m } from "motion/react";
 import { Link } from "react-router";
 import { shortTeamName, teamCode } from "../games/gameUtils";
 import { getSeasons, getTeamGames } from "../lib/api";
@@ -405,29 +405,29 @@ export default function CompareTeamOverview({ seasonCode, phaseCode, entityA: pi
   const [entityA, entityB] = useClubEntities(seasonCode, pickedA, pickedB);
   const source = useTeamRows(seasonCode, phaseCode);
   return (
-    <motion.div className="grid grid-cols-[minmax(0,1fr)] gap-6 lg:grid-cols-2" variants={sectionContainer} initial="hidden" animate="show">
+    <m.div className="grid grid-cols-[minmax(0,1fr)] gap-6 lg:grid-cols-2" variants={sectionContainer} initial="hidden" animate="show">
       <div className="flex min-w-0 flex-col gap-6">
         {source.isLoading ? (
           <AsyncState status="loading" label="Loading the matchup" skeleton={<TeamMatchupSkeleton />} />
         ) : source.isError ? (
           <AsyncState status="error" message="Could not load the matchup." onRetry={source.refetch} />
         ) : (
-          <motion.div variants={sectionItem}>
+          <m.div variants={sectionItem}>
             <EdgesPanel source={source} entityA={entityA} entityB={entityB} />
-          </motion.div>
+          </m.div>
         )}
-        <motion.div variants={sectionItem} className="lg:flex-1">
+        <m.div variants={sectionItem} className="lg:flex-1">
           <FormPanel seasonCode={seasonCode} phaseCode={phaseCode} entityA={entityA} entityB={entityB} hosted={gameCode != null} />
-        </motion.div>
+        </m.div>
       </div>
       <div className="flex min-w-0 flex-col gap-6">
-        <motion.div variants={sectionItem}>
+        <m.div variants={sectionItem}>
           <WatchPanel seasonCode={seasonCode} phaseCode={phaseCode} entityA={entityA} entityB={entityB} />
-        </motion.div>
-        <motion.div variants={sectionItem} className="lg:flex-1">
+        </m.div>
+        <m.div variants={sectionItem} className="lg:flex-1">
           <MeetingsPanel seasonCode={seasonCode} entityA={entityA} entityB={entityB} gameCode={gameCode} />
-        </motion.div>
+        </m.div>
       </div>
-    </motion.div>
+    </m.div>
   );
 }

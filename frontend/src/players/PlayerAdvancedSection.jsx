@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
-import { motion } from "motion/react";
+import { m } from "motion/react";
 import { getPlayerAdvanced } from "../lib/api";
 import AsyncState from "../lib/AsyncState";
 import { PlayerAdvancedSkeleton } from "./PlayerPageSkeleton";
@@ -109,7 +109,7 @@ function ScoreCard({ statKey, value, rank, hint, caution }) {
   const verdict = ranked ? verdictFor(ranked.percentile, stat.neutral) : null;
 
   return (
-    <motion.div className="flex min-w-0 flex-col rounded-box border border-base-300 bg-base-100 p-3" variants={listItem}>
+    <m.div className="flex min-w-0 flex-col rounded-box border border-base-300 bg-base-100 p-3" variants={listItem}>
       <div className="flex items-center justify-between gap-2">
         <span className="muted text-xs font-bold uppercase tracking-wide">
           <HeaderTip tip={`${stat.tip}. ${stat.what}`}>{stat.label}</HeaderTip>
@@ -133,7 +133,7 @@ function ScoreCard({ statKey, value, rank, hint, caution }) {
         <p className="muted mt-3 text-sm">{rank ? `Not ranked: under ${rank.minMinutes} minutes played.` : (hint ?? "")}</p>
       )}
       {caution ? <div className="mt-2">{caution}</div> : null}
-    </motion.div>
+    </m.div>
   );
 }
 
@@ -211,7 +211,7 @@ function Scorecard({ rounds, ranks, rapm, onOff }) {
     <section className="flex flex-col gap-3">
       <PanelHeader kicker="SCORECARD" title={`After round ${latest.round}`} />
       <ScorecardSummary ranks={ranks} />
-      <motion.div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6" variants={listContainer} initial="hidden" animate="show">
+      <m.div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6" variants={listContainer} initial="hidden" animate="show">
         {SCORECARD.map((key) => (
           <ScoreCard
             key={key}
@@ -222,7 +222,7 @@ function Scorecard({ rounds, ranks, rapm, onOff }) {
             caution={key === "onOffNet" && isSmallOnCourtSample(mainOnOff?.onSeconds) ? <SmallSampleLine seconds={mainOnOff.onSeconds} /> : undefined}
           />
         ))}
-      </motion.div>
+      </m.div>
       <p className="muted text-xs">
         {latest.gamesPlayed} games, {formatDecimal(minutes(latest.secondsPlayed), 0)} minutes. Hover or tap a name for what it measures.
       </p>
@@ -310,7 +310,7 @@ function RoundChart({ points, median, metric }) {
               <line x1="0" x2="100" y1={medianY} y2={medianY} className="text-base-content/50" stroke="currentColor" strokeWidth="1.5" strokeDasharray="5 4" vectorEffect="non-scaling-stroke" />
             </>
           ) : null}
-          <motion.path
+          <m.path
             d={line}
             className="text-primary"
             fill="none"
@@ -469,7 +469,7 @@ function MinutesSplit({ onSeconds, offSeconds }) {
   return (
     <div className="mb-3">
       <div aria-hidden="true" className="flex h-2 overflow-hidden rounded-full bg-base-content/20">
-        <motion.div className="h-full bg-primary" style={{ width: `${share}%`, transformOrigin: "left" }} {...barFill} />
+        <m.div className="h-full bg-primary" style={{ width: `${share}%`, transformOrigin: "left" }} {...barFill} />
       </div>
       <p className="muted mt-1 flex justify-between gap-2 text-xs tabular-nums">
         <span>
@@ -587,7 +587,7 @@ function ImpactBar({ label, tip, value }) {
       <div aria-hidden="true" className="relative h-2.5 rounded-full bg-base-300">
         <span className="absolute top-[-3px] bottom-[-3px] left-1/2 w-px bg-base-content/40" />
         {value === null || value === undefined ? null : (
-          <motion.div
+          <m.div
             className={`absolute top-0 h-full ${positive ? "rounded-r-full bg-success" : "rounded-l-full bg-error"}`}
             style={{ width: `${half}%`, [positive ? "left" : "right"]: "50%", transformOrigin: positive ? "left" : "right" }}
             {...barFill}
@@ -733,17 +733,17 @@ export default function PlayerAdvancedSection({ seasonCode, personKey }) {
       />
       {earlySeason ? <EarlySeasonNote /> : null}
       <TabPanel id="player-advanced-panel" focusKey={activeScope} scroll={false}>
-        <motion.div className="flex flex-col gap-8" variants={sectionContainer} initial="hidden" animate="show" key={activeScope}>
-          <motion.div variants={sectionItem}>
+        <m.div className="flex flex-col gap-8" variants={sectionContainer} initial="hidden" animate="show" key={activeScope}>
+          <m.div variants={sectionItem}>
             <Scorecard rounds={rounds} ranks={ranks} rapm={rapm} onOff={onOff} />
-          </motion.div>
-          <motion.div variants={sectionItem}>
+          </m.div>
+          <m.div variants={sectionItem}>
             <RoundTrend key={activeScope} rounds={rounds} ranks={ranks} />
-          </motion.div>
-          <motion.div variants={sectionItem}>
+          </m.div>
+          <m.div variants={sectionItem}>
             <ImpactSection onOff={onOff} rapm={rapm} ranks={ranks} />
-          </motion.div>
-        </motion.div>
+          </m.div>
+        </m.div>
       </TabPanel>
     </div>
   );

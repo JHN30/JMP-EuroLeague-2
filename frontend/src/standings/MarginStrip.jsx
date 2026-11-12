@@ -1,4 +1,4 @@
-import { motion } from "motion/react";
+import { m } from "motion/react";
 import { EASE_OUT } from "../lib/motion";
 
 const BAR = 6;
@@ -28,7 +28,7 @@ export default function MarginStrip({ games, clubName, maxMargin }) {
         const won = margin > 0;
         const height = Math.max(1.5, Math.abs(margin) * pixelsPerPoint);
         return (
-          <motion.rect
+          <m.rect
             key={game.gameCode}
             className={won ? "bar-win" : "bar-loss"}
             x={index * (BAR + GAP)}
@@ -45,7 +45,7 @@ export default function MarginStrip({ games, clubName, maxMargin }) {
             <title>
               {`${game.roundNumber != null ? `Round ${game.roundNumber}: ` : ""}${game.home ? "vs" : "@"} ${game.opponentCode}, ${won ? "won" : "lost"} by ${Math.abs(margin)} (${game.pointsFor}-${game.pointsAgainst})`}
             </title>
-          </motion.rect>
+          </m.rect>
         );
       })}
     </svg>

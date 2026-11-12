@@ -1,6 +1,6 @@
 import { useEffect, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { motion } from "motion/react";
+import { m } from "motion/react";
 import { useParams } from "react-router";
 import { useLiveSearchParams } from "../lib/useLiveSearchParams";
 import { getPhases, getRounds, getSeasonGames, getSeasonStandings } from "../lib/api";
@@ -215,7 +215,7 @@ export default function FixturesPage() {
 
       {!stageMode && rounds.length > 0 ? (
         <div className="mb-2 flex items-center gap-1 sm:mb-6 sm:gap-2">
-          <motion.button
+          <m.button
             type="button"
             whileTap={{ scale: 0.88 }}
             className="btn btn-sm btn-square btn-ghost text-xl leading-none"
@@ -224,7 +224,7 @@ export default function FixturesPage() {
             onClick={() => stepRound(-1)}
           >
             ‹
-          </motion.button>
+          </m.button>
           <div ref={roundStripRef} className="round-strip">
             <TabStrip
               ariaLabel="Round"
@@ -237,7 +237,7 @@ export default function FixturesPage() {
                 label: (
                   <>
                     {round.number === selectedRound ? (
-                      <motion.span
+                      <m.span
                         layoutId="round-indicator"
                         className="round-indicator"
                         transition={{ type: "spring", stiffness: 500, damping: 36 }}
@@ -249,7 +249,7 @@ export default function FixturesPage() {
               }))}
             />
           </div>
-          <motion.button
+          <m.button
             type="button"
             whileTap={{ scale: 0.88 }}
             className="btn btn-sm btn-square btn-ghost text-xl leading-none"
@@ -258,7 +258,7 @@ export default function FixturesPage() {
             onClick={() => stepRound(1)}
           >
             ›
-          </motion.button>
+          </m.button>
         </div>
       ) : null}
 
@@ -295,7 +295,7 @@ export default function FixturesPage() {
                   : format?.status === "cancelled" ? "The record under each club is its regular-season record at suspension." : seasonOver ? "The record under each club is its final regular-season record." : "The record under each club is its regular-season record so far."}
               </p>
             ) : null}
-            <motion.div
+            <m.div
               key={`${phaseCode}-${stageMode ? selectedStage : selectedRound}-${groupName ?? ""}`}
               className="fixture-days"
               variants={listContainer}
@@ -308,7 +308,7 @@ export default function FixturesPage() {
                     {formatDayHeading(day.games[0].scheduledAt)}
                     <span className="fixture-day-count">{day.games.length === 1 ? "1 game" : `${day.games.length} games`}</span>
                   </h2>
-                  <motion.div className="fixture-grid" variants={listContainer}>
+                  <m.div className="fixture-grid" variants={listContainer}>
                     {day.games.map((game) => (
                       <GameCard
                         key={game.gameCode}
@@ -320,10 +320,10 @@ export default function FixturesPage() {
                         standingByClubCode={standingByClubCode}
                       />
                     ))}
-                  </motion.div>
+                  </m.div>
                 </section>
               ))}
-            </motion.div>
+            </m.div>
           </div>
         )}
       </TabPanel>

@@ -1,4 +1,4 @@
-import { motion } from "motion/react";
+import { m } from "motion/react";
 import HeaderTip from "../lib/HeaderTip";
 import { EASE_OUT } from "../lib/motion";
 import Panel from "../lib/Panel";
@@ -16,7 +16,7 @@ export function ResultsRibbon({ games, clubName }) {
       {games.map((game, index) => {
         const won = game.pointsFor > game.pointsAgainst;
         return (
-          <motion.i
+          <m.i
             key={game.gameCode}
             className={`ribbon-dot ${won ? "is-win" : "is-loss"}`}
             initial={{ scaleY: 0 }}

@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { motion } from "motion/react";
+import { m } from "motion/react";
 import { Link } from "react-router";
 import { getAdvancedLeaders, getSeasonHighs, getSeasonTeams } from "../lib/api";
 import AsyncState from "../lib/AsyncState";
@@ -14,7 +14,7 @@ import ShortLabel from "../lib/ShortLabel";
 import { SkeletonChip } from "../lib/Skeleton";
 import { Avatar, BOARD_AVATAR, RankBadge, TeamTag } from "../leaders/LeaderParts";
 
-const MotionLink = motion.create(Link);
+const MotionLink = m.create(Link);
 
 const HIGH_LABELS = { pointsScored: "Points", totalRebounds: "Rebounds", assists: "Assists", steals: "Steals", blocks: "Blocks", pir: "PIR" };
 const MVP_COUNT = 5;
@@ -86,9 +86,9 @@ export function SeasonHighs({ seasonCode }) {
           </div>
         }
       >
-        <motion.div className="season-leaders-grid" role="group" aria-label="Season highs" variants={listContainer} initial="hidden" animate="show">
+        <m.div className="season-leaders-grid" role="group" aria-label="Season highs" variants={listContainer} initial="hidden" animate="show">
           {cards.map((card) => <HighCard key={card.metric} seasonCode={seasonCode} card={card} />)}
-        </motion.div>
+        </m.div>
       </AsyncState>
     </Panel>
   );
@@ -132,11 +132,11 @@ export function MostValuable({ seasonCode }) {
           </div>
         }
       >
-        <motion.ol className="flex flex-1 flex-col" aria-label="Top five by win shares" variants={listContainer} initial="hidden" animate="show">
+        <m.ol className="flex flex-1 flex-col" aria-label="Top five by win shares" variants={listContainer} initial="hidden" animate="show">
           {entries.map((entry, index) => {
             const rapm = rapmByPlayer.get(String(entry.personKey));
             return (
-              <motion.li key={entry.personKey} variants={listItem} className="flex flex-1 border-b border-base-300 last:border-0">
+              <m.li key={entry.personKey} variants={listItem} className="flex flex-1 border-b border-base-300 last:border-0">
                 <Link to={`/${seasonCode}/players/${entry.personKey}`} className="board-row-link flex flex-1 items-center gap-2 py-2 sm:gap-3">
                   <RankBadge rank={index + 1} compact />
                   <Avatar optimize imageUrl={entry.imageUrl} size={BOARD_AVATAR} />
@@ -151,10 +151,10 @@ export function MostValuable({ seasonCode }) {
                     </p>
                   </div>
                 </Link>
-              </motion.li>
+              </m.li>
             );
           })}
-        </motion.ol>
+        </m.ol>
       </AsyncState>
     </Panel>
   );
@@ -256,7 +256,7 @@ export function HomeVsRoad({ seasonCode, playedGames }) {
               role="img"
               aria-label={`Home sides won ${summary.homeWins} of ${summary.games} games, road sides ${summary.games - summary.homeWins}`}
             >
-              <motion.div
+              <m.div
                 className="h-full bg-primary"
                 initial={{ width: 0 }}
                 animate={{ width: `${homePercent}%` }}

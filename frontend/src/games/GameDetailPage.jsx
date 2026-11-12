@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { motion } from "motion/react";
+import { m } from "motion/react";
 import { useParams } from "react-router";
 import { getBoxScore, getGame, getGameAdvanced, getGameLineups, getGameTeamFlow, getPlayByPlay, getShots } from "../lib/api";
 import AsyncState from "../lib/AsyncState";
@@ -198,7 +198,7 @@ function BoxScoreTable({ players, teamTotal, teamRow, team, won, seasonCode, gam
   const showTeamLine = columns.some((column) => teamLineValue(column, teamRow) !== null);
 
   return (
-    <motion.div variants={sectionItem}>
+    <m.div variants={sectionItem}>
       <div className="mb-2 flex flex-wrap items-center gap-2">
         {team?.crestUrl ? (
           <img
@@ -306,7 +306,7 @@ function BoxScoreTable({ players, teamTotal, teamRow, team, won, seasonCode, gam
           ) : null}
         </Panel>
       )}
-    </motion.div>
+    </m.div>
   );
 }
 
@@ -330,7 +330,7 @@ function BoxScoreTab({ boxScore, game, seasonCode, localWon, roadWon, advancedQu
   const otherSide = (side) => (side === "local" ? "road" : "local");
 
   return (
-    <motion.div className="flex flex-col gap-6" variants={sectionContainer} initial="hidden" animate="show">
+    <m.div className="flex flex-col gap-6" variants={sectionContainer} initial="hidden" animate="show">
       <TabStrip ariaLabel="Box score view" panelId="box-score-tables" activeKey={view} onChange={setView} className="w-fit" tabs={BOX_SCORE_VIEWS} />
       <div id="box-score-tables" className="flex flex-col gap-6">
         {view === "advanced" && advancedQuery.isLoading ? (
@@ -356,7 +356,7 @@ function BoxScoreTab({ boxScore, game, seasonCode, localWon, roadWon, advancedQu
           ))
         )}
       </div>
-    </motion.div>
+    </m.div>
   );
 }
 
@@ -909,7 +909,7 @@ export default function GameDetailPage() {
       <TabStrip ariaLabel="Game detail" level={1} panelId="game-detail-panel" activeKey={tab} onChange={setTab} scrolling className="mb-4 lg:w-fit" tabs={game.played ? GAME_TABS : UNPLAYED_TABS} />
 
       <TabPanel id="game-detail-panel" focusKey={tab} scroll={false}>
-        <motion.div key={tab} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.25 }}>
+        <m.div key={tab} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.25 }}>
         {cancelled && !game.played ? <EmptyText>This fixture was not played because the season was cancelled. No result or performance statistics were recorded.</EmptyText> : <>
         {tab === "overview" ? <OverviewTab game={game} seasonCode={seasonCode} boxScoreQuery={boxScoreQuery} playByPlayQuery={playByPlayQuery} advancedQuery={advancedQuery} teamFlowQuery={teamFlowQuery} /> : null}
 
@@ -992,7 +992,7 @@ export default function GameDetailPage() {
           )
         ) : null}
         </>}
-        </motion.div>
+        </m.div>
       </TabPanel>
     </div>
   );

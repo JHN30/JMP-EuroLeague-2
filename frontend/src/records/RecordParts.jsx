@@ -1,4 +1,4 @@
-import { motion } from "motion/react";
+import { m } from "motion/react";
 import { useMemo, useState } from "react";
 import { Link } from "react-router";
 import { Avatar, RankBadge } from "../leaders/LeaderParts";
@@ -96,7 +96,7 @@ function WhenLink({ record, dateOnly = false }) {
 
 function PodiumRow({ record, rank, seasonCode }) {
   return (
-    <motion.li variants={listItem} className="flex items-center gap-3 py-2.5">
+    <m.li variants={listItem} className="flex items-center gap-3 py-2.5">
       <RankBadge rank={rank} />
       <div className="min-w-0 flex-1">
         <Holder record={record} size="h-10 w-10" compact />
@@ -109,7 +109,7 @@ function PodiumRow({ record, rank, seasonCode }) {
         </p>
       </div>
       <span className={`flex-none text-xl font-black tabular-nums ${rank === 1 ? "text-primary" : ""}`}>{record.valueText}</span>
-    </motion.li>
+    </m.li>
   );
 }
 
@@ -142,11 +142,11 @@ export function Podium({ records, bySeason, progression, seasonCode }) {
       <h2 id="records-podium" className="panel-title">
         Podium
       </h2>
-      <motion.ol className="mt-1 divide-y divide-base-300" variants={listContainer} initial="hidden" animate="show">
+      <m.ol className="mt-1 divide-y divide-base-300" variants={listContainer} initial="hidden" animate="show">
         {records.slice(0, 3).map((record, index) => (
           <PodiumRow key={record.key} record={record} rank={index + 1} seasonCode={seasonCode} />
         ))}
-      </motion.ol>
+      </m.ol>
       {facts.length > 0 ? (
         <div className="mt-auto border-t border-base-300 pt-3">
           <p className="eyebrow mb-2">Record facts</p>
@@ -207,7 +207,7 @@ function BoardRow({ record, rank, best, lowerIsBetter, seasonCode, wide }) {
   const share = <Share value={record.value} best={best} lowerIsBetter={lowerIsBetter} />;
   if (wide) {
     return (
-      <motion.li
+      <m.li
         variants={listItem}
         className="grid break-inside-avoid grid-cols-[1.75rem_minmax(0,1fr)_auto_3.5rem] items-center gap-x-3 border-b border-base-300 py-1.5 lg:grid-cols-[1.75rem_minmax(0,1fr)_auto_4rem_3.5rem]"
       >
@@ -221,11 +221,11 @@ function BoardRow({ record, rank, best, lowerIsBetter, seasonCode, wide }) {
         </span>
         <span className="hidden lg:block">{share}</span>
         <span className="text-right font-semibold tabular-nums">{record.valueText}</span>
-      </motion.li>
+      </m.li>
     );
   }
   return (
-    <motion.li variants={listItem} className="border-b border-base-300 py-1.5 last:border-0">
+    <m.li variants={listItem} className="border-b border-base-300 py-1.5 last:border-0">
       <div className="flex items-center gap-2.5">
         <RankBadge rank={rank} />
         <div className="min-w-0 flex-1">
@@ -240,7 +240,7 @@ function BoardRow({ record, rank, best, lowerIsBetter, seasonCode, wide }) {
         <NewBadge record={record} seasonCode={seasonCode} />
         <span className="w-16 flex-none">{share}</span>
       </div>
-    </motion.li>
+    </m.li>
   );
 }
 
@@ -323,11 +323,11 @@ export function Board({ family, metricKey, label, records, lowerIsBetter = false
           </>
         ) : null}
       </p>
-      <motion.ol id="records-top" className="mt-1 xl:columns-2 xl:gap-x-10" variants={denseListContainer} initial="hidden" animate="show">
+      <m.ol id="records-top" className="mt-1 xl:columns-2 xl:gap-x-10" variants={denseListContainer} initial="hidden" animate="show">
         {shown.map((record, index) => (
           <BoardRow key={record.key} record={record} rank={index + 1} best={best} lowerIsBetter={lowerIsBetter} seasonCode={seasonCode} wide={wide} />
         ))}
-      </motion.ol>
+      </m.ol>
       {!showAll && list.length > FIRST_ROWS ? (
         <button type="button" className="btn btn-ghost btn-sm mt-2 w-full" onClick={() => setShowAll(true)}>
           Show all {list.length}

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { motion } from "motion/react";
+import { m } from "motion/react";
 import { Link } from "react-router";
 import AsyncState from "../lib/AsyncState";
 import { PlayerGamesSkeleton } from "./PlayerPageSkeleton";
@@ -228,7 +228,7 @@ function GameBars({ views, seasonCode }) {
                       {formatStat(stat, value)}
                     </span>
                     {value === null ? null : (
-                      <motion.span
+                      <m.span
                         aria-hidden="true"
                         className={`absolute left-1/2 w-3/5 max-w-10 -translate-x-1/2 opacity-90 group-hover:opacity-100 ${negative ? "rounded-b-sm" : "rounded-t-sm"} ${colour} ${
                           value === best ? "ring-2 ring-primary ring-offset-1 ring-offset-base-100" : ""
@@ -472,9 +472,9 @@ function GameTable({ views, highs, seasonCode }) {
                 )}
               </tr>
             </thead>
-            <motion.tbody key={`${filterKey}-${sortKey}-${boxKey}-${seasonSeed}`} variants={denseListContainer} initial="hidden" animate="show">
+            <m.tbody key={`${filterKey}-${sortKey}-${boxKey}-${seasonSeed}`} variants={denseListContainer} initial="hidden" animate="show">
               {visible.map((view) => (
-                <motion.tr key={view.game.gameCode} variants={listItem}>
+                <m.tr key={view.game.gameCode} variants={listItem}>
                   <td className="max-sm:px-2">
                     <div className="flex min-w-0 items-center gap-2 max-sm:gap-1.5">
                       <HomeAwayIcon home={view.home} className="h-4 w-4 text-base-content/60" />
@@ -545,9 +545,9 @@ function GameTable({ views, highs, seasonCode }) {
                       <td className="tabular-nums">{view.plusMinus === null ? "—" : formatSignedDecimal(view.plusMinus, 0)}</td>
                     </>
                   )}
-                </motion.tr>
+                </m.tr>
               ))}
-            </motion.tbody>
+            </m.tbody>
           </table>
         </div>
       )}

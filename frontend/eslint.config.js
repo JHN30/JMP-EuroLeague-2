@@ -17,6 +17,16 @@ export default defineConfig([
       globals: globals.browser,
       parserOptions: { ecmaFeatures: { jsx: true } },
     },
+    rules: {
+      // Under LazyMotion strict (src/lib/LazyMotionFeatures.jsx) a `motion.<tag>` component throws when it renders.
+      'no-restricted-imports': ['error', {
+        paths: [{
+          name: 'motion/react',
+          importNames: ['motion'],
+          message: 'Use `m` from motion/react; `motion` throws under LazyMotion strict and pulls every feature into the main bundle.',
+        }],
+      }],
+    },
   },
   {
     files: ['playwright.config.js'],

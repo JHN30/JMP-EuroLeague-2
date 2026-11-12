@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { motion } from "motion/react";
+import { m } from "motion/react";
 import { Link } from "react-router";
 import AsyncState from "../lib/AsyncState";
 import { TeamGamesSkeleton } from "./TeamPageSkeleton";
@@ -14,7 +14,7 @@ import { isForfeit } from "../lib/forfeit";
 import ShortLabel from "../lib/ShortLabel";
 import { TabPanel, TabStrip } from "../lib/TabStrip";
 
-const MotionLink = motion.create(Link);
+const MotionLink = m.create(Link);
 
 // Rows shown in each column before "Show all"; both columns start the same length so they line up.
 const INITIAL_ROWS = 8;
@@ -150,7 +150,7 @@ function MarginStrip({ played, seasonCode, clubCode }) {
                 >
                   <div className={`relative w-full ${STRIP_AREA_CLASS}`}>
                     <span aria-hidden="true" className="absolute inset-x-0 top-1/2 h-px bg-base-content/25" />
-                    <motion.span
+                    <m.span
                       aria-hidden="true"
                       className={`absolute left-1/2 w-3/5 max-w-6 -translate-x-1/2 rounded-sm opacity-90 group-hover:opacity-100 ${
                         side.won ? "bg-success" : "bg-error"
@@ -284,13 +284,13 @@ function GameColumn({ kicker, title, games, seasonCode, clubCode, markFirst = fa
         <EmptyText>{emptyText}</EmptyText>
       ) : (
         <>
-          <motion.ul key={listKey} className="flex flex-col gap-2" variants={listContainer} initial="hidden" animate="show">
+          <m.ul key={listKey} className="flex flex-col gap-2" variants={listContainer} initial="hidden" animate="show">
             {visible.map((game, index) => (
               <li key={game.gameCode} className="contents">
                 <GameRow seasonCode={seasonCode} game={game} clubCode={clubCode} isNext={markFirst && index === 0} />
               </li>
             ))}
-          </motion.ul>
+          </m.ul>
           {games.length > INITIAL_ROWS ? (
             <button type="button" className="btn btn-sm btn-ghost mt-3 w-full" onClick={() => setExpanded((open) => !open)}>
               {expanded ? "Show fewer" : `Show all ${games.length}`}

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { motion } from "motion/react";
+import { m } from "motion/react";
 import { EASE_OUT } from "./motion";
 
 // "pop": a crest springs up from small. "wipe": a photo opens from its middle line outward, like a shutter.
@@ -32,7 +32,7 @@ export default function RevealImage({ src, alt = "", effect = "pop", className =
 
   if (failedSrc === src) return null;
   return (
-    <motion.img
+    <m.img
       ref={attach}
       src={src}
       alt={alt}

@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { motion } from "motion/react";
+import { m } from "motion/react";
 import { shortTeamName, teamCode } from "../games/gameUtils";
 import { Avatar } from "../leaders/LeaderParts";
 import { fetchQualifiedPool } from "../leaders/leaderData";
@@ -63,8 +63,8 @@ const CARD = "w-full rounded-field border border-base-300 bg-base-100 p-3 text-l
 function PairCard({ stat, first, second, onPick }) {
   const names = `${displayName(first.playerName)} and ${displayName(second.playerName)}`;
   return (
-    <motion.li variants={listItem}>
-      <motion.button type="button" {...wideCardHover} aria-label={`Compare ${names}, the top two in ${stat.label.toLowerCase()} per game`} onClick={() => onPick(asEntity(first), asEntity(second))} className={CARD}>
+    <m.li variants={listItem}>
+      <m.button type="button" {...wideCardHover} aria-label={`Compare ${names}, the top two in ${stat.label.toLowerCase()} per game`} onClick={() => onPick(asEntity(first), asEntity(second))} className={CARD}>
         <span className="eyebrow mb-2 block">{stat.label} per game</span>
         <span className="flex flex-col gap-1.5">
           <PlayerLine player={first} value={statOf(first, stat.key)} />
@@ -73,8 +73,8 @@ function PairCard({ stat, first, second, onPick }) {
           </span>
           <PlayerLine player={second} value={statOf(second, stat.key)} />
         </span>
-      </motion.button>
-    </motion.li>
+      </m.button>
+    </m.li>
   );
 }
 
@@ -95,8 +95,8 @@ function ClubSide({ team, player, alignEnd }) {
 // One game of the round with each side's best player by PIR per game, as one button that opens their comparison.
 function MatchupRow({ game, home, road, onPick }) {
   return (
-    <motion.li variants={listItem}>
-      <motion.button
+    <m.li variants={listItem}>
+      <m.button
         type="button"
         {...wideCardHover}
         aria-label={`Compare ${displayName(home.playerName)} and ${displayName(road.playerName)}, the best players of ${shortTeamName(game.localTeam)} and ${shortTeamName(game.roadTeam)}`}
@@ -108,8 +108,8 @@ function MatchupRow({ game, home, road, onPick }) {
           vs
         </span>
         <ClubSide team={game.roadTeam} player={road} alignEnd />
-      </motion.button>
-    </motion.li>
+      </m.button>
+    </m.li>
   );
 }
 
@@ -161,11 +161,11 @@ export default function CompareSuggestions({ seasonCode, onPick }) {
               {matchups[0].game.roundName ?? `Round ${round.roundNumber}`}
             </h2>
           </div>
-          <motion.ul className="grid gap-2 lg:grid-cols-2" variants={listContainer} initial="hidden" animate="show">
+          <m.ul className="grid gap-2 lg:grid-cols-2" variants={listContainer} initial="hidden" animate="show">
             {matchups.map(({ game, home, road }) => (
               <MatchupRow key={game.gameCode} game={game} home={home} road={road} onPick={onPick} />
             ))}
-          </motion.ul>
+          </m.ul>
         </Panel>
       ) : null}
       {pairs.length > 0 ? (
@@ -176,11 +176,11 @@ export default function CompareSuggestions({ seasonCode, onPick }) {
               Suggested pairs
             </h2>
           </div>
-          <motion.ul className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4" variants={listContainer} initial="hidden" animate="show">
+          <m.ul className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4" variants={listContainer} initial="hidden" animate="show">
             {pairs.map(({ stat, top }) => (
               <PairCard key={stat.key} stat={stat} first={top[0]} second={top[1]} onPick={onPick} />
             ))}
-          </motion.ul>
+          </m.ul>
         </Panel>
       ) : null}
     </div>

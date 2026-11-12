@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { motion } from "motion/react";
+import { m } from "motion/react";
 import { getLeagueTeamStats, getPlayerAdvanced, getPlayerSeasonStats, getSeasonStandings } from "../lib/api";
 import AsyncState from "../lib/AsyncState";
 import { PlayerStatsSkeleton } from "./CompareSkeleton";
@@ -48,7 +48,7 @@ function HalfBar({ percentile, side, better }) {
   return (
     <div aria-hidden="true" className="bg-base-300 h-2 min-w-0 overflow-hidden rounded-full">
       {percentile === null ? null : (
-        <motion.div
+        <m.div
           className={`h-full rounded-full ${better ? SIDE_BG[side] : "bg-base-content/45"} ${side === "a" ? "ml-auto" : ""}`}
           style={{ width: `${Math.max(4, percentile)}%`, originX: side === "a" ? 1 : 0 }}
           {...barFill}
@@ -88,7 +88,7 @@ function StatRow({ row }) {
     <span className={`font-semibold tabular-nums ${better === side ? `font-bold ${SIDE_TEXT[side]}` : ""} ${className}`}>{row[side].shown}</span>
   );
   return (
-    <motion.li variants={listItem} data-better={better ?? undefined} className={`${ROW_GRID} border-base-300 gap-y-0.5 border-b py-1.5 text-sm last:border-0`}>
+    <m.li variants={listItem} data-better={better ?? undefined} className={`${ROW_GRID} border-base-300 gap-y-0.5 border-b py-1.5 text-sm last:border-0`}>
       <span className="col-span-2 col-start-2 row-start-1 text-center text-xs font-bold tracking-wide uppercase sm:col-span-1 sm:col-start-1 sm:text-left sm:text-sm sm:font-medium sm:tracking-normal sm:normal-case">
         <HeaderTip tip={row.tip}>{row.label}</HeaderTip>
         {row.direction === "lower" ? (
@@ -108,7 +108,7 @@ function StatRow({ row }) {
       </div>
       {value("b", "col-start-4 row-start-2 text-left sm:col-start-6 sm:row-start-1")}
       <Place place={row.b.place} className="col-start-4 row-start-1 text-right sm:col-start-7" />
-    </motion.li>
+    </m.li>
   );
 }
 
@@ -122,11 +122,11 @@ function StatGroup({ title, rows, names, body }) {
         <span aria-hidden="true" className={`col-span-2 col-start-3 text-center sm:col-start-5 ${SIDE_TEXT.b}`}>{names[1]}</span>
       </div>
       {body ?? (
-        <motion.ul variants={listContainer} initial="hidden" animate="show">
+        <m.ul variants={listContainer} initial="hidden" animate="show">
           {rows.map((row) => (
             <StatRow key={row.key} row={row} />
           ))}
-        </motion.ul>
+        </m.ul>
       )}
     </section>
   );

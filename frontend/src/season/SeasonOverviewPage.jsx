@@ -1,7 +1,7 @@
 import { useMemo, useRef, useEffect, useState } from "react";
 import { useQueries, useQuery } from "@tanstack/react-query";
 import { Chart } from "chart.js/auto";
-import { motion } from "motion/react";
+import { m } from "motion/react";
 import { Link, useParams } from "react-router";
 import { getLeaderStats, getLeagueTeamStats, getPhases, getPostseasonSeries, getSeasonGames, getSeasonStandings } from "../lib/api";
 import AsyncState from "../lib/AsyncState";
@@ -27,7 +27,7 @@ import { formatDate, formatPerGame, formatSeasonLabel } from "../lib/format";
 import { teamCode } from "../games/gameUtils";
 import { buildEliminationBracket, eliminationStageLabel, eliminationStageOf } from "../postseason/eliminationBracket";
 
-const MotionLink = motion.create(Link);
+const MotionLink = m.create(Link);
 
 const SMALL_CHART_WIDTH = 560;
 const MAX_PAGE_SIZE = 100;
@@ -161,7 +161,7 @@ function PhaseStory({ phases, format, phaseSummaries, activePhaseCode }) {
   return (
     <div>
       <PanelHeader compact kicker="TIMELINE" title="Phase story" />
-      <motion.div
+      <m.div
         className="grid gap-3 sm:grid-cols-2 sm:gap-4 xl:grid-cols-4"
         variants={listContainer}
         initial="hidden"
@@ -171,7 +171,7 @@ function PhaseStory({ phases, format, phaseSummaries, activePhaseCode }) {
           const summary = phaseSummaries[phase.code];
           const isActive = phase.code === activePhaseCode;
           return (
-            <motion.div key={phase.code} variants={listItem} className="flex items-stretch gap-2">
+            <m.div key={phase.code} variants={listItem} className="flex items-stretch gap-2">
               <Panel className={`relative flex-1 overflow-hidden p-3 sm:p-4 ${isActive ? "border-primary" : ""}`}>
                 {isActive ? <div aria-hidden="true" className="absolute inset-x-0 top-0 h-1 bg-primary" /> : null}
                 <p className="eyebrow mb-1 flex items-center gap-2">
@@ -191,10 +191,10 @@ function PhaseStory({ phases, format, phaseSummaries, activePhaseCode }) {
               {index < displayPhases.length - 1 ? (
                 <span className="muted hidden self-center text-lg xl:inline" aria-hidden="true">→</span>
               ) : null}
-            </motion.div>
+            </m.div>
           );
         })}
-      </motion.div>
+      </m.div>
     </div>
   );
 }
@@ -279,7 +279,7 @@ function DefiningGames({ seasonCode, playedGames }) {
       {picks.length === 0 ? (
         <p className="muted text-sm">No played games yet this season.</p>
       ) : (
-        <motion.div
+        <m.div
           className="grid gap-3 sm:grid-cols-2"
           variants={listContainer}
           initial="hidden"
@@ -326,7 +326,7 @@ function DefiningGames({ seasonCode, playedGames }) {
               </MotionLink>
             );
           })}
-        </motion.div>
+        </m.div>
       )}
     </Panel>
   );
@@ -581,7 +581,7 @@ function PhaseLeadersGroup({ seasonCode, phaseCode, showHeading }) {
       {showHeading ? (
         <h3 className="mb-2 font-semibold">{PHASE_NAMES[phaseCode] ?? phaseCode}</h3>
       ) : null}
-      <motion.div
+      <m.div
         className="season-leaders-grid"
         role="group"
         aria-label={`${PHASE_NAMES[phaseCode] ?? phaseCode} leaders`}
@@ -592,7 +592,7 @@ function PhaseLeadersGroup({ seasonCode, phaseCode, showHeading }) {
         {LEADER_CATEGORIES.map((category) => (
           <LeaderCard key={category.key} seasonCode={seasonCode} category={category} phaseCode={phaseCode} />
         ))}
-      </motion.div>
+      </m.div>
     </div>
   );
 }
@@ -883,10 +883,10 @@ export default function SeasonOverviewPage() {
   }
 
   return (
-    <motion.div className="flex flex-col gap-6 lg:gap-4" variants={sectionContainer} initial="hidden" animate="show">
-      <motion.div variants={sectionItem}>
+    <m.div className="flex flex-col gap-6 lg:gap-4" variants={sectionContainer} initial="hidden" animate="show">
+      <m.div variants={sectionItem}>
         <PageHeader stacked compact kicker="RECAP" title={`EuroLeague ${formatSeasonLabel(seasonCode)}`} />
-      </motion.div>
+      </m.div>
 
       {summaryLoading ? (
         <AsyncState status="loading" label="Loading season summary" skeleton={<SummarySkeleton />} />
@@ -894,56 +894,56 @@ export default function SeasonOverviewPage() {
         <AsyncState status="error" message="Could not load this season's summary." onRetry={retrySummary} />
       ) : (
         <>
-          <motion.div variants={sectionItem}>
+          <m.div variants={sectionItem}>
             <SeasonHero seasonCode={seasonCode} leader={leader} topScorer={topScorer} format={format} grouped={groupedTable} />
             {hasLoadingIssues(format) ? <p className="muted mt-2 text-sm">{LOADING_ISSUES_NOTE}</p> : null}
-          </motion.div>
-          <motion.div variants={sectionItem}>
+          </m.div>
+          <m.div variants={sectionItem}>
             <PhaseStory
               phases={phases}
               format={format}
               phaseSummaries={phaseSummaries}
               activePhaseCode={format ? (currentStage(format)?.code ?? null) : champion ? null : activePhase?.code}
             />
-          </motion.div>
+          </m.div>
         </>
       )}
 
       {/* Leaders has its own independent per-category loading/error state
           (see LeaderCard), so it isn't gated behind the summary queries
           above - it can render before or after them finish. */}
-      <motion.div variants={sectionItem}>
+      <m.div variants={sectionItem}>
         <SeasonLeaders seasonCode={seasonCode} />
-      </motion.div>
+      </m.div>
 
       {/* The season highs load on their own, like the leaders, in the same six categories and grid. */}
-      <motion.div variants={sectionItem}>
+      <m.div variants={sectionItem}>
         <SeasonHighs seasonCode={seasonCode} />
-      </motion.div>
+      </m.div>
 
       {/* Two short panels side by side from lg, at the same height: Most valuable loads on its own, Home and away waits for the
           played games. */}
-      <motion.div variants={sectionItem} className="grid gap-6 lg:grid-cols-2 lg:gap-4">
+      <m.div variants={sectionItem} className="grid gap-6 lg:grid-cols-2 lg:gap-4">
         <MostValuable seasonCode={seasonCode} />
         {summaryLoading || summaryError ? null : <HomeVsRoad seasonCode={seasonCode} playedGames={playedGames} />}
-      </motion.div>
+      </m.div>
 
       {summaryLoading || summaryError ? null : (
         <>
-          <motion.div variants={sectionItem}>
+          <m.div variants={sectionItem}>
             <DefiningGames seasonCode={seasonCode} playedGames={playedGames} />
-          </motion.div>
-          <motion.div variants={sectionItem}>
+          </m.div>
+          <m.div variants={sectionItem}>
             <ScoringTrendChart playedGames={playedGames} />
-          </motion.div>
+          </m.div>
         </>
       )}
 
       {summaryLoading || summaryError ? null : (
-        <motion.div variants={sectionItem}>
+        <m.div variants={sectionItem}>
           <RoadToTitle champion={champion} steps={roadSteps} />
-        </motion.div>
+        </m.div>
       )}
-    </motion.div>
+    </m.div>
   );
 }

@@ -1,5 +1,5 @@
 import { useId, useRef, useState } from "react";
-import { motion } from "motion/react";
+import { m } from "motion/react";
 import { EASE_OUT } from "../lib/motion";
 import { formatDecimal, formatSignedDecimal } from "../lib/format";
 import { useElementWidth } from "../lib/useElementWidth";
@@ -15,7 +15,7 @@ export function NetBar({ value, max }) {
     <div className="net-cell">
       <b>{formatSignedDecimal(value)}</b>
       <span className="diverge-track net-track">
-        <motion.i
+        <m.i
           className={positive ? "is-good" : "is-bad"}
           style={{ width: `${share}%`, [positive ? "left" : "right"]: "50%", originX: positive ? 0 : 1 }}
           initial={{ scaleX: 0 }}
@@ -46,7 +46,7 @@ export function HomeAwayLink({ away, home, low, high, clubName }) {
       aria-label={`${clubName}: net rating ${formatSignedDecimal(away)} away and ${formatSignedDecimal(home)} at home`}
     >
       <line className="zero" x1={x(0)} x2={x(0)} y1="2" y2={height - 2} style={{ opacity: 0.3 }} />
-      <motion.line
+      <m.line
         x1={x(away)}
         x2={x(home)}
         y1={y}
@@ -204,7 +204,7 @@ export function RatingsScatter({ entries }) {
                 onFocus={() => setHovered(entry.clubCode)}
                 onBlur={() => setHovered(null)}
               >
-                <motion.g
+                <m.g
                   initial={{ scale: 0 }}
                   animate={{ scale: isHovered ? 1.25 : 1 }}
                   transition={{ duration: 0.3, delay: isHovered ? 0 : 0.05 + index * 0.025, ease: EASE_OUT }}
@@ -232,7 +232,7 @@ export function RatingsScatter({ entries }) {
                       {entry.clubTvCode ?? entry.clubCode}
                     </text>
                   )}
-                </motion.g>
+                </m.g>
               </g>
             );
           })}

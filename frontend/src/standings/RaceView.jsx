@@ -1,6 +1,6 @@
 import { useMemo, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { motion } from "motion/react";
+import { m } from "motion/react";
 import { getRounds, getStandingsRace } from "../lib/api";
 import AsyncState from "../lib/AsyncState";
 import { RaceSkeleton } from "./StandingsSkeleton";
@@ -129,8 +129,8 @@ export default function RaceView({ seasonCode, phaseCode, latestRound, latestSta
   };
 
   return (
-    <motion.div className="flex flex-col gap-3" variants={sectionContainer} initial="hidden" animate="show">
-      <motion.div variants={sectionItem}>
+    <m.div className="flex flex-col gap-3" variants={sectionContainer} initial="hidden" animate="show">
+      <m.div variants={sectionItem}>
       <RaceInsightCards
         seasonCode={seasonCode}
         rounds={rounds.slice(0, shown)}
@@ -138,10 +138,10 @@ export default function RaceView({ seasonCode, phaseCode, latestRound, latestSta
         teamOrder={teamOrder}
         tiers={tiers}
       />
-      </motion.div>
+      </m.div>
 
       {tiers ? (
-        <motion.div variants={sectionItem} className="legend flex flex-wrap gap-4 text-xs text-base-content/70">
+        <m.div variants={sectionItem} className="legend flex flex-wrap gap-4 text-xs text-base-content/70">
           {tiers.map((line) => (
             <span key={line.tier} className="inline-flex items-center gap-2">
               <span
@@ -151,11 +151,11 @@ export default function RaceView({ seasonCode, phaseCode, latestRound, latestSta
               {tierLabels?.[line.tier] ?? (line.tier === "playin" ? "Play-in tournament" : "Direct to playoffs")} ({line.from}-{line.to})
             </span>
           ))}
-        </motion.div>
+        </m.div>
       ) : null}
 
       <p className="race-hint muted text-xs">Turn your phone sideways for a wider chart.</p>
-      <motion.div ref={setBar} variants={sectionItem} className="race-bar flex flex-wrap items-center gap-x-6 gap-y-2">
+      <m.div ref={setBar} variants={sectionItem} className="race-bar flex flex-wrap items-center gap-x-6 gap-y-2">
       <div className="min-w-0 flex-[1_1_28rem]">
       <RacePlayback
         total={rounds.length}
@@ -183,10 +183,10 @@ export default function RaceView({ seasonCode, phaseCode, latestRound, latestSta
           ))}
         </select>
       </label>
-      </motion.div>
+      </m.div>
       {showContext ? <CompetitionContext seasonCode={seasonCode} phaseCode={phaseCode} roundNumber={shownRound} /> : null}
 
-      <motion.div ref={raceRef} variants={sectionItem} className="grid grid-cols-1 gap-3 lg:grid-cols-[minmax(0,1fr)_22rem] xl:grid-cols-[2fr_1fr]">
+      <m.div ref={raceRef} variants={sectionItem} className="grid grid-cols-1 gap-3 lg:grid-cols-[minmax(0,1fr)_22rem] xl:grid-cols-[2fr_1fr]">
         <RaceChart
           rounds={rounds}
           visibleCount={shown}
@@ -215,7 +215,7 @@ export default function RaceView({ seasonCode, phaseCode, latestRound, latestSta
           startLabel={startLabel}
           rowHeight={layout.rowHeight}
         />
-      </motion.div>
-    </motion.div>
+      </m.div>
+    </m.div>
   );
 }

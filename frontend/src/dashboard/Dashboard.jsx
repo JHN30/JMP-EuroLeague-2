@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { AnimatePresence, motion } from "motion/react";
+import { AnimatePresence, m } from "motion/react";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useParams } from "react-router";
 import { getRounds, getSeasonGames, getSeasonStandings } from "../lib/api";
@@ -27,7 +27,7 @@ export function WidgetPanel({ kicker, title, compact = false, isLoading, isError
     <Panel as="section" className={`flex flex-col p-4 sm:p-5 lg:p-6 ${className}`} style={style}>
       <PanelHeader kicker={kicker} title={title} compact={compact} />
       <AnimatePresence mode="wait" initial={false}>
-        <motion.div
+        <m.div
           key={status}
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
@@ -45,7 +45,7 @@ export function WidgetPanel({ kicker, title, compact = false, isLoading, isError
           >
             {children}
           </AsyncState>
-        </motion.div>
+        </m.div>
       </AnimatePresence>
     </Panel>
   );
@@ -136,8 +136,8 @@ export default function Dashboard() {
   if (hasLoadingIssues(format)) statusLine = statusLine ? `${statusLine} ${LOADING_ISSUES_NOTE}` : LOADING_ISSUES_NOTE;
 
   return (
-    <motion.div className="flex flex-col gap-6 lg:gap-4" variants={sectionContainer} initial="hidden" animate="show">
-      <motion.div variants={sectionItem}>
+    <m.div className="flex flex-col gap-6 lg:gap-4" variants={sectionContainer} initial="hidden" animate="show">
+      <m.div variants={sectionItem}>
         <PageHeader
           stacked
           compact
@@ -145,25 +145,25 @@ export default function Dashboard() {
           title={title}
           description={statusLine ? <p className="muted mt-1 text-sm">{statusLine}</p> : null}
         />
-      </motion.div>
-      <motion.div variants={sectionItem}>
+      </m.div>
+      <m.div variants={sectionItem}>
         <UpcomingGames />
-      </motion.div>
-      <motion.div variants={sectionItem} className="grid items-start gap-6 lg:grid-cols-2 lg:gap-4">
+      </m.div>
+      <m.div variants={sectionItem} className="grid items-start gap-6 lg:grid-cols-2 lg:gap-4">
         <StandingsSnapshot height={resultsHeight} />
         <div ref={resultsRef}>
           <RecentResults />
         </div>
-      </motion.div>
-      <motion.div variants={sectionItem}>
+      </m.div>
+      <m.div variants={sectionItem}>
         <KpiStrip />
-      </motion.div>
-      <motion.div variants={sectionItem}>
+      </m.div>
+      <m.div variants={sectionItem}>
         <HotRightNow />
-      </motion.div>
-      <motion.div variants={sectionItem}>
+      </m.div>
+      <m.div variants={sectionItem}>
         <FormBoard />
-      </motion.div>
-    </motion.div>
+      </m.div>
+    </m.div>
   );
 }

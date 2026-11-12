@@ -1,4 +1,4 @@
-import { motion } from "motion/react";
+import { m } from "motion/react";
 import AsyncState from "../lib/AsyncState";
 import { BoardSkeleton } from "./LeadersSkeleton";
 import EmptyText from "../lib/EmptyText";
@@ -120,7 +120,7 @@ function TeamsBoard({ seasonCode, phaseCode, stage, metric, source, params, setP
           ) : (
             <>
           <BoardHeader columns={["GP", "Record"]} valueLabel={stat.short} sort={{ direction, onToggle: toggleOrder }} />
-          <motion.ol variants={listContainer} initial="hidden" animate="show" key={`${stat.key}-${mode}-${direction}-${search}`}>
+          <m.ol variants={listContainer} initial="hidden" animate="show" key={`${stat.key}-${mode}-${direction}-${search}`}>
             {shown.slice(0, PAGE_SIZE).map(({ row: { row }, rank, value }) => (
               <BoardRow
                 key={row.clubCode}
@@ -136,7 +136,7 @@ function TeamsBoard({ seasonCode, phaseCode, stage, metric, source, params, setP
                 to={`/${seasonCode}/teams/${row.clubCode}`}
               />
             ))}
-          </motion.ol>
+          </m.ol>
             </>
           )}
         </Panel>

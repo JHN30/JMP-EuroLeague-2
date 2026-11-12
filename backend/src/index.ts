@@ -61,6 +61,12 @@ if (fs.existsSync(frontendIndex)) {
       return;
     }
     res.setHeader("Cache-Control", "no-cache");
+    // A script or stylesheet this build doesn't have, such as an old one asked for by a tab opened before a deploy, is a
+    // plain 404. Answering it with index.html would hand the browser a page where it expects JavaScript.
+    if (req.path.startsWith("/assets/")) {
+      res.sendStatus(404);
+      return;
+    }
     res.sendFile(frontendIndex);
   });
 }

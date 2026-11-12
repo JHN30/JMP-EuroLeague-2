@@ -1,5 +1,6 @@
 import { and, asc, desc, eq, exists, ilike, inArray, isNull, or, sql } from "drizzle-orm";
 import { db } from "./client";
+import { remembered } from "./remembered";
 import { catalogRead } from "./season-catalog";
 import { clubIdentities, clubs, games, people, registrations, seasonStatsTraditional, standings } from "./season-schema";
 
@@ -112,7 +113,7 @@ function playerScope(seasonCode: string) {
 // code follows sponsors and renames, so the same club can have a different one in another season.
 export type ClubTvCodes = Map<string, string>;
 
-export async function getClubTvCodes(seasonCode: string): Promise<ClubTvCodes> {
+export const getClubTvCodes = remembered(async function getClubTvCodes(seasonCode: string): Promise<ClubTvCodes> {
   const [clubRows, standingRows] = await Promise.all([
     catalogRead(() =>
       db.select({ clubCode: clubs.clubCode, abbreviatedName: clubs.abbreviatedName })
@@ -138,7 +139,7 @@ export async function getClubTvCodes(seasonCode: string): Promise<ClubTvCodes> {
   }
   for (const [clubCode, tvCode] of fromStandings) codes.set(clubCode, tvCode);
   return codes;
-}
+});
 
 // The TV code of a club, or `null` for no club. A club the lookup does not know (not in the season's club list) falls back
 // to its abbreviated name, then its club code.
@@ -151,7 +152,7 @@ function withTvCode(team: Team, codes: ClubTvCodes): TeamRef {
   return { ...team, tvCode: tvCodeOf(codes, team.clubCode, team.abbreviatedName) ?? team.clubCode };
 }
 
-export async function getTeams(seasonCode: string): Promise<TeamListItem[]> {
+export const getTeams = remembered(async function getTeams(seasonCode: string): Promise<TeamListItem[]> {
   const [rows, codes] = await Promise.all([
     catalogRead(() =>
       db.select({ ...teamFields, city: clubs.city })
@@ -162,7 +163,7 @@ export async function getTeams(seasonCode: string): Promise<TeamListItem[]> {
     getClubTvCodes(seasonCode),
   ]);
   return rows.map(({ city, ...team }) => ({ ...withTvCode(team, codes), city: city?.trim() || null }));
-}
+});
 
 // Every club across these seasons, one item per club code in the `getTeams` shape, taken from the latest season the club
 // appears in (with that season's TV code). Ordered by club code.

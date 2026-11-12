@@ -1,5 +1,6 @@
 import { and, desc, eq, inArray } from "drizzle-orm";
 import { db } from "./client";
+import { remembered } from "./remembered";
 import { games, rounds, seasons } from "./season-schema";
 
 const COMPETITION_CODE = "E";
@@ -54,7 +55,7 @@ const seasonFields = {
   competitionName: seasons.competitionName,
 };
 
-export async function getSeasons(): Promise<Season[]> {
+export const getSeasons = remembered(async function getSeasons(): Promise<Season[]> {
   const rows = await catalogRead(() =>
     db
       .select(seasonFields)
@@ -68,9 +69,9 @@ export async function getSeasons(): Promise<Season[]> {
       .orderBy(desc(seasons.seasonCode)),
   );
   return rows.map(toSeason);
-}
+});
 
-export async function getSeason(seasonCode: string): Promise<Season | null> {
+export const getSeason = remembered(async function getSeason(seasonCode: string): Promise<Season | null> {
   const rows = await catalogRead(() =>
     db
       .select(seasonFields)
@@ -84,13 +85,13 @@ export async function getSeason(seasonCode: string): Promise<Season | null> {
       .limit(1),
   );
   return rows[0] ? toSeason(rows[0]) : null;
-}
+});
 
 function compareText(left: string, right: string): number {
   return left < right ? -1 : left > right ? 1 : 0;
 }
 
-export async function getPhases(seasonCode: string): Promise<Phase[]> {
+export const getPhases = remembered(async function getPhases(seasonCode: string): Promise<Phase[]> {
   const scope = and(
     eq(rounds.competitionCode, COMPETITION_CODE),
     eq(rounds.seasonCode, seasonCode),
@@ -132,9 +133,9 @@ export async function getPhases(seasonCode: string): Promise<Phase[]> {
       code,
       name: phase.names.size === 1 ? [...phase.names][0] : null,
     }));
-}
+});
 
-export async function getRounds(seasonCode: string, phaseCode: string): Promise<Round[]> {
+export const getRounds = remembered(async function getRounds(seasonCode: string, phaseCode: string): Promise<Round[]> {
   const rows = await catalogRead(() =>
     db.select({
       key: rounds.roundKey,
@@ -154,4 +155,4 @@ export async function getRounds(seasonCode: string, phaseCode: string): Promise<
     left.number - right.number ||
     compareText(left.key, right.key),
   );
-}
+});

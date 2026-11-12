@@ -1144,7 +1144,7 @@ async function careerSeasonCodes(req: Request, res: Response): Promise<{ personK
     sendError(res, 400, "INVALID_PLAYER_KEY", "Invalid player key");
     return null;
   }
-  const loaded = (await getSeasons()).sort((a, b) => (a.startYear ?? 0) - (b.startYear ?? 0));
+  const loaded = [...await getSeasons()].sort((a, b) => (a.startYear ?? 0) - (b.startYear ?? 0));
   const playerSeasons = new Set(await getPlayerSeasonCodes(personKey, loaded.map((season) => season.seasonCode)));
   return { personKey, seasonCodes: loaded.map((season) => season.seasonCode).filter((code) => playerSeasons.has(code)) };
 }

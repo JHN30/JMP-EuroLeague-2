@@ -1,6 +1,7 @@
 import { and, asc, desc, eq, gte, inArray, sql, type SQL } from "drizzle-orm";
 import type { AnyPgColumn } from "drizzle-orm/pg-core";
 import { db } from "./client";
+import { remembered } from "./remembered";
 import { catalogRead } from "./season-catalog";
 import {
   gamePlayerAdvanced,
@@ -51,14 +52,14 @@ const nullsLast = (column: AnyPgColumn) => sql`${column} DESC NULLS LAST`;
 
 // Scopes and rounds come from the stats table itself: app_rounds lists rounds that have not been played
 // and has no "all" or "PS" scope. The current table of a scope is its highest round.
-export async function getStatsScopes(seasonCode: string): Promise<string[]> {
+export const getStatsScopes = remembered(async function getStatsScopes(seasonCode: string): Promise<string[]> {
   const rows = await catalogRead(() =>
     db.selectDistinct({ scope: standingsStats.scope })
       .from(standingsStats)
       .where(and(eq(standingsStats.competitionCode, COMPETITION_CODE), eq(standingsStats.seasonCode, seasonCode))),
   );
   return rows.map((row) => row.scope);
-}
+});
 
 export async function getTeamStatsScopes(seasonCode: string, clubCode: string): Promise<string[]> {
   const rows = await catalogRead(() =>
@@ -86,7 +87,7 @@ export async function getPlayerStatsScopes(seasonCode: string, personKey: string
   return rows.map((row) => row.scope);
 }
 
-export async function getStatsRounds(seasonCode: string, scope: string): Promise<number[]> {
+export const getStatsRounds = remembered(async function getStatsRounds(seasonCode: string, scope: string): Promise<number[]> {
   const rows = await catalogRead(() =>
     db.selectDistinct({ round: standingsStats.roundNumber })
       .from(standingsStats)
@@ -94,7 +95,7 @@ export async function getStatsRounds(seasonCode: string, scope: string): Promise
       .orderBy(asc(standingsStats.roundNumber)),
   );
   return rows.map((row) => row.round);
-}
+});
 
 export async function getStandingsStats(seasonCode: string, scope: string, round: number): Promise<StandingsStatsRow[]> {
   return catalogRead(() =>

@@ -1,10 +1,9 @@
 import type { NextFunction, Request, Response } from "express";
 import { ENV } from "./config/env";
+import { DATA_TTL_MS } from "./db/remembered";
 import { SUPPORTED_SEASONS } from "./db/season-catalog";
 
-// The data only changes when the pipeline publishes, so repeated reads within this window skip Neon,
-// whose free plan meters every byte sent back.
-const TTL_MS = 10 * 60 * 1000;
+// Repeated reads within the window skip Neon, whose free plan meters every byte sent back.
 const MAX_ENTRIES = 1000;
 
 // In production a reload or a new tab within 5 minutes (the frontend's staleTime) reuses the browser's copy. `private` keeps
@@ -16,7 +15,7 @@ const entries = new Map<string, { body: string; expiresAt: number }>();
 
 function remember(key: string, body: string) {
   entries.delete(key);
-  entries.set(key, { body, expiresAt: Date.now() + TTL_MS });
+  entries.set(key, { body, expiresAt: Date.now() + DATA_TTL_MS });
   if (entries.size > MAX_ENTRIES) {
     const oldest = entries.keys().next().value;
     if (oldest !== undefined) entries.delete(oldest);

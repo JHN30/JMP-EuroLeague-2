@@ -107,7 +107,10 @@ test.describe("below 640px", () => {
       const leaders = page.getByRole("group", { name: "Hot right now" }).first();
       const boxes = await leaders.locator(".kpi-chip").evaluateAll((els) => els.map((el) => el.getBoundingClientRect()));
       expect(boxes).toHaveLength(4);
-      expect(new Set(boxes.map((box) => Math.round(box.top))).size).toBe(2);
+      // The cards slide up into place one after another, so their tops differ until the entrance settles; a grid that
+      // really breaks never reaches two rows and the poll times out.
+      const rows = () => leaders.locator(".kpi-chip").evaluateAll((els) => new Set(els.map((el) => Math.round(el.getBoundingClientRect().top))).size);
+      await expect.poll(rows).toBe(2);
       expect(new Set(boxes.map((box) => Math.round(box.left))).size).toBe(2);
       for (const row of [page.getByRole("group", { name: /^Upcoming games$/ }), leaders]) {
         expect(await row.evaluate((el) => el.scrollWidth - el.clientWidth)).toBe(0);

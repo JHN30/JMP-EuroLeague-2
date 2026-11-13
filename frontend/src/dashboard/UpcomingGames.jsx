@@ -6,7 +6,7 @@ import { getSeasonGames, getSeasonStandings } from "../lib/api";
 import { listContainer } from "../lib/motion";
 import { seasonStatusText } from "../lib/seasonFormat";
 import { useSeasonFormat } from "../lib/useSeasonFormat";
-import { gameOfTheRound } from "./gameOfTheRound";
+import { gameOfTheRound, REGULAR_SEASON } from "./gameOfTheRound";
 import { MatchCard } from "./RecentResults";
 import { WidgetPanel } from "./Dashboard";
 import { UpcomingGamesSkeleton, VISIBLE_ON_MOBILE } from "./HomeSkeleton";
@@ -33,19 +33,17 @@ export default function UpcomingGames() {
   const formatQuery = useSeasonFormat(seasonCode);
   const format = formatQuery.data ?? null;
 
-  // Game of the round reads the table of the next round's own stage (the regular season's is the request above).
-  const nextPhaseCode = allGames[0]?.phaseCode ?? null;
-  const nextIsTable = format?.stages.find((stage) => stage.code === nextPhaseCode)?.type === "table";
-  const tableQuery = useQuery({
-    queryKey: ["standings", seasonCode, nextPhaseCode],
-    queryFn: () => getSeasonStandings(seasonCode, nextPhaseCode),
-    enabled: nextIsTable,
+  // Game of the round belongs to the current regular-season round (the first upcoming game's) and is picked from all its
+  // games, played or not, so it holds for the whole round; the next round gets its pick once this one is finished. It is
+  // highlighted where it falls in tip-off order, or nowhere when it has already been played. Its trouble never hides the list.
+  const currentRound = allGames[0]?.phaseCode === REGULAR_SEASON ? allGames[0].roundNumber : null;
+  const roundQuery = useQuery({
+    queryKey: ["games", seasonCode, REGULAR_SEASON, "round", currentRound],
+    queryFn: () => getSeasonGames(seasonCode, { phase: REGULAR_SEASON, round: currentRound, limit: 50 }),
+    enabled: currentRound != null,
   });
-  const tableByClubCode = new Map((tableQuery.data?.standings ?? []).map((entry) => [entry.clubCode, entry]));
-  const featured = nextIsTable ? gameOfTheRound(allGames, tableByClubCode, format) : null;
-  // The featured game leads the grid, highlighted; the rest keep their order.
-  const games = featured ? [featured.game, ...allGames.filter((game) => game.gameCode !== featured.game.gameCode)] : allGames;
-  const hiddenOnMobile = Math.max(0, games.length - VISIBLE_ON_MOBILE);
+  const featured = roundQuery.data ? gameOfTheRound(roundQuery.data.games, standingByClubCode) : null;
+  const hiddenOnMobile = Math.max(0, allGames.length - VISIBLE_ON_MOBILE);
   const emptyMessage = !format
     ? "Season status is unavailable."
     : format.status === "completed"
@@ -59,7 +57,7 @@ export default function UpcomingGames() {
       kicker="SCHEDULE"
       compact
       title="Upcoming games"
-      isLoading={gamesQuery.isLoading || !standingsReady || formatQuery.isLoading}
+      isLoading={gamesQuery.isLoading || !standingsReady || formatQuery.isLoading || roundQuery.isLoading}
       isError={gamesQuery.isError || formatQuery.isError}
       onRetry={() => { gamesQuery.refetch(); formatQuery.refetch(); }}
       isEmpty={gamesQuery.isSuccess && allGames.length === 0}
@@ -67,7 +65,7 @@ export default function UpcomingGames() {
       skeleton={<UpcomingGamesSkeleton />}
     >
       {/* Below sm the first five stack and the rest wait behind a button, as in Latest scores; from sm all show in a grid.
-          Game of the round, when there is one, is the first card. */}
+          The cards keep tip-off order; the current round's game of the round is highlighted in place. */}
       <m.div
         id={LIST_ID}
         className="games-row"
@@ -77,14 +75,14 @@ export default function UpcomingGames() {
         initial="hidden"
         animate="show"
       >
-        {games.map((game, index) => (
+        {allGames.map((game, index) => (
           <MatchCard
             key={game.gameCode}
             game={game}
             standingByClubCode={standingByClubCode}
             seasonCode={seasonCode}
             showScore={false}
-            featuredReason={featured && game.gameCode === featured.game.gameCode ? featured.reason : null}
+            featuredReason={featured?.gameCode === game.gameCode ? featured.reason : null}
             className={index >= VISIBLE_ON_MOBILE && !showAll ? "match-card-extra" : ""}
           />
         ))}

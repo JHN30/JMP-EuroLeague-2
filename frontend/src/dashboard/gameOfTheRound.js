@@ -1,37 +1,58 @@
 import { ordinal } from "../teams/teamLeague";
 
-// The next round's biggest game: the scheduled games of the first upcoming game's round, picked by the most combined wins,
-// then the smallest gap in wins, then the earliest tip-off. Only a table stage's round qualifies, and only once both clubs
-// have played, so the pick rests on a real table. `standingByClubCode` must be that stage's standings. Null when nothing fits.
-export function gameOfTheRound(games, standingByClubCode, format) {
-  const first = games[0];
-  if (!first) return null;
-  const stage = format?.stages.find((entry) => entry.code === first.phaseCode);
-  if (stage?.type !== "table") return null;
+export const REGULAR_SEASON = "RS";
 
-  let best = null;
-  for (const game of games) {
-    if (game.phaseCode !== first.phaseCode || game.roundNumber !== first.roundNumber) continue;
-    const local = standingByClubCode.get(game.localTeam?.clubCode)?.basic;
-    const road = standingByClubCode.get(game.roadTeam?.clubCode)?.basic;
-    if (!local?.gamesPlayed || !road?.gamesPlayed) continue;
-    const combined = local.gamesWon + road.gamesWon;
-    const gap = Math.abs(local.gamesWon - road.gamesWon);
-    const time = new Date(game.scheduledAt).getTime() || Infinity;
-    if (
-      best === null ||
-      combined > best.combined ||
-      (combined === best.combined && (gap < best.gap || (gap === best.gap && time < best.time)))
-    ) {
-      best = { game, local, road, combined, gap, time };
+// Each club's record before the round: the table's record minus the result of its game in the round, when that game is
+// played. A club plays once a round, so this undoes at most one game.
+function preRoundRecords(roundGames, standingByClubCode) {
+  const records = new Map();
+  for (const [clubCode, entry] of standingByClubCode) {
+    if (entry?.basic) records.set(clubCode, { won: entry.basic.gamesWon, played: entry.basic.gamesPlayed });
+  }
+  for (const game of roundGames) {
+    if (!game.played || game.localScore == null || game.roadScore == null) continue;
+    for (const [team, won] of [[game.localTeam, game.localScore > game.roadScore], [game.roadTeam, game.roadScore > game.localScore]]) {
+      const record = records.get(team?.clubCode);
+      if (record) records.set(team.clubCode, { won: record.won - (won ? 1 : 0), played: record.played - 1 });
     }
   }
-  if (!best) return null;
+  return records;
+}
 
-  const { local, road } = best;
+// The current regular-season round's biggest game, picked once for the whole round from all its games (`roundGames`,
+// played or not) with the records from before the round, so the pick holds while the round's results come in: the most
+// combined wins, then the smallest gap in wins, then the earliest tip-off, among games whose clubs had both played.
+// `standingByClubCode` is the regular-season table. Returns { gameCode, reason } or null. The reason reads the table
+// as it stands, like the cards' records; for a game still to play it equals the pre-round one.
+export function gameOfTheRound(roundGames, standingByClubCode) {
+  const records = preRoundRecords(roundGames, standingByClubCode);
+  let best = null;
+  for (const game of roundGames) {
+    if (game.phaseCode !== REGULAR_SEASON) continue;
+    const local = records.get(game.localTeam?.clubCode);
+    const road = records.get(game.roadTeam?.clubCode);
+    if (!local?.played || !road?.played) continue;
+    const candidate = {
+      game,
+      combined: local.won + road.won,
+      gap: Math.abs(local.won - road.won),
+      time: new Date(game.scheduledAt).getTime() || Infinity,
+    };
+    if (!best || beats(candidate, best)) best = candidate;
+  }
+  if (!best) return null;
+  const local = standingByClubCode.get(best.game.localTeam.clubCode).basic;
+  const road = standingByClubCode.get(best.game.roadTeam.clubCode).basic;
+  return { gameCode: best.game.gameCode, reason: reasonFor(local, road) };
+}
+
+function beats(candidate, best) {
+  if (candidate.combined !== best.combined) return candidate.combined > best.combined;
+  if (candidate.gap !== best.gap) return candidate.gap < best.gap;
+  return candidate.time < best.time;
+}
+
+function reasonFor(local, road) {
   const places = local.position != null && road.position != null ? `${ordinal(local.position)} vs ${ordinal(road.position)} · ` : "";
-  return {
-    game: best.game,
-    reason: `${places}${local.gamesWon}-${local.gamesLost} vs ${road.gamesWon}-${road.gamesLost}`,
-  };
+  return `${places}${local.gamesWon}-${local.gamesLost} vs ${road.gamesWon}-${road.gamesLost}`;
 }

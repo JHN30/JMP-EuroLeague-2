@@ -26,8 +26,8 @@ function roundLabel(game, format) {
 
 const LIST_ID = "latest-scores-list";
 
-// `featuredReason` (Upcoming games only) marks the card as Game of the round: a highlighted card with the label in place of
-// the round and the reason under the teams.
+// `featuredReason` (Upcoming games only) marks the card as Game of the round: a highlighted card with the badge and the
+// reason under the teams; the header keeps the round like every card.
 export function MatchCard({ game, standingByClubCode, seasonCode, showScore, className = "", featuredReason = null }) {
   const format = useSeasonFormat(seasonCode).data;
   const localEntry = game.localTeam?.clubCode ? standingByClubCode.get(game.localTeam.clubCode) : null;
@@ -42,7 +42,7 @@ export function MatchCard({ game, standingByClubCode, seasonCode, showScore, cla
       {...cardHover}
     >
       <div className="match-card-head">
-        <span className={featuredReason ? "match-card-featured-label" : undefined}>{featuredReason ? "Game of the round" : roundLabel(game, format)}</span>
+        <span>{roundLabel(game, format)}</span>
         <span className={`status-chip ${showScore ? "final" : "upcoming"}`}>
           {showScore ? (isForfeit(game) ? "Forfeit" : "Final") : formatTime(game.scheduledAt)}
         </span>
@@ -91,7 +91,15 @@ export function MatchCard({ game, standingByClubCode, seasonCode, showScore, cla
           {showScore ? <span className="score">{game.roadScore ?? "-"}</span> : null}
         </div>
       </div>
-      {featuredReason ? <p className="muted mt-1 text-xs tabular-nums">{featuredReason}</p> : null}
+      {featuredReason ? (
+        <p className="mt-1.5 text-xs tabular-nums">
+          <span className="match-card-featured-label block">
+            <span aria-hidden="true">★ </span>Game of the round
+          </span>
+          <span className="sr-only">: </span>
+          <span className="muted block">{featuredReason}</span>
+        </p>
+      ) : null}
     </MotionLink>
   );
 }

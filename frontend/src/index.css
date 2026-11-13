@@ -833,7 +833,7 @@ button {
 .match-card:hover {
   border-color: var(--color-primary);
 }
-/* Upcoming games' Game of the round: the first card, in the primary colour. */
+/* Upcoming games' Game of the round: one card per round, highlighted in place, in the primary colour. */
 .match-card.match-card-featured {
   border-color: color-mix(in oklab, var(--color-primary) 60%, transparent);
   background: color-mix(in oklab, var(--color-primary) 8%, var(--color-base-200));
@@ -890,7 +890,9 @@ button {
 .status-chip.final {
   background: var(--color-base-300);
 }
+/* Upcoming games' tip-off time, a step smaller than the Final chip. */
 .status-chip.upcoming {
+  font-size: 0.6rem;
   background: color-mix(in srgb, var(--color-primary) 16%, transparent);
   color: var(--color-primary);
 }

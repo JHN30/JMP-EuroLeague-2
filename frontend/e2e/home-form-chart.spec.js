@@ -39,32 +39,51 @@ test("the Form board lists every club by wins in its last five games, each with 
   }
 });
 
-test("Game of the round is the next round's game with the most combined wins, highlighted as the first card", async ({ page }) => {
+test("Game of the round is the current round's biggest game, picked once for the whole round and shown in tip-off order", async ({ page }) => {
   const { slug, code } = await liveSeason(page);
   const { games } = await get(page, `${code}/games?status=scheduled&order=asc&limit=10`);
-  test.skip(games.length === 0 || games[0].phaseCode !== "RS", "No regular-season round is scheduled");
+  test.skip(games.length === 0 || games[0].phaseCode !== "RS", "No regular-season round is under way");
+  const round = games[0].roundNumber;
+  const { games: roundGames } = await get(page, `${code}/games?phase=RS&round=${round}&limit=50`);
   const { standings } = await get(page, `${code}/phases/RS/standings`);
-  const wins = new Map(standings.map((entry) => [entry.clubCode, entry.basic]));
-  const round = games.filter((game) => game.phaseCode === "RS" && game.roundNumber === games[0].roundNumber);
-  const played = round.filter((game) => wins.get(game.localTeam.clubCode)?.gamesPlayed && wins.get(game.roadTeam.clubCode)?.gamesPlayed);
-  test.skip(played.length === 0, "No club has played yet");
-  const combined = (game) => wins.get(game.localTeam.clubCode).gamesWon + wins.get(game.roadTeam.clubCode).gamesWon;
-  const most = Math.max(...played.map(combined));
+  // Records before the round: the table's, minus each club's result in the round when it is played.
+  const before = new Map(standings.map((entry) => [entry.clubCode, { won: entry.basic.gamesWon, played: entry.basic.gamesPlayed }]));
+  for (const game of roundGames.filter((entry) => entry.played)) {
+    for (const [club, won] of [[game.localTeam.clubCode, game.localScore > game.roadScore], [game.roadTeam.clubCode, game.roadScore > game.localScore]]) {
+      const record = before.get(club);
+      before.set(club, { won: record.won - (won ? 1 : 0), played: record.played - 1 });
+    }
+  }
+  const eligible = roundGames.filter((game) => before.get(game.localTeam.clubCode)?.played && before.get(game.roadTeam.clubCode)?.played);
+  test.skip(eligible.length === 0, "No club had played before this round");
+  const combined = (game) => before.get(game.localTeam.clubCode).won + before.get(game.roadTeam.clubCode).won;
+  const most = Math.max(...eligible.map(combined));
 
   await page.goto(`/${slug}/home`);
   const grid = page.getByRole("group", { name: /^Upcoming games$/ });
+  await expect(grid.getByRole("link").first()).toBeVisible({ timeout: 30_000 });
   const featured = grid.getByTestId("game-of-the-round");
-  await expect(featured).toBeVisible({ timeout: 30_000 });
-  await expect(featured).toContainText("Game of the round");
-  await expect(featured).toContainText(/\d+(st|nd|rd|th) vs \d+(st|nd|rd|th) · \d+-\d+ vs \d+-\d+/);
-  const href = await featured.getAttribute("href");
-  const gameCode = Number(href.split("/").at(-1));
-  const pick = round.find((game) => game.gameCode === gameCode);
-  expect(pick).toBeTruthy();
-  expect(combined(pick)).toBe(most);
-  // The first card, and in the grid only once.
-  await expect(grid.getByRole("link").first()).toHaveAttribute("href", href);
-  await expect(grid.locator(`a[href="${href}"]`)).toHaveCount(1);
+  const upcomingTop = eligible.filter((game) => !game.played && combined(game) === most);
+  const playedTop = eligible.filter((game) => game.played && combined(game) === most);
+  if (upcomingTop.length === 0) {
+    // The round's pick is already played: no upcoming card is highlighted, not even a later round's.
+    await expect(featured).toHaveCount(0);
+  } else {
+    await expect(featured).toHaveCount(1);
+    // The badge and the reason are two lines; screen readers hear "Game of the round: 1st vs 4th · 8-2 vs 7-3".
+    await expect(featured).toContainText(/Game of the round: \d+(st|nd|rd|th) vs \d+(st|nd|rd|th) · \d+-\d+ vs \d+-\d+/);
+    await expect(featured.locator(".match-card-head")).toContainText(`Round ${round}`);
+    const gameCode = Number((await featured.getAttribute("href")).split("/").at(-1));
+    const pick = roundGames.find((game) => game.gameCode === gameCode);
+    expect(pick).toBeTruthy();
+    expect(combined(pick)).toBe(most);
+    // A played game with the same combined wins can win the tie-breaks only on the gap or an earlier tip-off.
+    expect(playedTop.length === 0 || playedTop.every((game) => Math.abs(before.get(game.localTeam.clubCode).won - before.get(game.roadTeam.clubCode).won) >= Math.abs(before.get(pick.localTeam.clubCode).won - before.get(pick.roadTeam.clubCode).won))).toBe(true);
+  }
+
+  // The cards stay in tip-off order, as the API lists them.
+  const hrefs = await grid.getByRole("link").evaluateAll((links) => links.map((link) => link.getAttribute("href")));
+  expect(hrefs.map((href) => Number(href.split("/").at(-1)))).toEqual(games.map((game) => game.gameCode));
 });
 
 test("the leader names on Home and on the Season overview have no comma", async ({ page }) => {

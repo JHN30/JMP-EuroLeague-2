@@ -80,7 +80,7 @@ test.describe("KPI strip", () => {
 });
 
 test.describe("below 640px", () => {
-  // The grid of upcoming games (Game of the round, when there is one, is its first card).
+  // The grid of upcoming games, in tip-off order (the current round's game of the round is highlighted in place).
   const upcoming = (page) => page.getByRole("group", { name: /^Upcoming games$/ }).getByRole("link");
 
   test("upcoming games show five and a Show more button", async ({ page }) => {

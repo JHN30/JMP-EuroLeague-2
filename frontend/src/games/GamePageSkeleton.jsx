@@ -181,18 +181,21 @@ export function RotationsSkeleton() {
   );
 }
 
-// Team comparison rows: the two sides' numbers either side of the label.
-export function ComparisonRowsSkeleton({ rows = 19 }) {
+// The Team comparison tab: the header with the summary chips, then the group panels in two columns from lg.
+export function TeamComparisonSkeleton() {
   return (
-    <div aria-hidden="true" className="panel p-4">
-      <div className="mx-auto mb-3 skeleton h-6 w-72 max-w-full" />
-      {range(rows).map((index) => (
-        <div key={index} className="grid h-13 grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-4 border-b border-base-300 last:border-0">
-          <div className="skeleton ml-auto h-5 w-14" />
-          <div className="skeleton h-3 w-24" />
-          <div className="skeleton h-5 w-14" />
+    <div aria-hidden="true" className="flex flex-col gap-4">
+      <PanelBlockSkeleton className="h-36 max-sm:h-52" />
+      <div className="grid gap-4 lg:grid-cols-2 lg:items-start">
+        <div className="flex flex-col gap-4">
+          <PanelBlockSkeleton className="h-56" />
+          <PanelBlockSkeleton className="h-80" />
         </div>
-      ))}
+        <div className="flex flex-col gap-4">
+          <PanelBlockSkeleton className="h-[30rem]" />
+          <PanelBlockSkeleton className="h-64" />
+        </div>
+      </div>
     </div>
   );
 }

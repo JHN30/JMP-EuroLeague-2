@@ -205,9 +205,7 @@ test("an overtime game's lead tracker and a game with too few scoring plays fit 
 test("the Team comparison tab is compact below 640px and every value and average line stays in its half", async ({ page }) => {
   await openTab(page, "Team comparison");
   const tab = page.locator("#game-detail-panel");
-  await expect(tab.getByText("Head to head")).toBeVisible();
-  await expect(tab.getByText("Each team against its season average")).toBeVisible();
-  await expect(tab.getByText("How each team scored and how the game was led")).toBeVisible();
+  await expect(tab.getByRole("region", { name: "Efficiency", exact: true })).toBeVisible();
   const halves = tab.locator(".grid-cols-2 > .rounded-field");
   const rowPadding = () => tab.locator("section .border-b.border-base-300").first().evaluate((el) => getComputedStyle(el).paddingTop);
 
@@ -215,36 +213,37 @@ test("the Team comparison tab is compact below 640px and every value and average
     await expectNoPageOverflow(page);
     expect(await insideScreen(tab.locator(".panel"), width)).toBe(true);
     expect(await holdsContent(halves)).toBe(true);
-    expect(await splitWords(tab.locator(".text-xs.font-bold, h4, .muted"))).toEqual([]);
-    // The Head to head, Four Factors and Scoring profile rows are inline rows: 6px top and bottom at every width.
+    expect(await splitWords(tab.locator(".text-xs.font-bold, h3, .muted"))).toEqual([]);
+    // Every group's rows are inline rows: 6px top and bottom at every width.
     expect(await rowPadding()).toBe("6px");
     expect(await tab.locator(".panel").first().evaluate((el) => getComputedStyle(el).paddingTop)).toBe("12px");
-    // The assisted-baskets line and the season-average lines, the "Lower is better" marker and the hidden-average note are in view.
+    // The assisted-baskets line, the season-average and opponent lines, the "Lower is better" marker and the hidden-average note are in view.
     await expect(tab.getByText("19 of 30 (63.3%)")).toBeVisible();
+    await expect(tab.getByText(/^Opp allows/).first()).toBeVisible();
     await expect(tab.getByText("Lower is better").first()).toBeVisible();
     await expect(tab.getByText(/Season averages need at least 3 games/)).toBeVisible();
+    expect(await insideScreen(tab.getByTestId("points-mix"), width)).toBe(true);
     expect(await holdsContent(tab.locator(".panel"))).toBe(true);
   });
 
-  // Head to head and Scoring profile show the values and the highlight without bars; Four Factors keeps its bars and ticks.
-  const bars = (name) => tab.locator("section", { has: page.getByText(name) }).locator('[class~="h-1.5"]');
-  await expect(bars("Head to head")).toHaveCount(0);
-  await expect(bars("How each team scored and how the game was led")).toHaveCount(0);
-  expect(await bars("Each team against its season average").count()).toBeGreaterThan(0);
+  // Only the rows with a season average keep their bars and ticks.
+  const bars = (name) => tab.getByRole("region", { name, exact: true }).locator('[class~="h-1.5"]');
+  await expect(bars("Shooting")).toHaveCount(0);
+  await expect(bars("Game flow")).toHaveCount(0);
+  expect(await bars("Efficiency").count()).toBeGreaterThan(0);
 
   await atWidths(page, [640, 768, 1024], async () => {
     await expectNoPageOverflow(page);
     expect(await rowPadding()).toBe("6px");
     expect(await tab.locator(".panel").first().evaluate((el) => getComputedStyle(el).paddingTop)).toBe("16px");
   });
-  // The three sections stack below lg and the first two sit side by side from it, as before.
+  const left = (name) => tab.getByRole("region", { name, exact: true }).evaluate((el) => Math.round(el.getBoundingClientRect().left));
+  // The groups stack below lg, traditional first, and sit in two columns from it.
   await atWidths(page, [768], async () => {
-    const lefts = await tab.locator(".gap-6 > section").evaluateAll((sections) => sections.map((section) => Math.round(section.getBoundingClientRect().left)));
-    expect(new Set(lefts).size).toBe(1);
+    expect(await left("Efficiency")).toBe(await left("Shooting"));
   });
   await atWidths(page, [1024], async () => {
-    const lefts = await tab.locator(".gap-6 > section").evaluateAll((sections) => sections.map((section) => Math.round(section.getBoundingClientRect().left)));
-    expect(lefts[0]).not.toBe(lefts[1]);
+    expect(await left("Efficiency")).not.toBe(await left("Shooting"));
   });
 });
 

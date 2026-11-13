@@ -37,7 +37,8 @@ function Track({ width, position, anchor, title, animated }) {
 // from the centre, instead of under the bar. `sideA`/`sideB` (a crest and a code, say) sit over each side's value below sm only, for a row whose two
 // sides are not labelled nearby. `inline` puts the label in a narrow centre column between the two values, one line per
 // stat, with any bar and average under each value; without bars the highlight hugs the better value. `missingText`
-// replaces the dash printed for a missing value (a loading mark, say).
+// replaces the dash printed for a missing value (a loading mark, say). `noteA`/`noteB` (inline only) add a second muted
+// line under the average.
 export default function ComparisonRow({
   label,
   rawA,
@@ -58,6 +59,8 @@ export default function ComparisonRow({
   sideB = null,
   inline = false,
   missingText = "—",
+  noteA = null,
+  noteB = null,
 }) {
   const winner = winnerSide(rawA, rawB, direction);
   const { widthA, widthB } = comparisonBand(rawA, rawB);
@@ -66,7 +69,7 @@ export default function ComparisonRow({
   const Root = animated ? m.div : "div";
 
   if (inline) {
-    const side = (key, missing, display, width, marker, avg, anchor) => {
+    const side = (key, missing, display, width, marker, avg, anchor, note) => {
       const won = winner === key;
       const align = anchor === "start" ? "text-right" : "text-left";
       return (
@@ -80,6 +83,7 @@ export default function ComparisonRow({
             </div>
           ) : null}
           {avg ? <div className="muted mt-0.5 text-xs tabular-nums">{avg}</div> : null}
+          {note ? <div className="muted text-xs tabular-nums">{note}</div> : null}
         </div>
       );
     };
@@ -88,12 +92,12 @@ export default function ComparisonRow({
         className="grid flex-1 grid-cols-[1fr_9rem_1fr] items-center gap-2 border-b border-base-300 py-1.5 last:border-0 max-sm:grid-cols-[1fr_7rem_1fr] max-sm:gap-1.5 max-sm:text-sm"
         {...(animated ? { variants: listItem } : {})}
       >
-        {side("a", aMissing, displayA, widthA, markerA, avgA, "start")}
+        {side("a", aMissing, displayA, widthA, markerA, avgA, "start", noteA)}
         <div className="text-center leading-tight">
           <span className="text-xs font-bold tracking-wide uppercase">{tip ? <HeaderTip tip={tip}>{label}</HeaderTip> : label}</span>
           {direction === "lower" ? <span className="muted block text-[0.6rem] tracking-wide uppercase">Lower is better</span> : null}
         </div>
-        {side("b", bMissing, displayB, widthB, markerB, avgB, "end")}
+        {side("b", bMissing, displayB, widthB, markerB, avgB, "end", noteB)}
       </Root>
     );
   }

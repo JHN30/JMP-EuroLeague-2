@@ -125,22 +125,6 @@ const ROWS = [
     },
   },
   {
-    key: "possessions",
-    label: "Possessions counted",
-    tip: "Possessions counted from play-by-play. The Four Factors use the box-score estimate",
-    direction: "neutral",
-    value: (team) => number(team.possessions?.countedPossessions),
-    display: (team) => formatCount(team.possessions?.countedPossessions),
-  },
-  {
-    key: "timeOfPossession",
-    label: "Time of possession",
-    tip: "Game time the team had the ball, summed over its counted possessions",
-    direction: "neutral",
-    value: (team) => number(team.possessions?.possessionSeconds),
-    display: (team) => formatMinutes(team.possessions?.possessionSeconds),
-  },
-  {
     key: "avgPossession",
     label: "Average possession",
     tip: "Average length of a possession, in seconds",
@@ -174,9 +158,9 @@ function sides(teams) {
   return local && road ? { local, road } : null;
 }
 
-export function scoringProfileRows(teams) {
-  const pair = sides(teams);
-  return pair ? buildRows(ROWS, pair.local, pair.road) : [];
+// One row definition by key, for the Team comparison tab, which builds its own rows and summary chips.
+export function flowRow(key) {
+  return ROWS.find((row) => row.key === key);
 }
 
 export function overviewFlowRows(teams) {

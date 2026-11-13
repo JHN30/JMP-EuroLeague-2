@@ -519,7 +519,7 @@ test.describe("Game page", () => {
     { tab: "Box score", pattern: "/box-score", labels: ["Loading the box score"], early: true },
     { tab: "Game flow", pattern: "/play-by-play", labels: ["Loading game flow"], early: true },
     { tab: "Rotations", pattern: "/(lineups|play-by-play)", labels: ["Loading rotations", "Loading assist connections", "Loading lineups"], early: true },
-    { tab: "Team comparison", pattern: "/(box-score|advanced|team-flow)", labels: ["Loading team comparison", "Loading the Four Factors", "Loading the scoring profile"], early: true },
+    { tab: "Team comparison", pattern: "/box-score", labels: ["Loading team comparison"], early: true },
     { tab: "Shooting", pattern: "/shots", labels: ["Loading shot chart"] },
     { tab: "Play-by-play", pattern: "/play-by-play", labels: ["Loading play-by-play"], early: true },
   ]) {

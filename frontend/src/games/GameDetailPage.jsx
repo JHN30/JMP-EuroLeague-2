@@ -4,17 +4,14 @@ import { m } from "motion/react";
 import { useParams } from "react-router";
 import { getBoxScore, getGame, getGameAdvanced, getGameLineups, getGameTeamFlow, getPlayByPlay, getShots } from "../lib/api";
 import AsyncState from "../lib/AsyncState";
-import GamePageSkeleton, { BoxScoreSkeleton, BoxScoreTablesSkeleton, ComparisonRowsSkeleton, GameFlowSkeleton, GameShootingSkeleton, PlayByPlaySkeleton } from "./GamePageSkeleton";
+import GamePageSkeleton, { BoxScoreSkeleton, BoxScoreTablesSkeleton, GameFlowSkeleton, GameShootingSkeleton, PlayByPlaySkeleton } from "./GamePageSkeleton";
 import CompetitionContext from "../lib/CompetitionContext";
 import { useSeasonFormat } from "../lib/useSeasonFormat";
 import BackLink from "../lib/BackLink";
-import ComparisonRow from "../lib/ComparisonRow";
 import EmptyText from "../lib/EmptyText";
 import {
   formatCount,
   formatMinutes,
-  formatMissing,
-  formatPercentage,
   formatPeriod,
   formatSignedDiff,
 } from "../lib/format";
@@ -22,21 +19,18 @@ import HeaderTip from "../lib/HeaderTip";
 import LabelledSelect from "../lib/LabelledSelect";
 import Panel from "../lib/Panel";
 import PanelHeader from "../lib/PanelHeader";
-import { displayName } from "../lib/playerName";
 import { useDocumentTitle } from "../lib/useDocumentTitle";
 import { sectionContainer, sectionItem } from "../lib/motion";
 import { AnimatedBody, AnimatedRow } from "../standings/motionTable";
 import ScrollingTable from "../standings/ScrollingTable";
-import { benchPoints, compareByName, hasMinutes, isStarter, paintPoints, shootingPercentage, shortTeamName, teamName } from "./gameUtils";
+import { compareByName, hasMinutes, isStarter, madeAttempted, shortTeamName, teamName } from "./gameUtils";
 import { PeriodTable, ScoreFlowChart } from "./gameFlow";
 import { computeGameFlow, momentLabel, withRunningScore } from "./gameFlowData";
 import { advancedColumns, attachAdvanced } from "./AdvancedBoxScore";
 import FilterDisclosure from "./FilterDisclosure";
-import FourFactors from "./FourFactors";
-import ScoringProfile from "./ScoringProfile";
 import MatchupHeader from "./MatchupHeader";
-import TeamLabel from "./TeamLabel";
 import OverviewTab from "./OverviewTab";
+import TeamComparisonTab from "./TeamComparisonTab";
 import PlayerLink from "./PlayerLink";
 import RotationsTab from "./RotationsTab";
 import { TabPanel, TabStrip } from "../lib/TabStrip";
@@ -54,11 +48,6 @@ const GAME_TABS = [
 
 // A game that has not been played has only its preview: every other tab needs a played game.
 const UNPLAYED_TABS = GAME_TABS.slice(0, 1);
-
-function madeAttempted(made, attempted) {
-  if (made == null && attempted == null) return formatMissing(null);
-  return `${formatMissing(made)}-${formatMissing(attempted)}`;
-}
 
 // Hover tip per box score stat: the full name first, then a short explanation.
 const STAT_TIPS = {
@@ -620,198 +609,6 @@ function GameFlowTab({ events, periodScores, localTeam, roadTeam, forfeit }) {
       <FlowMetrics flow={flow} localTeam={localTeam} roadTeam={roadTeam} />
       <ScoreFlowChart flow={flow} localTeam={localTeam} roadTeam={roadTeam} />
       <PeriodTable periodScores={periodScores} localTeam={localTeam} roadTeam={roadTeam} forfeit={forfeit} />
-    </div>
-  );
-}
-
-function shootingCell(made, attempted) {
-  const pct = shootingPercentage(made, attempted);
-  return `${madeAttempted(made, attempted)} (${formatPercentage(pct)})`;
-}
-
-const COMPARISON_ROWS = [
-  { label: "Points", render: (row) => formatCount(row.points), value: (row) => Number(row.points) },
-  {
-    label: "Field goals",
-    tip: "All shots from the field, twos and threes: made-attempted",
-    render: (row) => shootingCell(row.fieldGoalsMadeTotal, row.fieldGoalsAttemptedTotal),
-    value: (row) => shootingPercentage(row.fieldGoalsMadeTotal, row.fieldGoalsAttemptedTotal),
-  },
-  {
-    label: "2PT",
-    render: (row) => shootingCell(row.fieldGoalsMade2, row.fieldGoalsAttempted2),
-    value: (row) => shootingPercentage(row.fieldGoalsMade2, row.fieldGoalsAttempted2),
-  },
-  {
-    label: "3PT",
-    render: (row) => shootingCell(row.fieldGoalsMade3, row.fieldGoalsAttempted3),
-    value: (row) => shootingPercentage(row.fieldGoalsMade3, row.fieldGoalsAttempted3),
-  },
-  {
-    label: "FT",
-    render: (row) => shootingCell(row.freeThrowsMade, row.freeThrowsAttempted),
-    value: (row) => shootingPercentage(row.freeThrowsMade, row.freeThrowsAttempted),
-  },
-  { label: "Rebounds", render: (row) => formatCount(row.totalRebounds), value: (row) => Number(row.totalRebounds) },
-  { label: "Offensive rebounds", render: (row) => formatCount(row.offensiveRebounds), value: (row) => Number(row.offensiveRebounds) },
-  { label: "Defensive rebounds", render: (row) => formatCount(row.defensiveRebounds), value: (row) => Number(row.defensiveRebounds) },
-  { label: "Assists", render: (row) => formatCount(row.assistances), value: (row) => Number(row.assistances) },
-  { label: "Steals", render: (row) => formatCount(row.steals), value: (row) => Number(row.steals) },
-  { label: "Turnovers", render: (row) => formatCount(row.turnovers), value: (row) => Number(row.turnovers), lowerIsBetter: true },
-  { label: "Blocks", render: (row) => formatCount(row.blocksFavour), value: (row) => Number(row.blocksFavour) },
-  { label: "Blocks against", render: (row) => formatCount(row.blocksAgainst), value: (row) => Number(row.blocksAgainst), lowerIsBetter: true },
-  { label: "Fouls committed", render: (row) => formatCount(row.foulsCommited), value: (row) => Number(row.foulsCommited), lowerIsBetter: true },
-  { label: "Fouls drawn", render: (row) => formatCount(row.foulsReceived), value: (row) => Number(row.foulsReceived) },
-];
-
-// The Head to head rows in groups, by label. The basic counts carry no tips; a row built from other numbers explains itself.
-const COMPARISON_GROUPS = [
-  { title: "Scoring", labels: ["Points", "Starters' points", "Bench points", "Points in the paint"] },
-  { title: "Shooting", labels: ["Field goals", "2PT", "3PT", "FT"] },
-  { title: "Rebounds", labels: ["Rebounds", "Offensive rebounds", "Defensive rebounds"] },
-  { title: "Ball and defense", labels: ["Assists", "Turnovers", "Team turnovers", "Steals", "Blocks", "Blocks against"] },
-  { title: "Fouls", labels: ["Fouls committed", "Fouls drawn"] },
-];
-
-// A team line count (credited to the team, not a player), or null without a team line.
-const teamLineCount = (teamRow, field) => (Number.isFinite(teamRow?.[field]) ? teamRow[field] : null);
-
-// One side's head coach under its name, in the order the names read elsewhere ("Ibon Navarro").
-function CoachLine({ total, className = "" }) {
-  return total?.coachName ? <p className={`muted mt-0.5 text-xs ${className}`}>Coach: {displayName(total.coachName)}</p> : null;
-}
-
-const LOADING_MARK = (
-  <span className="muted">
-    <span aria-hidden="true">…</span>
-    <span className="sr-only">Loading</span>
-  </span>
-);
-
-// Each team's box-score totals on one line per stat, in groups. Bench and starters' points come from the players' starter
-// flags, the team turnovers from the team line, and points in the paint from the shots, which load separately:
-// their trouble only touches that row. A side with no value prints a dash and leaves both sides unhighlighted: it is not a 0
-// to beat.
-function TeamComparisonRows({ localTotal, roadTotal, localTeamRow, roadTeamRow, localTeam, roadTeam, playerStats, shotsQuery }) {
-  if (!localTotal || !roadTotal) {
-    return <EmptyText>Team totals weren't recorded for this game.</EmptyText>;
-  }
-  const paintFor = (team) => (shotsQuery.isSuccess ? paintPoints(shotsQuery.data.shots, team?.clubCode) : null);
-  const counted = (label, valueA, valueB, { tip, lowerIsBetter = false } = {}) => ({
-    label,
-    tip,
-    direction: valueA === null || valueB === null ? "neutral" : lowerIsBetter ? "lower" : "higher",
-    rawA: valueA,
-    rawB: valueB,
-    displayA: formatCount(valueA),
-    displayB: formatCount(valueB),
-  });
-  const [localBench, roadBench] = [benchPoints(playerStats, "local"), benchPoints(playerStats, "road")];
-  const starters = (total, bench) => (bench === null || !Number.isFinite(total.points) ? null : total.points - bench);
-  const rows = new Map(
-    [
-      ...COMPARISON_ROWS.map((row) => {
-        const [rawA, rawB] = [row.value(localTotal), row.value(roadTotal)];
-        return {
-          label: row.label,
-          tip: row.tip,
-          direction: rawA === null || rawB === null ? "neutral" : row.lowerIsBetter ? "lower" : "higher",
-          rawA,
-          rawB,
-          displayA: row.render(localTotal),
-          displayB: row.render(roadTotal),
-        };
-      }),
-      counted("Bench points", localBench, roadBench),
-      counted("Starters' points", starters(localTotal, localBench), starters(roadTotal, roadBench), {
-        tip: "Points scored by the starting five",
-      }),
-      counted("Team turnovers", teamLineCount(localTeamRow, "turnovers"), teamLineCount(roadTeamRow, "turnovers"), {
-        tip: "Turnovers credited to the team rather than a player, such as a shot-clock violation",
-        lowerIsBetter: true,
-      }),
-      {
-        ...counted("Points in the paint", paintFor(localTeam), paintFor(roadTeam)),
-        ...(shotsQuery.isLoading ? { missingText: LOADING_MARK } : {}),
-      },
-    ].map((row) => [row.label, row]),
-  );
-
-  return (
-    <Panel className="p-4 max-sm:p-3">
-      <div className="mb-2 grid grid-cols-2 gap-4 max-sm:gap-2">
-        <div className="flex flex-col items-end text-right">
-          <TeamLabel team={localTeam} />
-          <CoachLine total={localTotal} />
-        </div>
-        <div>
-          <TeamLabel team={roadTeam} />
-          <CoachLine total={roadTotal} />
-        </div>
-      </div>
-      {COMPARISON_GROUPS.map((group) => (
-        <section key={group.title} aria-label={group.title} className="mt-3 first-of-type:mt-0">
-          <h4 className="muted mb-0.5 text-center text-xs font-bold tracking-wide uppercase">{group.title}</h4>
-          {group.labels.map((label) => (
-            <ComparisonRow key={label} {...rows.get(label)} inline bars={false} />
-          ))}
-        </section>
-      ))}
-      {shotsQuery.isError ? (
-        <p className="muted mt-3 flex flex-wrap items-center gap-2 text-sm">
-          Points in the paint couldn't be loaded.
-          <button type="button" className="btn btn-sm" onClick={() => shotsQuery.refetch()}>
-            Retry
-          </button>
-        </p>
-      ) : null}
-    </Panel>
-  );
-}
-
-// Below lg the Head to head rows, the Four Factors and the Scoring profile stack in that order. From lg the Four Factors fill
-// the right column and the Head to head rows sit on the left with the Scoring profile right under them, at their own
-// heights: the auto first row is the Head to head's, the Scoring profile starts the second. They load separately, so
-// trouble with one never hides the others.
-function TeamComparisonTab({ game, boxScoreQuery, advancedQuery, teamFlowQuery, shotsQuery }) {
-  const statsFor = (side, kind) => boxScoreQuery.data?.teamStats.find((row) => row.side === side && row.statsKind === kind);
-  const totalFor = (side) => statsFor(side, "total");
-
-  return (
-    <div className="grid gap-6 lg:grid-cols-2 lg:grid-rows-[auto_1fr] lg:gap-4">
-      <section className="flex flex-col lg:col-start-1 lg:row-start-1">
-        <PanelHeader kicker="BOX SCORE" title="Head to head" compact />
-        {boxScoreQuery.isLoading ? (
-          <AsyncState status="loading" label="Loading team comparison" skeleton={<ComparisonRowsSkeleton />} />
-        ) : boxScoreQuery.isError ? (
-          <AsyncState status="error" message="Could not load team comparison." onRetry={() => boxScoreQuery.refetch()} />
-        ) : (
-          <TeamComparisonRows
-            localTotal={totalFor("local")}
-            roadTotal={totalFor("road")}
-            localTeamRow={statsFor("local", "team")}
-            roadTeamRow={statsFor("road", "team")}
-            localTeam={game.localTeam}
-            roadTeam={game.roadTeam}
-            playerStats={boxScoreQuery.data.playerStats}
-            shotsQuery={shotsQuery}
-          />
-        )}
-      </section>
-      <section className="flex flex-col lg:col-start-2 lg:row-span-2 lg:row-start-1 lg:self-start">
-        <PanelHeader kicker="FOUR FACTORS" title="Each team against its season average" compact />
-        <FourFactors
-          advancedQuery={advancedQuery}
-          localTeam={game.localTeam}
-          roadTeam={game.roadTeam}
-          localTotal={totalFor("local")}
-          roadTotal={totalFor("road")}
-        />
-      </section>
-      <section className="flex flex-col lg:col-start-1 lg:row-start-2 lg:self-start">
-        <PanelHeader kicker="SCORING PROFILE" title="How each team scored and how the game was led" compact />
-        <ScoringProfile teamFlowQuery={teamFlowQuery} localTeam={game.localTeam} roadTeam={game.roadTeam} />
-      </section>
     </div>
   );
 }

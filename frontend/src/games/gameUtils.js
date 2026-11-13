@@ -1,4 +1,15 @@
+import { formatMissing, formatPercentage } from "../lib/format";
 import { hasLocation, shotZone } from "../lib/shotZones";
+
+export function madeAttempted(made, attempted) {
+  if (made == null && attempted == null) return formatMissing(null);
+  return `${formatMissing(made)}-${formatMissing(attempted)}`;
+}
+
+// "20-30 (66.7%)": made-attempted with the percentage.
+export function shootingCell(made, attempted) {
+  return `${madeAttempted(made, attempted)} (${formatPercentage(shootingPercentage(made, attempted))})`;
+}
 
 export function teamName(team) {
   return team?.name ?? team?.abbreviatedName ?? "TBD";

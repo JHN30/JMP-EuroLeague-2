@@ -3,7 +3,7 @@ import { useQueries, useQuery } from "@tanstack/react-query";
 import { Chart } from "../lib/chartSetup";
 import { m } from "motion/react";
 import { Link, useParams } from "react-router";
-import { getLeaderStats, getLeagueTeamStats, getPhases, getPostseasonSeries, getSeasonGames, getSeasonStandings } from "../lib/api";
+import { getLeagueTeamStats, getPhases, getPostseasonSeries, getSeasonGames, getSeasonLeaders, getSeasonStandings } from "../lib/api";
 import AsyncState from "../lib/AsyncState";
 import { SkeletonChip } from "../lib/Skeleton";
 import OverviewSkeleton, { SummarySkeleton } from "./OverviewSkeleton";
@@ -53,23 +53,15 @@ function currentPhaseFromPlayedGames(phases, playedGames) {
   return phases.find((phase) => phase.code === "RS") ?? phases[0];
 }
 
-// The season API caps `limit` at 100, so a full season's played games (which
-// can exceed that) are paged through rather than fetched in one request.
+// The season API caps `limit` at 100, so a full season's played games (which can exceed that) come in pages: the first
+// one says how many there are, and the rest are asked for together, then joined in order.
 async function fetchAllPlayedGames(seasonCode) {
-  const all = [];
-  let offset = 0;
-  for (let page = 0; page < MAX_PAGES; page += 1) {
-    const { games, pagination } = await getSeasonGames(seasonCode, {
-      status: "played",
-      limit: MAX_PAGE_SIZE,
-      offset,
-      order: "asc",
-    });
-    all.push(...games);
-    if (!pagination.hasMore) break;
-    offset += MAX_PAGE_SIZE;
-  }
-  return all;
+  const page = (offset) => getSeasonGames(seasonCode, { status: "played", limit: MAX_PAGE_SIZE, offset, order: "asc" });
+  const first = await page(0);
+  if (!first.pagination.hasMore) return first.games;
+  const pageCount = Math.min(MAX_PAGES, Math.ceil(first.pagination.total / MAX_PAGE_SIZE));
+  const rest = await Promise.all(Array.from({ length: pageCount - 1 }, (_, index) => page((index + 1) * MAX_PAGE_SIZE)));
+  return [first, ...rest].flatMap((result) => result.games);
 }
 
 // A hero card that opens its club's page when the club is known.
@@ -534,13 +526,9 @@ const LEADER_CATEGORIES = [
   { key: "pir", label: "PIR per game" },
 ];
 
-function LeaderCard({ seasonCode, category, phaseCode }) {
-  const query = useQuery({
-    queryKey: ["leader-stats", seasonCode, phaseCode, "perGame", category.key],
-    queryFn: () =>
-      getLeaderStats(seasonCode, { phase: phaseCode, mode: "perGame", sort: category.key, order: "desc", limit: 1, qualified: true }),
-  });
-  const leader = query.data?.players[0] ?? null;
+// One card of a phase's leaders; `query` is the phase's shared leaders request, which holds every card's stat.
+function LeaderCard({ seasonCode, category, query }) {
+  const leader = query.data?.leaders[category.key] ?? null;
   const status = query.isLoading ? "loading" : query.isError ? "error" : !leader ? "empty" : "ready";
 
   if (status === "loading") {
@@ -576,6 +564,11 @@ function LeaderCard({ seasonCode, category, phaseCode }) {
 }
 
 function PhaseLeadersGroup({ seasonCode, phaseCode, showHeading }) {
+  const query = useQuery({
+    queryKey: ["season-leaders", seasonCode, phaseCode, "perGame"],
+    queryFn: () =>
+      getSeasonLeaders(seasonCode, { phase: phaseCode, mode: "perGame", stats: LEADER_CATEGORIES.map((category) => category.key) }),
+  });
   return (
     <div>
       {showHeading ? (
@@ -590,7 +583,7 @@ function PhaseLeadersGroup({ seasonCode, phaseCode, showHeading }) {
         animate="show"
       >
         {LEADER_CATEGORIES.map((category) => (
-          <LeaderCard key={category.key} seasonCode={seasonCode} category={category} phaseCode={phaseCode} />
+          <LeaderCard key={category.key} seasonCode={seasonCode} category={category} query={query} />
         ))}
       </m.div>
     </div>
@@ -763,20 +756,6 @@ export default function SeasonOverviewPage() {
   });
   const phases = phasesQuery.data?.phases ?? [];
 
-  // First game of each phase (ascending) gives its start date; a second,
-  // descending request gives the end date.
-  const phaseFirstGameQueries = useQueries({
-    queries: phases.map((phase) => ({
-      queryKey: ["overview-phase-first-game", seasonCode, phase.code],
-      queryFn: () => getSeasonGames(seasonCode, { phase: phase.code, limit: 1, order: "asc" }),
-    })),
-  });
-  const phaseLastGameQueries = useQueries({
-    queries: phases.map((phase) => ({
-      queryKey: ["overview-phase-last-game", seasonCode, phase.code],
-      queryFn: () => getSeasonGames(seasonCode, { phase: phase.code, limit: 1, order: "desc" }),
-    })),
-  });
   // The Top 16 is a table stage, not part of the postseason: its group name covers every game of a 14-game round robin, so it is
   // neither a series nor a step on the road to the title.
   const knockoutPhases = phases.filter((phase) => phase.code !== "RS" && phase.code !== "TS");
@@ -827,14 +806,13 @@ export default function SeasonOverviewPage() {
   }
 
   const phaseSummaries = {};
-  phases.forEach((phase, index) => {
-    const first = phaseFirstGameQueries[index]?.data;
-    const last = phaseLastGameQueries[index]?.data;
+  // Each phase's first and last scheduled tip-offs come with the phases; a cancelled season spans only the games it played.
+  phases.forEach((phase) => {
     const played = (playedGamesQuery.data ?? []).filter((game) => game.phaseCode === phase.code);
     phaseSummaries[phase.code] = {
       dateRange: format?.status === "cancelled"
         ? dateRangeLabel(played[0]?.scheduledAt, played.at(-1)?.scheduledAt)
-        : dateRangeLabel(first?.games[0]?.scheduledAt, last?.games[0]?.scheduledAt),
+        : dateRangeLabel(phase.startDate, phase.endDate),
     };
   });
 
@@ -857,8 +835,6 @@ export default function SeasonOverviewPage() {
   }
 
   const summaryLoading =
-    phaseFirstGameQueries.some((query) => query.isLoading) ||
-    phaseLastGameQueries.some((query) => query.isLoading) ||
     knockoutPhaseGamesQueries.some((query) => query.isLoading) ||
     eliminationSeriesQuery.isLoading ||
     playedGamesQuery.isLoading ||
@@ -866,16 +842,12 @@ export default function SeasonOverviewPage() {
     standingsQuery.isLoading ||
     formatQuery.isLoading;
   const summaryError =
-    phaseFirstGameQueries.some((query) => query.isError) ||
-    phaseLastGameQueries.some((query) => query.isError) ||
     knockoutPhaseGamesQueries.some((query) => query.isError) ||
     playedGamesQuery.isError ||
     finalFourGamesQuery.isError ||
     standingsQuery.isError;
 
   function retrySummary() {
-    phaseFirstGameQueries.forEach((query) => query.refetch());
-    phaseLastGameQueries.forEach((query) => query.refetch());
     knockoutPhaseGamesQueries.forEach((query) => query.refetch());
     playedGamesQuery.refetch();
     finalFourGamesQuery.refetch();

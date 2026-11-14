@@ -139,6 +139,14 @@ export async function getLeaderStats(seasonCode, { phase, mode, limit, offset, s
   return data;
 }
 
+// The qualified leader of each stat in `stats` (sortable season-stats fields): `{ leaders: { <stat>: player or null } }`.
+export async function getSeasonLeaders(seasonCode, { phase, mode, stats }) {
+  const { data } = await api.get(`/seasons/${seasonCode}/season-stats/leaders`, {
+    params: { phase, mode, stats: stats.join(",") },
+  });
+  return data;
+}
+
 export async function getSeasonTeams(seasonCode) {
   const { data } = await api.get(`/seasons/${seasonCode}/teams`);
   return data;

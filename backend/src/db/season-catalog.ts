@@ -1,4 +1,4 @@
-import { and, desc, eq, inArray } from "drizzle-orm";
+import { and, desc, eq, inArray, max, min } from "drizzle-orm";
 import { db } from "./client";
 import { remembered } from "./remembered";
 import { games, rounds, seasons } from "./season-schema";
@@ -15,7 +15,8 @@ export type Season = {
   competition: { code: string; name: string | null };
 };
 
-export type Phase = { code: string; name: string | null };
+// `startDate` and `endDate` are the phase's first and last scheduled tip-offs (ISO), null when no game of it has a date.
+export type Phase = { code: string; name: string | null; startDate: string | null; endDate: string | null };
 export type Round = { key: string; number: number; index: number | null; name: string | null };
 
 export class CatalogDatabaseError extends Error {
@@ -105,15 +106,18 @@ export const getPhases = remembered(async function getPhases(seasonCode: string)
       db.select({ code: rounds.phaseCode, number: rounds.roundNumber }).from(rounds).where(scope),
     ),
     catalogRead(() =>
-      db.selectDistinct({ code: games.phaseCode, name: games.phaseName })
+      db.select({ code: games.phaseCode, name: games.phaseName, first: min(games.scheduledAt), last: max(games.scheduledAt) })
         .from(games)
-        .where(gameScope),
+        .where(gameScope)
+        .groupBy(games.phaseCode, games.phaseName),
     ),
   ]);
 
-  const phases = new Map<string, { firstRound: number | null; names: Set<string> }>();
+  type Entry = { firstRound: number | null; names: Set<string>; startDate: string | null; endDate: string | null };
+  const empty = (): Entry => ({ firstRound: null, names: new Set<string>(), startDate: null, endDate: null });
+  const phases = new Map<string, Entry>();
   for (const row of roundRows) {
-    const phase = phases.get(row.code) ?? { firstRound: null, names: new Set<string>() };
+    const phase = phases.get(row.code) ?? empty();
     if (phase.firstRound === null || row.number < phase.firstRound) {
       phase.firstRound = row.number;
     }
@@ -121,8 +125,13 @@ export const getPhases = remembered(async function getPhases(seasonCode: string)
   }
   for (const row of gameRows) {
     if (row.code === null) continue;
-    const phase = phases.get(row.code) ?? { firstRound: null, names: new Set<string>() };
+    const phase = phases.get(row.code) ?? empty();
     if (row.name !== null) phase.names.add(row.name);
+    // A phase whose games carry several names spans all of them. ISO strings of one format compare as dates.
+    const first = row.first === null ? null : new Date(row.first).toISOString();
+    const last = row.last === null ? null : new Date(row.last).toISOString();
+    if (first !== null && (phase.startDate === null || first < phase.startDate)) phase.startDate = first;
+    if (last !== null && (phase.endDate === null || last > phase.endDate)) phase.endDate = last;
     phases.set(row.code, phase);
   }
   return [...phases.entries()]
@@ -132,6 +141,8 @@ export const getPhases = remembered(async function getPhases(seasonCode: string)
     .map(([code, phase]) => ({
       code,
       name: phase.names.size === 1 ? [...phase.names][0] : null,
+      startDate: phase.startDate,
+      endDate: phase.endDate,
     }));
 });
 

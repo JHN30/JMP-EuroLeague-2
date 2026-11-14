@@ -604,6 +604,28 @@ seasonRouter.get("/:seasonCode/season-stats", async (req, res) => {
   res.json({ phase, mode, players: result.items, pagination: { ...page, hasMore: result.hasMore, total: result.total } });
 });
 
+const MAX_LEADER_STATS = 10;
+
+// The qualified leader of each listed stat (`stats`, comma-separated sortable fields), in one answer: what
+// /season-stats?sort=<stat>&order=desc&limit=1&qualified=true gives for each, so a page of leader cards is one request.
+seasonRouter.get("/:seasonCode/season-stats/leaders", async (req, res) => {
+  const season = await requestedSeason(req, res);
+  if (!season) return;
+  const phase = requestedStatsPhase(req, res, season.seasonCode);
+  if (phase === null) return;
+  const mode = requestedStatsMode(req, res);
+  if (mode === null) return;
+  const stats = typeof req.query.stats === "string" ? req.query.stats.split(",") : [];
+  if (stats.length === 0 || stats.length > MAX_LEADER_STATS || new Set(stats).size !== stats.length
+    || !stats.every((stat) => SORTABLE_STATS_FIELDS.includes(stat))) {
+    sendError(res, 400, "INVALID_QUERY", "Invalid stats");
+    return;
+  }
+  const leaders = await Promise.all(stats.map((stat) =>
+    getSeasonStats(season.seasonCode, phase, mode, 1, 0, undefined, stat as SortableStatsField, "desc", { qualified: true })));
+  res.json({ phase, mode, leaders: Object.fromEntries(stats.map((stat, index) => [stat, leaders[index].items[0] ?? null])) });
+});
+
 // The records: one route per kind, each ranking one metric of the catalogue over the loaded seasons (see db/season-records.ts).
 for (const kind of RECORD_KINDS) {
   seasonRouter.get(`/:seasonCode/records/${kind}`, async (req, res) => {

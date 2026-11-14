@@ -1,4 +1,4 @@
-import { Chart } from "chart.js/auto";
+import { Chart } from "../lib/chartSetup";
 import { useEffect, useMemo, useRef } from "react";
 import { useNavigate } from "react-router";
 import { themeColor, useActiveTheme } from "../lib/useActiveTheme";

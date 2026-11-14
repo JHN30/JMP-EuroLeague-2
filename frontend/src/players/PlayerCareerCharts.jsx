@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useQueries } from "@tanstack/react-query";
-import { Chart } from "chart.js/auto";
+import { Chart } from "../lib/chartSetup";
 import { m } from "motion/react";
 import AsyncState from "../lib/AsyncState";
 import { CareerRadarSkeleton } from "./PlayerPageSkeleton";

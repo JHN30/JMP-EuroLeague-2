@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Chart } from "chart.js/auto";
+import { Chart } from "../lib/chartSetup";
 import { thinAxisLabels } from "../lib/chartHelpers";
 import Panel from "../lib/Panel";
 

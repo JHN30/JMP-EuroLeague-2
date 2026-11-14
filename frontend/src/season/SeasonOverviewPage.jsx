@@ -1,6 +1,6 @@
 import { useMemo, useRef, useEffect, useState } from "react";
 import { useQueries, useQuery } from "@tanstack/react-query";
-import { Chart } from "chart.js/auto";
+import { Chart } from "../lib/chartSetup";
 import { m } from "motion/react";
 import { Link, useParams } from "react-router";
 import { getLeaderStats, getLeagueTeamStats, getPhases, getPostseasonSeries, getSeasonGames, getSeasonStandings } from "../lib/api";

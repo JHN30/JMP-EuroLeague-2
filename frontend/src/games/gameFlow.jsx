@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import { Chart } from "chart.js/auto";
+import { Chart } from "../lib/chartSetup";
 import EmptyText from "../lib/EmptyText";
 import { formatMissing, formatPeriod, formatSignedDiff } from "../lib/format";
 import Panel from "../lib/Panel";

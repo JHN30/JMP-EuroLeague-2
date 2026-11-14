@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import { Chart } from "chart.js/auto";
+import { Chart } from "../lib/chartSetup";
 import { themeColor, useActiveTheme } from "../lib/useActiveTheme";
 import { formatDecimal, formatSignedDecimal } from "../lib/format";
 

@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import { Chart } from "chart.js/auto";
+import { Chart } from "../lib/chartSetup";
 import { m } from "motion/react";
 import { Link } from "react-router";
 import AsyncState from "../lib/AsyncState";

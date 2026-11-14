@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Chart } from "chart.js/auto";
+import { Chart } from "../lib/chartSetup";
 import { Link, useParams } from "react-router";
 import { useLiveSearchParams } from "../lib/useLiveSearchParams";
 import { shortTeamName, teamCode } from "../games/gameUtils";

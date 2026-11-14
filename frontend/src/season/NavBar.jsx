@@ -10,12 +10,15 @@ export default function NavBar() {
       className="hidden min-h-0 flex-1 items-center border-t border-base-300 px-3 sm:flex sm:px-5 lg:px-8"
     >
       {/* Ten tabs need the tablet width: 4px of padding each side below lg, and the row reaches 4px into the gutter so the first label stays on its edge. */}
-      <div className="tabs tabs-sm -mx-1 flex-nowrap overflow-x-auto lg:mx-0">
+      {/* `site-tabs` (index.css) draws the current page's underline, the bold label and the dimmer other tabs; `data-label`
+          is the hidden bold copy that keeps each tab's width fixed. */}
+      <div className="site-tabs tabs tabs-sm -mx-1 flex-nowrap overflow-x-auto lg:mx-0">
         {TABS.map((tab) => (
           <NavLink
             key={tab.label}
             to={`/${seasonCode}/${tab.path}`}
-            className={({ isActive }) => `tab px-1 font-semibold lg:px-2 ${isActive ? "tab-active text-primary" : ""}`}
+            data-label={tab.label}
+            className={({ isActive }) => `tab px-1 font-semibold lg:px-2 ${isActive ? "tab-active" : ""}`}
           >
             {tab.label}
           </NavLink>

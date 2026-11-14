@@ -1695,6 +1695,66 @@ button {
   --tab-line: 2px;
   --tab-height: 2rem;
 }
+
+/* The header's section tabs (from sm). Each tab fills the row's height, so the current page's orange underline sits on the
+   header's bottom edge and grows in like the strips above. Other tabs are dimmer (65% keeps 4.5:1 in both themes) and
+   brighten on hover with a faint underline. From lg the current label is bold; every tab reserves its bold width with a
+   hidden bold copy, so switching pages moves no tab. Below lg the ten tabs fill the row and bold would not fit.
+   The row reaches 1px past the nav, over the header's bottom border, so the underline covers that grey line. */
+.site-tabs {
+  align-self: flex-start;
+  height: calc(100% + 1px);
+}
+.site-tabs .tab {
+  height: 100%;
+  color: color-mix(in oklab, var(--color-base-content) 65%, transparent);
+  transition: color 0.2s ease;
+}
+.site-tabs .tab::after {
+  content: "";
+  position: absolute;
+  inset-inline: 0.25rem;
+  bottom: 0;
+  height: 2px;
+  border-radius: 2px;
+  background: var(--color-primary);
+  transform: scaleX(0);
+  transition:
+    transform 0.25s ease,
+    opacity 0.2s ease;
+}
+.site-tabs .tab:hover {
+  color: var(--color-base-content);
+}
+.site-tabs .tab:not(.tab-active):hover::after {
+  opacity: 0.35;
+  transform: scaleX(1);
+}
+.site-tabs .tab-active,
+.site-tabs .tab-active:hover {
+  color: var(--color-primary);
+}
+.site-tabs .tab-active::after {
+  transform: scaleX(1);
+}
+@media (min-width: 64rem) {
+  .site-tabs .tab {
+    flex-direction: column;
+  }
+  .site-tabs .tab::before {
+    content: attr(data-label);
+    height: 0;
+    overflow: hidden;
+    visibility: hidden;
+    font-weight: 700;
+  }
+  .site-tabs .tab-active {
+    font-weight: 700;
+  }
+  .site-tabs .tab::after {
+    inset-inline: 0.5rem;
+  }
+}
 /* A strip with more tabs than a narrow screen holds (the game page's seven) stays one row below lg and scrolls on its own;
    the scroll bar is hidden, the next tab peeking out at the edge is the hint. Below sm the tabs are a little smaller. */
 @media (max-width: 63.999rem) {

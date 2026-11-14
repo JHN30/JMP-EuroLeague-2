@@ -191,7 +191,14 @@ function requestedStatsMode(req: Request, res: Response): string | null {
 // ?qualified=true keeps only players who meet the minimum games; ?minGames=N keeps players with at least N games.
 function requestedStatsFilters(req: Request, res: Response): StatsFilters | null {
   const filters: StatsFilters = {};
-  const { qualified, minGames } = req.query;
+  const { qualified, minGames, club } = req.query;
+  if (club !== undefined) {
+    if (!validIdentity(club)) {
+      sendError(res, 400, "INVALID_QUERY", "Invalid club code");
+      return null;
+    }
+    filters.clubCode = club;
+  }
   if (qualified !== undefined) {
     if (qualified !== "true" && qualified !== "false") {
       sendError(res, 400, "INVALID_QUERY", "Invalid qualified filter");

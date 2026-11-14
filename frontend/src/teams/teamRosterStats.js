@@ -11,8 +11,8 @@ export function playedForOtherClubs(player, clubCode) {
 }
 
 // Every player of one club with their season stats (and photo), keyed by person key: per game by default, or totals with
-// `mode` "accumulated". The leader endpoint covers the whole league, so this pages through it and keeps the club's players,
-// including those whose row also names another club.
+// `mode` "accumulated". The endpoint keeps the club's players, including those whose row also names another club, so one
+// page normally holds them all.
 export async function fetchTeamRosterStats(seasonCode, phaseCode, clubCode, mode = "perGame") {
   const byPersonKey = new Map();
   let offset = 0;
@@ -22,6 +22,7 @@ export async function fetchTeamRosterStats(seasonCode, phaseCode, clubCode, mode
       mode,
       limit: PAGE_LIMIT,
       offset,
+      club: clubCode,
     });
     for (const player of data.players) {
       if ((player.clubCode ?? "").split(";").includes(clubCode)) byPersonKey.set(player.personKey, player);

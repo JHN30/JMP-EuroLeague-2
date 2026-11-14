@@ -250,8 +250,9 @@ export const SORTABLE_STATS_FIELDS = Object.keys(SORTABLE_FIELDS);
 export type SortableStatsField = keyof typeof SORTABLE_FIELDS;
 
 // Which players a leaderboard keeps. `qualified` keeps the players who meet the season and phase minimum of games;
-// `minGames` keeps players with at least that many games instead (it wins when both are given).
-export type StatsFilters = { qualified?: boolean; minGames?: number };
+// `minGames` keeps players with at least that many games instead (it wins when both are given). `clubCode` keeps one
+// club's players, including a traded player whose row names several clubs ("OLY;PAR").
+export type StatsFilters = { qualified?: boolean; minGames?: number; clubCode?: string };
 
 export async function getSeasonStats(
   seasonCode: string,
@@ -271,6 +272,9 @@ export async function getSeasonStats(
     eq(seasonStatsTraditional.mode, mode),
   ];
   if (personKey !== undefined) conditions.push(eq(seasonStatsTraditional.personKey, personKey));
+  if (filters.clubCode !== undefined) {
+    conditions.push(sql`${filters.clubCode} = ANY(string_to_array(${seasonStatsTraditional.clubCode}, ';'))`);
+  }
   if (filters.minGames !== undefined) {
     conditions.push(sql`${seasonStatsTraditional.gamesPlayed} >= ${filters.minGames}`);
   } else if (filters.qualified) {

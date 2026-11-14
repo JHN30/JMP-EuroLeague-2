@@ -131,10 +131,10 @@ export async function getLeaderForm(seasonCode, { phase, games } = {}) {
 }
 
 // `qualified: true` keeps only players who meet the season and phase minimum of games (a leaderboard's default);
-// `minGames` keeps players with at least that many games instead.
-export async function getLeaderStats(seasonCode, { phase, mode, limit, offset, sort, order, qualified, minGames } = {}) {
+// `minGames` keeps players with at least that many games instead. `club` keeps one club's players (traded players included).
+export async function getLeaderStats(seasonCode, { phase, mode, limit, offset, sort, order, qualified, minGames, club } = {}) {
   const { data } = await api.get(`/seasons/${seasonCode}/season-stats`, {
-    params: { phase, mode, limit, offset, sort, order, qualified, minGames },
+    params: { phase, mode, limit, offset, sort, order, qualified, minGames, club },
   });
   return data;
 }

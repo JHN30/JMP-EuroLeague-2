@@ -15,6 +15,7 @@ import { TabPanel, TabStrip } from "../lib/TabStrip";
 import { ordinal, rankTier } from "../teams/teamLeague";
 import AdvancedGauge, { VerdictPill } from "./AdvancedGauge";
 import { verdictFor } from "./advancedVerdict";
+import { CREST_WIDTH, sizedImageUrl } from "../lib/imageSize";
 
 const SCOPE_LABELS = { RS: "Regular season", TS: "Top 16", all: "All games", PS: "Postseason" };
 const EM_DASH = "—";
@@ -490,7 +491,7 @@ function OnOffCard({ row, rank, isMain }) {
     <Panel className="p-4">
       <div className="mb-3 flex flex-wrap items-start justify-between gap-3">
         <h4 className="flex min-w-0 items-center gap-2 font-semibold">
-          {row.crestUrl ? <RevealImage src={row.crestUrl} className="h-7 w-7 flex-none object-contain" /> : null}
+          {row.crestUrl ? <RevealImage src={sizedImageUrl(row.crestUrl, CREST_WIDTH)} className="h-7 w-7 flex-none object-contain" /> : null}
           <span className="truncate">{heading}</span>
         </h4>
         <div className="text-left sm:text-right">

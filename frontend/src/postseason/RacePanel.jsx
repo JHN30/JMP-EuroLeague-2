@@ -2,6 +2,7 @@ import Panel from "../lib/Panel";
 import RevealImage from "../lib/RevealImage";
 import { ordinal } from "../teams/teamLeague";
 import { raceMargin } from "./bracketModel";
+import { CREST_WIDTH, sizedImageUrl } from "../lib/imageSize";
 
 // `short` is the label below sm, where the table has little room. A club still only "in the race" gets no badge.
 const CHIPS = {
@@ -79,7 +80,7 @@ function ZoneTable({ zone, standings, race, info, nameOf }) {
                 <td className="muted text-right tabular-nums">{entry.basic.position}</td>
                 <td>
                   <span className="flex min-w-0 items-center gap-1.5 sm:gap-2">
-                    {crestUrl ? <RevealImage src={crestUrl} className="h-5 w-5 flex-none object-contain" /> : <span className="h-5 w-5 flex-none" />}
+                    {crestUrl ? <RevealImage src={sizedImageUrl(crestUrl, CREST_WIDTH)} className="h-5 w-5 flex-none object-contain" /> : <span className="h-5 w-5 flex-none" />}
                     <span className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-0.5">
                       <span className="min-w-0 font-semibold max-sm:wrap-break-word sm:truncate">{team?.abbreviatedName ?? entry.clubName}</span>
                       {chip ? (

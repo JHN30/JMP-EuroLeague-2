@@ -12,6 +12,7 @@ import ShortLabel from "../lib/ShortLabel";
 import { shortTeamName, teamCode } from "../games/gameUtils";
 import { WidgetPanel } from "./Dashboard";
 import { LatestScoresSkeleton, VISIBLE_ON_MOBILE } from "./HomeSkeleton";
+import { CREST_WIDTH, sizedImageUrl } from "../lib/imageSize";
 
 const MotionLink = m.create(Link);
 
@@ -51,7 +52,9 @@ export function MatchCard({ game, standingByClubCode, seasonCode, showScore, cla
         <div className={`game-team${localWon ? " win" : ""}`}>
           {game.localTeam?.crestUrl ? (
             <img
-              src={game.localTeam.crestUrl}
+              src={sizedImageUrl(game.localTeam.crestUrl, CREST_WIDTH)}
+              loading="lazy"
+              decoding="async"
               alt=""
               className="h-6 w-6 flex-none object-contain"
               onError={(event) => {
@@ -72,7 +75,9 @@ export function MatchCard({ game, standingByClubCode, seasonCode, showScore, cla
         <div className={`game-team${roadWon ? " win" : ""}`}>
           {game.roadTeam?.crestUrl ? (
             <img
-              src={game.roadTeam.crestUrl}
+              src={sizedImageUrl(game.roadTeam.crestUrl, CREST_WIDTH)}
+              loading="lazy"
+              decoding="async"
               alt=""
               className="h-6 w-6 flex-none object-contain"
               onError={(event) => {

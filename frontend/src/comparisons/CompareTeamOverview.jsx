@@ -18,6 +18,7 @@ import { useTeamRows } from "../leaders/teamData";
 import { fetchTeamRosterStats } from "../teams/teamRosterStats";
 import { absentFromSeason, edgesBetween } from "./teamCompare";
 import useClubEntities from "./useClubEntities";
+import { CREST_WIDTH, sizedImageUrl } from "../lib/imageSize";
 
 const GAMES_LIMIT = 100;
 const EDGES_SHOWN = 3;
@@ -25,7 +26,7 @@ const EDGES_SHOWN = 3;
 const MIN_EDGE_GAP = 3;
 
 function Crest({ url, className = "h-10 w-10" }) {
-  return url ? <RevealImage src={url} className={`${className} flex-none object-contain`} /> : <span className={`${className} flex-none`} />;
+  return url ? <RevealImage src={sizedImageUrl(url, CREST_WIDTH)} className={`${className} flex-none object-contain`} /> : <span className={`${className} flex-none`} />;
 }
 
 // `action` sits beside the title, wrapping under it when there is no room.

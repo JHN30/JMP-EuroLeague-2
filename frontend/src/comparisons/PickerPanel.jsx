@@ -3,6 +3,7 @@ import { AnimatePresence, m, useReducedMotion } from "motion/react";
 import { Avatar } from "../leaders/LeaderParts";
 import { EASE_OUT } from "../lib/motion";
 import RevealImage from "../lib/RevealImage";
+import { CREST_WIDTH, sizedImageUrl } from "../lib/imageSize";
 
 // The list opens inside the page, under its box, growing from nothing to its height, so it never hangs over the edge of the card
 // around it; it is capped at about six rows and scrolls inside itself.
@@ -83,5 +84,5 @@ export function PickerImage({ src, round = false, className = "h-6 w-6" }) {
   const usable = Boolean(src) && !src.includes(";");
   if (round) return <Avatar imageUrl={usable ? src : null} size={className} />;
   if (!usable) return <span aria-hidden="true" className={`${className} flex-none`} />;
-  return <RevealImage src={src} className={`${className} flex-none object-contain`} />;
+  return <RevealImage src={sizedImageUrl(src, CREST_WIDTH)} className={`${className} flex-none object-contain`} />;
 }

@@ -1,5 +1,6 @@
 import ShortLabel from "../lib/ShortLabel";
 import { shortTeamName, teamName } from "./gameUtils";
+import { CREST_WIDTH, sizedImageUrl } from "../lib/imageSize";
 
 // A team's name: its TV code (else its abbreviated name) below sm, where there is little room, and the full name from sm. Below sm the full name stays
 // in the page for screen readers (visually hidden), and the code is hidden from them, so the name is read once.
@@ -16,7 +17,9 @@ export default function TeamLabel({ team }) {
     <div className="flex items-center gap-2">
       {team?.crestUrl ? (
         <img
-          src={team.crestUrl}
+          src={sizedImageUrl(team.crestUrl, CREST_WIDTH)}
+          loading="lazy"
+          decoding="async"
           alt=""
           className="h-6 w-6 flex-none object-contain"
           onError={(event) => {

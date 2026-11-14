@@ -12,12 +12,13 @@ import RevealImage from "../lib/RevealImage";
 import ShortLabel from "../lib/ShortLabel";
 import Panel from "../lib/Panel";
 import { FormCell } from "../standings/standingsCells";
+import { CREST_WIDTH, sizedImageUrl } from "../lib/imageSize";
 
 // A club's side of a game: crest, code (the name from sm), and under it the regular-season record with the last five results beside it
 // (oldest first) from sm; below sm a club's column is too narrow for five results, so the record stands alone.
 function Side({ team, record, form, alignEnd }) {
   const crest = team?.crestUrl ? (
-    <RevealImage src={team.crestUrl} className="h-7 w-7 flex-none object-contain sm:h-8 sm:w-8" />
+    <RevealImage src={sizedImageUrl(team.crestUrl, CREST_WIDTH)} className="h-7 w-7 flex-none object-contain sm:h-8 sm:w-8" />
   ) : (
     <span className="h-7 w-7 flex-none sm:h-8 sm:w-8" />
   );

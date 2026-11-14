@@ -4,6 +4,7 @@ import Panel from "../lib/Panel";
 import CompetitionContext from "../lib/CompetitionContext";
 import RevealImage from "../lib/RevealImage";
 import { clubScore } from "./bracketModel";
+import { CREST_WIDTH, sizedImageUrl } from "../lib/imageSize";
 
 const STAGE_NAMES = { PI: "Play-In", PO: "Playoffs", FF: "Final Four" };
 
@@ -15,7 +16,7 @@ function Side({ side, slot }) {
   const won = slot.winnerClubCode === side.clubCode;
   return (
     <div className="flex min-w-0 items-center gap-3">
-      {side.crestUrl ? <RevealImage src={side.crestUrl} className="h-12 w-12 flex-none object-contain" /> : <span className="h-12 w-12 flex-none" />}
+      {side.crestUrl ? <RevealImage src={sizedImageUrl(side.crestUrl, CREST_WIDTH)} className="h-12 w-12 flex-none object-contain" /> : <span className="h-12 w-12 flex-none" />}
       <div className="min-w-0">
         <p className={"wrap-break-word text-lg " + (won ? "font-black" : "font-bold")}>{side.name}</p>
         <p className="muted text-xs tabular-nums">

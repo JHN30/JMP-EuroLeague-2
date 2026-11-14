@@ -23,15 +23,14 @@ import { ToolbarSlot } from "./toolbarSlot";
 
 // A player's face (the feed's portraits are full length, so the photo is zoomed onto the head) or a club's crest.
 // A player without a photo, or whose photo does not load, shows the silhouette instead; never both.
-// `optimize` asks the CDN for a small copy and loads it only near the screen (Records and Leaders; Compare keeps the original).
-export function Avatar({ imageUrl, crest = false, size = "h-8 w-8 sm:h-10 sm:w-10", optimize = false }) {
+// It asks the CDN for a small copy, loaded only near the screen.
+export function Avatar({ imageUrl, crest = false, size = "h-8 w-8 sm:h-10 sm:w-10" }) {
   const [failedUrl, setFailedUrl] = useState(null);
-  const src = optimize ? sizedImageUrl(imageUrl, crest ? CREST_WIDTH : PORTRAIT_WIDTH) : imageUrl;
-  const loading = optimize ? { loading: "lazy", decoding: "async" } : {};
+  const src = sizedImageUrl(imageUrl, crest ? CREST_WIDTH : PORTRAIT_WIDTH);
   if (crest) {
     return (
       <span className={`${size} flex flex-none items-center justify-center`}>
-        {src ? <RevealImage src={src} className="max-h-full max-w-full object-contain" {...loading} /> : null}
+        {src ? <RevealImage src={src} className="max-h-full max-w-full object-contain" /> : null}
       </span>
     );
   }
@@ -43,7 +42,6 @@ export function Avatar({ imageUrl, crest = false, size = "h-8 w-8 sm:h-10 sm:w-1
           effect="wipe"
           className="h-full w-full origin-top scale-[1.7] object-cover object-top"
           onError={() => setFailedUrl(src)}
-          {...loading}
         />
       ) : (
         <Silhouette />
@@ -73,7 +71,7 @@ export function TeamTag({ code, name, tvCode, crestUrl, compact = false }) {
   );
   return (
     <span className="muted flex min-w-0 items-center gap-1.5 text-xs">
-      {crestUrl ? <RevealImage src={sizedImageUrl(crestUrl, CREST_WIDTH)} loading="lazy" decoding="async" className="h-4 w-4 flex-none object-contain" /> : null}
+      {crestUrl ? <RevealImage src={sizedImageUrl(crestUrl, CREST_WIDTH)} className="h-4 w-4 flex-none object-contain" /> : null}
       <span className="min-w-0 line-clamp-2 wrap-break-word">{label}</span>
     </span>
   );
@@ -160,7 +158,7 @@ export function CategoryCard({ title, tip, entries, isLoading, isError, onRetry,
                   <div className="flex items-center gap-2 sm:gap-3 lg:gap-2">
                     <RankBadge rank={entry.rank} compact />
                     {/* The top row stands out with larger sizes from sm; on a phone they would leave too little room for a long name. */}
-                    <Avatar optimize imageUrl={entry.imageUrl} crest={entry.crest} size={top ? "h-10 w-10 sm:h-12 sm:w-12 lg:h-9 lg:w-9" : "h-10 w-10 lg:h-8 lg:w-8"} />
+                    <Avatar imageUrl={entry.imageUrl} crest={entry.crest} size={top ? "h-10 w-10 sm:h-12 sm:w-12 lg:h-9 lg:w-9" : "h-10 w-10 lg:h-8 lg:w-8"} />
                     <div className="min-w-0 flex-1">
                       <div className="lg:flex lg:items-baseline lg:gap-2">
                         <p className={`font-semibold max-sm:line-clamp-2 max-sm:wrap-break-word sm:truncate lg:min-w-0 ${top ? "text-sm sm:text-base lg:text-sm" : "text-sm"}`}

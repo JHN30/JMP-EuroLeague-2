@@ -13,6 +13,7 @@ import PanelHeader from "../lib/PanelHeader";
 import { isForfeit } from "../lib/forfeit";
 import ShortLabel from "../lib/ShortLabel";
 import { TabPanel, TabStrip } from "../lib/TabStrip";
+import { CREST_WIDTH, sizedImageUrl } from "../lib/imageSize";
 
 const MotionLink = m.create(Link);
 
@@ -75,7 +76,7 @@ function Crest({ team, className = "h-10 w-10" }) {
   const url = team?.crestUrl;
   // The crest as it is, never clipped to a shape: crests are not all round.
   if (url && failedUrl !== url) {
-    return <img src={url} alt="" className={`${className} flex-none object-contain`} onError={() => setFailedUrl(url)} />;
+    return <img loading="lazy" decoding="async" src={sizedImageUrl(url, CREST_WIDTH)} alt="" className={`${className} flex-none object-contain`} onError={() => setFailedUrl(url)} />;
   }
   return (
     <span

@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
+import { HEADER_CREST_WIDTH, sizedImageUrl } from "../lib/imageSize";
 import { useState } from "react";
 import { Link } from "react-router";
 import { TeamName } from "../games/TeamLabel";
@@ -12,7 +13,7 @@ function Crest({ team }) {
   const [failed, setFailed] = useState(false);
   const slot = "h-9 w-9 flex-none sm:h-12 sm:w-12";
   if (!team?.crestUrl || failed) return <div aria-hidden="true" className={slot} />;
-  return <img src={team.crestUrl} alt="" className={`${slot} object-contain`} onError={() => setFailed(true)} />;
+  return <img src={sizedImageUrl(team.crestUrl, HEADER_CREST_WIDTH)} alt="" className={`${slot} object-contain`} onError={() => setFailed(true)} />;
 }
 
 // One club: its crest over its name below sm, where a side is too narrow for both on one line, and beside it from sm (TV code

@@ -1,11 +1,12 @@
 import RevealImage from "../lib/RevealImage";
 import { clubScore } from "./bracketModel";
+import { CREST_WIDTH, sizedImageUrl } from "../lib/imageSize";
 
 // "Best of 5" for a stage that needs 3 wins, "One game" for a single game, from the stage's win target.
 const formatLabel = (slot) => ((slot.winTarget ?? 1) > 1 ? "Best of " + (2 * slot.winTarget - 1) : "One game");
 
 function Crest({ url }) {
-  return url ? <RevealImage src={url} className="h-6 w-6 flex-none object-contain" /> : <span className="h-6 w-6 flex-none" />;
+  return url ? <RevealImage src={sizedImageUrl(url, CREST_WIDTH)} className="h-6 w-6 flex-none object-contain" /> : <span className="h-6 w-6 flex-none" />;
 }
 
 // A projected seed's move since an earlier round: "▲2" up, "▼1" down, nothing when it held its place.

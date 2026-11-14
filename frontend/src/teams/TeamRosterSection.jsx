@@ -17,6 +17,7 @@ import StatBarCell from "../statistics/StatBarCell";
 import { barWidthScale } from "../statistics/statBarScale";
 import { ROSTER_TABLE_LEVELS, usesPerRound } from "./rosterTableColumns";
 import { fetchTeamRosterStats, playedForOtherClubs } from "./teamRosterStats";
+import { PORTRAIT_WIDTH, sizedImageUrl } from "../lib/imageSize";
 
 const MotionLink = m.create(Link);
 
@@ -103,7 +104,7 @@ function RosterCard({ entry, stats, seasonCode }) {
 
   const body = (
     <>
-      <PlayerPortrait imageUrl={stats?.playerImageUrl} className="w-20 sm:w-28" />
+      <PlayerPortrait imageUrl={stats?.playerImageUrl} className="w-20 sm:w-28" sizes="(max-width: 639px) 80px, 112px" />
       <div className="flex min-w-0 flex-1 flex-col justify-center gap-1 px-3 py-2 sm:gap-1.5 sm:px-4 sm:py-3">
         <div className="flex items-start justify-between gap-2">
           <div className="min-w-0">
@@ -410,7 +411,9 @@ function RosterTable({ registrations, statsByPersonKey, seasonCode, clubCode }) 
                         <span className="w-6 flex-none text-center text-xs text-base-content/60">{entry.dorsal ?? formatMissing(null)}</span>
                         {photo ? (
                           <img
-                            src={photo}
+                            src={sizedImageUrl(photo, PORTRAIT_WIDTH)}
+                            loading="lazy"
+                            decoding="async"
                             alt=""
                             className="aspect-3/4 h-8 w-auto flex-none object-contain object-bottom max-sm:hidden"
                             onError={(event) => {

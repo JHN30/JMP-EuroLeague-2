@@ -21,6 +21,7 @@ import ShortLabel from "../lib/ShortLabel";
 import { useElementWidth } from "../lib/useElementWidth";
 import { useDocumentTitle } from "../lib/useDocumentTitle";
 import { thinAxisLabels } from "../lib/chartHelpers";
+import { CREST_WIDTH, sizedImageUrl } from "../lib/imageSize";
 
 // The latest played meetings the history shows before the rest are folded away, and the meetings in the form strip.
 const HISTORY_SHOWN = 10;
@@ -203,7 +204,9 @@ function Crest({ url, className = "size-5" }) {
   if (!url) return null;
   return (
     <img
-      src={url}
+      src={sizedImageUrl(url, CREST_WIDTH)}
+      loading="lazy"
+      decoding="async"
       alt=""
       className={`flex-none object-contain ${className}`}
       onError={(event) => {

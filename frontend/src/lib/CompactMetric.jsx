@@ -1,5 +1,6 @@
 import { m } from "motion/react";
 import { Link } from "react-router";
+import { PORTRAIT_WIDTH, sizedImageUrl } from "./imageSize";
 import { cardHover } from "./motion";
 import { SkeletonChip } from "./Skeleton";
 
@@ -42,8 +43,10 @@ export default function CompactMetric({ value, label, name, isLoading = false, i
       </div>
       {imageUrl ? (
         <img
-          src={imageUrl}
+          src={sizedImageUrl(imageUrl, PORTRAIT_WIDTH)}
           alt={imageAlt}
+          loading="lazy"
+          decoding="async"
           className="kpi-chip-image"
           onError={(event) => {
             event.currentTarget.style.display = "none";

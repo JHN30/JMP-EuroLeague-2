@@ -13,6 +13,7 @@ import { displayName } from "../lib/playerName";
 import ShortLabel from "../lib/ShortLabel";
 import { SkeletonChip } from "../lib/Skeleton";
 import { Avatar, BOARD_AVATAR, RankBadge, TeamTag } from "../leaders/LeaderParts";
+import { CREST_WIDTH, sizedImageUrl } from "../lib/imageSize";
 
 const MotionLink = m.create(Link);
 
@@ -139,7 +140,7 @@ export function MostValuable({ seasonCode }) {
               <m.li key={entry.personKey} variants={listItem} className="flex flex-1 border-b border-base-300 last:border-0">
                 <Link to={`/${seasonCode}/players/${entry.personKey}`} className="board-row-link flex flex-1 items-center gap-2 py-2 sm:gap-3">
                   <RankBadge rank={index + 1} compact />
-                  <Avatar optimize imageUrl={entry.imageUrl} size={BOARD_AVATAR} />
+                  <Avatar imageUrl={entry.imageUrl} size={BOARD_AVATAR} />
                   <div className="min-w-0 flex-1">
                     <p className="font-semibold max-sm:line-clamp-2 sm:truncate">{displayName(entry.playerName ?? entry.personKey)}</p>
                     <TeamTag code={entry.clubCode} name={entry.clubName} tvCode={entry.clubTvCode} crestUrl={entry.crestUrl} />
@@ -203,7 +204,9 @@ function BestClub({ seasonCode, label, best }) {
     <li className="flex items-center gap-3 border-t border-base-300 py-2.5 first:border-t-0">
       {best.team.crestUrl ? (
         <img
-          src={best.team.crestUrl}
+          src={sizedImageUrl(best.team.crestUrl, CREST_WIDTH)}
+          loading="lazy"
+          decoding="async"
           alt=""
           className="h-8 w-8 flex-none object-contain"
           onError={(event) => {

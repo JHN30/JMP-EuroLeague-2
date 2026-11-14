@@ -2,6 +2,7 @@ import { formatShortDate } from "../lib/format";
 import Panel from "../lib/Panel";
 import RevealImage from "../lib/RevealImage";
 import { clubScore, placements } from "./bracketModel";
+import { CREST_WIDTH, HEADER_CREST_WIDTH, sizedImageUrl } from "../lib/imageSize";
 
 // The champion and where every other club finished, for a season that is over.
 export default function ChampionPanel({ bracket, seasonLabel }) {
@@ -21,7 +22,7 @@ export default function ChampionPanel({ bracket, seasonLabel }) {
     <Panel className="relative overflow-hidden p-5">
       <div aria-hidden="true" className="absolute inset-x-0 top-0 h-0.5 bg-primary" />
       <div className="flex flex-wrap items-center gap-3 sm:gap-5">
-        {champion.crestUrl ? <RevealImage src={champion.crestUrl} className="h-16 w-16 flex-none object-contain sm:h-24 sm:w-24" /> : null}
+        {champion.crestUrl ? <RevealImage src={sizedImageUrl(champion.crestUrl, HEADER_CREST_WIDTH)} className="h-16 w-16 flex-none object-contain sm:h-24 sm:w-24" /> : null}
         <div className="min-w-0">
           <p className="eyebrow mb-1">{seasonLabel ? "CHAMPION · " + seasonLabel.toUpperCase() : "CHAMPION"}</p>
           <h2 className="text-2xl font-black wrap-break-word sm:text-3xl">{champion.name}</h2>
@@ -40,7 +41,7 @@ export default function ChampionPanel({ bracket, seasonLabel }) {
             <ul className="flex flex-col gap-1">
               {group.clubs.map((club) => (
                 <li key={group.label + club.clubCode} className="flex items-center gap-2 text-sm">
-                  {club.crestUrl ? <RevealImage src={club.crestUrl} className="h-5 w-5 flex-none object-contain" /> : <span className="h-5 w-5 flex-none" />}
+                  {club.crestUrl ? <RevealImage src={sizedImageUrl(club.crestUrl, CREST_WIDTH)} className="h-5 w-5 flex-none object-contain" /> : <span className="h-5 w-5 flex-none" />}
                   <span className="min-w-0 font-semibold wrap-break-word">{club.short}</span>
                   {club.seedLabel || club.seed ? <span className="muted text-xs">({club.seedLabel ?? club.seed})</span> : null}
                 </li>

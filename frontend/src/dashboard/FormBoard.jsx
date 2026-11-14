@@ -9,6 +9,7 @@ import { useSummaryTableStage } from "../lib/useSummaryTableStage";
 import { resultsByClub } from "../standings/breakdownUtils";
 import { ResultsRibbon } from "../standings/StreaksFormView";
 import { WidgetPanel } from "./Dashboard";
+import { CREST_WIDTH, sizedImageUrl } from "../lib/imageSize";
 
 const LAST = 5;
 // Phones list this many clubs before "Show more".
@@ -70,7 +71,9 @@ export default function FormBoard() {
               <Link to={`/${seasonCode}/teams/${entry.clubCode}`} className="link-hover flex min-w-0 flex-1 items-center gap-2 font-medium">
                 {entry.crestUrl ? (
                   <img
-                    src={entry.crestUrl}
+                    src={sizedImageUrl(entry.crestUrl, CREST_WIDTH)}
+                    loading="lazy"
+                    decoding="async"
                     alt=""
                     className="h-6 w-6 flex-none object-contain"
                     onError={(event) => {

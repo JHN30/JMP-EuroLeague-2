@@ -2,6 +2,7 @@ import { useMemo } from "react";
 import { Link } from "react-router";
 
 import { tierForPosition } from "../lib/seasonFormat";
+import { CREST_WIDTH, sizedImageUrl } from "../lib/imageSize";
 
 function computeInsights(rounds, standingsByRound, teamOrder, tiers) {
   if (teamOrder.length === 0) return null;
@@ -55,7 +56,9 @@ function InsightCard({ label, team, detail, seasonCode }) {
         <span className="eyebrow">{label}</span>
         {team?.crestUrl ? (
           <img
-            src={team.crestUrl}
+            src={sizedImageUrl(team.crestUrl, CREST_WIDTH)}
+            loading="lazy"
+            decoding="async"
             alt=""
             className="h-9 w-9 flex-none object-contain sm:h-10 sm:w-10"
             onError={(event) => {

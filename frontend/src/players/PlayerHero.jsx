@@ -8,6 +8,7 @@ import { nameParts } from "../lib/playerName";
 import RevealImage from "../lib/RevealImage";
 import ShortLabel from "../lib/ShortLabel";
 import { statNumber } from "./playerOverview";
+import { CREST_WIDTH, sizedImageUrl } from "../lib/imageSize";
 
 function Fact({ label, value, sub }) {
   return (
@@ -28,7 +29,7 @@ function ClubChip({ registration, seasonCode }) {
   const short = team?.tvCode ?? team?.abbreviatedName ?? registration.clubCode ?? label;
   const content = (
     <>
-      {team?.crestUrl ? <RevealImage src={team.crestUrl} className="h-6 w-6 flex-none object-contain" /> : null}
+      {team?.crestUrl ? <RevealImage loading="eager" src={sizedImageUrl(team.crestUrl, CREST_WIDTH)} className="h-6 w-6 flex-none object-contain" /> : null}
       <span className="truncate font-semibold">
         <ShortLabel short={short} full={label} />
       </span>
@@ -75,7 +76,7 @@ export default function PlayerHero({ player, registrations, stats, seasonCode })
     // Below sm everything is centred in one column under the portrait; from sm the portrait is the left side of the whole panel.
     <Panel as="section" className="relative mb-6 grid overflow-hidden sm:grid-cols-[11rem_1fr]">
       <div aria-hidden="true" className="absolute inset-x-0 top-0 z-10 h-0.5 bg-primary" />
-      <PlayerPortrait imageUrl={photoUrl} className="max-sm:mx-auto max-sm:mt-5 max-sm:aspect-4/5 max-sm:w-36 max-sm:rounded-box sm:row-span-2 sm:w-full" />
+      <PlayerPortrait imageUrl={photoUrl} className="max-sm:mx-auto max-sm:mt-5 max-sm:aspect-4/5 max-sm:w-36 max-sm:rounded-box sm:row-span-2 sm:w-full" sizes="(max-width: 639px) 144px, 176px" eager />
       <m.div className="min-w-0 p-3 pb-0 max-sm:text-center sm:p-5 sm:pb-0" variants={sectionContainer} initial="hidden" animate="show">
         <m.div className="flex flex-col items-center gap-1 sm:flex-row sm:items-start sm:justify-between sm:gap-3" variants={sectionItem}>
           <div className="min-w-0">

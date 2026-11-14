@@ -28,6 +28,7 @@ import {
 } from "./teamAdvancedDefs";
 import { ordinal, rankOf, rankTier } from "./teamLeague";
 import { fetchTeamRosterStats } from "./teamRosterStats";
+import { PORTRAIT_WIDTH, sizedImageUrl } from "../lib/imageSize";
 
 const SCOPE_LABELS = { RS: "Regular season", TS: "Top 16", all: "All games", PS: "Postseason" };
 const EM_DASH = "—";
@@ -596,7 +597,9 @@ function PlayerFace({ name, imageUrl }) {
       {initials(name)}
       {imageUrl ? (
         <img
-          src={imageUrl}
+          src={sizedImageUrl(imageUrl, PORTRAIT_WIDTH)}
+          loading="lazy"
+          decoding="async"
           alt=""
           className="absolute inset-0 h-full w-full bg-base-300 object-cover object-top"
           onError={(event) => {

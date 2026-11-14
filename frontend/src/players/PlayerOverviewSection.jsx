@@ -15,6 +15,7 @@ import { formatStatValue } from "../lib/statsFields";
 import { themeColor, useActiveTheme } from "../lib/useActiveTheme";
 import { ordinal, rankTier } from "../teams/teamLeague";
 import { PROFILE_AXES, SEASON_LINE, rankPlayer, statNumber } from "./playerOverview";
+import { CREST_WIDTH, sizedImageUrl } from "../lib/imageSize";
 
 const FORM_GAMES = 10;
 const MIN_FORM_BAR_POINTS = 10;
@@ -253,7 +254,7 @@ function FormBar({ game, seasonCode, height }) {
           />
         </div>
         {opponent?.crestUrl ? (
-          <RevealImage src={opponent.crestUrl} className="h-5 w-5 object-contain" />
+          <RevealImage src={sizedImageUrl(opponent.crestUrl, CREST_WIDTH)} className="h-5 w-5 object-contain" />
         ) : (
           <span className="h-5" />
         )}

@@ -21,6 +21,7 @@ import { fetchTeamRosterStats } from "../teams/teamRosterStats";
 import { ROSTER_SUMMARY_TIPS } from "./statTips";
 import { absentFromSeason } from "./teamCompare";
 import useClubEntities from "./useClubEntities";
+import { CREST_WIDTH, sizedImageUrl } from "../lib/imageSize";
 
 const ROSTER_LIMIT = 100;
 
@@ -316,7 +317,7 @@ function ImpactTable({ seasonCode, entity, crestUrl, players, imageOf }) {
   return (
     <Panel className="p-3">
       <div className="mb-2 flex items-center gap-2">
-        {crestUrl ? <RevealImage src={crestUrl} className="h-7 w-7 flex-none object-contain" /> : null}
+        {crestUrl ? <RevealImage src={sizedImageUrl(crestUrl, CREST_WIDTH)} className="h-7 w-7 flex-none object-contain" /> : null}
         <h3 className="min-w-0 font-bold">{entity.label}</h3>
         <p className="muted ms-auto text-xs">Top {IMPACT_SHOWN} by Win Shares</p>
       </div>
@@ -373,7 +374,7 @@ function RosterTable({ seasonCode, entity, crestUrl, rows }) {
   return (
     <Panel className="p-3">
       <div className="mb-2 flex items-center gap-2">
-        {crestUrl ? <RevealImage src={crestUrl} className="h-7 w-7 flex-none object-contain" /> : null}
+        {crestUrl ? <RevealImage src={sizedImageUrl(crestUrl, CREST_WIDTH)} className="h-7 w-7 flex-none object-contain" /> : null}
         <h3 className="min-w-0 font-bold">{entity.label}</h3>
         <p className="muted ms-auto text-xs">{rows.length} players · per game</p>
       </div>

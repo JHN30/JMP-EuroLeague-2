@@ -8,6 +8,7 @@ import { useActiveTheme, themeColor } from "../lib/useActiveTheme";
 import { buildMarginSeries, eventMoment, momentLabel } from "./gameFlowData";
 import { teamCode, teamName } from "./gameUtils";
 import { TeamName } from "./TeamLabel";
+import { CREST_WIDTH, HEADER_CREST_WIDTH, sizedImageUrl } from "../lib/imageSize";
 
 // `fill` stretches the panel to its parent's height from lg, the rows sharing it out (the Overview, beside the score flow).
 export function PeriodTable({ periodScores, localTeam, roadTeam, forfeit = false, fill = false }) {
@@ -85,7 +86,9 @@ function TeamRow({ team, scores, otherScores, total, otherTotal, periodNumbers }
         <span className="flex items-center gap-2 max-sm:gap-1.5">
           {team?.crestUrl ? (
             <img
-              src={team.crestUrl}
+              src={sizedImageUrl(team.crestUrl, CREST_WIDTH)}
+              loading="lazy"
+              decoding="async"
               alt=""
               className="size-5 flex-none object-contain max-[359px]:hidden lg:size-7"
               onError={(event) => {
@@ -191,7 +194,8 @@ function loadCrest(url, onLoad) {
   if (!url) return null;
   const image = new Image();
   image.onload = onLoad;
-  image.src = url;
+  // Drawn as the chart's faint watermark at up to 150px; the header-sized copy skips the up to 130 KB original.
+  image.src = sizedImageUrl(url, HEADER_CREST_WIDTH);
   return image;
 }
 

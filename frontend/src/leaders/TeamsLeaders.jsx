@@ -125,7 +125,7 @@ function TeamsBoard({ seasonCode, phaseCode, stage, metric, source, params, setP
               <BoardRow
                 key={row.clubCode}
                 rank={rank}
-                avatar={<Avatar optimize imageUrl={row.crestUrl} crest size={BOARD_AVATAR} />}
+                avatar={<Avatar imageUrl={row.crestUrl} crest size={BOARD_AVATAR} />}
                 name={row.name}
                 columns={[
                   { label: "Games played", value: row.gp },

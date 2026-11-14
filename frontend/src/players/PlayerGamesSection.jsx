@@ -16,6 +16,7 @@ import RevealImage from "../lib/RevealImage";
 import ShortLabel from "../lib/ShortLabel";
 import { TabStrip } from "../lib/TabStrip";
 import { barWidthScale } from "../statistics/statBarScale";
+import { CREST_WIDTH, sizedImageUrl } from "../lib/imageSize";
 import {
   BAR_STATS,
   GAME_FILTERS,
@@ -243,7 +244,7 @@ function GameBars({ views, seasonCode }) {
                   {/* The opponent's crest, with home or away marked on its corner. */}
                   <span className="relative flex h-5 w-5 items-center justify-center">
                     {view.opponent?.crestUrl ? (
-                      <RevealImage src={view.opponent.crestUrl} className="h-5 w-5 object-contain" />
+                      <RevealImage src={sizedImageUrl(view.opponent.crestUrl, CREST_WIDTH)} className="h-5 w-5 object-contain" />
                     ) : (
                       <span className="text-[0.55rem] font-bold">{opponentCode(view.opponent)}</span>
                     )}
@@ -478,7 +479,7 @@ function GameTable({ views, highs, seasonCode }) {
                   <td className="max-sm:px-2">
                     <div className="flex min-w-0 items-center gap-2 max-sm:gap-1.5">
                       <HomeAwayIcon home={view.home} className="h-4 w-4 text-base-content/60" />
-                      {view.opponent?.crestUrl ? <RevealImage src={view.opponent.crestUrl} className="h-6 w-6 flex-none object-contain max-sm:hidden" /> : null}
+                      {view.opponent?.crestUrl ? <RevealImage src={sizedImageUrl(view.opponent.crestUrl, CREST_WIDTH)} className="h-6 w-6 flex-none object-contain max-sm:hidden" /> : null}
                       <div className="min-w-0">
                         {/* The start mark sits after the opponent, whose line is short on a phone (a TV code). */}
                         <div className="flex min-w-0 items-center gap-1.5">

@@ -16,6 +16,7 @@ import SearchField from "../lib/SearchField";
 import ShortLabel from "../lib/ShortLabel";
 import { useDocumentTitle } from "../lib/useDocumentTitle";
 import { ageAtSeasonStart } from "../lib/playerAge";
+import { CREST_WIDTH, sizedImageUrl } from "../lib/imageSize";
 
 const MotionLink = m.create(Link);
 
@@ -40,7 +41,7 @@ function PlayerCard({ player, seasonCode }) {
       {...cardHover}
     >
       {/* Below sm the portrait is the top of a stacked card and the shirt number a badge on its corner, so the surname gets the card's full width; from sm the portrait is the left side and the number sits beside the name. */}
-      <PlayerPortrait imageUrl={player.imageUrl} className="max-sm:aspect-4/3 max-sm:w-full sm:w-18" />
+      <PlayerPortrait imageUrl={player.imageUrl} className="max-sm:aspect-4/3 max-sm:w-full sm:w-18" sizes="(max-width: 639px) 50vw, 72px" />
       <div className="flex min-w-0 flex-1 flex-col justify-center gap-0.5 px-2.5 pb-2 pt-1.5 sm:px-3 sm:py-2">
         <div className="flex items-start justify-between gap-1.5">
           <div className="min-w-0 flex-1">
@@ -59,7 +60,7 @@ function PlayerCard({ player, seasonCode }) {
         {player.clubCode ? (
           <p className="flex min-w-0 items-center gap-1.5 text-sm">
             {player.crestUrl ? (
-              <RevealImage src={player.crestUrl} loading="lazy" className="h-4 w-4 flex-none object-contain" />
+              <RevealImage src={sizedImageUrl(player.crestUrl, CREST_WIDTH)} className="h-4 w-4 flex-none object-contain" />
             ) : null}
             <span className="truncate font-semibold">
               <ShortLabel short={player.clubTvCode ?? player.clubCode} full={player.clubName ?? player.clubCode} />

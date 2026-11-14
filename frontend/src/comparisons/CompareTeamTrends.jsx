@@ -18,6 +18,7 @@ import ShortLabel from "../lib/ShortLabel";
 import { LineTrend, MarginTrend } from "./TrendCharts";
 import { average, padTo } from "./trendMath";
 import useClubEntities from "./useClubEntities";
+import { CREST_WIDTH, sizedImageUrl } from "../lib/imageSize";
 
 const GAMES_LIMIT = 100;
 const WINDOW = 5;
@@ -73,7 +74,7 @@ function FormLine({ label, crestUrl, games }) {
   return (
     <m.li variants={listItem} className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-4 gap-y-1.5 border-b border-base-300 py-2.5 last:border-0 sm:grid-cols-[minmax(0,13rem)_7.5rem_minmax(0,1fr)_auto_auto]">
       <span className="flex min-w-0 items-center gap-2 font-bold">
-        {crestUrl ? <RevealImage src={crestUrl} className="h-7 w-7 flex-none object-contain" /> : <span className="h-7 w-7 flex-none" />}
+        {crestUrl ? <RevealImage src={sizedImageUrl(crestUrl, CREST_WIDTH)} className="h-7 w-7 flex-none object-contain" /> : <span className="h-7 w-7 flex-none" />}
         <span className="min-w-0 wrap-break-word">{label}</span>
       </span>
       <span className="muted text-right text-xs tabular-nums sm:text-left">
@@ -238,7 +239,7 @@ function CommonOpponents({ gamesA, gamesB, entityA, entityB, order }) {
             {rows.map((row) => (
               <m.li key={row.code} variants={listItem} data-better={row.better ?? undefined} className="grid grid-cols-[minmax(0,1fr)_5.5rem_5.5rem] items-center gap-x-2 border-b border-base-300 py-1.5 text-sm">
                 <span className="flex min-w-0 items-center gap-2">
-                  {row.opponent?.crestUrl ? <RevealImage src={row.opponent.crestUrl} className="h-5 w-5 flex-none object-contain" /> : <span className="h-5 w-5 flex-none" />}
+                  {row.opponent?.crestUrl ? <RevealImage src={sizedImageUrl(row.opponent.crestUrl, CREST_WIDTH)} className="h-5 w-5 flex-none object-contain" /> : <span className="h-5 w-5 flex-none" />}
                   <ShortLabel short={teamCode(row.opponent)} full={shortTeamName(row.opponent)} />
                 </span>
                 <Margins games={row.a} better={row.better === "a"} />

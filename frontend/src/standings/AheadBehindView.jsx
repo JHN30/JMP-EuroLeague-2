@@ -13,6 +13,7 @@ import { AnimatedBody, AnimatedRow } from "./motionTable";
 import RecordBar from "./RecordBar";
 import { ClubCell, PositionCell } from "./standingsCells";
 import ScrollingTable from "./ScrollingTable";
+import { CREST_WIDTH, sizedImageUrl } from "../lib/imageSize";
 
 const VIEWS = [
   { key: "quarters", label: "Net points per quarter" },
@@ -199,7 +200,7 @@ export default function AheadBehindView({ standings, seasonCode, shortNames, res
                 {rows.map(({ entry, profile }) => (
                   <m.div key={entry.clubCode} className="shape-card" variants={listItem}>
                     <div className="shape-card-head">
-                      {entry.crestUrl ? <img src={entry.crestUrl} alt="" onError={(event) => { event.currentTarget.style.display = "none"; }} /> : null}
+                      {entry.crestUrl ? <img loading="lazy" decoding="async" src={sizedImageUrl(entry.crestUrl, CREST_WIDTH)} alt="" onError={(event) => { event.currentTarget.style.display = "none"; }} /> : null}
                       <b title={entry.clubName ?? entry.clubCode}>{entry.clubName ?? entry.clubCode}</b>
                     </div>
                     {profile ? (

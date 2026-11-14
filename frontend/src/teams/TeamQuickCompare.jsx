@@ -12,6 +12,7 @@ import ShortLabel from "../lib/ShortLabel";
 import { TabPanel, TabStrip } from "../lib/TabStrip";
 import { isGroupedTable } from "../standings/standingsGroups";
 import { COMPARE_ROWS } from "./teamLeague";
+import { CREST_WIDTH, sizedImageUrl } from "../lib/imageSize";
 
 // `to` makes the label a link to the club's page: the opponent's label only, since the page is already the own club's.
 function ClubLabel({ club, to }) {
@@ -20,7 +21,9 @@ function ClubLabel({ club, to }) {
     <Root {...(to ? { to } : {})} className={`flex min-w-0 items-center gap-2${to ? " hover:text-primary" : ""}`}>
       {club.crestUrl ? (
         <img
-          src={club.crestUrl}
+          src={sizedImageUrl(club.crestUrl, CREST_WIDTH)}
+          loading="lazy"
+          decoding="async"
           alt=""
           className="h-6 w-6 flex-none object-contain"
           onError={(event) => {

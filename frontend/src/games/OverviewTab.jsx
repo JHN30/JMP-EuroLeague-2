@@ -18,11 +18,14 @@ import { bestPlayerMetric, gameLeaders, keyStatRows, pickBestPlayer } from "./ov
 import PlayerLink from "./PlayerLink";
 import TeamLabel from "./TeamLabel";
 import { overviewFlowRows } from "./teamFlow";
+import { PORTRAIT_WIDTH, sizedImageUrl } from "../lib/imageSize";
 
 function Headshot({ player }) {
   return player.headshotUrl ? (
     <img
-      src={player.headshotUrl}
+      src={sizedImageUrl(player.headshotUrl, PORTRAIT_WIDTH)}
+      loading="lazy"
+      decoding="async"
       alt=""
       className="aspect-3/4 h-16 w-auto flex-none object-contain object-bottom"
       onError={(event) => {

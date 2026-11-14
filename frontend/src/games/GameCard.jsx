@@ -8,6 +8,7 @@ import ShortLabel from "../lib/ShortLabel";
 import { FormCell } from "../standings/standingsCells";
 import { groupPositionLabel } from "../standings/standingsGroups";
 import { shortTeamName, teamCode } from "./gameUtils";
+import { CREST_WIDTH, sizedImageUrl } from "../lib/imageSize";
 
 const MotionLink = m.create(Link);
 
@@ -17,7 +18,7 @@ function TopScorer({ scorer }) {
   const surname = nameParts(scorer.personName ?? scorer.personKey).last || full;
   return (
     <span className="fixture-scorer" title={`${full}, ${scorer.points} points`}>
-      <PlayerPortrait imageUrl={scorer.headshotUrl} className="fixture-scorer-photo" />
+      <PlayerPortrait imageUrl={scorer.headshotUrl} className="fixture-scorer-photo" sizes="24px" />
       <span className="fixture-scorer-name">
         <ShortLabel short={surname} full={full} />
       </span>
@@ -43,7 +44,9 @@ function FixtureTeam({ team, entry, won, showGroup, scorer = null, showForm = fa
     <div className={`fixture-team${won ? " win" : ""}`}>
       {team?.crestUrl ? (
         <img
-          src={team.crestUrl}
+          src={sizedImageUrl(team.crestUrl, CREST_WIDTH)}
+          loading="lazy"
+          decoding="async"
           alt=""
           className="fixture-crest"
           onError={(event) => {

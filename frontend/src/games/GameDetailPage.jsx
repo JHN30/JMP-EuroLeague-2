@@ -35,6 +35,7 @@ import PlayerLink from "./PlayerLink";
 import RotationsTab from "./RotationsTab";
 import { TabPanel, TabStrip } from "../lib/TabStrip";
 import ShootingStudio from "./ShootingStudio";
+import { CREST_WIDTH, PORTRAIT_WIDTH, sizedImageUrl } from "../lib/imageSize";
 
 const GAME_TABS = [
   { key: "overview", label: "Overview" },
@@ -150,7 +151,9 @@ function BoxScorePlayer({ player, seasonCode }) {
       <span className={`w-6 flex-none text-center text-xs text-base-content/60 ${hasPhoto ? "box-score-dorsal" : ""}`}>{player.dorsal ?? "-"}</span>
       {hasPhoto ? (
         <img
-          src={player.headshotUrl}
+          src={sizedImageUrl(player.headshotUrl, PORTRAIT_WIDTH)}
+          loading="lazy"
+          decoding="async"
           alt=""
           className="box-score-photo aspect-3/4 h-10 w-auto flex-none object-contain object-bottom"
           onError={() => setPhotoFailed(true)}
@@ -191,7 +194,9 @@ function BoxScoreTable({ players, teamTotal, teamRow, team, won, seasonCode, gam
       <div className="mb-2 flex flex-wrap items-center gap-2">
         {team?.crestUrl ? (
           <img
-            src={team.crestUrl}
+            src={sizedImageUrl(team.crestUrl, CREST_WIDTH)}
+            loading="lazy"
+            decoding="async"
             alt=""
             className="h-8 w-8 flex-none object-contain"
             onError={(event) => {
@@ -402,7 +407,9 @@ function PlayByPlayRow({ event, localTeam, roadTeam }) {
       {/* Always one cell, so rows without a crest (timeouts, period starts) keep the same columns. */}
       {crest ? (
         <img
-          src={crest}
+          src={sizedImageUrl(crest, CREST_WIDTH)}
+          loading="lazy"
+          decoding="async"
           alt=""
           className="hidden h-6 w-6 flex-none object-contain sm:block"
           onError={(eventTarget) => {
@@ -536,7 +543,9 @@ function FlowMetric({ label, value, detail, tone, team, className = "" }) {
       <div className="mb-1 flex min-h-5 items-start gap-2">
         {team?.crestUrl ? (
           <img
-            src={team.crestUrl}
+            src={sizedImageUrl(team.crestUrl, CREST_WIDTH)}
+            loading="lazy"
+            decoding="async"
             alt=""
             className="size-5 flex-none object-contain"
             onError={(event) => {

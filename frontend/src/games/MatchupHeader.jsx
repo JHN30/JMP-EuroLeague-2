@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { HEADER_CREST_WIDTH, sizedImageUrl } from "../lib/imageSize";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router";
 import { getSeasonStandings } from "../lib/api";
@@ -29,7 +30,7 @@ function Crest({ team }) {
   const [failed, setFailed] = useState(false);
   const slot = "h-12 w-12 flex-none sm:h-20 sm:w-20 lg:h-16 lg:w-16";
   if (!team?.crestUrl || failed) return <div aria-hidden="true" className={slot} />;
-  return <img src={team.crestUrl} alt="" className={`${slot} object-contain`} onError={() => setFailed(true)} />;
+  return <img src={sizedImageUrl(team.crestUrl, HEADER_CREST_WIDTH)} alt="" className={`${slot} object-contain`} onError={() => setFailed(true)} />;
 }
 
 // A known club's crest and name open its team page; a side still to be set (TBD) is plain.

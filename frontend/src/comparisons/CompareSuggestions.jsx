@@ -12,6 +12,7 @@ import { displayName } from "../lib/playerName";
 import RevealImage from "../lib/RevealImage";
 import ShortLabel from "../lib/ShortLabel";
 import { useUpcomingRound } from "./useUpcomingRound";
+import { CREST_WIDTH, sizedImageUrl } from "../lib/imageSize";
 
 // The leaders the suggested pairs are made of: the top two per game in each.
 const PAIR_STATS = [
@@ -47,7 +48,7 @@ function PlayerLine({ player, value }) {
   const club = (player.clubTvCodes ?? player.clubCode)?.replaceAll(";", "/");
   return (
     <span className="flex min-w-0 items-center gap-2">
-      <Avatar optimize imageUrl={player.playerImageUrl} size="h-8 w-8 flex-none" />
+      <Avatar imageUrl={player.playerImageUrl} size="h-8 w-8 flex-none" />
       <span className="min-w-0 flex-1 wrap-break-word text-sm font-semibold">
         {displayName(player.playerName)}
         {club ? <span className="muted ms-1.5 text-xs font-normal">{club}</span> : null}
@@ -81,7 +82,7 @@ function PairCard({ stat, first, second, onPick }) {
 function ClubSide({ team, player, alignEnd }) {
   return (
     <span className={`flex min-w-0 items-center gap-2 ${alignEnd ? "flex-row-reverse text-right" : ""}`}>
-      {team?.crestUrl ? <RevealImage src={team.crestUrl} className="h-7 w-7 flex-none object-contain" /> : <span className="h-7 w-7 flex-none" />}
+      {team?.crestUrl ? <RevealImage src={sizedImageUrl(team.crestUrl, CREST_WIDTH)} className="h-7 w-7 flex-none object-contain" /> : <span className="h-7 w-7 flex-none" />}
       <span className="min-w-0">
         <span className="block wrap-break-word text-sm font-semibold leading-tight">{displayName(player.playerName)}</span>
         <span className="muted block text-xs leading-tight">

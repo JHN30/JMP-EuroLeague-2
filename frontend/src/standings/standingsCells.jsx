@@ -1,4 +1,5 @@
 import { Link } from "react-router";
+import { CREST_WIDTH, sizedImageUrl } from "../lib/imageSize";
 
 // With a short name the cell shows it below sm and the full name from sm up; the link is named by the full name at every width.
 export function ClubCell({ entry, seasonCode, shortName }) {
@@ -11,7 +12,9 @@ export function ClubCell({ entry, seasonCode, shortName }) {
     >
       {entry.crestUrl ? (
         <img
-          src={entry.crestUrl}
+          src={sizedImageUrl(entry.crestUrl, CREST_WIDTH)}
+          loading="lazy"
+          decoding="async"
           alt=""
           className="h-6 w-6 flex-none object-contain"
           onError={(event) => {

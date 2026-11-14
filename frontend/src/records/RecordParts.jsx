@@ -47,21 +47,21 @@ export function Holder({ record, size = "h-9 w-9", short = false, compact = fals
   return (
     <div className="flex min-w-0 items-center gap-2.5">
       {/* A player always has a picture: the headshot, or the silhouette when there is none. */}
-      {!record.isClub ? <Avatar optimize imageUrl={record.portraitUrl} size={`${size} flex-none`} /> : null}
-      {record.crestUrl ? <Avatar optimize crest imageUrl={record.crestUrl} size={`${size} flex-none`} /> : null}
+      {!record.isClub ? <Avatar imageUrl={record.portraitUrl} size={`${size} flex-none`} /> : null}
+      {record.crestUrl ? <Avatar crest imageUrl={record.crestUrl} size={`${size} flex-none`} /> : null}
       <div className="min-w-0">
         <p className="wrap-break-word">
           {name}
           {inline && record.line ? (
             <span className="muted ms-1.5 inline-flex items-center gap-1 align-middle text-xs">
-              {record.lineCrestUrl ? <Avatar optimize crest imageUrl={record.lineCrestUrl} size="h-3.5 w-3.5" /> : null}
+              {record.lineCrestUrl ? <Avatar crest imageUrl={record.lineCrestUrl} size="h-3.5 w-3.5" /> : null}
               {code}
             </span>
           ) : null}
         </p>
         {secondLine || extra ? (
           <p className={`muted flex items-center ${compact ? "text-xs" : "text-sm"} ${extra ? "flex-wrap gap-x-1.5" : "gap-1.5"}`}>
-            {secondLine && record.lineCrestUrl ? <Avatar optimize crest imageUrl={record.lineCrestUrl} size="h-4 w-4" /> : null}
+            {secondLine && record.lineCrestUrl ? <Avatar crest imageUrl={record.lineCrestUrl} size="h-4 w-4" /> : null}
             {secondLine ? <span className="wrap-break-word">{line}</span> : null}
             {extra}
           </p>

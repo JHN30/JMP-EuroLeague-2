@@ -44,6 +44,7 @@ import { fetchTeamRosterStats } from "./teamRosterStats";
 import TeamPageSkeleton, { SnapshotSkeleton, TeamLeadersSkeleton, TeamOverviewSkeleton } from "./TeamPageSkeleton";
 import { groupLabel, isGroupedTable } from "../standings/standingsGroups";
 import { advancedScopeForPhase, ordinal } from "./teamLeague";
+import { HEADER_CREST_WIDTH, PORTRAIT_WIDTH, sizedImageUrl } from "../lib/imageSize";
 
 const MotionLink = m.create(Link);
 
@@ -447,7 +448,7 @@ function TeamLeaders({ seasonCode, rosterStatsQuery, stageName }) {
               <span className="value">{formatPerGame(leader.value)}</span>
             </div>
             {leader.player.playerImageUrl ? (
-              <RevealImage src={leader.player.playerImageUrl} effect="wipe" className="kpi-chip-image" />
+              <RevealImage src={sizedImageUrl(leader.player.playerImageUrl, PORTRAIT_WIDTH)} effect="wipe" className="kpi-chip-image" />
             ) : null}
           </MotionLink>
         );
@@ -623,7 +624,7 @@ export default function TeamPage() {
         centred
         compact
         title={fullName}
-        media={team.crestUrl ? <RevealImage src={team.crestUrl} className="h-16 w-16 flex-none object-contain max-sm:h-24 max-sm:w-24 lg:h-12 lg:w-12" /> : null}
+        media={team.crestUrl ? <RevealImage loading="eager" src={sizedImageUrl(team.crestUrl, HEADER_CREST_WIDTH)} className="h-16 w-16 flex-none object-contain max-sm:h-24 max-sm:w-24 lg:h-12 lg:w-12" /> : null}
         description={
           <>
             {/* The short name only when it says something the title does not ("Crvena Zvezda" under its sponsor name). */}

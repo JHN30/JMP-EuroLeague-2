@@ -26,6 +26,7 @@ import { isForfeit } from "../lib/forfeit";
 import { formatDate, formatPerGame, formatSeasonLabel } from "../lib/format";
 import { teamCode } from "../games/gameUtils";
 import { buildEliminationBracket, eliminationStageLabel, eliminationStageOf } from "../postseason/eliminationBracket";
+import { CREST_WIDTH, HEADER_CREST_WIDTH, sizedImageUrl } from "../lib/imageSize";
 
 const MotionLink = m.create(Link);
 
@@ -79,7 +80,7 @@ function HeroChip({ seasonCode, club, label, value }) {
       </div>
       {club.crestUrl ? (
         <img
-          src={club.crestUrl}
+          src={sizedImageUrl(club.crestUrl, HEADER_CREST_WIDTH)}
           alt=""
           className="kpi-chip-image"
           onError={(event) => {
@@ -239,7 +240,7 @@ function TeamName({ team, dimmed, nameFirst = false }) {
   const [crestFailed, setCrestFailed] = useState(false);
   const crest =
     team?.crestUrl && !crestFailed ? (
-      <img src={team.crestUrl} alt="" className="h-6 w-6 flex-none object-contain" onError={() => setCrestFailed(true)} />
+      <img loading="lazy" decoding="async" src={sizedImageUrl(team.crestUrl, CREST_WIDTH)} alt="" className="h-6 w-6 flex-none object-contain" onError={() => setCrestFailed(true)} />
     ) : null;
   const name = (
     <>
@@ -691,7 +692,9 @@ function RoadStep({ step, index }) {
       <span className="rank rank-1">{index + 1}</span>
       {step.opponent?.crestUrl ? (
         <img
-          src={step.opponent.crestUrl}
+          src={sizedImageUrl(step.opponent.crestUrl, CREST_WIDTH)}
+          loading="lazy"
+          decoding="async"
           alt=""
           className="h-8 w-8 flex-none object-contain"
           onError={(event) => {
@@ -719,7 +722,9 @@ function RoadToTitle({ champion, steps }) {
       <div className="mb-4 flex items-center gap-4 rounded-field border border-success bg-success/10 p-4">
         {champion.crestUrl ? (
           <img
-            src={champion.crestUrl}
+            src={sizedImageUrl(champion.crestUrl, CREST_WIDTH)}
+            loading="lazy"
+            decoding="async"
             alt=""
             className="h-16 w-16 flex-none object-contain"
             onError={(event) => {

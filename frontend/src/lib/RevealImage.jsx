@@ -15,8 +15,9 @@ const EFFECTS = {
 };
 
 // An image that stays invisible until it has downloaded, then animates in. A failed image hides itself (the caller's
-// fallback, if any, shows instead). `onLoad` and `onError` still fire for callers that want to follow along.
-export default function RevealImage({ src, alt = "", effect = "pop", className = "", onLoad, onError, ...rest }) {
+// fallback, if any, shows instead). `onLoad` and `onError` still fire for callers that want to follow along. It loads only near
+// the screen unless the caller passes `loading="eager"` (an image at the top of a page).
+export default function RevealImage({ src, alt = "", effect = "pop", className = "", loading = "lazy", decoding = "async", onLoad, onError, ...rest }) {
   const [loadedSrc, setLoadedSrc] = useState(null);
   const [failedSrc, setFailedSrc] = useState(null);
 
@@ -37,6 +38,8 @@ export default function RevealImage({ src, alt = "", effect = "pop", className =
       src={src}
       alt={alt}
       className={className}
+      loading={loading}
+      decoding={decoding}
       variants={EFFECTS[effect]}
       initial="out"
       animate={loadedSrc === src ? "in" : "out"}

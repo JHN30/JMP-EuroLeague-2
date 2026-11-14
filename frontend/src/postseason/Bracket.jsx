@@ -3,6 +3,7 @@ import { Link } from "react-router";
 import RevealImage from "../lib/RevealImage";
 import { listContainer, listItem } from "../lib/motion";
 import Matchup from "./Matchup";
+import { CREST_WIDTH, sizedImageUrl } from "../lib/imageSize";
 
 // Where each cell sits on a wide screen. The Playoffs column is ordered so the two matchups that feed one semifinal are
 // neighbours (1 v 8 over 4 v 5, 2 v 7 over 3 v 6); a semifinal then spans their two rows, and the final spans all four, which
@@ -71,7 +72,7 @@ function Holders({ holders, column }) {
   return (
     <div className={"hidden items-start lg:row-start-2 lg:flex " + column}>
       <Link to={"/" + holders.seasonCode + "/postseason"} className="flex w-full items-center gap-3 rounded-box border border-base-300 bg-base-100 p-3 transition-colors hover:border-primary">
-        {holders.club.crestUrl ? <RevealImage src={holders.club.crestUrl} className="h-10 w-10 flex-none object-contain" /> : null}
+        {holders.club.crestUrl ? <RevealImage src={sizedImageUrl(holders.club.crestUrl, CREST_WIDTH)} className="h-10 w-10 flex-none object-contain" /> : null}
         <span className="min-w-0">
           <span className="eyebrow block">HOLDERS · {holders.seasonLabel}</span>
           <span className="block truncate font-semibold">{holders.club.name ?? holders.club.abbreviatedName}</span>

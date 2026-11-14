@@ -153,7 +153,7 @@ function AdvancedBoard({ seasonCode, scope, stage, metric, params, setParams }) 
               <BoardRow
                 key={`${entry.personKey}-${entry.clubCode}`}
                 rank={offset + index + 1}
-                avatar={<Avatar optimize imageUrl={entry.imageUrl} size={BOARD_AVATAR} />}
+                avatar={<Avatar imageUrl={entry.imageUrl} size={BOARD_AVATAR} />}
                 name={displayName(entry)}
                 sub={<TeamTag {...teamOf(entry)} />}
                 columns={[

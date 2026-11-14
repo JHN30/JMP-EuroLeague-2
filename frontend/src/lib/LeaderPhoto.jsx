@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { PORTRAIT_WIDTH, sizedImageUrl } from "./imageSize";
 import RevealImage from "./RevealImage";
 
 // The photo of the leader on a leaders card, or a silhouette in its place when the feed has none (older seasons) or the photo does not load,
@@ -6,7 +7,7 @@ import RevealImage from "./RevealImage";
 export default function LeaderPhoto({ imageUrl }) {
   const [failedUrl, setFailedUrl] = useState(null);
   if (imageUrl && failedUrl !== imageUrl) {
-    return <RevealImage src={imageUrl} effect="wipe" className="kpi-chip-image" onError={() => setFailedUrl(imageUrl)} />;
+    return <RevealImage src={sizedImageUrl(imageUrl, PORTRAIT_WIDTH)} effect="wipe" className="kpi-chip-image" onError={() => setFailedUrl(imageUrl)} />;
   }
   return (
     <svg viewBox="0 0 100 130" aria-hidden="true" className="kpi-chip-image aspect-100/130 text-base-content opacity-15" data-testid="leader-photo-placeholder">

@@ -14,6 +14,7 @@ import { shortTeamName } from "../games/gameUtils";
 import { groupPositionLabel, isGroupedTable } from "../standings/standingsGroups";
 import { cityName } from "./cityName";
 import { ordinal } from "./teamLeague";
+import { CREST_WIDTH, sizedImageUrl } from "../lib/imageSize";
 
 const MotionLink = m.create(Link);
 
@@ -75,7 +76,7 @@ export default function TeamsPage() {
                   <div className="card-body items-center gap-2 p-3 text-center sm:flex-row sm:gap-3 sm:p-4 sm:text-left">
                     {/* A fixed slot, so a club without a crest (or one that fails to load) keeps its card's height and alignment. */}
                     <span className="flex h-10 w-10 flex-none items-center justify-center">
-                      {team.crestUrl ? <RevealImage src={team.crestUrl} className="h-10 w-10 object-contain" /> : null}
+                      {team.crestUrl ? <RevealImage src={sizedImageUrl(team.crestUrl, CREST_WIDTH)} className="h-10 w-10 object-contain" /> : null}
                     </span>
                     <div className="min-w-0">
                       <p className="font-semibold break-words">

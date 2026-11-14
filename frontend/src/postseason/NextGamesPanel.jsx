@@ -4,13 +4,14 @@ import Panel from "../lib/Panel";
 import PanelHeader from "../lib/PanelHeader";
 import RevealImage from "../lib/RevealImage";
 import { ordinal } from "../teams/teamLeague";
+import { CREST_WIDTH, sizedImageUrl } from "../lib/imageSize";
 
 function Club({ entry, team }) {
   const crestUrl = team?.crestUrl ?? entry?.crestUrl;
   return (
     <span className="flex min-w-0 items-center gap-1.5">
       <span className="muted w-8 flex-none text-right text-xs tabular-nums">{entry ? ordinal(entry.basic.position) : ""}</span>
-      {crestUrl ? <RevealImage src={crestUrl} className="h-5 w-5 flex-none object-contain" /> : <span className="h-5 w-5 flex-none" />}
+      {crestUrl ? <RevealImage src={sizedImageUrl(crestUrl, CREST_WIDTH)} className="h-5 w-5 flex-none object-contain" /> : <span className="h-5 w-5 flex-none" />}
       <span className="min-w-0 truncate font-semibold">{team?.abbreviatedName ?? entry?.clubName}</span>
     </span>
   );

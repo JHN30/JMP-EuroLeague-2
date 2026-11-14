@@ -17,8 +17,6 @@ const share = (side, made, attempted) => (row) => {
 };
 const advanced = (field, scale = 1) => (row) => (row.advanced?.[field] == null ? null : Number(row.advanced[field]) * scale);
 
-export const TEAM_FAMILIES = ["Record", "Scoring", "Shooting", "Rebounding", "Playmaking", "Defense", "Efficiency"];
-
 export const TEAM_STATS = [
   { key: "wins", family: "Record", label: "Wins", short: "W", kind: "int", needs: "standings", get: (row) => row.standing?.basic?.gamesWon ?? null },
   { key: "winPct", family: "Record", label: "Win %", short: "PCT", kind: "percent", needs: "standings",

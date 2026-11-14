@@ -67,10 +67,6 @@ export function viewGame(game) {
   };
 }
 
-export function averageOf(views, key) {
-  return views.length === 0 ? null : views.reduce((sum, view) => sum + view[key], 0) / views.length;
-}
-
 // A stat over a set of games: a rate over their attempts for a percentage, otherwise the mean of the games that have it.
 // null when no game has it.
 export function statOver(views, stat) {

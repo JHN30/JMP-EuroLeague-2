@@ -132,7 +132,7 @@ function SkeletonFigureRows({ rows }) {
   ));
 }
 
-// A Shooting tab, as the team and player pages draw it around `ShootingBreakdown`: the panel's controls, the four headline
+// A Shooting tab, as the team and player pages draw it: the panel's controls, the four headline
 // cards, then the court beside the zone and situation tables. `sides` adds the club-or-opponents tabs the team page has.
 export function SkeletonShooting({ sides = true }) {
   return (

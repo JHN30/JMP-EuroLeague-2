@@ -1,26 +1,8 @@
 import { useQueries, useQuery } from "@tanstack/react-query";
 import { getPlayerShots, getPositionShots, getShots } from "./api";
-import { formatPercentage } from "./format";
 
-// What the team and player Shooting tabs share: a shot's result, the "made-attempted (percent)" line, the view
-// switches, and loading every played game's shot list.
-export const isMade = (shot) => shot.actionCode.endsWith("M");
-
-export function shootingLine(shots) {
-  const made = shots.filter(isMade).length;
-  return `${made}-${shots.length} (${formatPercentage(shots.length === 0 ? null : (made / shots.length) * 100)})`;
-}
-
-export const PRESENTATION_TABS = [
-  { key: "heatmap", label: "Zone heatmap" },
-  { key: "markers", label: "Every attempt" },
-];
-
-export const RESULT_TABS = [
-  { key: "all", label: "All shots" },
-  { key: "made", label: "Made" },
-  { key: "missed", label: "Missed" },
-];
+// What the team and player Shooting tabs share: loading every played game's shot list, a player's season shots, and the
+// shots of every player at one position.
 
 // Every played game's shot list, combined. Games are cached one by one, so a game seen on another page is not fetched twice.
 export function useSeasonShots(seasonCode, playedGames) {

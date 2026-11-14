@@ -66,6 +66,7 @@ import {
   getWinShareLeaders,
 } from "../db/season-advanced";
 import { getPlayerForm } from "../db/season-form";
+import { remembered } from "../db/remembered";
 import { DEFAULT_METRIC, findRecordMetric, getRecordBook, getRecordRows, getSeasonHighs, MIN_SEASON_GAMES as RECORD_MIN_GAMES, perGameAvailable, RECORD_KINDS, RECORD_PERS, recordFormat } from "../db/season-records";
 import { getSeasonStats, SORTABLE_STATS_FIELDS, type SortableStatsField, type StatsFilters } from "../db/season-stats";
 
@@ -398,6 +399,7 @@ seasonRouter.get("/:seasonCode/advanced/standings", async (req, res) => {
 
 const ROUND_STAT_METRIC_KEYS = Object.keys(ROUND_STAT_METRICS);
 const WIN_SHARE_METRICS = ["winShares", "offWinShares", "defWinShares", "winSharesPer40"] as const;
+const ROUND_TABLE_METRICS = [...ROUND_STAT_METRIC_KEYS, ...Object.keys(ROUND_PER_100_METRICS)];
 const ADVANCED_LEADER_METRICS = ["per", ...WIN_SHARE_METRICS, "rapm", "onOff", ...ROUND_STAT_METRIC_KEYS, ...Object.keys(ROUND_PER_100_METRICS)];
 // Default minimum minutes (on court for RAPM and on/off) per metric in a full season. Early in a season nobody has
 // that many, so the default drops to a small floor and the response says the season is still early. A metric not listed
@@ -408,6 +410,85 @@ const LEADERS_EVERYONE = 1000;
 // The minimum games on the leaderboards, as shares of the games played so far (`num` / `den`, rounded up). Half is the default.
 const LEADER_GAME_SHARES: Record<string, [number, number]> = { "25": [1, 4], "50": [1, 2], "67": [2, 3], "75": [3, 4], "90": [9, 10], "100": [1, 1] };
 const DEFAULT_GAME_SHARE = "50";
+
+// One row of an advanced board: who, their club (undefined for RAPM, whose table has none), the games that qualify them, and
+// the rest of their entry in the order the answer lists it.
+type BoardRow = { personKey: string; playerName: string | null; clubCode: string | null | undefined; qualifyingGames: number; rest: Record<string, unknown> };
+
+// A board is up to ~100 KB (444 rows at most, ~220 bytes each) and clients can ask for thousands of distinct ones, so this
+// cache keeps fewer than the default: ~20 MB at worst, several seasons' worth of browsing (one season's pages touch ~40).
+const ADVANCED_BOARDS_KEPT = 200;
+
+// Everyone on one advanced board, in its final order, with the round it was read at (null for RAPM and on/off), or null when
+// the scope has no round yet. Paging and the games share only slice and filter it, so every page size and share reuses one read.
+// `order` only changes the round-table rates: the other metrics always rank one way. Callers must not change the rows.
+const advancedBoard = remembered(async function advancedBoard(
+  seasonCode: string,
+  metric: string,
+  scope: string,
+  order: string,
+): Promise<{ round: number | null; rows: BoardRow[] } | null> {
+  const minSeconds = 0;
+  if (metric === "rapm") {
+    // The RAPM table has no games, so each player's come from the season's latest round.
+    const all = await getRapmLeaders(seasonCode, minSeconds, LEADERS_EVERYONE);
+    const allRounds = await getStatsRounds(seasonCode, "all");
+    const lastRound = allRounds[allRounds.length - 1];
+    const playerGames = lastRound === undefined ? new Map<string, number>() : await getPlayerGames(seasonCode, "all", lastRound, all.map((row) => row.personKey));
+    return {
+      round: null,
+      rows: all.map((row) => ({
+        personKey: row.personKey, playerName: row.playerName, clubCode: undefined, qualifyingGames: playerGames.get(row.personKey) ?? 0,
+        rest: { games: playerGames.get(row.personKey) ?? null, seconds: row.seconds, value: row.rapm, offense: row.offense, defense: row.defense },
+      })),
+    };
+  }
+  if (metric === "onOff") {
+    const all = await getOnOffLeaders(seasonCode, scope, minSeconds, LEADERS_EVERYONE);
+    return {
+      round: null,
+      rows: all.map((row) => ({
+        personKey: row.personKey, playerName: row.playerName, clubCode: row.clubCode, qualifyingGames: Number(row.games) || 0,
+        rest: { games: row.games, seconds: row.onSeconds, value: row.netRatingDiff, onNetRating: row.onNetRating, offNetRating: row.offNetRating },
+      })),
+    };
+  }
+  // PER, Win Shares and the round-table rates all read one round: the scope's latest.
+  const rounds = await getStatsRounds(seasonCode, scope);
+  const round = rounds[rounds.length - 1] ?? null;
+  if (round === null) return null;
+  if (metric === "per") {
+    const all = await getPerLeaders(seasonCode, scope, round, minSeconds, LEADERS_EVERYONE);
+    return {
+      round,
+      rows: all.map((row) => ({
+        personKey: row.personKey, playerName: row.playerName, clubCode: row.clubCode, qualifyingGames: Number(row.gamesPlayed) || 0,
+        rest: { games: row.gamesPlayed, seconds: row.secondsPlayed, value: row.per },
+      })),
+    };
+  }
+  if ((WIN_SHARE_METRICS as readonly string[]).includes(metric)) {
+    const all = await getWinShareLeaders(seasonCode, scope, round, minSeconds, LEADERS_EVERYONE);
+    const shareKey = metric as (typeof WIN_SHARE_METRICS)[number];
+    // The table ranks by Win Shares per 40; the other shares re-sort (stable, so ties keep that order and filtering later keeps it).
+    if (shareKey !== "winSharesPer40") all.sort((x, y) => Number(y[shareKey] ?? -Infinity) - Number(x[shareKey] ?? -Infinity));
+    return {
+      round,
+      rows: all.map((row) => ({
+        personKey: row.personKey, playerName: row.playerName, clubCode: row.clubCode, qualifyingGames: Number(row.gamesPlayed) || 0,
+        rest: { games: row.gamesPlayed, seconds: row.secondsPlayed, value: row[shareKey], winShares: row.winShares, winSharesPer40: row.winSharesPer40 },
+      })),
+    };
+  }
+  const all = await getRoundStatLeaders(seasonCode, scope, round, metric as RoundStatMetric | RoundPer100Metric, minSeconds, order === "asc", LEADERS_EVERYONE);
+  return {
+    round,
+    rows: all.map((row) => ({
+      personKey: row.personKey, playerName: row.playerName, clubCode: row.clubCode, qualifyingGames: Number(row.gamesPlayed) || 0,
+      rest: { games: row.gamesPlayed, seconds: row.secondsPlayed, value: row.value },
+    })),
+  };
+}, ADVANCED_BOARDS_KEPT);
 
 // One leaderboard of the advanced player metrics. PER, Win Shares and the round-table rates (per-100 figures, usage,
 // shooting and rebounding percentages, PIE, game score) read each player's cumulative row at the scope's latest round;
@@ -453,16 +534,20 @@ seasonRouter.get("/:seasonCode/advanced/leaders", async (req, res) => {
     return;
   }
 
-  // Everyone is read, then kept from the share of the games played so far.
-  const minSeconds = 0;
-  let gamesPlayed = 0;
-  let minGames = 0;
-  const qualify = <T,>(rows: T[], gamesOf: (row: T) => number) => {
-    gamesPlayed = rows.reduce((most, row) => Math.max(most, gamesOf(row)), 0);
-    const share = LEADER_GAME_SHARES[games];
-    minGames = share ? Math.ceil((gamesPlayed * share[0]) / share[1]) : 0;
-    return rows.filter((row) => gamesOf(row) >= minGames);
-  };
+  const board = await advancedBoard(season.seasonCode, metric, scope, ROUND_TABLE_METRICS.includes(metric) ? order : "desc");
+  if (board === null) {
+    res.json({ ...base, scope, round: null, gamesPlayed: 0, minGames: 0, total: 0, entries: [] });
+    return;
+  }
+  const { round, rows: everyone } = board;
+
+  // Kept from the share of the games played so far: the most any player of the board has.
+  const gamesPlayed = everyone.reduce((most, row) => Math.max(most, row.qualifyingGames), 0);
+  const share = LEADER_GAME_SHARES[games];
+  const minGames = share ? Math.ceil((gamesPlayed * share[0]) / share[1]) : 0;
+  const rows = everyone.filter((row) => row.qualifyingGames >= minGames);
+  const shown = rows.slice(offset, offset + limit);
+
   const clubs = new Map(teams.map((team) => [team.clubCode, team]));
   const club = (clubCode: string | null) => ({
     clubCode,
@@ -470,75 +555,20 @@ seasonRouter.get("/:seasonCode/advanced/leaders", async (req, res) => {
     crestUrl: clubCode === null ? null : (clubs.get(clubCode)?.crestUrl ?? null),
     clubTvCode: clubCode === null ? null : (clubs.get(clubCode)?.tvCode ?? clubCode),
   });
-  const page = <T,>(rows: T[]) => rows.slice(offset, offset + limit);
-
-  let round: number | null = null;
-  let total = 0;
-  let entries: Record<string, unknown>[];
-  if (metric === "rapm") {
-    // The RAPM table has no games, so each player's come from the season's latest round.
-    const all = await getRapmLeaders(season.seasonCode, minSeconds, LEADERS_EVERYONE);
-    const lastRound = allRounds[allRounds.length - 1];
-    const playerGames = lastRound === undefined ? new Map<string, number>() : await getPlayerGames(season.seasonCode, "all", lastRound, all.map((row) => row.personKey));
-    const rows = qualify(all, (row) => playerGames.get(row.personKey) ?? 0);
-    total = rows.length;
-    const shown = page(rows);
-    const playerClubs = lastRound === undefined
-      ? new Map<string, string | null>()
-      : await getPlayerClubs(season.seasonCode, "all", lastRound, shown.map((row) => row.personKey));
-    entries = shown.map((row) => ({
-      personKey: row.personKey, playerName: row.playerName, ...club(playerClubs.get(row.personKey) ?? null),
-      games: playerGames.get(row.personKey) ?? null, seconds: row.seconds, value: row.rapm, offense: row.offense, defense: row.defense,
-    }));
-  } else if (metric === "onOff") {
-    const rows = qualify(await getOnOffLeaders(season.seasonCode, scope, minSeconds, LEADERS_EVERYONE), (row) => Number(row.games) || 0);
-    total = rows.length;
-    entries = page(rows).map((row) => ({
-      personKey: row.personKey, playerName: row.playerName, ...club(row.clubCode),
-      games: row.games, seconds: row.onSeconds, value: row.netRatingDiff,
-      onNetRating: row.onNetRating, offNetRating: row.offNetRating,
-    }));
-  } else {
-    // PER, Win Shares and the round-table rates all read one round: the scope's latest.
-    const rounds = await getStatsRounds(season.seasonCode, scope);
-    round = rounds[rounds.length - 1] ?? null;
-    if (round === null) {
-      res.json({ ...base, scope, round, gamesPlayed: 0, minGames: 0, total: 0, entries: [] });
-      return;
-    }
-    if (metric === "per") {
-      const rows = qualify(await getPerLeaders(season.seasonCode, scope, round, minSeconds, LEADERS_EVERYONE), (row) => Number(row.gamesPlayed) || 0);
-      total = rows.length;
-      entries = page(rows).map((row) => ({
-        personKey: row.personKey, playerName: row.playerName, ...club(row.clubCode),
-        games: row.gamesPlayed, seconds: row.secondsPlayed, value: row.per,
-      }));
-    } else if ((WIN_SHARE_METRICS as readonly string[]).includes(metric)) {
-      const rows = qualify(await getWinShareLeaders(season.seasonCode, scope, round, minSeconds, LEADERS_EVERYONE), (row) => Number(row.gamesPlayed) || 0);
-      const shareKey = metric as (typeof WIN_SHARE_METRICS)[number];
-      if (shareKey !== "winSharesPer40") rows.sort((x, y) => Number(y[shareKey] ?? -Infinity) - Number(x[shareKey] ?? -Infinity));
-      total = rows.length;
-      entries = page(rows).map((row) => ({
-        personKey: row.personKey, playerName: row.playerName, ...club(row.clubCode),
-        games: row.gamesPlayed, seconds: row.secondsPlayed,
-        value: row[shareKey],
-        winShares: row.winShares, winSharesPer40: row.winSharesPer40,
-      }));
-    } else {
-      const rows = qualify(
-        await getRoundStatLeaders(season.seasonCode, scope, round, metric as RoundStatMetric | RoundPer100Metric, minSeconds, order === "asc", LEADERS_EVERYONE),
-        (row) => Number(row.gamesPlayed) || 0,
-      );
-      total = rows.length;
-      entries = page(rows).map((row) => ({
-        personKey: row.personKey, playerName: row.playerName, ...club(row.clubCode),
-        games: row.gamesPlayed, seconds: row.secondsPlayed, value: row.value,
-      }));
-    }
-  }
+  // RAPM rows carry no club, so the shown players' come from the season's latest round.
+  const lastRound = allRounds[allRounds.length - 1];
+  const playerClubs = metric === "rapm" && lastRound !== undefined
+    ? await getPlayerClubs(season.seasonCode, "all", lastRound, shown.map((row) => row.personKey))
+    : new Map<string, string | null>();
+  const entries = shown.map((row) => ({
+    personKey: row.personKey,
+    playerName: row.playerName,
+    ...club(row.clubCode === undefined ? (playerClubs.get(row.personKey) ?? null) : row.clubCode),
+    ...row.rest,
+  }));
   // The advanced tables carry no photo, so each entry gets the one from the season statistics.
-  const images = await getPlayerImages(season.seasonCode, entries.map((entry) => String(entry.personKey)));
-  res.json({ ...base, scope, round, gamesPlayed, minGames, total, offset, entries: entries.map((entry) => ({ ...entry, imageUrl: images.get(String(entry.personKey)) ?? null })) });
+  const images = await getPlayerImages(season.seasonCode, entries.map((entry) => entry.personKey));
+  res.json({ ...base, scope, round, gamesPlayed, minGames, total: rows.length, offset, entries: entries.map((entry) => ({ ...entry, imageUrl: images.get(entry.personKey) ?? null })) });
 });
 
 function requestedPersonKeyFilter(req: Request, res: Response): string | undefined | null {

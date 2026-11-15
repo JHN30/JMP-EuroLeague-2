@@ -6,9 +6,10 @@ import { SUPPORTED_SEASONS } from "./db/season-catalog";
 // Repeated reads within the window skip Neon, whose free plan meters every byte sent back.
 const MAX_ENTRIES = 1000;
 
-// In production a reload or a new tab within 5 minutes (the frontend's staleTime) reuses the browser's copy. `private` keeps
-// shared caches such as Cloudflare out, so a publish is never held back by a copy the app cannot clear. Development sends
-// nothing, so a change of database or data shows at once.
+// In production a reload or a new tab within 5 minutes (the frontend's staleTime) reuses the browser's copy. `private` would
+// keep shared caches out, but the live site's Cloudflare cache rules override it on purpose to save Neon traffic: the current
+// season's answers are kept for 2 hours and older seasons' for 1 month. After a publish or a deploy, purge Cloudflare's cache
+// for new data or headers to show at once. Development sends nothing, so a change of database or data shows at once.
 const BROWSER_CACHE = ENV.NODE_ENV === "production" ? "private, max-age=300" : null;
 
 const entries = new Map<string, { body: string; expiresAt: number }>();

@@ -9,15 +9,19 @@ import { responseCache } from "./response-cache";
 import { seasonRouter } from "./routes/seasons";
 
 const app = express();
+app.disable("x-powered-by");
 
-app.use(
-  cors({
-    origin: ENV.FRONTEND_URL,
-    credentials: true,
-  }),
-);
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+// Set first, so cached API answers, static files and index.html all carry them. No site, this one included, may show the
+// app in a frame, and links out (club websites) pass on only this domain. HSTS and nosniff are added by Cloudflare.
+app.use((req, res, next) => {
+  res.setHeader("X-Frame-Options", "DENY");
+  res.setHeader("Referrer-Policy", "strict-origin-when-cross-origin");
+  next();
+});
+
+// Only the dev frontend (another port) needs CORS; production is same-origin. No cookies or auth, so no credentials.
+// Every route is a GET, so there are no body parsers: a request body is never read.
+app.use(cors({ origin: ENV.FRONTEND_URL }));
 app.use("/api/seasons", responseCache, seasonRouter);
 
 // Outside production the health answers also say which database the server reads, so a dev backend can be checked without its .env.

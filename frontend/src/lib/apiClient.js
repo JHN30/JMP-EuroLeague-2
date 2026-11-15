@@ -38,7 +38,6 @@ class ApiError extends Error {
 
 async function get(path, { params } = {}) {
   const response = await fetch(address(path, params), {
-    credentials: "include",
     headers: { Accept: "application/json, text/plain, */*" },
   });
   const data = parse(await response.text());

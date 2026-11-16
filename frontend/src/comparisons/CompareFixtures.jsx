@@ -8,20 +8,15 @@ import { useUpcomingRound } from "./useUpcomingRound";
 import { formatDateTime, formatShortDate, formatTimeOfDay } from "../lib/format";
 import { shortTeamName, teamCode } from "../games/gameUtils";
 import { listContainer, listItem, wideCardHover } from "../lib/motion";
-import RevealImage from "../lib/RevealImage";
 import ShortLabel from "../lib/ShortLabel";
 import Panel from "../lib/Panel";
 import { FormCell } from "../standings/standingsCells";
-import { CREST_WIDTH, sizedImageUrl } from "../lib/imageSize";
+import Crest from "../lib/Crest";
 
 // A club's side of a game: crest, code (the name from sm), and under it the regular-season record with the last five results beside it
 // (oldest first) from sm; below sm a club's column is too narrow for five results, so the record stands alone.
 function Side({ team, record, form, alignEnd }) {
-  const crest = team?.crestUrl ? (
-    <RevealImage src={sizedImageUrl(team.crestUrl, CREST_WIDTH)} className="h-7 w-7 flex-none object-contain sm:h-8 sm:w-8" />
-  ) : (
-    <span className="h-7 w-7 flex-none sm:h-8 sm:w-8" />
-  );
+  const crest = <Crest url={team?.crestUrl} keepSlot className="h-7 w-7 flex-none sm:h-8 sm:w-8" />;
   return (
     <span className={`flex min-w-0 items-center ${alignEnd ? "flex-row-reverse text-right" : ""} gap-1.5 sm:gap-2`}>
       {crest}

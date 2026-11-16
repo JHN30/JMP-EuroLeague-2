@@ -9,10 +9,9 @@ import { formatDecimal } from "../lib/format";
 import { listContainer, listItem, wideCardHover } from "../lib/motion";
 import Panel from "../lib/Panel";
 import { displayName } from "../lib/playerName";
-import RevealImage from "../lib/RevealImage";
 import ShortLabel from "../lib/ShortLabel";
 import { useUpcomingRound } from "./useUpcomingRound";
-import { CREST_WIDTH, sizedImageUrl } from "../lib/imageSize";
+import Crest from "../lib/Crest";
 
 // The leaders the suggested pairs are made of: the top two per game in each.
 const PAIR_STATS = [
@@ -82,7 +81,7 @@ function PairCard({ stat, first, second, onPick }) {
 function ClubSide({ team, player, alignEnd }) {
   return (
     <span className={`flex min-w-0 items-center gap-2 ${alignEnd ? "flex-row-reverse text-right" : ""}`}>
-      {team?.crestUrl ? <RevealImage src={sizedImageUrl(team.crestUrl, CREST_WIDTH)} className="h-7 w-7 flex-none object-contain" /> : <span className="h-7 w-7 flex-none" />}
+      <Crest url={team?.crestUrl} keepSlot className="h-7 w-7 flex-none" />
       <span className="min-w-0">
         <span className="block wrap-break-word text-sm font-semibold leading-tight">{displayName(player.playerName)}</span>
         <span className="muted block text-xs leading-tight">

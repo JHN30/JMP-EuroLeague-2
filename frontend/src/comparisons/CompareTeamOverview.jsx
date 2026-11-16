@@ -9,7 +9,6 @@ import { formatSeasonLabel, formatShortDate } from "../lib/format";
 import { sectionContainer, sectionItem } from "../lib/motion";
 import Panel from "../lib/Panel";
 import { displayName as fullName } from "../lib/playerName";
-import RevealImage from "../lib/RevealImage";
 import { isForfeit } from "../lib/forfeit";
 import ShortLabel from "../lib/ShortLabel";
 import { Avatar } from "../leaders/LeaderParts";
@@ -18,16 +17,13 @@ import { useTeamRows } from "../leaders/teamData";
 import { fetchTeamRosterStats } from "../teams/teamRosterStats";
 import { absentFromSeason, edgesBetween } from "./teamCompare";
 import useClubEntities from "./useClubEntities";
-import { CREST_WIDTH, sizedImageUrl } from "../lib/imageSize";
+import ResultBadge from "../lib/ResultBadge";
+import Crest from "../lib/Crest";
 
 const GAMES_LIMIT = 100;
 const EDGES_SHOWN = 3;
 // A gap of fewer places than this is not an edge worth naming.
 const MIN_EDGE_GAP = 3;
-
-function Crest({ url, className = "h-10 w-10" }) {
-  return url ? <RevealImage src={sizedImageUrl(url, CREST_WIDTH)} className={`${className} flex-none object-contain`} /> : <span className={`${className} flex-none`} />;
-}
 
 // `action` sits beside the title, wrapping under it when there is no room.
 function PanelTitle({ kicker, title, note, action = null }) {
@@ -49,7 +45,7 @@ function EdgeColumn({ row, label, leads, edges, side }) {
   return (
     <div className="rounded-field bg-base-200/60 p-4">
       <div className="mb-3 flex items-center gap-3">
-        <Crest url={row?.crestUrl} />
+        <Crest url={row?.crestUrl} keepSlot className="h-10 w-10 flex-none" />
         <div className="min-w-0">
           <p className="font-bold">{label}</p>
           <p className="muted text-xs">
@@ -131,7 +127,7 @@ function venueRecord(games, clubCode, home) {
 function ClubHeading({ club, suffix = "", extra = null }) {
   return (
     <p className="mb-2 flex items-center gap-2 font-semibold">
-      <Crest url={club.crestUrl} className="h-6 w-6" />
+      <Crest url={club?.crestUrl} keepSlot className="h-6 w-6 flex-none" />
       <span>
         {club.label}
         {suffix}
@@ -153,13 +149,7 @@ function currentStreak(results) {
 function StreakBadge({ streak }) {
   const noun = streak.won ? (streak.length === 1 ? "win" : "wins") : streak.length === 1 ? "loss" : "losses";
   return (
-    <span
-      aria-label={`Streak: ${streak.length} ${noun}`}
-      className={`badge badge-sm ms-auto flex-none font-bold tabular-nums ${streak.won ? "badge-success" : "badge-error"}`}
-    >
-      {streak.won ? "W" : "L"}
-      {streak.length}
-    </span>
+    <ResultBadge won={streak.won} count={streak.length} aria-label={`Streak: ${streak.length} ${noun}`} className="ms-auto flex-none" />
   );
 }
 
@@ -194,9 +184,9 @@ function FormList({ games, club, seasonCode, counts }) {
                   to={`/${seasonCode}/games/${game.gameCode}`}
                   className="flex items-center gap-2 rounded-field px-1 py-0.5 text-sm hover:bg-base-200"
                 >
-                  <span className={`badge badge-sm w-6 flex-none font-bold ${result.won ? "badge-success" : "badge-error"}`}>{result.won ? "W" : "L"}</span>
+                  <ResultBadge won={result.won} className="w-6 flex-none" />
                   <span className="muted flex-none text-xs">{result.home ? "vs" : "at"}</span>
-                  <Crest url={result.opponent?.crestUrl} className="h-5 w-5" />
+                  <Crest url={result?.opponent?.crestUrl} keepSlot className="h-5 w-5 flex-none" />
                   <span className="min-w-0 flex-1">
                     <ShortLabel short={teamCode(result.opponent)} full={shortTeamName(result.opponent)} />
                   </span>

@@ -470,28 +470,29 @@ button {
   opacity: 1;
 }
 
-/* W/L form pill track */
+/* W/L form track (a row of result badges) */
 .form-track {
   display: inline-flex;
   gap: 0.2rem;
 }
-.form-pill {
-  width: 1.3rem;
-  height: 1.3rem;
-  border-radius: 0.3rem;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 0.68rem;
-  font-weight: 800;
+
+/* A game's result (lib/ResultBadge.jsx), on every page: tinted like the stat badges, over daisyUI's badge sizing. */
+.result-badge {
+  border: 0;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
 }
-.form-pill.w {
+.result-badge-win {
   background: color-mix(in srgb, var(--color-success) 18%, transparent);
   color: var(--color-success);
 }
-.form-pill.l {
+.result-badge-loss {
   background: color-mix(in srgb, var(--color-error) 18%, transparent);
   color: var(--color-error);
+}
+.result-badge-none {
+  background: color-mix(in srgb, var(--color-base-content) 10%, transparent);
+  color: color-mix(in srgb, var(--color-base-content) 70%, transparent);
 }
 
 /* standings tier group headers */

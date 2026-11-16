@@ -1,5 +1,6 @@
 import { Link } from "react-router";
-import { CREST_WIDTH, sizedImageUrl } from "../lib/imageSize";
+import ResultBadge from "../lib/ResultBadge";
+import Crest from "../lib/Crest";
 
 // With a short name the cell shows it below sm and the full name from sm up; the link is named by the full name at every width.
 export function ClubCell({ entry, seasonCode, shortName }) {
@@ -10,18 +11,7 @@ export function ClubCell({ entry, seasonCode, shortName }) {
       aria-label={shortName ? fullName : undefined}
       className="link link-hover flex min-w-0 items-center gap-2 font-medium"
     >
-      {entry.crestUrl ? (
-        <img
-          src={sizedImageUrl(entry.crestUrl, CREST_WIDTH)}
-          loading="lazy"
-          decoding="async"
-          alt=""
-          className="h-6 w-6 flex-none object-contain"
-          onError={(event) => {
-            event.currentTarget.style.display = "none";
-          }}
-        />
-      ) : null}
+      <Crest url={entry?.crestUrl} className="h-6 w-6 flex-none" animate={false} />
       {shortName ? (
         <>
           <span className="break-words text-xs leading-tight sm:hidden">{shortName}</span>
@@ -62,13 +52,7 @@ export function FormCell({ form }) {
   return (
     <div className="flex gap-1" aria-label={label}>
       {sorted.map((f) => (
-        <span
-          key={f.resultOrdinal}
-          className={`badge badge-xs ${f.result === "W" ? "badge-success" : f.result === "L" ? "badge-error" : "badge-ghost"}`}
-          aria-hidden="true"
-        >
-          {f.result ?? "-"}
-        </span>
+        <ResultBadge key={f.resultOrdinal} won={f.result === "W" ? true : f.result === "L" ? false : null} size="xs" aria-hidden="true" />
       ))}
     </div>
   );

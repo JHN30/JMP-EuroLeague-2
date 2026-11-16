@@ -1,4 +1,4 @@
-import { useMemo, useRef, useEffect, useState } from "react";
+import { useMemo, useRef, useEffect } from "react";
 import { useQueries, useQuery } from "@tanstack/react-query";
 import { Chart } from "../lib/chartSetup";
 import { m } from "motion/react";
@@ -27,7 +27,7 @@ import { isForfeit } from "../lib/forfeit";
 import { formatDate, formatPerGame, formatSeasonLabel } from "../lib/format";
 import { teamCode } from "../games/gameUtils";
 import { buildEliminationBracket, eliminationStageLabel, eliminationStageOf } from "../postseason/eliminationBracket";
-import { CREST_WIDTH, HEADER_CREST_WIDTH, sizedImageUrl } from "../lib/imageSize";
+import Crest from "../lib/Crest";
 
 const MotionLink = m.create(Link);
 
@@ -79,16 +79,7 @@ function HeroChip({ seasonCode, club, label, value }) {
         <span className="name">{club.clubName ?? club.clubCode}</span>
         <span className="value">{value}</span>
       </div>
-      {club.crestUrl ? (
-        <img
-          src={sizedImageUrl(club.crestUrl, HEADER_CREST_WIDTH)}
-          alt=""
-          className="kpi-chip-image"
-          onError={(event) => {
-            event.currentTarget.style.display = "none";
-          }}
-        />
-      ) : null}
+      <Crest url={club?.crestUrl} header eager animate={false} className="kpi-chip-image" />
     </Root>
   );
 }
@@ -238,11 +229,7 @@ function shortName(team) {
 // from screen readers, which get the full name. Only text is dimmed for the losing side, never the crest. A club without a crest
 // (or one that fails to load) is just its name.
 function TeamName({ team, dimmed, nameFirst = false }) {
-  const [crestFailed, setCrestFailed] = useState(false);
-  const crest =
-    team?.crestUrl && !crestFailed ? (
-      <img loading="lazy" decoding="async" src={sizedImageUrl(team.crestUrl, CREST_WIDTH)} alt="" className="h-6 w-6 flex-none object-contain" onError={() => setCrestFailed(true)} />
-    ) : null;
+  const crest = <Crest url={team?.crestUrl} animate={false} className="h-6 w-6 flex-none" />;
   const name = (
     <>
       <span aria-hidden="true" className={`min-w-0 whitespace-nowrap text-sm font-semibold lg:hidden ${dimmed ? "opacity-60" : ""}`}>
@@ -689,18 +676,7 @@ function RoadStep({ step, index }) {
   return (
     <Panel className="flex items-center gap-3 border-success bg-success/10 p-3">
       <span className="rank rank-1">{index + 1}</span>
-      {step.opponent?.crestUrl ? (
-        <img
-          src={sizedImageUrl(step.opponent.crestUrl, CREST_WIDTH)}
-          loading="lazy"
-          decoding="async"
-          alt=""
-          className="h-8 w-8 flex-none object-contain"
-          onError={(event) => {
-            event.currentTarget.style.display = "none";
-          }}
-        />
-      ) : null}
+      <Crest url={step?.opponent?.crestUrl} className="h-8 w-8 flex-none" animate={false} />
       <div className="min-w-0 flex-1">
         <p className="break-words font-medium">Defeated {teamName(step.opponent)}</p>
         <p className="muted text-xs">{detail}</p>
@@ -719,18 +695,7 @@ function RoadToTitle({ champion, steps }) {
     <Panel className="p-4">
       <PanelHeader compact kicker="JOURNEY" title="Road to the title" />
       <div className="mb-4 flex items-center gap-4 rounded-field border border-success bg-success/10 p-4">
-        {champion.crestUrl ? (
-          <img
-            src={sizedImageUrl(champion.crestUrl, CREST_WIDTH)}
-            loading="lazy"
-            decoding="async"
-            alt=""
-            className="h-16 w-16 flex-none object-contain"
-            onError={(event) => {
-              event.currentTarget.style.display = "none";
-            }}
-          />
-        ) : null}
+        <Crest url={champion?.crestUrl} className="h-16 w-16 flex-none" animate={false} />
         <div className="min-w-0 flex-1">
           <p className="text-success micro-label">Season champion</p>
           <p className="text-xl font-semibold">{teamName(champion)}</p>

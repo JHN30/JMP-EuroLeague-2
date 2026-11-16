@@ -17,7 +17,7 @@ import { paintPoints, periodNumberForMinute, shootingPercentage, teamCode, teamN
 import { PlayContextComparison, PlayerShooting, ShootingByQuarter } from "./ShootingTables";
 import { TeamName } from "./TeamLabel";
 import ZoneComparison from "./ZoneComparison";
-import { CREST_WIDTH, sizedImageUrl } from "../lib/imageSize";
+import Crest from "../lib/Crest";
 
 const SHOT_TYPE_FILTERS = [
   { key: "all", label: "All shots", test: () => true },
@@ -156,18 +156,7 @@ function TeamComparisonPanel({ team, shots, teams, mode, freeThrows, freeThrowsT
       <div className={`mb-3 flex items-center gap-2${tallHeading ? " min-h-8" : ""}`}>
         {heading ?? (
           <>
-            {team?.crestUrl ? (
-              <img
-                src={sizedImageUrl(team.crestUrl, CREST_WIDTH)}
-                loading="lazy"
-                decoding="async"
-                alt=""
-                className="h-8 w-8 flex-none object-contain"
-                onError={(event) => {
-                  event.currentTarget.style.display = "none";
-                }}
-              />
-            ) : null}
+            <Crest url={team?.crestUrl} className="h-8 w-8 flex-none" animate={false} />
             <span className="font-semibold">
               <TeamName team={team} />
             </span>

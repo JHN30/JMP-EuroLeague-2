@@ -1,13 +1,8 @@
-import RevealImage from "../lib/RevealImage";
 import { clubScore } from "./bracketModel";
-import { CREST_WIDTH, sizedImageUrl } from "../lib/imageSize";
+import Crest from "../lib/Crest";
 
 // "Best of 5" for a stage that needs 3 wins, "One game" for a single game, from the stage's win target.
 const formatLabel = (slot) => ((slot.winTarget ?? 1) > 1 ? "Best of " + (2 * slot.winTarget - 1) : "One game");
-
-function Crest({ url }) {
-  return url ? <RevealImage src={sizedImageUrl(url, CREST_WIDTH)} className="h-6 w-6 flex-none object-contain" /> : <span className="h-6 w-6 flex-none" />;
-}
 
 // A projected seed's move since an earlier round: "▲2" up, "▼1" down, nothing when it held its place.
 function SeedMove({ by, since }) {
@@ -43,7 +38,7 @@ function TeamRow({ slot, side, onSelect, onFocusClub, move, movesSince }) {
       <span className="muted w-6 flex-none text-right text-xs font-bold tabular-nums" title={side.seedLabel ? "Top 16 group place" : "Regular-season place"}>
         {side.seedLabel ?? side.seed ?? ""}
       </span>
-      <Crest url={side.crestUrl} />
+      <Crest url={side?.crestUrl} keepSlot className="h-6 w-6 flex-none" />
       <span className="min-w-0 flex-1 text-sm max-sm:line-clamp-2 max-sm:wrap-break-word sm:truncate">{side.short}</span>
       {slot.state === "projected" ? <SeedMove by={move} since={movesSince} /> : null}
       {score !== null ? <span className="flex-none text-base font-bold tabular-nums">{score}</span> : null}

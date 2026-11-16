@@ -44,7 +44,9 @@ import { fetchTeamRosterStats } from "./teamRosterStats";
 import TeamPageSkeleton, { SnapshotSkeleton, TeamLeadersSkeleton, TeamOverviewSkeleton } from "./TeamPageSkeleton";
 import { groupLabel, isGroupedTable } from "../standings/standingsGroups";
 import { advancedScopeForPhase, ordinal } from "./teamLeague";
-import { HEADER_CREST_WIDTH, PORTRAIT_WIDTH, sizedImageUrl } from "../lib/imageSize";
+import { PORTRAIT_WIDTH, sizedImageUrl } from "../lib/imageSize";
+import ResultBadge from "../lib/ResultBadge";
+import Crest from "../lib/Crest";
 
 const MotionLink = m.create(Link);
 
@@ -332,10 +334,9 @@ function TeamSnapshot({ standingsQuery, teamStatsQuery, clubCode, phaseGames, st
               <span className="muted text-sm">{basic.winPercentage != null ? `${basic.winPercentage}% wins` : "Record"}</span>
             </div>
             {streak ? (
-              <span className={`stat-badge ${streak.won ? "stat-badge-positive" : "stat-badge-negative"}`}>
-                {streak.won ? "W" : "L"}
-                {streak.count} streak
-              </span>
+              <ResultBadge won={streak.won} count={streak.count}>
+                {" streak"}
+              </ResultBadge>
             ) : null}
           </div>
           <ShareBar share={winShare} fillClass="bg-success" trackClass="bg-error/25" />
@@ -343,9 +344,7 @@ function TeamSnapshot({ standingsQuery, teamStatsQuery, clubCode, phaseGames, st
             <span className="micro-label">Last {form.length}</span>
             <span className="form-track" role="img" aria-label={`Last results, oldest first: ${form.map((r) => (r === "win" ? "win" : "loss")).join(", ")}`}>
               {form.map((result, index) => (
-                <span key={index} className={`form-pill ${result === "win" ? "w" : "l"}`}>
-                  {result === "win" ? "W" : "L"}
-                </span>
+                <ResultBadge key={index} won={result === "win"} className="w-6" />
               ))}
             </span>
           </div>
@@ -624,7 +623,7 @@ export default function TeamPage() {
         centred
         compact
         title={fullName}
-        media={team.crestUrl ? <RevealImage loading="eager" src={sizedImageUrl(team.crestUrl, HEADER_CREST_WIDTH)} className="h-16 w-16 flex-none object-contain max-sm:h-24 max-sm:w-24 lg:h-12 lg:w-12" /> : null}
+        media=<Crest url={team?.crestUrl} header eager className="h-16 w-16 flex-none max-sm:h-24 max-sm:w-24 lg:h-12 lg:w-12" />
         description={
           <>
             {/* The short name only when it says something the title does not ("Crvena Zvezda" under its sponsor name). */}

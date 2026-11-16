@@ -1,17 +1,16 @@
 import { Link } from "react-router";
 import { Avatar } from "../leaders/LeaderParts";
 import { formatPerGame } from "../lib/format";
-import RevealImage from "../lib/RevealImage";
 import ShortLabel from "../lib/ShortLabel";
 import { statNumber } from "../players/playerOverview";
 import { fullName } from "./playerLabels";
-import { CREST_WIDTH, sizedImageUrl } from "../lib/imageSize";
+import Crest from "../lib/Crest";
 
 function Club({ row, className = "" }) {
   if (!row?.clubName) return null;
   return (
     <p className={`muted flex items-center gap-1.5 text-xs ${className}`}>
-      {row.clubImageUrl ? <RevealImage src={sizedImageUrl(row.clubImageUrl, CREST_WIDTH)} className="h-4 w-4 flex-none object-contain" /> : null}
+      <Crest url={row?.clubImageUrl} className="h-4 w-4 flex-none" />
       <span>
         <ShortLabel short={row.clubTvCodes ?? row.clubCode} full={row.clubName} />
       </span>

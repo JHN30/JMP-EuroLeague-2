@@ -18,6 +18,7 @@ import ToggleButtons from "../lib/ToggleButtons";
 import { useMediaQuery } from "../lib/useMediaQuery";
 import ViewSelect from "../lib/ViewSelect";
 import { ToolbarSlot } from "./toolbarSlot";
+import Crest from "../lib/Crest";
 
 // ---- Small pieces shared by the three leaderboards ----
 
@@ -71,7 +72,7 @@ export function TeamTag({ code, name, tvCode, crestUrl, compact = false }) {
   );
   return (
     <span className="muted flex min-w-0 items-center gap-1.5 text-xs">
-      {crestUrl ? <RevealImage src={sizedImageUrl(crestUrl, CREST_WIDTH)} className="h-4 w-4 flex-none object-contain" /> : null}
+      <Crest url={crestUrl} className="h-4 w-4 flex-none" />
       <span className="min-w-0 line-clamp-2 wrap-break-word">{label}</span>
     </span>
   );

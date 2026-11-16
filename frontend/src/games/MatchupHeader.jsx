@@ -1,5 +1,3 @@
-import { useState } from "react";
-import { HEADER_CREST_WIDTH, sizedImageUrl } from "../lib/imageSize";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router";
 import { getSeasonStandings } from "../lib/api";
@@ -11,6 +9,7 @@ import { useSeasonFormat } from "../lib/useSeasonFormat";
 import { eliminationStageLabel } from "../postseason/eliminationBracket";
 import { groupPositionLabel } from "../standings/standingsGroups";
 import { teamCode, teamName } from "./gameUtils";
+import Crest from "../lib/Crest";
 
 // The badge of a game not yet played, from the warehouse's derived status (the source's own label can still say "Confirmed").
 const STATUS_LABELS = { scheduled: "Scheduled", awaiting_result: "Awaiting result", postponed: "Postponed", cancelled: "Cancelled" };
@@ -25,14 +24,6 @@ function formatTipOff(scheduledAt) {
   return scheduledAt ? new Date(scheduledAt).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" }) : "TBD";
 }
 
-// The crest in a fixed slot, so a club with no crest, or one that fails to load, leaves the layout as it is.
-function Crest({ team }) {
-  const [failed, setFailed] = useState(false);
-  const slot = "h-12 w-12 flex-none sm:h-20 sm:w-20 lg:h-16 lg:w-16";
-  if (!team?.crestUrl || failed) return <div aria-hidden="true" className={slot} />;
-  return <img src={sizedImageUrl(team.crestUrl, HEADER_CREST_WIDTH)} alt="" className={`${slot} object-contain`} onError={() => setFailed(true)} />;
-}
-
 // A known club's crest and name open its team page; a side still to be set (TBD) is plain.
 function Side({ team, seasonCode, position, groupPlace, won }) {
   const linked = Boolean(team?.clubCode && seasonCode);
@@ -42,7 +33,7 @@ function Side({ team, seasonCode, position, groupPlace, won }) {
       {...(linked ? { to: `/${seasonCode}/teams/${team.clubCode}` } : {})}
       className={`flex min-w-0 flex-col items-center gap-1 text-center sm:gap-2${linked ? " group rounded-field" : ""}`}
     >
-      <Crest team={team} />
+      <Crest url={team?.crestUrl} header animate={false} keepSlot className="h-12 w-12 flex-none sm:h-20 sm:w-20 lg:h-16 lg:w-16" />
       <p className={`text-lg leading-tight font-bold sm:text-2xl ${won ? "text-primary" : ""}${linked ? " group-hover:underline" : ""}`} title={team ? teamName(team) : undefined}>
         {teamCode(team)}
         {position != null ? (

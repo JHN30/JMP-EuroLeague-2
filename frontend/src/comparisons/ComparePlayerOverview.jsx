@@ -20,6 +20,7 @@ import CompareRadar from "./CompareRadar";
 import { chartNames } from "./playerLabels";
 import HeaderTip from "../lib/HeaderTip";
 import PlayerPairHeader from "./PlayerPairHeader";
+import ResultBadge from "../lib/ResultBadge";
 
 const FORM_GAMES = 5;
 
@@ -308,9 +309,7 @@ function FormList({ views, player, label, side, seasonCode }) {
                   aria-label={`${view.won ? "Won" : view.won === false ? "Lost" : "Played"} ${view.home ? "vs" : "at"} ${shortTeamName(view.opponent)}: ${Math.round(view.pts)} points, ${Math.round(view.reb)} rebounds, ${Math.round(view.ast)} assists, ${Math.round(view.stl)} steals, ${Math.round(view.blk)} blocks, PIR ${Math.round(view.pir)}`}
                   className={`${GAME_GRID} rounded-field hover:bg-base-200 px-1 py-0.5 text-sm max-sm:min-h-11`}
                 >
-                  <span className={`badge badge-sm w-6 font-bold ${view.won ? "badge-success" : view.won === false ? "badge-error" : "badge-ghost"}`}>
-                    {view.won ? "W" : view.won === false ? "L" : "–"}
-                  </span>
+                  <ResultBadge won={view.won ?? null} className="w-6" />
                   <span className="muted text-xs max-sm:hidden">{view.home ? "vs" : "at"}</span>
                   <span className="min-w-0 whitespace-nowrap">
                     <span className="muted me-1 text-xs sm:hidden">{view.home ? "vs" : "at"}</span>

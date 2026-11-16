@@ -3,7 +3,7 @@ import { Link } from "react-router";
 import HeaderTip from "../lib/HeaderTip";
 import { tierForPosition } from "../lib/seasonFormat";
 import { usePrefersReducedMotion } from "../lib/usePrefersReducedMotion";
-import { CREST_WIDTH, sizedImageUrl } from "../lib/imageSize";
+import Crest from "../lib/Crest";
 
 // The row tint follows the season's qualification lines; with none, rows are not tinted.
 function tierClass(position, tiers) {
@@ -104,9 +104,7 @@ export default function RaceSnapshotTable({
                     className="link link-hover flex items-center gap-2 font-medium"
                     onClick={(event) => event.stopPropagation()}
                   >
-                    {team.crestUrl ? (
-                      <img loading="lazy" decoding="async" src={sizedImageUrl(team.crestUrl, CREST_WIDTH)} alt="" className="h-5 w-5 flex-none object-contain" />
-                    ) : null}
+                    <Crest url={team?.crestUrl} animate={false} className="h-5 w-5 flex-none" />
                     {shortNames?.get(team.clubCode) ? (
                       <span className="hidden text-xs leading-tight max-sm:inline">{shortNames.get(team.clubCode)}</span>
                     ) : null}

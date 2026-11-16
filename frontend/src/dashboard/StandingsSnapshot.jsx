@@ -12,7 +12,7 @@ import { useSummaryTableStage } from "../lib/useSummaryTableStage";
 import { groupLabel, groupStandings, isGroupedTable } from "../standings/standingsGroups";
 import { WidgetPanel } from "./Dashboard";
 import { LeagueTableSkeleton } from "./HomeSkeleton";
-import { CREST_WIDTH, sizedImageUrl } from "../lib/imageSize";
+import Crest from "../lib/Crest";
 
 const MotionLink = m.create(Link);
 
@@ -33,18 +33,7 @@ function StandingRow({ entry, seasonCode, line = null, labels }) {
           {entry.basic?.position ?? "-"}
         </span>
         <Link to={`/${seasonCode}/teams/${entry.clubCode}`} className="link-hover flex flex-1 items-center gap-2 font-medium">
-          {entry.crestUrl ? (
-            <img
-              src={sizedImageUrl(entry.crestUrl, CREST_WIDTH)}
-              loading="lazy"
-              decoding="async"
-              alt=""
-              className="h-6 w-6 flex-none object-contain"
-              onError={(event) => {
-                event.currentTarget.style.display = "none";
-              }}
-            />
-          ) : null}
+          <Crest url={entry?.crestUrl} className="h-6 w-6 flex-none" animate={false} />
           {entry.clubTvCode ? (
             <ShortLabel short={entry.clubTvCode} full={entry.clubName ?? entry.clubCode} />
           ) : (

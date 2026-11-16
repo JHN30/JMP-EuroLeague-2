@@ -11,12 +11,11 @@ import { cardHover, denseListContainer, listItem } from "../lib/motion";
 import PageHeader from "../lib/PageHeader";
 import PlayerPortrait from "../lib/PlayerPortrait";
 import { nameParts } from "../lib/playerName";
-import RevealImage from "../lib/RevealImage";
 import SearchField from "../lib/SearchField";
 import ShortLabel from "../lib/ShortLabel";
 import { useDocumentTitle } from "../lib/useDocumentTitle";
 import { ageAtSeasonStart } from "../lib/playerAge";
-import { CREST_WIDTH, sizedImageUrl } from "../lib/imageSize";
+import Crest from "../lib/Crest";
 
 const MotionLink = m.create(Link);
 
@@ -59,9 +58,7 @@ function PlayerCard({ player, seasonCode }) {
         </div>
         {player.clubCode ? (
           <p className="flex min-w-0 items-center gap-1.5 text-sm">
-            {player.crestUrl ? (
-              <RevealImage src={sizedImageUrl(player.crestUrl, CREST_WIDTH)} className="h-4 w-4 flex-none object-contain" />
-            ) : null}
+            <Crest url={player?.crestUrl} className="h-4 w-4 flex-none" />
             <span className="truncate font-semibold">
               <ShortLabel short={player.clubTvCode ?? player.clubCode} full={player.clubName ?? player.clubCode} />
             </span>

@@ -13,7 +13,7 @@ import { displayName } from "../lib/playerName";
 import ShortLabel from "../lib/ShortLabel";
 import { SkeletonChip } from "../lib/Skeleton";
 import { Avatar, BOARD_AVATAR, RankBadge, TeamTag } from "../leaders/LeaderParts";
-import { CREST_WIDTH, sizedImageUrl } from "../lib/imageSize";
+import Crest from "../lib/Crest";
 
 const MotionLink = m.create(Link);
 
@@ -202,18 +202,7 @@ function BestClub({ seasonCode, label, best }) {
   const name = best.team.name ?? best.team.abbreviatedName ?? best.team.clubCode;
   return (
     <li className="flex items-center gap-3 border-t border-base-300 py-2.5 first:border-t-0">
-      {best.team.crestUrl ? (
-        <img
-          src={sizedImageUrl(best.team.crestUrl, CREST_WIDTH)}
-          loading="lazy"
-          decoding="async"
-          alt=""
-          className="h-8 w-8 flex-none object-contain"
-          onError={(event) => {
-            event.currentTarget.style.display = "none";
-          }}
-        />
-      ) : null}
+      <Crest url={best?.team?.crestUrl} className="h-8 w-8 flex-none" animate={false} />
       <div className="min-w-0 flex-1">
         <p className="micro-label">{label}</p>
         <Link to={`/${seasonCode}/teams/${best.team.clubCode}`} className="link-hover block truncate font-semibold">

@@ -10,12 +10,11 @@ import HeaderTip from "../lib/HeaderTip";
 import { barFill, listContainer, listItem, sectionContainer, sectionItem } from "../lib/motion";
 import Panel from "../lib/Panel";
 import PanelHeader from "../lib/PanelHeader";
-import RevealImage from "../lib/RevealImage";
 import { TabPanel, TabStrip } from "../lib/TabStrip";
 import { ordinal, rankTier } from "../teams/teamLeague";
 import AdvancedGauge, { VerdictPill } from "./AdvancedGauge";
 import { verdictFor } from "./advancedVerdict";
-import { CREST_WIDTH, sizedImageUrl } from "../lib/imageSize";
+import Crest from "../lib/Crest";
 
 const SCOPE_LABELS = { RS: "Regular season", TS: "Top 16", all: "All games", PS: "Postseason" };
 const EM_DASH = "—";
@@ -491,7 +490,7 @@ function OnOffCard({ row, rank, isMain }) {
     <Panel className="p-4">
       <div className="mb-3 flex flex-wrap items-start justify-between gap-3">
         <h4 className="subhead flex min-w-0 items-center gap-2">
-          {row.crestUrl ? <RevealImage src={sizedImageUrl(row.crestUrl, CREST_WIDTH)} className="h-7 w-7 flex-none object-contain" /> : null}
+          <Crest url={row?.crestUrl} className="h-7 w-7 flex-none" />
           <span className="truncate">{heading}</span>
         </h4>
         <div className="text-left sm:text-right">

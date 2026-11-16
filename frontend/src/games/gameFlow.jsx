@@ -9,7 +9,8 @@ import { useActiveTheme } from "../lib/useActiveTheme";
 import { buildMarginSeries, eventMoment, momentLabel } from "./gameFlowData";
 import { teamCode, teamName } from "./gameUtils";
 import { TeamName } from "./TeamLabel";
-import { CREST_WIDTH, HEADER_CREST_WIDTH, sizedImageUrl } from "../lib/imageSize";
+import { HEADER_CREST_WIDTH, sizedImageUrl } from "../lib/imageSize";
+import Crest from "../lib/Crest";
 
 // `fill` stretches the panel to its parent's height from lg, the rows sharing it out (the Overview, beside the score flow).
 export function PeriodTable({ periodScores, localTeam, roadTeam, forfeit = false, fill = false }) {
@@ -85,18 +86,7 @@ function TeamRow({ team, scores, otherScores, total, otherTotal, periodNumbers }
     <tr>
       <td className="font-medium lg:text-base">
         <span className="flex items-center gap-2 max-sm:gap-1.5">
-          {team?.crestUrl ? (
-            <img
-              src={sizedImageUrl(team.crestUrl, CREST_WIDTH)}
-              loading="lazy"
-              decoding="async"
-              alt=""
-              className="size-5 flex-none object-contain max-[359px]:hidden lg:size-7"
-              onError={(event) => {
-                event.currentTarget.style.display = "none";
-              }}
-            />
-          ) : null}
+          <Crest url={team?.crestUrl} className="size-5 flex-none max-[359px]:hidden lg:size-7" animate={false} />
           <span className="min-w-0">
             <TeamName team={team} />
           </span>

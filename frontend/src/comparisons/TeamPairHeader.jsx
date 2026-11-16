@@ -1,20 +1,11 @@
 import { useQuery } from "@tanstack/react-query";
-import { HEADER_CREST_WIDTH, sizedImageUrl } from "../lib/imageSize";
-import { useState } from "react";
 import { Link } from "react-router";
 import { TeamName } from "../games/TeamLabel";
 import { teamName } from "../games/gameUtils";
 import { getSeasonStandings } from "../lib/api";
 import Panel from "../lib/Panel";
 import { ordinal } from "../lib/seasonFormat";
-
-// The crest in a fixed slot, so a club with no crest, or one that fails to load, leaves the layout as it is.
-function Crest({ team }) {
-  const [failed, setFailed] = useState(false);
-  const slot = "h-9 w-9 flex-none sm:h-12 sm:w-12";
-  if (!team?.crestUrl || failed) return <div aria-hidden="true" className={slot} />;
-  return <img src={sizedImageUrl(team.crestUrl, HEADER_CREST_WIDTH)} alt="" className={`${slot} object-contain`} onError={() => setFailed(true)} />;
-}
+import Crest from "../lib/Crest";
 
 // One club: its crest over its name below sm, where a side is too narrow for both on one line, and beside it from sm (TV code
 // below sm, full name from sm), both opening its team page, over its regular-season place and record. `alignEnd` mirrors it from
@@ -24,7 +15,7 @@ function Side({ seasonCode, team, standing, alignEnd = false }) {
   return (
     <div className={`flex min-w-0 flex-col items-center gap-1 text-center sm:gap-3 ${alignEnd ? "sm:flex-row-reverse sm:text-right" : "sm:flex-row sm:text-left"}`}>
       <Link to={`/${seasonCode}/teams/${team.clubCode}`} aria-hidden="true" tabIndex={-1} className="flex-none">
-        <Crest team={team} />
+        <Crest url={team?.crestUrl} header animate={false} keepSlot className="h-9 w-9 flex-none sm:h-12 sm:w-12" />
       </Link>
       <div className="min-w-0">
         <Link to={`/${seasonCode}/teams/${team.clubCode}`} className="block text-base leading-tight font-bold wrap-anywhere hover:underline sm:text-xl">

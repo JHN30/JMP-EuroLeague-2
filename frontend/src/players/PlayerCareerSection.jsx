@@ -17,6 +17,7 @@ import { TabPanel, TabStrip } from "../lib/TabStrip";
 import { ProfileComparison, TrendGrid } from "./PlayerCareerCharts";
 import { CAREER_PHASES, careerAverages, careerHighs, careerTotals, clubStints, fetchPlayerCareer, fetchPlayerCareerAdvanced, seasonLine, withAdvanced } from "./careerData";
 import { CREST_WIDTH, sizedImageUrl } from "../lib/imageSize";
+import Crest from "../lib/Crest";
 
 const PANEL_ID = "player-career-panel";
 const TABLE_ID = "player-career-table";
@@ -290,7 +291,7 @@ function HighCard({ high }) {
         <span className="stat-value text-3xl sm:text-4xl">{Math.round(best.value)}</span>
         <span className="mt-1 flex min-w-0 items-center gap-1.5 text-sm">
           <HomeAwayIcon home={best.game.side === "local"} className="h-3.5 w-3.5 text-base-content/60" />
-          {opponent?.crestUrl ? <RevealImage src={sizedImageUrl(opponent.crestUrl, CREST_WIDTH)} className="h-5 w-5 flex-none object-contain" /> : null}
+          <Crest url={opponent?.crestUrl} className="h-5 w-5 flex-none" />
           <span className="truncate font-semibold">
             <ShortLabel short={opponent?.tvCode ?? opponent?.abbreviatedName ?? opponent?.name ?? "opponent"} full={opponent?.name ?? "opponent"} />
           </span>
@@ -340,7 +341,7 @@ function TeamsTimeline({ stints, currentSeasonCode }) {
                 </div>
                 <div className="flex flex-col gap-1">
                   <Link to={`/${last.seasonCode}/teams/${stint.team?.clubCode ?? stint.clubCode}`} className="flex min-w-0 items-center gap-2 hover:text-primary">
-                    {stint.team?.crestUrl ? <RevealImage src={sizedImageUrl(stint.team.crestUrl, CREST_WIDTH)} className="h-7 w-7 flex-none object-contain" /> : null}
+                    <Crest url={stint?.team?.crestUrl} className="h-7 w-7 flex-none" />
                     <span className="truncate text-sm font-semibold">{stint.team?.name ?? stint.clubCode}</span>
                     {stint.former ? <span className="badge badge-ghost badge-xs">Former</span> : null}
                   </Link>

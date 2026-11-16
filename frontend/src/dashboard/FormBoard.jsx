@@ -9,7 +9,7 @@ import { useSummaryTableStage } from "../lib/useSummaryTableStage";
 import { resultsByClub } from "../standings/breakdownUtils";
 import { ResultsRibbon } from "../standings/StreaksFormView";
 import { WidgetPanel } from "./Dashboard";
-import { CREST_WIDTH, sizedImageUrl } from "../lib/imageSize";
+import Crest from "../lib/Crest";
 
 const LAST = 5;
 // Phones list this many clubs before "Show more".
@@ -69,18 +69,7 @@ export default function FormBoard() {
           return (
             <m.li key={entry.clubCode} variants={listItem} className={`form-board-row${index >= VISIBLE_ON_MOBILE && !showAll ? " form-board-extra" : ""}`}>
               <Link to={`/${seasonCode}/teams/${entry.clubCode}`} className="link-hover flex min-w-0 flex-1 items-center gap-2 font-medium">
-                {entry.crestUrl ? (
-                  <img
-                    src={sizedImageUrl(entry.crestUrl, CREST_WIDTH)}
-                    loading="lazy"
-                    decoding="async"
-                    alt=""
-                    className="h-6 w-6 flex-none object-contain"
-                    onError={(event) => {
-                      event.currentTarget.style.display = "none";
-                    }}
-                  />
-                ) : null}
+                <Crest url={entry?.crestUrl} className="h-6 w-6 flex-none" animate={false} />
                 <span className="truncate">{entry.clubTvCode ? <ShortLabel short={entry.clubTvCode} full={name} /> : name}</span>
               </Link>
               <ResultsRibbon games={games} clubName={name} />

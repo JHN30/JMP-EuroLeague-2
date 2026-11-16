@@ -10,13 +10,12 @@ import HomeAwayIcon from "../lib/HomeAwayIcon";
 import { barFill, listContainer, listItem, sectionContainer, sectionItem } from "../lib/motion";
 import Panel from "../lib/Panel";
 import PanelHeader from "../lib/PanelHeader";
-import RevealImage from "../lib/RevealImage";
 import { formatStatValue } from "../lib/statsFields";
 import { chartTheme, radarScale, tooltip } from "../lib/chartTheme";
 import { useActiveTheme } from "../lib/useActiveTheme";
 import { ordinal, rankTier } from "../teams/teamLeague";
 import { PROFILE_AXES, SEASON_LINE, rankPlayer, statNumber } from "./playerOverview";
-import { CREST_WIDTH, sizedImageUrl } from "../lib/imageSize";
+import Crest from "../lib/Crest";
 
 const FORM_GAMES = 10;
 const MIN_FORM_BAR_POINTS = 10;
@@ -247,7 +246,7 @@ function FormBar({ game, seasonCode, height }) {
           />
         </div>
         {opponent?.crestUrl ? (
-          <RevealImage src={sizedImageUrl(opponent.crestUrl, CREST_WIDTH)} className="h-5 w-5 object-contain" />
+          <Crest url={opponent?.crestUrl} className="h-5 w-5" />
         ) : (
           <span className="h-5" />
         )}

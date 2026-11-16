@@ -23,7 +23,7 @@ import ShortLabel from "../lib/ShortLabel";
 import { useElementWidth } from "../lib/useElementWidth";
 import { useDocumentTitle } from "../lib/useDocumentTitle";
 import { thinAxisLabels } from "../lib/chartHelpers";
-import { CREST_WIDTH, sizedImageUrl } from "../lib/imageSize";
+import Crest from "../lib/Crest";
 
 // The latest played meetings the history shows before the rest are folded away, and the meetings in the form strip.
 const HISTORY_SHOWN = 10;
@@ -190,23 +190,6 @@ function MarginTimeline({ matchups, teamA, teamB, teamAId }) {
   );
 }
 
-// A club's crest, or nothing when it has none (or it fails to load).
-function Crest({ url, className = "size-5" }) {
-  if (!url) return null;
-  return (
-    <img
-      src={sizedImageUrl(url, CREST_WIDTH)}
-      loading="lazy"
-      decoding="async"
-      alt=""
-      className={`flex-none object-contain ${className}`}
-      onError={(event) => {
-        event.currentTarget.style.display = "none";
-      }}
-    />
-  );
-}
-
 // A record row: its label, A's wins, a bar split between the two clubs' wins, B's wins, then the games. The side with more wins is
 // bold in its colour. The figures are read out as one sentence.
 function RecordRow({ label, spoken, winsA, winsB, games, teamA, teamB }) {
@@ -237,7 +220,7 @@ function RecordRow({ label, spoken, winsA, winsB, games, teamA, teamB }) {
 function ColumnHead({ team, colour, mirrored = false }) {
   return (
     <span className={`flex items-center gap-1 text-xs font-bold ${colour} ${mirrored ? "" : "flex-row-reverse"}`}>
-      <Crest url={team?.crestUrl} className="size-4 max-sm:hidden" />
+      <Crest url={team?.crestUrl} animate={false} className="flex-none size-4 max-sm:hidden" />
       {teamCode(team)}
     </span>
   );
@@ -386,7 +369,7 @@ function SeriesHeader({ teamA, teamB, teamAId, pickerA, pickerB, swap, played, f
     <Panel as="section" className="mb-6 p-4">
       <div className="grid grid-cols-[minmax(0,1fr)] items-center gap-3 sm:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] sm:gap-4">
         <div className="flex min-w-0 items-center gap-3">
-          <Crest url={teamA?.crestUrl} className="size-10 sm:size-12" />
+          <Crest url={teamA?.crestUrl} animate={false} className="flex-none size-10 sm:size-12" />
           {pickerA}
         </div>
         <div className="flex items-center justify-center gap-3 sm:flex-col sm:gap-1">
@@ -401,7 +384,7 @@ function SeriesHeader({ teamA, teamB, teamAId, pickerA, pickerB, swap, played, f
           {swap}
         </div>
         <div className="flex min-w-0 items-center gap-3 sm:flex-row-reverse">
-          <Crest url={teamB?.crestUrl} className="size-10 sm:size-12" />
+          <Crest url={teamB?.crestUrl} animate={false} className="flex-none size-10 sm:size-12" />
           {pickerB}
         </div>
       </div>
@@ -424,14 +407,14 @@ function Scoreboard({ game, teamA, teamB, teamAId }) {
         <span className="min-w-0 truncate">
           <ShortLabel short={teamCode(teamA)} full={teamLabel(teamA)} />
         </span>
-        <Crest url={crestOf(game, teamA)} />
+        <Crest url={crestOf(game, teamA)} animate={false} className="flex-none size-5" />
       </span>
       <span className="font-semibold whitespace-nowrap tabular-nums">
         {isForfeit(game) ? <span className="muted me-1 text-xs font-normal">Forfeit</span> : null}
         {scoreA ?? "-"}-{scoreB ?? "-"}
       </span>
       <span className={`flex min-w-0 items-center gap-1.5 ${winner === "B" ? "text-secondary font-bold" : ""}`}>
-        <Crest url={crestOf(game, teamB)} />
+        <Crest url={crestOf(game, teamB)} animate={false} className="flex-none size-5" />
         <span className="min-w-0 truncate">
           <ShortLabel short={teamCode(teamB)} full={teamLabel(teamB)} />
         </span>
@@ -454,7 +437,7 @@ function NotableCard({ label, game, figure, teamA, teamB, teamAId }) {
   const winner = winnerOf(game, teamAId);
   const side = (team, mine, colour, mirrored) => (
     <span className={`flex min-w-0 items-center gap-1.5 text-sm ${mirrored ? "flex-row-reverse" : ""} ${winner === mine ? `${colour} font-bold` : "muted"}`}>
-      <Crest url={crestOf(game, team)} className="size-7" />
+      <Crest url={crestOf(game, team)} animate={false} className="flex-none size-7" />
       {teamCode(team)}
     </span>
   );

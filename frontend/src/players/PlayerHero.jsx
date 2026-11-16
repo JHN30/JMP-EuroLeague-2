@@ -5,10 +5,9 @@ import Panel from "../lib/Panel";
 import { ageAtSeasonStart, formatBirthDate } from "../lib/playerAge";
 import PlayerPortrait from "../lib/PlayerPortrait";
 import { nameParts } from "../lib/playerName";
-import RevealImage from "../lib/RevealImage";
 import ShortLabel from "../lib/ShortLabel";
 import { statNumber } from "./playerOverview";
-import { CREST_WIDTH, sizedImageUrl } from "../lib/imageSize";
+import Crest from "../lib/Crest";
 
 function Fact({ label, value, sub }) {
   return (
@@ -29,7 +28,7 @@ function ClubChip({ registration, seasonCode }) {
   const short = team?.tvCode ?? team?.abbreviatedName ?? registration.clubCode ?? label;
   const content = (
     <>
-      {team?.crestUrl ? <RevealImage loading="eager" src={sizedImageUrl(team.crestUrl, CREST_WIDTH)} className="h-6 w-6 flex-none object-contain" /> : null}
+      <Crest url={team?.crestUrl} eager className="h-6 w-6 flex-none" />
       <span className="truncate font-semibold">
         <ShortLabel short={short} full={label} />
       </span>

@@ -35,7 +35,8 @@ import PlayerLink from "./PlayerLink";
 import RotationsTab from "./RotationsTab";
 import { TabPanel, TabStrip } from "../lib/TabStrip";
 import ShootingStudio from "./ShootingStudio";
-import { CREST_WIDTH, PORTRAIT_WIDTH, sizedImageUrl } from "../lib/imageSize";
+import { PORTRAIT_WIDTH, sizedImageUrl } from "../lib/imageSize";
+import Crest from "../lib/Crest";
 
 const GAME_TABS = [
   { key: "overview", label: "Overview" },
@@ -192,18 +193,7 @@ function BoxScoreTable({ players, teamTotal, teamRow, team, won, seasonCode, gam
   return (
     <m.div variants={sectionItem}>
       <div className="mb-2 flex flex-wrap items-center gap-2">
-        {team?.crestUrl ? (
-          <img
-            src={sizedImageUrl(team.crestUrl, CREST_WIDTH)}
-            loading="lazy"
-            decoding="async"
-            alt=""
-            className="h-8 w-8 flex-none object-contain"
-            onError={(event) => {
-              event.currentTarget.style.display = "none";
-            }}
-          />
-        ) : null}
+        <Crest url={team?.crestUrl} className="h-8 w-8 flex-none" animate={false} />
         <h3 className="subhead">{name}</h3>
         {won ? <span className="badge badge-primary badge-sm">Winner</span> : null}
         {teamTotal?.coachName ? <span className="muted text-sm">Coach: {teamTotal.coachName}</span> : null}
@@ -405,20 +395,7 @@ function PlayByPlayRow({ event, localTeam, roadTeam }) {
         <p className="muted font-mono text-xs">{event.markerTime ?? "-"}</p>
       </div>
       {/* Always one cell, so rows without a crest (timeouts, period starts) keep the same columns. */}
-      {crest ? (
-        <img
-          src={sizedImageUrl(crest, CREST_WIDTH)}
-          loading="lazy"
-          decoding="async"
-          alt=""
-          className="hidden h-6 w-6 flex-none object-contain sm:block"
-          onError={(eventTarget) => {
-            eventTarget.currentTarget.style.display = "none";
-          }}
-        />
-      ) : (
-        <span aria-hidden="true" className="hidden h-6 w-6 sm:block" />
-      )}
+      <Crest url={crest} animate={false} keepSlot className="hidden h-6 w-6 flex-none sm:block" />
       <div className="min-w-0 max-sm:contents lg:flex lg:items-center lg:gap-3">
         <p className="flex flex-wrap items-center gap-2 max-sm:contents lg:max-w-[60%] lg:min-w-0 lg:flex-none lg:flex-nowrap">
           <span className="font-medium break-words max-sm:col-[2/4] max-sm:text-sm max-sm:row-start-1 max-sm:min-w-0 sm:truncate lg:min-w-0">{who}</span>
@@ -541,18 +518,7 @@ function FlowMetric({ label, value, detail, tone, team, className = "" }) {
     <Panel className={`p-4 max-sm:p-3 lg:p-3 ${tone ? `border-${tone} bg-${tone}/10` : ""} ${className}`}>
       {/* At least the crest's height, so a card without a crest (Lead changes) puts its value on the same line. */}
       <div className="mb-1 flex min-h-5 items-start gap-2">
-        {team?.crestUrl ? (
-          <img
-            src={sizedImageUrl(team.crestUrl, CREST_WIDTH)}
-            loading="lazy"
-            decoding="async"
-            alt=""
-            className="size-5 flex-none object-contain"
-            onError={(event) => {
-              event.currentTarget.style.display = "none";
-            }}
-          />
-        ) : null}
+        <Crest url={team?.crestUrl} className="size-5 flex-none" animate={false} />
         {/* Between lg and xl five cards in a row leave a label room for about one short line: each keeps two lines, so the
             values still line up when one wraps. */}
         <p className="eyebrow min-w-0 lg:max-xl:min-h-[2lh]">{label}</p>

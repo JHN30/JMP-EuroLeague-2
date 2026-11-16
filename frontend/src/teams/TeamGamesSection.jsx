@@ -14,6 +14,7 @@ import { isForfeit } from "../lib/forfeit";
 import ShortLabel from "../lib/ShortLabel";
 import { TabPanel, TabStrip } from "../lib/TabStrip";
 import { CREST_WIDTH, sizedImageUrl } from "../lib/imageSize";
+import ResultBadge from "../lib/ResultBadge";
 
 const MotionLink = m.create(Link);
 
@@ -71,7 +72,7 @@ function roundLabel(game) {
 }
 
 // The crest, or the club's letters when there is no crest or it does not load.
-function Crest({ team, className = "h-10 w-10" }) {
+function CrestOrLetters({ team, className = "h-10 w-10" }) {
   const [failedUrl, setFailedUrl] = useState(null);
   const url = team?.crestUrl;
   // The crest as it is, never clipped to a shape: crests are not all round.
@@ -171,7 +172,7 @@ function MarginStrip({ played, seasonCode, clubCode }) {
                       {signed}
                     </span>
                   </div>
-                  <Crest team={side.opponent} className="h-6 w-6" />
+                  <CrestOrLetters team={side.opponent} className="h-6 w-6" />
                   <span aria-hidden="true" className="muted flex items-center gap-0.5 text-[0.65rem] tabular-nums">
                     <HomeAwayIcon home={side.home} className="h-2.5 w-2.5" />
                     {game.roundNumber != null ? `R${game.roundNumber}` : ""}
@@ -201,7 +202,7 @@ function GameRow({ seasonCode, game, clubCode, isNext }) {
       variants={listItem}
       {...wideCardHover}
     >
-      <Crest team={side.opponent} className="h-10 w-10 lg:h-7 lg:w-7" />
+      <CrestOrLetters team={side.opponent} className="h-10 w-10 lg:h-7 lg:w-7" />
       {/* One line from lg: the opponent, then the round, which is the part cut short when the row is narrow. */}
       <div className="min-w-0 flex-1 lg:flex lg:items-baseline lg:gap-2">
         <p className="flex min-w-0 items-center gap-1.5 font-semibold lg:max-w-full lg:flex-none">
@@ -225,7 +226,7 @@ function GameRow({ seasonCode, game, clubCode, isNext }) {
       {played ? (
         side.hasScore ? (
           <div className="flex flex-none items-center gap-2">
-            <span className={`stat-badge ${side.won ? "stat-badge-positive" : "stat-badge-negative"}`}>{side.won ? "W" : "L"}</span>
+            <ResultBadge won={side.won} />
             {isForfeit(game) ? <span className="stat-badge stat-badge-neutral">Forfeit</span> : null}
             <span className="text-right text-lg font-bold tabular-nums sm:w-16">
               {side.clubScore}-{side.opponentScore}

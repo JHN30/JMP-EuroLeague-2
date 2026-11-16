@@ -12,7 +12,7 @@ import ShortLabel from "../lib/ShortLabel";
 import { shortTeamName, teamCode } from "../games/gameUtils";
 import { WidgetPanel } from "./Dashboard";
 import { LatestScoresSkeleton, VISIBLE_ON_MOBILE } from "./HomeSkeleton";
-import { CREST_WIDTH, sizedImageUrl } from "../lib/imageSize";
+import Crest from "../lib/Crest";
 
 const MotionLink = m.create(Link);
 
@@ -50,18 +50,7 @@ export function MatchCard({ game, standingByClubCode, seasonCode, showScore, cla
       </div>
       <div className="game-teams">
         <div className={`game-team${localWon ? " win" : ""}`}>
-          {game.localTeam?.crestUrl ? (
-            <img
-              src={sizedImageUrl(game.localTeam.crestUrl, CREST_WIDTH)}
-              loading="lazy"
-              decoding="async"
-              alt=""
-              className="h-6 w-6 flex-none object-contain"
-              onError={(event) => {
-                event.currentTarget.style.display = "none";
-              }}
-            />
-          ) : null}
+          <Crest url={game?.localTeam?.crestUrl} className="h-6 w-6 flex-none" animate={false} />
           <span className="flex-1">
             <ShortLabel short={teamCode(game.localTeam)} full={shortTeamName(game.localTeam)} />
           </span>
@@ -73,18 +62,7 @@ export function MatchCard({ game, standingByClubCode, seasonCode, showScore, cla
           {showScore ? <span className="score">{game.localScore ?? "-"}</span> : null}
         </div>
         <div className={`game-team${roadWon ? " win" : ""}`}>
-          {game.roadTeam?.crestUrl ? (
-            <img
-              src={sizedImageUrl(game.roadTeam.crestUrl, CREST_WIDTH)}
-              loading="lazy"
-              decoding="async"
-              alt=""
-              className="h-6 w-6 flex-none object-contain"
-              onError={(event) => {
-                event.currentTarget.style.display = "none";
-              }}
-            />
-          ) : null}
+          <Crest url={game?.roadTeam?.crestUrl} className="h-6 w-6 flex-none" animate={false} />
           <span className="flex-1">
             <ShortLabel short={teamCode(game.roadTeam)} full={shortTeamName(game.roadTeam)} />
           </span>

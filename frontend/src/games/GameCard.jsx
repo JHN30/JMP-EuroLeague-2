@@ -8,7 +8,7 @@ import ShortLabel from "../lib/ShortLabel";
 import { FormCell } from "../standings/standingsCells";
 import { groupPositionLabel } from "../standings/standingsGroups";
 import { shortTeamName, teamCode } from "./gameUtils";
-import { CREST_WIDTH, sizedImageUrl } from "../lib/imageSize";
+import Crest from "../lib/Crest";
 
 const MotionLink = m.create(Link);
 
@@ -42,20 +42,7 @@ function FixtureTeam({ team, entry, won, showGroup, scorer = null, showForm = fa
   const position = showGroup ? groupPositionLabel(entry) : null;
   return (
     <div className={`fixture-team${won ? " win" : ""}`}>
-      {team?.crestUrl ? (
-        <img
-          src={sizedImageUrl(team.crestUrl, CREST_WIDTH)}
-          loading="lazy"
-          decoding="async"
-          alt=""
-          className="fixture-crest"
-          onError={(event) => {
-            event.currentTarget.style.visibility = "hidden";
-          }}
-        />
-      ) : (
-        <span className="fixture-crest" />
-      )}
+      <Crest url={team?.crestUrl} animate={false} keepSlot className="fixture-crest" />
       <span className="fixture-team-name">
         <ShortLabel short={teamCode(team)} full={shortTeamName(team)} />
       </span>

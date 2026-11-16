@@ -204,7 +204,7 @@ function BoxScoreTable({ players, teamTotal, teamRow, team, won, seasonCode, gam
             }}
           />
         ) : null}
-        <h3 className="font-semibold">{name}</h3>
+        <h3 className="subhead">{name}</h3>
         {won ? <span className="badge badge-primary badge-sm">Winner</span> : null}
         {teamTotal?.coachName ? <span className="muted text-sm">Coach: {teamTotal.coachName}</span> : null}
         <span className="badge badge-ghost badge-sm ml-auto">{rows.length} players</span>

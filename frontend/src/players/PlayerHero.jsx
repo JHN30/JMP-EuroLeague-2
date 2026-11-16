@@ -13,7 +13,7 @@ import { CREST_WIDTH, sizedImageUrl } from "../lib/imageSize";
 function Fact({ label, value, sub }) {
   return (
     <m.div className="flex flex-col max-sm:w-1/3 max-sm:items-center max-sm:text-center" variants={sectionItem}>
-      <span className="muted text-xs font-bold uppercase tracking-wide">{label}</span>
+      <span className="micro-label">{label}</span>
       <span className="text-lg font-semibold tabular-nums">{value}</span>
       {sub ? <span className="muted text-xs">{sub}</span> : null}
     </m.div>
@@ -83,17 +83,17 @@ export default function PlayerHero({ player, registrations, stats, seasonCode })
             <p className="eyebrow mb-1">PLAYER{player.positionName ? ` · ${player.positionName.toUpperCase()}` : ""}</p>
             <h1 className="min-w-0 break-words">
               <span className="muted block text-xs font-bold uppercase tracking-[0.2em] max-sm:mb-1 sm:text-sm">{first}</span>
-              <span className="block text-3xl font-black uppercase leading-none max-sm:wrap-break-word sm:text-3xl lg:text-4xl">{last}</span>
+              <span className="page-title block uppercase max-sm:wrap-break-word">{last}</span>
             </h1>
           </div>
           {player.dorsal ? (
             <m.p
-              className="flex-none text-3xl font-black leading-none tabular-nums sm:text-6xl"
+              className="stat-value flex-none text-3xl sm:text-5xl"
               initial={{ opacity: 0, scale: 0.8 }}
               animate={{ opacity: 1, scale: 1 }}
               transition={{ duration: 0.5, ease: EASE_OUT, delay: 0.15 }}
             >
-              <span className="muted mr-0.5 text-xl font-bold sm:text-3xl">#</span>
+              <span className="muted font-display mr-0.5 text-xl font-bold sm:text-3xl">#</span>
               {player.dorsal}
             </m.p>
           ) : null}

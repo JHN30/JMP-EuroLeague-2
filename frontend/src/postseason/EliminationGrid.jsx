@@ -14,7 +14,7 @@ export default function EliminationGrid({ bracket, selectedId, focusClub, onSele
         <Fragment key={round.id}>
           <div className="elim-head" style={{ "--c": stageIndex + 1 }}>
             <p className="eyebrow mb-0.5">{round.winTarget ? `BEST OF ${2 * round.winTarget - 1}` : "SERIES"}</p>
-            <h3 className="text-lg font-bold">{round.title}</h3>
+            <h3 className="panel-title">{round.title}</h3>
           </div>
           {round.slots.map((slot, index) => (
             <m.div

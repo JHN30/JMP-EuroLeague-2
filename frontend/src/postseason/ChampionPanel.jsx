@@ -25,7 +25,7 @@ export default function ChampionPanel({ bracket, seasonLabel }) {
         {champion.crestUrl ? <RevealImage src={sizedImageUrl(champion.crestUrl, HEADER_CREST_WIDTH)} className="h-16 w-16 flex-none object-contain sm:h-24 sm:w-24" /> : null}
         <div className="min-w-0">
           <p className="eyebrow mb-1">{seasonLabel ? "CHAMPION · " + seasonLabel.toUpperCase() : "CHAMPION"}</p>
-          <h2 className="text-2xl font-black wrap-break-word sm:text-3xl">{champion.name}</h2>
+          <h2 className="page-title wrap-break-word">{champion.name}</h2>
           {runnerUp ? (
             <p className="muted mt-1">
               Won the final {(finalSlot.winTarget ?? 1) > 1 ? "series " : ""}against {runnerUp.name} {clubScore(finalSlot, champion.clubCode)}-{clubScore(finalSlot, runnerUp.clubCode)}
@@ -37,7 +37,7 @@ export default function ChampionPanel({ bracket, seasonLabel }) {
       <div className="mt-5 grid gap-4 border-t border-base-300 pt-4 sm:grid-cols-2 xl:grid-cols-4">
         {[{ label: "Runner-up", clubs: runnerUp ? [runnerUp] : [] }, ...groups].map((group) => (
           <div key={group.label}>
-            <p className="muted mb-1.5 text-xs font-bold uppercase tracking-wide">{group.label}</p>
+            <p className="micro-label mb-1.5">{group.label}</p>
             <ul className="flex flex-col gap-1">
               {group.clubs.map((club) => (
                 <li key={group.label + club.clubCode} className="flex items-center gap-2 text-sm">

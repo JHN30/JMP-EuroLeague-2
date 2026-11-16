@@ -91,7 +91,7 @@ export default function TeamLeagueProfile({ advancedQuery, clubCode, team, stage
       <div className="grid gap-x-8 gap-y-4 sm:grid-cols-2">
         {groups.map((group) => (
           <section key={group.title} aria-label={group.title}>
-            <h3 className="muted mb-1 text-xs font-bold tracking-wide uppercase">{group.title}</h3>
+            <h3 className="micro-label mb-1">{group.title}</h3>
             <ul>
               {group.metrics.map(({ metric, standing }) => (
                 <ProfileRow key={metric.field} metric={metric} own={own} standing={standing} />

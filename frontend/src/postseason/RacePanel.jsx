@@ -50,7 +50,7 @@ function ZoneTable({ zone, standings, race, info, nameOf }) {
   const last = zone.clubs.at(-1).basic.position;
   return (
     <section className="min-w-0">
-      <h4 className="flex items-baseline gap-2 font-bold">
+      <h4 className="subhead flex items-baseline gap-2">
         {zone.title}{" "}
         <span className="muted text-xs font-semibold tabular-nums">{first === last ? first : first + "-" + last}</span>
       </h4>
@@ -122,7 +122,7 @@ export default function RacePanel({ standings, teams, race, directSeeds, playInL
   return (
     <Panel className="p-4">
       <p className="eyebrow mb-0.5">THE RACE</p>
-      <h3 className="mb-3 text-lg font-bold">Race for the bracket</h3>
+      <h3 className="panel-title mb-3">Race for the bracket</h3>
       <div className={"grid gap-6 " + (zones.length === 3 ? "lg:grid-cols-3" : "lg:grid-cols-2")}>
         {zones.map((zone) => (
           <ZoneTable key={zone.title} zone={zone} standings={standings} race={race} info={info} nameOf={nameOf} />

@@ -135,7 +135,7 @@ function ProfileRow({ row }) {
 function ProfileGroup({ title, rows, entityA, entityB }) {
   return (
     <section aria-label={title}>
-      <div aria-hidden="true" className={`${ROW_GRID} muted border-b border-base-300 pb-1 text-xs font-bold tracking-wide uppercase`}>
+      <div aria-hidden="true" className={`${ROW_GRID} micro-label border-b border-base-300 pb-1`}>
         <h3 className="text-base-content text-sm tracking-normal normal-case">{title}</h3>
         <span className="text-right sm:col-span-2 sm:text-center">
           <ShortLabel short={entityA.tvCode ?? entityA.id} full={entityA.label} />
@@ -318,7 +318,7 @@ function ImpactTable({ seasonCode, entity, crestUrl, players, imageOf }) {
     <Panel className="p-3">
       <div className="mb-2 flex items-center gap-2">
         {crestUrl ? <RevealImage src={sizedImageUrl(crestUrl, CREST_WIDTH)} className="h-7 w-7 flex-none object-contain" /> : null}
-        <h3 className="min-w-0 font-bold">{entity.label}</h3>
+        <h3 className="subhead min-w-0">{entity.label}</h3>
         <p className="muted ms-auto text-xs">Top {IMPACT_SHOWN} by Win Shares</p>
       </div>
       {top.length === 0 ? (
@@ -375,7 +375,7 @@ function RosterTable({ seasonCode, entity, crestUrl, rows }) {
     <Panel className="p-3">
       <div className="mb-2 flex items-center gap-2">
         {crestUrl ? <RevealImage src={sizedImageUrl(crestUrl, CREST_WIDTH)} className="h-7 w-7 flex-none object-contain" /> : null}
-        <h3 className="min-w-0 font-bold">{entity.label}</h3>
+        <h3 className="subhead min-w-0">{entity.label}</h3>
         <p className="muted ms-auto text-xs">{rows.length} players · per game</p>
       </div>
       <div className="overflow-x-auto overscroll-x-contain">
@@ -496,7 +496,7 @@ export default function CompareRosters({ seasonCode, phaseCode, entityA: pickedA
       <section>
         <div className="mb-3">
           <p className="eyebrow mb-0.5">ADVANCED</p>
-          <h2 className="text-lg font-bold">Most impactful players</h2>
+          <h2 className="panel-title">Most impactful players</h2>
           <p className="muted mt-1 text-sm">Running values after the latest round. Hover or tap a column for what it means.</p>
         </div>
         {impactA.isPending || impactB.isPending ? (

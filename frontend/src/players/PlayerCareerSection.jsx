@@ -29,8 +29,8 @@ const PHASE_TEXT = { all: "Every phase", RS: "Regular season" };
 function SummaryStat({ label, value, sub }) {
   return (
     <m.div className="rounded-box border border-base-300 bg-base-100 p-3" variants={listItem}>
-      <span className="muted text-xs font-bold uppercase tracking-wide">{label}</span>
-      <p className="mt-1 text-2xl font-black leading-none tabular-nums">{value}</p>
+      <span className="micro-label">{label}</span>
+      <p className="stat-value mt-1 text-3xl">{value}</p>
       {sub ? <p className="muted mt-1 text-xs">{sub}</p> : null}
     </m.div>
   );
@@ -286,8 +286,8 @@ function HighCard({ high }) {
         to={`/${best.seasonCode}/games/${best.game.gameCode}`}
         className="flex h-full flex-col gap-1 rounded-box border border-base-300 bg-base-100 p-3 transition-colors hover:border-primary"
       >
-        <span className="muted text-xs font-bold uppercase tracking-wide">{high.label}</span>
-        <span className="text-4xl font-black leading-none tabular-nums">{Math.round(best.value)}</span>
+        <span className="micro-label">{high.label}</span>
+        <span className="stat-value text-3xl sm:text-4xl">{Math.round(best.value)}</span>
         <span className="mt-1 flex min-w-0 items-center gap-1.5 text-sm">
           <HomeAwayIcon home={best.game.side === "local"} className="h-3.5 w-3.5 text-base-content/60" />
           {opponent?.crestUrl ? <RevealImage src={sizedImageUrl(opponent.crestUrl, CREST_WIDTH)} className="h-5 w-5 flex-none object-contain" /> : null}

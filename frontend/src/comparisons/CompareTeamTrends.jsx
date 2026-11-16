@@ -158,7 +158,7 @@ function GameTypes({ gamesA, gamesB, entityA, entityB, halves }) {
   return (
     <Panel as="section" aria-label="Game types" className="h-full p-4">
       <PanelHeader compact level="h2" kicker="RECORDS" title="By type of game" />
-      <div aria-hidden="true" className="muted grid grid-cols-[minmax(0,1fr)_4.5rem_4.5rem] gap-x-2 border-b border-base-300 pb-1 text-right text-xs font-bold tracking-wide uppercase">
+      <div aria-hidden="true" className="micro-label grid grid-cols-[minmax(0,1fr)_4.5rem_4.5rem] gap-x-2 border-b border-base-300 pb-1 text-right">
         <span />
         <ClubCode entity={entityA} />
         <ClubCode entity={entityB} />
@@ -227,7 +227,7 @@ function CommonOpponents({ gamesA, gamesB, entityA, entityB, order }) {
             <b className="tabular-nums">{count("b")}</b>
             {level ? `, ${level} level` : ""}
           </p>
-          <div aria-hidden="true" className="muted grid grid-cols-[minmax(0,1fr)_5.5rem_5.5rem] gap-x-2 border-b border-base-300 pb-1 text-right text-xs font-bold tracking-wide uppercase lg:grid-cols-[minmax(0,1fr)_5.5rem_5.5rem_minmax(0,1fr)_5.5rem_5.5rem] max-lg:[&>*:nth-child(n+4)]:hidden">
+          <div aria-hidden="true" className="micro-label grid grid-cols-[minmax(0,1fr)_5.5rem_5.5rem] gap-x-2 border-b border-base-300 pb-1 text-right lg:grid-cols-[minmax(0,1fr)_5.5rem_5.5rem_minmax(0,1fr)_5.5rem_5.5rem] max-lg:[&>*:nth-child(n+4)]:hidden">
             <span />
             <ClubCode entity={entityA} />
             <ClubCode entity={entityB} />

@@ -102,7 +102,7 @@ function StatRow({ row, rows }) {
 function StatGroup({ group, rows, entityA, entityB }) {
   return (
     <section aria-label={group.family}>
-      <div aria-hidden="true" className={`${ROW_GRID} muted gap-y-0.5 border-b border-base-300 pb-1 text-xs font-bold tracking-wide uppercase`}>
+      <div aria-hidden="true" className={`${ROW_GRID} micro-label gap-y-0.5 border-b border-base-300 pb-1`}>
         <h3 className="text-base-content col-span-4 text-sm tracking-normal normal-case sm:col-span-1">{group.family}</h3>
         <span className="col-span-2 col-start-1 text-center sm:col-start-3">
           <ShortLabel short={entityA.tvCode ?? entityA.label} full={entityA.label} />

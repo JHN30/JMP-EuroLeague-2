@@ -171,7 +171,7 @@ function PhaseStory({ phases, format, phaseSummaries, activePhaseCode }) {
                   Phase {index + 1}
                   {isActive ? <span className="badge badge-primary badge-sm">Current</span> : null}
                 </p>
-                <h3 className="mb-2 font-semibold">{phase.name ?? PHASE_NAMES[phase.code] ?? phase.code}</h3>
+                <h3 className="subhead mb-2">{phase.name ?? PHASE_NAMES[phase.code] ?? phase.code}</h3>
                 {!summary || !summary.dateRange ? (
                   <p className="muted text-sm">{(format && stagePlaceholder(phase)) ?? "Not yet applicable"}</p>
                 ) : (
@@ -304,7 +304,7 @@ function DefiningGames({ seasonCode, playedGames }) {
                   <span className={`flex min-w-0 items-center gap-1.5 font-medium sm:gap-2 ${localWon ? "highlight-leader font-semibold" : ""}`}>
                     <TeamName team={game.localTeam} dimmed={!localWon} />
                   </span>
-                  <span className="badge badge-lg px-2 tabular-nums">
+                  <span className="badge badge-lg px-2 tabular-nums max-sm:px-1 max-sm:text-sm">
                     <span className={localWon ? "highlight-leader font-semibold" : "opacity-60"}>{game.localScore}</span>-
                     <span className={roadWon ? "highlight-leader font-semibold" : "opacity-60"}>{game.roadScore}</span>
                   </span>
@@ -573,7 +573,7 @@ function PhaseLeadersGroup({ seasonCode, phaseCode, showHeading }) {
   return (
     <div>
       {showHeading ? (
-        <h3 className="mb-2 font-semibold">{PHASE_NAMES[phaseCode] ?? phaseCode}</h3>
+        <h3 className="subhead mb-2">{PHASE_NAMES[phaseCode] ?? phaseCode}</h3>
       ) : null}
       <m.div
         className="season-leaders-grid"
@@ -733,7 +733,7 @@ function RoadToTitle({ champion, steps }) {
           />
         ) : null}
         <div className="min-w-0 flex-1">
-          <p className="text-success text-xs font-bold uppercase tracking-wide">Season champion</p>
+          <p className="text-success micro-label">Season champion</p>
           <p className="text-xl font-semibold">{teamName(champion)}</p>
           <p className="muted mt-1 text-sm">
             {totalWins}-{totalLosses} in the postseason · defeated {steps.length}{" "}

@@ -107,7 +107,7 @@ test("the cards are two to five per row, stacked below 640px, with the TV code b
 
     // Phone names wrap in full; the tablet/desktop card intentionally uses ellipsis.
     if (width < 640) {
-      expect(await findBrokenWords(cards(page).locator("p.font-extrabold"))).toEqual([]);
+      expect(await findBrokenWords(cards(page).locator("p[title]"))).toEqual([]);
       expect(await findBrokenWords(cards(page).locator("p.muted.uppercase"))).toEqual([]);
     }
 
@@ -155,7 +155,7 @@ test("a very long name, a missing portrait, club, number or height and a failing
   await atWidths(page, [320, 390, 640, 768, 1024, 1280], async (width) => {
     expect(await holdsContent(cards(page))).toBe(true);
     // A very long surname takes at most two lines below 640px.
-    const lines = await cards(page).nth(0).locator("p.font-extrabold").evaluate((el) => Math.round(el.getBoundingClientRect().height / parseFloat(getComputedStyle(el).lineHeight)));
+    const lines = await cards(page).nth(0).locator("p[title]").evaluate((el) => Math.round(el.getBoundingClientRect().height / parseFloat(getComputedStyle(el).lineHeight)));
     expect(lines).toBeLessThanOrEqual(width < 640 ? 2 : 1);
     // A player without a club, a number or a height shows none of them, and a number of 0 is shown.
     await expect(cards(page).nth(1)).not.toContainText("#");

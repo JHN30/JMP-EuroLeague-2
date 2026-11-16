@@ -84,7 +84,7 @@ test("the Players tab suggests pairs of leaders and the round's star matchups, e
     await expect(pairs.nth(index)).toHaveAttribute("aria-label", new RegExp(`^Compare .+ and .+, the top two in ${stat} per game$`));
   }
   // The leader comes first: the two values of a pair, best first.
-  const values = (await pairs.first().locator("span.font-black").allInnerTexts()).map(Number);
+  const values = (await pairs.first().locator("span.font-bold.tabular-nums").allInnerTexts()).map(Number);
   expect(values[0]).toBeGreaterThanOrEqual(values[1]);
 
   // The coming round's games, each side's best player, as one row per game.

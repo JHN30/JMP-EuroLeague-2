@@ -40,7 +40,7 @@ function BookRow({ seasonCode, family, card }) {
           </Link>
           {first ? <NewBadge record={first} seasonCode={seasonCode} /> : null}
         </div>
-        <span className="text-lg font-black tabular-nums text-primary sm:text-right sm:text-xl">{first ? first.valueText : "-"}</span>
+        <span className="text-lg font-display font-bold tabular-nums text-primary sm:text-right sm:text-xl">{first ? first.valueText : "-"}</span>
       </div>
       <div className="min-w-0">
         {first ? (
@@ -98,7 +98,7 @@ export function RecordPicker({ seasonCode }) {
 export function PopularRecordsHeading() {
   return (
     <div className="mb-3">
-      <h2 id="popular-records" className="text-lg font-bold">
+      <h2 id="popular-records" className="panel-title">
         Popular records
       </h2>
       <p className="muted text-sm">Points, rebounds, assists, steals, blocks and PIR for every record type. Open one for its Top 50 and timeline.</p>

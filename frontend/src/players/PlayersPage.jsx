@@ -46,12 +46,12 @@ function PlayerCard({ player, seasonCode }) {
         <div className="flex items-start justify-between gap-1.5">
           <div className="min-w-0 flex-1">
             <p className="muted text-[0.65rem] font-bold uppercase tracking-[0.18em] max-sm:line-clamp-2 max-sm:wrap-break-word sm:truncate">{first}</p>
-            <p className="text-sm font-extrabold uppercase leading-tight max-sm:line-clamp-2 max-sm:wrap-break-word sm:truncate sm:text-base" title={last}>
+            <p className="text-sm font-bold uppercase leading-tight max-sm:line-clamp-2 max-sm:wrap-break-word sm:truncate sm:text-base" title={last}>
               {last}
             </p>
           </div>
           {player.dorsal ? (
-            <p className="flex-none text-xl font-black leading-none tabular-nums max-sm:absolute max-sm:right-1.5 max-sm:top-1.5 max-sm:rounded-field max-sm:bg-base-100/85 max-sm:px-1.5 max-sm:py-1 max-sm:text-lg">
+            <p className="flex-none text-xl font-display font-bold leading-none tabular-nums max-sm:absolute max-sm:right-1.5 max-sm:top-1.5 max-sm:rounded-field max-sm:bg-base-100/85 max-sm:px-1.5 max-sm:py-1 max-sm:text-lg">
               <span className="muted mr-0.5 text-xs font-bold">#</span>
               {player.dorsal}
             </p>

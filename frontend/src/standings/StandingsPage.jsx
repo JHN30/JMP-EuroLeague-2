@@ -249,7 +249,7 @@ export default function StandingsPage() {
             ) : mode === "race" ? (
               displayedGroups.map((group, index) => (
                 <section key={`${seasonCode}-${phaseCode}-${groupName ?? "all"}-${group.name}`} aria-label={grouped ? groupLabel(group.name) : undefined} className="flex min-w-0 flex-col gap-4">
-                  {grouped ? <h2 className="text-lg font-semibold">{groupLabel(group.name)}</h2> : null}
+                  {grouped ? <h2 className="panel-title">{groupLabel(group.name)}</h2> : null}
                   {grouped && group.name === null ? <EmptyText>Group assignments are unavailable for these clubs.</EmptyText> : (
                     <RaceView
                       seasonCode={seasonCode}
@@ -320,14 +320,14 @@ export default function StandingsPage() {
 
                 <m.div key={breakdown} className="flex flex-col gap-6" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.25 }}>
                 {displayedGroups.map((group) => {
-                  if (grouped && group.name === null) return <section key="unavailable" aria-label="Group unavailable"><h2 className="text-lg font-semibold">Group unavailable</h2><EmptyText>Group assignments are unavailable for {group.standings.length} clubs.</EmptyText></section>;
+                  if (grouped && group.name === null) return <section key="unavailable" aria-label="Group unavailable"><h2 className="panel-title">Group unavailable</h2><EmptyText>Group assignments are unavailable for {group.standings.length} clubs.</EmptyText></section>;
                   const clubs = new Set(group.standings.map((row) => row.clubCode));
                   const scopedNet = grouped ? { ...netQuery, data: { ...netQuery.data, standings: (netQuery.data?.standings ?? []).filter((row) => clubs.has(row.clubCode)) } } : netQuery;
                   const rows = grouped ? group.standings.map((row) => ({ ...row, bestSixth: Boolean(finalGroupSnapshot && crossQualifiers.has(row.clubCode)), basic: row.basic ? { ...row.basic, qualified: Boolean(finalGroupSnapshot && (crossQualifiers.has(row.clubCode) || groupTiers?.some((tier) => row.basic.position >= tier.from && row.basic.position <= tier.to))) } : null })) : standings;
                   return (
                     <section key={group.name ?? "ungrouped"} aria-label={grouped ? groupLabel(group.name) : undefined} className="flex min-w-0 flex-col gap-4">
                       {grouped ? <>
-                        <h2 className="text-lg font-semibold">{groupLabel(group.name)}</h2>
+                        <h2 className="panel-title">{groupLabel(group.name)}</h2>
                         <StandingsKpiStrip seasonCode={seasonCode} phaseCode={phaseCode} round={round} previousRound={previousRound} standings={group.standings} netQuery={scopedNet} tiers={groupTiers} cutoffLabel={`${destination} cutoff`} />
                       </> : null}
                       <StandingsTable

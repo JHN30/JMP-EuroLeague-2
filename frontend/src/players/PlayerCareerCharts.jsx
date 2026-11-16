@@ -54,8 +54,8 @@ function careerFigure(lines, metric) {
 function TrendFact({ label, value, sub, tone }) {
   return (
     <div className="min-w-0">
-      <p className="muted text-xs font-bold uppercase tracking-wide">{label}</p>
-      <p className="text-2xl font-black leading-tight tabular-nums">{value}</p>
+      <p className="micro-label">{label}</p>
+      <p className="stat-value text-3xl">{value}</p>
       <p className={`truncate text-xs ${tone ?? "muted"}`}>{sub}</p>
     </div>
   );
@@ -89,7 +89,7 @@ function TrendBars({ lines, metric, average, best }) {
                 className="flex h-full min-w-0 flex-1 flex-col items-center justify-end"
                 title={value === null ? `${line.label}: no figure` : `${line.label}: ${formatMetric(metric, value)} (${line.gp ?? 0} games)`}
               >
-                <span className={`mb-1 text-[0.7rem] leading-none tabular-nums ${isBest ? "font-black text-primary" : "font-semibold"}`}>
+                <span className={`mb-1 text-[0.7rem] leading-none tabular-nums ${isBest ? "font-bold text-primary" : "font-semibold"}`}>
                   {value === null ? "—" : formatDecimal(value, metric.digits)}
                 </span>
                 {value === null ? null : (

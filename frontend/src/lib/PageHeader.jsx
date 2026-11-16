@@ -13,7 +13,7 @@ export default function PageHeader({ kicker, title, description, media, stacked 
         {media ?? null}
         <div className={`min-w-0 flex-1 ${centred ? "max-sm:w-full max-sm:flex-none" : ""}`}>
           <p className="eyebrow mb-1">{kicker}</p>
-          <h1 className="text-2xl font-semibold break-words">{title}</h1>
+          <h1 className="page-title break-words">{title}</h1>
           {description ?? null}
         </div>
         {children ?? null}

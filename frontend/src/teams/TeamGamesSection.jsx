@@ -197,7 +197,7 @@ function GameRow({ seasonCode, game, clubCode, isNext }) {
     <MotionLink
       to={`/${seasonCode}/games/${game.gameCode}`}
       // The next game is tinted so it stands out without hovering; every row keeps the hover border.
-      className={`flex items-center gap-3 rounded-field border p-3 transition-colors hover:border-primary lg:py-2 ${isNext ? "border-primary/30 bg-primary/5" : "border-base-300 bg-base-200"}`}
+      className={`flex items-center gap-3 rounded-field border p-3 transition-colors max-sm:gap-2 hover:border-primary lg:gap-2 lg:py-2 ${isNext ? "border-primary/30 bg-primary/5" : "border-base-300 bg-base-200"}`}
       variants={listItem}
       {...wideCardHover}
     >
@@ -370,7 +370,7 @@ export default function TeamGamesSection({ gamesQuery, seasonCode, clubCode, pha
               activeKey={resultFilter}
               onChange={setResultFilter}
               tabs={resultTabs}
-              className="w-fit"
+              className="w-fit [&_.tab]:[--tab-pad:0.6rem]"
             />
           }
         />

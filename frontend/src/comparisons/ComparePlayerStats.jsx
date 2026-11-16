@@ -89,7 +89,7 @@ function StatRow({ row }) {
   );
   return (
     <m.li variants={listItem} data-better={better ?? undefined} className={`${ROW_GRID} border-base-300 gap-y-0.5 border-b py-1.5 text-sm last:border-0`}>
-      <span className="col-span-2 col-start-2 row-start-1 text-center text-xs font-bold tracking-wide uppercase sm:col-span-1 sm:col-start-1 sm:text-left sm:text-sm sm:font-medium sm:tracking-normal sm:normal-case">
+      <span className="col-span-2 col-start-2 row-start-1 text-center micro-label text-base-content sm:col-span-1 sm:col-start-1 sm:text-left sm:text-sm sm:font-medium sm:tracking-normal sm:normal-case">
         <HeaderTip tip={row.tip}>{row.label}</HeaderTip>
         {row.direction === "lower" ? (
           <span className="muted ms-1 font-normal" title="Lower is better">
@@ -117,7 +117,7 @@ function StatGroup({ title, rows, names, body }) {
   return (
     <section aria-label={title} className="mb-4">
       <div className={`${ROW_GRID} muted border-base-300 gap-y-0.5 border-b pb-1 text-xs font-semibold`}>
-        <h3 className="text-base-content col-span-4 text-sm font-bold sm:col-span-1">{title}</h3>
+        <h3 className="subhead text-base-content col-span-4 sm:col-span-1">{title}</h3>
         <span aria-hidden="true" className={`col-span-2 col-start-1 text-center sm:col-start-3 ${SIDE_TEXT.a}`}>{names[0]}</span>
         <span aria-hidden="true" className={`col-span-2 col-start-3 text-center sm:col-start-5 ${SIDE_TEXT.b}`}>{names[1]}</span>
       </div>

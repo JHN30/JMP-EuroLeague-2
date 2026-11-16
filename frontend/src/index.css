@@ -77,8 +77,15 @@
   --noise: 0;
 }
 
+/* The display face (Barlow Condensed) gives the titles, section headings and big numbers a scoreboard feel; Inter carries
+   everything else. `font-display` is also a utility for a one-off. */
+@theme {
+  --font-display: "Barlow Condensed", "Arial Narrow", ui-sans-serif, system-ui, sans-serif;
+}
+
 :root {
   font-family:
+    "Inter Variable",
     Inter,
     ui-sans-serif,
     system-ui,
@@ -87,7 +94,7 @@
     "Segoe UI",
     sans-serif;
   font-synthesis: none;
-  --weight-display: 900;
+  --weight-display: 700;
 }
 
 html {
@@ -112,7 +119,7 @@ button {
   background-image:
     radial-gradient(circle at 12% 0%, color-mix(in srgb, var(--color-primary) 24%, transparent), transparent 34rem),
     radial-gradient(circle at 88% 12%, color-mix(in srgb, var(--color-accent) 16%, transparent), transparent 28rem),
-    linear-gradient(135deg, color-mix(in srgb, var(--color-base-content) 7%, transparent) 1px, transparent 1px);
+    linear-gradient(135deg, color-mix(in srgb, var(--color-base-content) 4%, transparent) 1px, transparent 1px);
   background-size:
     auto,
     auto,
@@ -265,20 +272,67 @@ button {
   }
 }
 
-.eyebrow {
-  color: var(--color-primary);
-  font-size: 0.75rem;
-  font-weight: 900;
-  letter-spacing: 0.18em;
-  text-transform: uppercase;
-}
+/* Type roles: one class per role, used everywhere that role appears. They sit in the components layer so a utility at a call
+   site (a size step, a colour, a margin) still wins over them.
+     .page-title   the page's one title (PageHeader's h1, a hero's name)
+     .panel-title  a section or panel heading (PanelHeader)
+     .subhead      a smaller heading inside a panel
+     .eyebrow      an uppercase kicker above a title, in the primary colour
+     .micro-label  an uppercase label over a value or a group, dimmed
+     .stat-value   a standalone big number; its size is one of three steps at the call site:
+                   text-3xl / text-3xl sm:text-4xl / text-3xl sm:text-5xl */
+@layer components {
+  .page-title {
+    font-family: var(--font-display);
+    font-size: 1.75rem;
+    font-weight: var(--weight-display);
+    line-height: 1.05;
+    letter-spacing: 0.005em;
+  }
 
-.micro-label {
-  font-size: 0.75rem;
-  font-weight: 900;
-  text-transform: uppercase;
-  letter-spacing: 0.1em;
-  color: color-mix(in srgb, var(--color-base-content) 60%, transparent);
+  @media (min-width: 40rem) {
+    .page-title {
+      font-size: 2.25rem;
+    }
+  }
+
+  .panel-title {
+    font-family: var(--font-display);
+    font-size: 1.25rem;
+    font-weight: var(--weight-display);
+    line-height: 1.15;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+  }
+
+  .subhead {
+    font-size: 0.875rem;
+    font-weight: 600;
+    line-height: 1.3;
+  }
+
+  .eyebrow,
+  .micro-label {
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+
+  .eyebrow {
+    color: var(--color-primary);
+  }
+
+  .micro-label {
+    color: color-mix(in srgb, var(--color-base-content) 60%, transparent);
+  }
+
+  .stat-value {
+    font-family: var(--font-display);
+    font-weight: var(--weight-display);
+    line-height: 1;
+    font-variant-numeric: tabular-nums;
+  }
 }
 
 /* Three-step opacity hierarchy: 60 for micro-labels (see .micro-label), 65
@@ -352,12 +406,6 @@ button {
   .panel-header-compact .eyebrow {
     margin-bottom: 0;
   }
-}
-
-.panel-title {
-  font-size: 1rem;
-  font-weight: 700;
-  letter-spacing: -0.01em;
 }
 
 .panel-link {
@@ -872,6 +920,7 @@ button {
   font-weight: 600;
 }
 .game-team .score {
+  font-family: var(--font-display);
   font-variant-numeric: tabular-nums;
   font-weight: var(--weight-display);
   font-size: 0.95rem;
@@ -947,6 +996,7 @@ button {
 }
 .fixture-grid {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: 0.75rem;
 }
 @container (min-width: 40rem) {
@@ -1069,6 +1119,7 @@ button {
   white-space: nowrap;
 }
 .fixture-time {
+  font-family: var(--font-display);
   font-size: 1.6rem;
   line-height: 1;
   font-weight: var(--weight-display);
@@ -1080,6 +1131,7 @@ button {
   overflow: hidden;
   border: 1px solid var(--color-base-300);
   border-radius: var(--radius-field);
+  font-family: var(--font-display);
   font-variant-numeric: tabular-nums;
   font-size: 1.35rem;
   font-weight: var(--weight-display);
@@ -1154,6 +1206,9 @@ button {
   }
   .fixture-venue {
     font-size: 0.68rem;
+  }
+  .fixture-time {
+    font-size: 1.4rem;
   }
   .fixture-date {
     max-width: 5rem;
@@ -1367,9 +1422,9 @@ button {
   margin: -0.9rem -0.4rem -0.9rem 0;
 }
 .kpi-chip .value {
+  font-family: var(--font-display);
   font-size: 1.4rem;
   font-weight: var(--weight-display);
-  letter-spacing: -0.02em;
   font-variant-numeric: tabular-nums;
   color: var(--color-base-content);
   line-height: 1;

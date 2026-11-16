@@ -35,7 +35,7 @@ function PanelTitle({ kicker, title, note, action = null }) {
     <div className="mb-3 flex flex-wrap items-start justify-between gap-x-4 gap-y-2">
       <div className="min-w-0">
         <p className="eyebrow mb-0.5">{kicker}</p>
-        <h3 className="text-lg font-bold">{title}</h3>
+        <h3 className="panel-title">{title}</h3>
         {note ? <p className="muted mt-1 text-sm">{note}</p> : null}
       </div>
       {action}
@@ -309,7 +309,7 @@ function WatchPanel({ seasonCode, phaseCode, entityA, entityB }) {
         note="The three highest scorers of each club, per game."
         action={
           lead ? (
-            <Link to={`/${seasonCode}/compare?view=players&playerA=${encodeURIComponent(lead[0].personKey)}&playerB=${encodeURIComponent(lead[1].personKey)}`} className="btn btn-outline btn-sm h-auto py-1.5 text-center whitespace-normal">
+            <Link to={`/${seasonCode}/compare?view=players&playerA=${encodeURIComponent(lead[0].personKey)}&playerB=${encodeURIComponent(lead[1].personKey)}`} className="btn btn-outline btn-sm h-auto max-w-full py-1.5 text-center whitespace-normal">
               Compare {displayName(lead[0])} and {displayName(lead[1])}
             </Link>
           ) : null
@@ -335,7 +335,7 @@ function MeetingList({ seasonCode, title, meetings, entityA, entityB, gameCode =
   const thisGame = <span className="badge badge-primary badge-sm mx-1 align-middle">This game</span>;
   return (
     <div>
-      <h4 className="flex flex-wrap items-baseline justify-between gap-x-3 px-1 text-sm font-semibold">
+      <h4 className="subhead flex flex-wrap items-baseline justify-between gap-x-3 px-1">
         {title}
         <span className="muted text-xs font-normal">{played.length ? `${entityA.label} ${winsA}-${played.length - winsA} ${entityB.label}` : "Not played yet."}</span>
       </h4>

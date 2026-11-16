@@ -52,7 +52,7 @@ function SummaryStrip({ items }) {
     <dl className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6" aria-label="The game in numbers">
       {items.map((item) => (
         <div key={item.key} className="rounded-field bg-base-200 px-2 py-1.5 text-center">
-          <dt className="muted text-xs font-bold tracking-wide uppercase">{item.tip ? <HeaderTip tip={item.tip}>{item.label}</HeaderTip> : item.label}</dt>
+          <dt className="micro-label">{item.tip ? <HeaderTip tip={item.tip}>{item.label}</HeaderTip> : item.label}</dt>
           <dd className="font-semibold tabular-nums">{item.loading ? LOADING_MARK : item.display}</dd>
         </div>
       ))}
@@ -120,7 +120,7 @@ function GroupPanel({ group, localTeam, roadTeam }) {
     // From lg both columns end on one line: a panel grows by its row count, so a shorter column's spare height is shared
     // evenly by its rows (each row grows) instead of pooling at the bottom of one panel.
     <Panel as="section" aria-labelledby={headingId} className="flex flex-col p-4 max-sm:p-3" style={{ flexGrow: group.rows.length }}>
-      <h3 id={headingId} className="muted mb-2 text-center text-xs font-bold tracking-wide uppercase">
+      <h3 id={headingId} className="micro-label mb-2 text-center">
         {group.title}
       </h3>
       <TeamHeader localTeam={localTeam} roadTeam={roadTeam} />

@@ -72,7 +72,7 @@ function ZoneRow({ label, lines, teams, subtotal = false }) {
         return [
           <td key={`${team?.clubCode}-share`} className="text-center tabular-nums">{line.share}</td>,
           <td key={`${team?.clubCode}-fg`} className="text-center tabular-nums">
-            <span className={isBetter ? `inline-block rounded px-1 font-bold ${TEAM_SHADES[teamIndex]}` : undefined}>
+            <span className={isBetter ? `inline-block rounded px-1 font-bold max-sm:px-0.5 ${TEAM_SHADES[teamIndex]}` : undefined}>
               {line.fg}
               {isBetter ? <span className="sr-only"> (higher)</span> : null}
             </span>
@@ -104,7 +104,7 @@ export default function ZoneComparison({ localTeam, roadTeam, shots }) {
     <Panel className="p-3 sm:p-4">
       <PanelHeader kicker="ZONES" title="Zone comparison" compact />
       <div className="overflow-x-auto">
-        <table className="table table-sm w-full max-sm:[&_td]:px-1 max-sm:[&_th]:px-1 max-sm:[&_td]:text-xs [&_td]:py-1.5 [&_th]:py-1.5">
+        <table className="table table-sm w-full max-sm:[&_td]:px-[3px] max-sm:[&_th]:px-[3px] max-sm:[&_td]:text-xs [&_td]:py-1.5 [&_th]:py-1.5">
           <thead>
             <tr>
               <th rowSpan={2} className="w-1/3">Zone</th>

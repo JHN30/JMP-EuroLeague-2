@@ -61,7 +61,7 @@ function Heading({ heading }) {
   return (
     <div className={"lg:row-start-1 " + heading.col}>
       <p className="eyebrow mb-0.5">{heading.sub.toUpperCase()}</p>
-      <h3 className="text-lg font-bold">{heading.title}</h3>
+      <h3 className="panel-title">{heading.title}</h3>
     </div>
   );
 }

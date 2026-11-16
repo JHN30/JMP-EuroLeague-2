@@ -108,7 +108,7 @@ function RatingsCard({ trend }) {
         <>
           <RatingsChart rounds={chart.rounds} offense={chart.offense} defense={chart.defense} games={chart.games} averages={chart.averages} />
           <p className="mt-3 flex flex-wrap items-baseline gap-x-6 gap-y-1 text-sm" data-testid="ratings-averages">
-            <span className="muted text-xs font-bold tracking-wide uppercase">Season average</span>
+            <span className="micro-label">Season average</span>
             <span>
               Offense <b className="tabular-nums">{formatDecimal(latest.offensiveRating)}</b>
             </span>
@@ -178,7 +178,7 @@ function StrengthTile({ tile, own, rows, clubCode }) {
         <HeaderTip tip={tile.tip}>{tile.label}</HeaderTip>
       </span>
       <div className="mt-1 flex items-baseline justify-between gap-2">
-        <span className={`text-2xl font-black tracking-tight tabular-nums sm:text-3xl ${tile.direction === "neutral" ? "" : signedTone(own[tile.field])}`}>
+        <span className={`stat-value text-3xl sm:text-4xl ${tile.direction === "neutral" ? "" : signedTone(own[tile.field])}`}>
           {tile.format(own[tile.field])}
         </span>
         {standing ? (
@@ -467,7 +467,7 @@ function SplitsTable({ splits, own }) {
 function Fact({ label, tip, value, rank }) {
   return (
     <div className="flex flex-col">
-      <span className="muted text-xs font-bold uppercase tracking-wide">
+      <span className="micro-label">
         <HeaderTip tip={tip}>{label}</HeaderTip>
       </span>
       <span className="font-semibold tabular-nums">
@@ -505,7 +505,7 @@ function GameFlowCard({ pbp, flowRows, clubCode }) {
       <PanelHeader compact kicker="PLAY BY PLAY" title="How games unfold" />
       <div className="grid gap-6 lg:grid-cols-2 lg:gap-10">
         <div>
-          <p className="muted mb-2 text-xs font-bold uppercase tracking-wide">Time in the game</p>
+          <p className="micro-label mb-2">Time in the game</p>
           {total > 0 ? (
             <>
               <div className="mb-1 flex items-baseline justify-between text-lg font-bold tabular-nums">
@@ -541,7 +541,7 @@ function GameFlowCard({ pbp, flowRows, clubCode }) {
         </div>
 
         <div>
-          <p className="muted mb-2 text-xs font-bold uppercase tracking-wide">Clutch points</p>
+          <p className="micro-label mb-2">Clutch points</p>
           {hasClutch ? (
             <>
               <div className="mb-1 flex items-baseline justify-between text-lg font-bold tabular-nums">
@@ -645,7 +645,7 @@ function LineupRow({ lineup, photos, maxAbsNet, badges }) {
 
       <div>
         <div className="mb-1 flex items-baseline justify-between gap-3">
-          <span className="muted text-xs font-bold uppercase tracking-wide">Net rating</span>
+          <span className="micro-label">Net rating</span>
           <span className={`text-lg font-bold tabular-nums ${signedTone(lineup.netRating)}`}>
             {formatSignedDecimal(lineup.netRating)}
           </span>

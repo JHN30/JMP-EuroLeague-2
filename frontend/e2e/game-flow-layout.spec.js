@@ -213,7 +213,7 @@ test("the Team comparison tab is compact below 640px and every value and average
     await expectNoPageOverflow(page);
     expect(await insideScreen(tab.locator(".panel"), width)).toBe(true);
     expect(await holdsContent(halves)).toBe(true);
-    expect(await splitWords(tab.locator(".text-xs.font-bold, h3, .muted"))).toEqual([]);
+    expect(await splitWords(tab.locator(".text-xs.font-bold, .micro-label, h3, .muted"))).toEqual([]);
     // Every group's rows are inline rows: 6px top and bottom at every width.
     expect(await rowPadding()).toBe("6px");
     expect(await tab.locator(".panel").first().evaluate((el) => getComputedStyle(el).paddingTop)).toBe("12px");

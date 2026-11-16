@@ -29,8 +29,8 @@ function RankedStat({ stat, ranking, minGames }) {
 
   return (
     <m.div className="rounded-box border border-base-300 bg-base-100 px-3 py-2" variants={listItem} title={stat.title}>
-      <span className="muted text-xs font-bold uppercase tracking-wide">{stat.label}</span>
-      <p className="mt-0.5 text-2xl font-black leading-none tabular-nums">{formatPerGame(value)}</p>
+      <span className="micro-label">{stat.label}</span>
+      <p className="stat-value mt-0.5 text-3xl">{formatPerGame(value)}</p>
       <div aria-hidden="true" className="mt-2 h-1 overflow-hidden rounded-full bg-base-300">
         {rank ? (
           <m.div
@@ -214,7 +214,7 @@ function FormDelta({ label, recent, season, compare }) {
   const tone = delta === 0 ? "muted" : delta > 0 ? "text-success" : "text-error";
   return (
     <div className="flex flex-col">
-      <span className="muted text-xs font-bold uppercase tracking-wide">{label}</span>
+      <span className="micro-label">{label}</span>
       <span className="text-xl font-bold tabular-nums">{formatPerGame(recent)}</span>
       {delta !== null ? (
         <span className={`text-xs font-semibold tabular-nums ${tone}`} title="Against the season average">
@@ -302,7 +302,7 @@ function FormPanel({ gamesQuery, own, seasonCode }) {
             to={`/${seasonCode}/games/${best.gameCode}`}
             className="mt-3 flex flex-wrap items-baseline gap-x-2 rounded-field border border-base-300 px-3 py-2 text-sm hover:border-primary"
           >
-            <span className="muted text-xs font-bold uppercase tracking-wide">Best game</span>
+            <span className="micro-label">Best game</span>
             <span className="font-semibold tabular-nums">
               {wholeNumber(best.points)} pts · {wholeNumber(best.totalRebounds)} reb · {wholeNumber(best.assistances)} ast · PIR {wholeNumber(best.valuation)}
             </span>
@@ -349,7 +349,7 @@ function EfficiencyChip({ label, title, ranking, field }) {
   const { value, rank, of } = ranking;
   return (
     <div className="flex flex-col" title={title}>
-      <span className="muted text-xs font-bold uppercase tracking-wide">{label}</span>
+      <span className="micro-label">{label}</span>
       <span className="text-xl font-bold tabular-nums">{formatStatValue(field, value)}</span>
       <span className={`text-xs tabular-nums ${rank ? rankTier({ rank, of }).text : "muted"}`}>
         {rank ? `${ordinal(rank)} of ${of}` : "Too few games to rank"}
@@ -404,11 +404,11 @@ function ShootingPanel({ own, players, personKey }) {
             <ul className="mt-4 grid grid-cols-3 gap-3">
               {sources.map((source) => (
                 <li key={source.key}>
-                  <span className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide muted">
+                  <span className="flex items-center gap-1.5 micro-label">
                     <span aria-hidden="true" className={`h-2.5 w-2.5 rounded-full ${source.bar}`} />
                     {source.label}
                   </span>
-                  <span className="text-2xl font-bold tabular-nums">{formatPercentage(source.value)}</span>
+                  <span className="stat-value text-3xl">{formatPercentage(source.value)}</span>
                 </li>
               ))}
             </ul>

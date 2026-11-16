@@ -27,7 +27,7 @@ const HIGHLIGHT_COUNT = 5;
 // the player's bar and the league's (growing out from the middle), and the league average. On a phone a row is two
 // lines: the name centred over the row with the rank at its left, then the two numbers with their bars between them.
 const ROW_GRID =
-  "grid items-center gap-x-2 grid-cols-[3.25rem_1fr_1fr_3.25rem] sm:grid-cols-[9.5rem_2.75rem_3.75rem_1fr_1fr_3.75rem] lg:grid-cols-[11rem_2.75rem_3.75rem_1fr_1fr_3.75rem]";
+  "grid items-center gap-x-2 grid-cols-[3.25rem_1fr_1fr_3.25rem] sm:grid-cols-[10.5rem_2.75rem_3.75rem_1fr_1fr_3.75rem] lg:grid-cols-[11rem_2.75rem_3.75rem_1fr_1fr_3.75rem]";
 const LABEL_CELL = "col-span-4 sm:col-span-1";
 
 const formatValue = formatSheetValue;
@@ -101,7 +101,7 @@ function StatRow({ stat, mode }) {
 function StatGroup({ group, mode, playerTag }) {
   return (
     <section aria-label={group.title}>
-      <div aria-hidden="true" className={`${ROW_GRID} muted border-b border-base-300 pb-1 text-xs font-bold tracking-wide uppercase`}>
+      <div aria-hidden="true" className={`${ROW_GRID} micro-label border-b border-base-300 pb-1`}>
         <h3 className={`${LABEL_CELL} text-base-content text-sm normal-case tracking-normal`}>{group.title}</h3>
         {/* The rank column has no heading: "15th" says what it is. Below sm this cell sits over the player's number. */}
         <span />
@@ -129,7 +129,7 @@ function Highlights({ groups }) {
   if (best.length === 0) return null;
   return (
     <div className="mb-4 flex flex-wrap items-center gap-1.5 sm:gap-2">
-      <span className="muted text-xs font-bold tracking-wide uppercase">Top {TOP_RANK} in the league</span>
+      <span className="micro-label">Top {TOP_RANK} in the league</span>
       {best.map((stat) => (
         <span key={stat.key} className="badge badge-success badge-outline h-auto gap-1 py-0.5 max-sm:badge-sm">
           <b className="tabular-nums">{ordinal(stat.standing.rank)}</b> {stat.label}
@@ -225,7 +225,7 @@ export default function PlayerStatisticsSection({ seasonCode, personKey, phases,
 
   return (
     <>
-      <h2 className="mb-3 text-xl font-semibold">Season statistics</h2>
+      <h2 className="panel-title mb-3">Season statistics</h2>
       <div className="mb-4 flex flex-wrap items-center gap-4">
         <TabStrip
           ariaLabel="Phase"

@@ -513,7 +513,7 @@ function ComparisonsBody({
               <CompareFixtures seasonCode={seasonCode} onPick={handlePickGame} />
               <Panel className="p-4">
                 <p className="eyebrow mb-0.5">ANY TWO TEAMS</p>
-                <h2 className="mb-3 text-lg font-bold">Compare any two teams</h2>
+                <h2 className="panel-title mb-3">Compare any two teams</h2>
                 {teamPickers}
               </Panel>
             </div>
@@ -522,7 +522,7 @@ function ComparisonsBody({
               <CompareSuggestions seasonCode={seasonCode} onPick={handlePickPlayers} />
               <Panel className="p-4">
                 <p className="eyebrow mb-0.5">ANY TWO PLAYERS</p>
-                <h2 className="mb-3 text-lg font-bold">Compare any two players</h2>
+                <h2 className="panel-title mb-3">Compare any two players</h2>
                 {playerPickers}
               </Panel>
             </div>

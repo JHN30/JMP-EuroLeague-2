@@ -105,7 +105,7 @@ test("the summary, the season table and the trends fit, and the table scrolls on
     // The three facts over the chart are side by side and their numbers are not cut.
     const facts = trends.locator("div.grid-cols-3 > div");
     expect(await columns(facts)).toBe(3);
-    expect(await facts.locator("p.text-2xl").evaluateAll((els) => els.every((el) => el.scrollWidth <= el.clientWidth + 1))).toBe(true);
+    expect(await facts.locator("p.stat-value").evaluateAll((els) => els.every((el) => el.scrollWidth <= el.clientWidth + 1))).toBe(true);
   });
 });
 

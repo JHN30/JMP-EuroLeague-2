@@ -156,7 +156,7 @@ function FormSection({ seasonCode, phaseCode, openMetric }) {
       </div>
       <div id="leaders-form-panel" className="grid grid-cols-[minmax(0,1fr)] gap-4 xl:grid-cols-[3fr_2fr]">
         <Panel className="p-4 lg:p-3">
-          <h3 className="mb-1 text-lg font-bold lg:mb-0 lg:text-base">{stat.label}: the last {FORM_GAMES} games</h3>
+          <h3 className="panel-title mb-1 lg:mb-0">{stat.label}: the last {FORM_GAMES} games</h3>
           <p className="muted mb-3 text-sm lg:mb-1">Last {FORM_GAMES} games, against the season average.</p>
           <m.ol className="flex flex-col" variants={listContainer} initial="hidden" animate="show" key={`${statKey}-${phaseCode}`}>
             {hot.map((player, index) => {
@@ -172,7 +172,7 @@ function FormSection({ seasonCode, phaseCode, openMetric }) {
                       <TeamTag code={player.clubCode} name={player.clubName} tvCode={player.clubTvCode} crestUrl={player.crestUrl} />
                     </div>
                     <div className="flex-none text-right">
-                      <p className="text-xl font-black tabular-nums lg:text-lg lg:leading-tight">{recent.toFixed(1)}</p>
+                      <p className="text-xl font-display font-bold tabular-nums lg:text-lg lg:leading-tight">{recent.toFixed(1)}</p>
                       <p className={`text-xs tabular-nums ${difference >= 0 ? "text-success" : "text-error"}`} title="Against their season average">
                         {formatSignedDecimal(difference)} vs {player.season[statKey].toFixed(1)}
                       </p>
@@ -184,7 +184,7 @@ function FormSection({ seasonCode, phaseCode, openMetric }) {
           </m.ol>
         </Panel>
         <Panel className="p-4 lg:p-3">
-          <h3 className="mb-1 text-lg font-bold lg:mb-0 lg:text-base">{stat.label}: who has moved</h3>
+          <h3 className="panel-title mb-1 lg:mb-0">{stat.label}: who has moved</h3>
           <p className="muted mb-3 text-sm lg:mb-1">Places on the per-game board since before the latest round.</p>
           {climbers.length + fallers.length === 0 ? (
             <EmptyText>No one has changed place.</EmptyText>

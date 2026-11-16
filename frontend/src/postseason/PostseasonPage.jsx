@@ -94,7 +94,7 @@ function Steps({ steps }) {
           <span
             aria-hidden="true"
             className={
-              "mt-0.5 flex h-6 w-6 flex-none items-center justify-center rounded-full text-xs font-black " +
+              "mt-0.5 flex h-6 w-6 flex-none items-center justify-center rounded-full text-xs font-bold " +
               (step.state === "done" ? "bg-success text-success-content" : step.state === "live" ? "bg-primary text-primary-content" : "border border-base-300 text-base-content/50")
             }
           >
@@ -154,7 +154,7 @@ function FormatCards({ cards }) {
         {cards.map((card, index) => (
           <li key={card.title} className="rounded-field border border-base-300 bg-base-100/60 p-3">
             <p className="flex items-center gap-2 font-semibold">
-              <span aria-hidden="true" className="flex h-6 w-6 flex-none items-center justify-center rounded-full bg-primary/15 text-xs font-black text-primary">
+              <span aria-hidden="true" className="flex h-6 w-6 flex-none items-center justify-center rounded-full bg-primary/15 text-xs font-bold text-primary">
                 {index + 1}
               </span>
               {card.title}
@@ -260,7 +260,7 @@ export default function PostseasonPage() {
       <div>
         <PageHeader stacked kicker="SEASON" title="Postseason" />
         <Panel className="p-4">
-          <h2 className="mb-2 text-xl font-bold">Season cancelled</h2>
+          <h2 className="panel-title mb-2">Season cancelled</h2>
           <p>{seasonStatusText(format, { hasScheduledGame: false })}</p>
           <p className="muted mt-2">No postseason was played and no champion was named. Standings show positions at suspension, not a final classification.</p>
         </Panel>

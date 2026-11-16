@@ -81,7 +81,7 @@ export default function ShotRivalPicker({ label, options, value, onChange }) {
           setSearch("");
         }}
       >
-        <span aria-hidden="true" className="flex-none text-[0.65rem] font-black tracking-widest text-primary uppercase">
+        <span aria-hidden="true" className="flex-none text-[0.65rem] font-bold tracking-widest text-primary uppercase">
           vs
         </span>
         <input

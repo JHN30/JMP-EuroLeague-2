@@ -60,15 +60,15 @@ function StatRow({ stat, own, opponent, gamesPlayed, standing }) {
 function StatGroup({ group, teamName, teamTag, own, opponent, gamesPlayed, leagueTeams, clubCode }) {
   return (
     <section aria-label={group.title}>
-      <div aria-hidden="true" className={`${ROW_GRID} muted border-b border-base-300 pb-1 text-xs font-bold tracking-wide uppercase`}>
+      <div aria-hidden="true" className={`${ROW_GRID} micro-label border-b border-base-300 pb-1`}>
         <h3 className={`${LABEL_CELL} text-base-content text-sm normal-case tracking-normal`}>{group.title}</h3>
         {/* The rank column has no heading: "15th" says what it is. */}
         <span />
         <span className="max-sm:hidden" />
-        <span className="truncate text-center">
+        <span className="truncate text-center sm:tracking-normal">
           <ShortLabel short={teamTag} full={teamName} />
         </span>
-        <span className="truncate text-center">
+        <span className="truncate text-center sm:tracking-normal">
           <span className="sm:hidden">Opp.</span>
           <span className="hidden sm:inline">Opponents</span>
         </span>

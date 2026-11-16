@@ -401,7 +401,7 @@ function SeriesHeader({ teamA, teamB, teamAId, pickerA, pickerB, swap, played, f
         <div className="flex items-center justify-center gap-3 sm:flex-col sm:gap-1">
           {record ? (
             <div className="flex flex-col items-center">
-              <span className="text-primary text-3xl font-black whitespace-nowrap tabular-nums sm:text-4xl">
+              <span className="stat-value text-primary text-3xl whitespace-nowrap sm:text-4xl">
                 {record.winsA}-{record.winsB}
               </span>
               <span className="muted text-center text-xs whitespace-nowrap">{played.length} completed meetings</span>
@@ -472,7 +472,7 @@ function NotableCard({ label, game, figure, teamA, teamB, teamAId }) {
       <span className="eyebrow text-[0.65rem]">{label}</span>
       <span className="flex items-center justify-between gap-2">
         {side(teamA, "A", "text-primary", false)}
-        <span className="text-xl font-black whitespace-nowrap tabular-nums">
+        <span className="text-xl font-display font-bold whitespace-nowrap tabular-nums">
           {scoreA}-{scoreB}
         </span>
         {side(teamB, "B", "text-secondary", true)}

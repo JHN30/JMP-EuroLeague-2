@@ -14,7 +14,7 @@ function ChartPanel({ kicker, title, note, subtitle, actions, ariaLabel, canvasR
       <Panel className={stretch ? "flex h-full flex-col p-4" : "p-4"}>
         <div className="mb-2 flex flex-wrap items-baseline gap-x-3 gap-y-0.5">
           {kicker ? <p className="eyebrow">{kicker}</p> : null}
-          <h3 className="font-bold">{note ? <HeaderTip tip={note}>{title}</HeaderTip> : title}</h3>
+          <h3 className="panel-title">{note ? <HeaderTip tip={note}>{title}</HeaderTip> : title}</h3>
           {subtitle ? <p className="muted text-xs">{subtitle}</p> : null}
           {actions ? <div className="ms-auto">{actions}</div> : null}
         </div>
@@ -27,7 +27,7 @@ function ChartPanel({ kicker, title, note, subtitle, actions, ariaLabel, canvasR
   return (
     <Panel className="p-4">
       {kicker ? <p className="eyebrow mb-0.5">{kicker}</p> : null}
-      <h3 className="text-lg font-bold">{title}</h3>
+      <h3 className="panel-title">{title}</h3>
       {note ? <p className="muted mb-2 mt-1 text-sm">{note}</p> : <div className="mb-2" />}
       <div className={`relative w-full ${height}`}>
         <canvas ref={canvasRef} role="img" aria-label={ariaLabel} />

@@ -92,7 +92,7 @@ function SeasonHighs({ views, seasonCode }) {
           const view = games[stat.key];
           const body = (
             <>
-              <span className={`w-10 flex-none text-2xl font-black tabular-nums ${view ? "text-primary" : "muted"}`}>{view ? Math.round(view[stat.key]) : "—"}</span>
+              <span className={`stat-value w-10 flex-none text-3xl ${view ? "text-primary" : "muted"}`}>{view ? Math.round(view[stat.key]) : "—"}</span>
               <span className="min-w-0">
                 <span className="block text-xs font-bold">{stat.short}</span>
                 {view ? (
@@ -223,7 +223,7 @@ function GameBars({ views, seasonCode }) {
                 >
                   <div className="relative w-full" style={{ height: `${PLOT_REM}rem` }}>
                     <span
-                      className={`absolute inset-x-0 text-center text-xs leading-4 tabular-nums ${value !== null && value === best ? "font-black text-primary" : "font-semibold"} ${value === null ? "muted" : ""}`}
+                      className={`absolute inset-x-0 text-center text-xs leading-4 tabular-nums ${value !== null && value === best ? "font-bold text-primary" : "font-semibold"} ${value === null ? "muted" : ""}`}
                       style={{ top: `${value === null ? zero - LABEL_REM : negative ? y(value) : y(value) - LABEL_REM}rem` }}
                     >
                       {formatStat(stat, value)}
@@ -444,7 +444,7 @@ function GameTable({ views, highs, seasonCode }) {
           <table className="data-table-sticky table max-sm:table-sm">
             <thead>
               <tr>
-                <th className="max-sm:px-2">Opponent</th>
+                <th className="max-sm:px-1.5">Opponent</th>
                 <th>Result</th>
                 <th>MIN</th>
                 {advancedView ? (
@@ -476,9 +476,9 @@ function GameTable({ views, highs, seasonCode }) {
             <m.tbody key={`${filterKey}-${sortKey}-${boxKey}-${seasonSeed}`} variants={denseListContainer} initial="hidden" animate="show">
               {visible.map((view) => (
                 <m.tr key={view.game.gameCode} variants={listItem}>
-                  <td className="max-sm:px-2">
-                    <div className="flex min-w-0 items-center gap-2 max-sm:gap-1.5">
-                      <HomeAwayIcon home={view.home} className="h-4 w-4 text-base-content/60" />
+                  <td className="max-sm:px-1.5">
+                    <div className="flex min-w-0 items-center gap-2 max-sm:gap-1">
+                      <HomeAwayIcon home={view.home} className="h-4 w-4 text-base-content/60 max-sm:h-3.5 max-sm:w-3.5" />
                       {view.opponent?.crestUrl ? <RevealImage src={sizedImageUrl(view.opponent.crestUrl, CREST_WIDTH)} className="h-6 w-6 flex-none object-contain max-sm:hidden" /> : null}
                       <div className="min-w-0">
                         {/* The start mark sits after the opponent, whose line is short on a phone (a TV code). */}
@@ -487,7 +487,7 @@ function GameTable({ views, highs, seasonCode }) {
                             {view.home ? "vs" : "@"} <ShortLabel short={opponentCode(view.opponent)} full={opponentName(view.opponent)} />
                           </Link>
                           {view.started ? (
-                            <span className="relative flex-none text-[0.65rem] font-black text-primary" title="Started">
+                            <span className="relative flex-none text-[0.65rem] font-bold text-primary" title="Started">
                               <span aria-hidden="true">S</span>
                               <span className="sr-only">Started</span>
                             </span>

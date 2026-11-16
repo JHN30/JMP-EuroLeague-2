@@ -46,7 +46,7 @@ function TeamRow({ slot, side, onSelect, onFocusClub, move, movesSince }) {
       <Crest url={side.crestUrl} />
       <span className="min-w-0 flex-1 text-sm max-sm:line-clamp-2 max-sm:wrap-break-word sm:truncate">{side.short}</span>
       {slot.state === "projected" ? <SeedMove by={move} since={movesSince} /> : null}
-      {score !== null ? <span className="flex-none text-base font-black tabular-nums">{score}</span> : null}
+      {score !== null ? <span className="flex-none text-base font-bold tabular-nums">{score}</span> : null}
     </button>
   );
 }

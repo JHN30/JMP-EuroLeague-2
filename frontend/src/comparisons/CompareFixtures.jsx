@@ -70,7 +70,7 @@ function GameRow({ game, standingByClubCode, onPick }) {
         <span className="flex flex-col items-center text-center leading-tight">
           {hasScore ? (
             <>
-              <span className="text-sm font-black tabular-nums">
+              <span className="text-sm font-bold tabular-nums">
                 {game.localScore}-{game.roadScore}
               </span>
               <span className="muted text-xs">{formatShortDate(game.scheduledAt)}</span>
@@ -127,7 +127,7 @@ export default function CompareFixtures({ seasonCode, onPick }) {
     <Panel className="p-4">
       <div className="mb-3">
         <p className="eyebrow mb-0.5">UPCOMING GAMES</p>
-        <h2 className="text-lg font-bold">{games[0].roundName ?? `Round ${roundNumber}`}</h2>
+        <h2 className="panel-title">{games[0].roundName ?? `Round ${roundNumber}`}</h2>
       </div>
       <m.ul className="grid gap-2 lg:grid-cols-2" variants={listContainer} initial="hidden" animate="show">
         {games.map((game) => (

@@ -103,7 +103,7 @@ export default function StandingsSnapshot({ height }) {
           <p className="muted text-xs">{stageName} · positions are within each group; there is no overall table.</p>
           {groupStandings(standings).map((group) => (
             <section key={group.name ?? "none"} aria-label={groupLabel(group.name)}>
-              <h3 className="muted mb-2 text-xs font-semibold tracking-wide uppercase">{groupLabel(group.name)}</h3>
+              <h3 className="micro-label mb-2">{groupLabel(group.name)}</h3>
               <ol className="space-y-1">
                 {tierLines(group.standings, tiers).map((line, index) => (
                   <StandingRow key={group.standings[index].clubCode} entry={group.standings[index]} seasonCode={seasonCode} line={line} labels={labels} />

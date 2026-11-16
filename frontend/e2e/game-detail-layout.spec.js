@@ -194,7 +194,7 @@ test("the Overview holds long names, a long player name and three-digit scores a
     expect(await holdsContent(page.getByRole("group"))).toBe(true);
     const keyStats = page.getByRole("region", { name: "How the teams compared" }).locator(".panel");
     expect(await holdsContent(keyStats)).toBe(true);
-    expect(await splitWords(page.locator("main .panel .font-semibold"))).toEqual([]);
+    expect(await splitWords(page.locator("main .panel .font-semibold, main .panel .subhead"))).toEqual([]);
 
     // The chart fills its panel.
     const canvas = page.getByRole("img", { name: /Running score margin/ });

@@ -112,12 +112,12 @@ function ScoreCard({ statKey, value, rank, hint, caution }) {
   return (
     <m.div className="flex min-w-0 flex-col rounded-box border border-base-300 bg-base-100 p-3" variants={listItem}>
       <div className="flex items-center justify-between gap-2">
-        <span className="muted text-xs font-bold uppercase tracking-wide">
+        <span className="micro-label">
           <HeaderTip tip={`${stat.tip}. ${stat.what}`}>{stat.label}</HeaderTip>
         </span>
         {ranked ? <VerdictPill percentile={ranked.percentile} neutral={stat.neutral} /> : null}
       </div>
-      <p className="mt-1 text-3xl font-black leading-none tabular-nums">{value === null || value === undefined ? EM_DASH : stat.format(value)}</p>
+      <p className="stat-value mt-1 text-3xl">{value === null || value === undefined ? EM_DASH : stat.format(value)}</p>
       {ranked ? (
         <>
           <AdvancedGauge percentile={ranked.percentile} spread={ranked.spread} format={stat.format} neutral={stat.neutral} label={stat.label} />
@@ -240,8 +240,8 @@ const MAX_ROUND_LABELS = 12;
 function TrendFact({ label, value, sub, tone }) {
   return (
     <div className="min-w-0">
-      <p className="muted text-xs font-bold uppercase tracking-wide">{label}</p>
-      <p className={`text-xl font-black leading-tight tabular-nums ${tone ?? ""}`}>{value}</p>
+      <p className="micro-label">{label}</p>
+      <p className={`text-xl font-display font-bold leading-tight tabular-nums ${tone ?? ""}`}>{value}</p>
       <p className="muted truncate text-xs">{sub}</p>
     </div>
   );
@@ -490,12 +490,12 @@ function OnOffCard({ row, rank, isMain }) {
   return (
     <Panel className="p-4">
       <div className="mb-3 flex flex-wrap items-start justify-between gap-3">
-        <h4 className="flex min-w-0 items-center gap-2 font-semibold">
+        <h4 className="subhead flex min-w-0 items-center gap-2">
           {row.crestUrl ? <RevealImage src={sizedImageUrl(row.crestUrl, CREST_WIDTH)} className="h-7 w-7 flex-none object-contain" /> : null}
           <span className="truncate">{heading}</span>
         </h4>
         <div className="text-left sm:text-right">
-          <span className={`text-3xl font-black tabular-nums ${net === null ? "" : net > 0 ? "text-success" : "text-error"}`}>{formatSignedDecimal(net)}</span>
+          <span className={`stat-value text-3xl ${net === null ? "" : net > 0 ? "text-success" : "text-error"}`}>{formatSignedDecimal(net)}</span>
           {isMain && rank?.rank ? (
             <span className="ml-2 align-middle">
               <VerdictPill percentile={rank.percentile} />
@@ -560,7 +560,7 @@ function OnOffSection({ onOff, rank }) {
   const mainClub = [...rows].sort((x, y) => (y.onSeconds ?? 0) - (x.onSeconds ?? 0))[0]?.clubCode;
   return (
     <section aria-label="On / off" className="flex min-w-0 flex-col gap-3">
-      <h3 className="font-semibold">
+      <h3 className="panel-title">
         <HeaderTip tip="The team's ratings with the player on the court and off it">On / off</HeaderTip>
       </h3>
       {rows.length === 0 ? (
@@ -613,7 +613,7 @@ function RapmSection({ rapm, rank }) {
   } else {
     body = (
       <Panel className="flex flex-1 flex-col p-4">
-        <p className="muted mb-1 text-xs font-bold tracking-wide uppercase">Points per 100 possessions against an average player</p>
+        <p className="micro-label mb-1">Points per 100 possessions against an average player</p>
         <ImpactBar label="Overall" tip="Regularized adjusted plus-minus: his estimated effect on the team's scoring margin" value={rapm.rapm} />
         <ImpactBar label="Offense" value={rapm.offense} />
         <ImpactBar label="Defense" tip="Positive means fewer points allowed" value={rapm.defense} />
@@ -656,7 +656,7 @@ function RapmSection({ rapm, rank }) {
   return (
     <section aria-label="RAPM" className="flex min-w-0 flex-col gap-3">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <h3 className="font-semibold">
+        <h3 className="panel-title">
           <HeaderTip tip="Regularized adjusted plus-minus">RAPM</HeaderTip>
         </h3>
         {rank?.rank ? (

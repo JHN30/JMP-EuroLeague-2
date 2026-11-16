@@ -94,7 +94,7 @@ export default function ComparisonRow({
       >
         {side("a", aMissing, displayA, widthA, markerA, avgA, "start", noteA)}
         <div className="text-center leading-tight">
-          <span className="text-xs font-bold tracking-wide uppercase">{tip ? <HeaderTip tip={tip}>{label}</HeaderTip> : label}</span>
+          <span className="micro-label text-base-content max-sm:tracking-normal">{tip ? <HeaderTip tip={tip}>{label}</HeaderTip> : label}</span>
           {direction === "lower" ? <span className="muted block text-[0.6rem] tracking-wide uppercase">Lower is better</span> : null}
         </div>
         {side("b", bMissing, displayB, widthB, markerB, avgB, "end", noteB)}
@@ -111,7 +111,7 @@ export default function ComparisonRow({
       {...(animated ? { variants: listItem } : {})}
     >
       <div className={`text-center ${dense ? "mb-0.5" : `mb-2 ${compact ? "max-sm:mb-1" : ""}`}`}>
-        <span className="text-xs font-bold tracking-wide uppercase">
+        <span className="micro-label text-base-content">
           {tip ? <HeaderTip tip={tip}>{label}</HeaderTip> : label}
         </span>
         {direction === "lower" ? (

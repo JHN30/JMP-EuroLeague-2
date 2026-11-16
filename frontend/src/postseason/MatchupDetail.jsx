@@ -18,13 +18,13 @@ function Side({ side, slot }) {
     <div className="flex min-w-0 items-center gap-3">
       {side.crestUrl ? <RevealImage src={sizedImageUrl(side.crestUrl, CREST_WIDTH)} className="h-12 w-12 flex-none object-contain" /> : <span className="h-12 w-12 flex-none" />}
       <div className="min-w-0">
-        <p className={"wrap-break-word text-lg " + (won ? "font-black" : "font-bold")}>{side.name}</p>
+        <p className={"wrap-break-word text-lg " + (won ? "font-display font-bold" : "font-bold")}>{side.name}</p>
         <p className="muted text-xs tabular-nums">
           {side.seedLabel ? "Top 16: " + side.seedLabel : side.seed ? "Regular season: " + side.seed + (side.seed === 1 ? "st" : side.seed === 2 ? "nd" : side.seed === 3 ? "rd" : "th") : ""}
           {side.record ? " (" + side.record + ")" : ""}
         </p>
       </div>
-      {score !== null ? <span className="ml-auto text-3xl font-black tabular-nums">{score}</span> : null}
+      {score !== null ? <span className="stat-value ml-auto text-3xl">{score}</span> : null}
     </div>
   );
 }

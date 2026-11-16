@@ -86,7 +86,7 @@ export default function GameCard({ game, seasonCode, standingByClubCode, cancell
 
   return (
     <MotionLink to={`/${seasonCode}/games/${game.gameCode}`} className="fixture-card" variants={listItem} {...wideCardHover}>
-      {caption ?? (showGroup ? game.groupName : null) ? <span className="muted block text-center text-xs font-semibold tracking-wide uppercase">{caption ?? game.groupName}</span> : null}
+      {caption ?? (showGroup ? game.groupName : null) ? <span className="micro-label block text-center">{caption ?? game.groupName}</span> : null}
       <div className="fixture-card-body">
         <FixtureTeam team={game.localTeam} entry={localEntry} won={localWon} showGroup={showGroup} scorer={game.played ? game.topScorers?.local : null} showForm={upcoming} />
         <m.div className="fixture-center" variants={centerPop}>

@@ -119,7 +119,7 @@ function NextGameChip({ nextGame, clubCode }) {
   const { team, home } = opponent(nextGame, clubCode);
   return (
     <div className="next-chip ml-auto text-right max-sm:ml-0 max-sm:w-full max-sm:border-t max-sm:border-base-300 max-sm:pt-3 max-sm:text-center">
-      <span className="tag text-primary block text-xs font-bold uppercase tracking-wide">Next game</span>
+      <span className="tag eyebrow block">Next game</span>
       <span className="val flex items-center justify-end gap-1.5 font-semibold max-sm:justify-center">
         <HomeAwayIcon home={home} className="h-4 w-4 text-base-content/60" />
         <span>
@@ -152,7 +152,7 @@ function GameLinkRow({ seasonCode, game, clubCode, className = "", children }) {
         to={`/${seasonCode}/games/${game.gameCode}`}
         className="flex w-full items-center gap-3 rounded-field border border-base-300 bg-base-200 px-3 py-2 text-sm transition-colors lg:py-1.5 hover:border-primary max-sm:grid max-sm:grid-cols-[minmax(0,1fr)_auto] max-sm:gap-y-0.5"
       >
-        <span className="muted w-16 flex-none truncate text-xs font-bold uppercase tracking-wide max-sm:col-start-1 max-sm:row-start-2 max-sm:w-auto">
+        <span className="micro-label w-16 flex-none truncate max-sm:col-start-1 max-sm:row-start-2 max-sm:w-auto">
           {gameRoundLabel(game)}
         </span>
         <span className="flex min-w-0 flex-1 items-center gap-1.5 font-semibold max-sm:col-start-1 max-sm:row-start-1">
@@ -199,7 +199,7 @@ function RecentFormList({ seasonCode, games, clubCode }) {
               >
                 {hasScores ? (
                   <>
-                    <span className={`flex-none text-xs font-bold uppercase tracking-wide ${won ? "text-success" : "text-error"}`}>
+                    <span className={`micro-label flex-none ${won ? "text-success" : "text-error"}`}>
                       {won ? "Win" : "Loss"}
                     </span>
                     <span className="w-14 flex-none text-right font-semibold tabular-nums">
@@ -279,7 +279,7 @@ function ShareBar({ share, fillClass, trackClass }) {
 function SnapshotFact({ label, value, className = "" }) {
   return (
     <div className={`flex flex-col ${className}`}>
-      <span className="muted text-xs font-bold uppercase tracking-wide">{label}</span>
+      <span className="micro-label">{label}</span>
       <span className="font-semibold tabular-nums">{value}</span>
     </div>
   );
@@ -326,7 +326,7 @@ function TeamSnapshot({ standingsQuery, teamStatsQuery, clubCode, phaseGames, st
         <div>
           <div className="mb-2 flex items-end justify-between gap-3">
             <div className="flex items-baseline gap-3">
-              <span className="text-4xl font-black tracking-tight tabular-nums">
+              <span className="stat-value text-3xl sm:text-4xl">
                 {basic.gamesWon ?? "-"}-{basic.gamesLost ?? "-"}
               </span>
               <span className="muted text-sm">{basic.winPercentage != null ? `${basic.winPercentage}% wins` : "Record"}</span>
@@ -340,7 +340,7 @@ function TeamSnapshot({ standingsQuery, teamStatsQuery, clubCode, phaseGames, st
           </div>
           <ShareBar share={winShare} fillClass="bg-success" trackClass="bg-error/25" />
           <div className="mt-3 flex items-center gap-3">
-            <span className="muted text-xs font-bold uppercase tracking-wide">Last {form.length}</span>
+            <span className="micro-label">Last {form.length}</span>
             <span className="form-track" role="img" aria-label={`Last results, oldest first: ${form.map((r) => (r === "win" ? "win" : "loss")).join(", ")}`}>
               {form.map((result, index) => (
                 <span key={index} className={`form-pill ${result === "win" ? "w" : "l"}`}>
@@ -353,7 +353,7 @@ function TeamSnapshot({ standingsQuery, teamStatsQuery, clubCode, phaseGames, st
 
         <div>
           <div className="mb-2 flex items-baseline justify-between gap-3">
-            <span className="muted text-xs font-bold uppercase tracking-wide">Points per game</span>
+            <span className="micro-label">Points per game</span>
             <span className={`stat-badge ${diff == null ? "stat-badge-neutral" : diff >= 0 ? "stat-badge-positive" : "stat-badge-negative"}`}>
               {diffText} diff
             </span>

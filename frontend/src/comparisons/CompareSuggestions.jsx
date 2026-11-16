@@ -53,7 +53,7 @@ function PlayerLine({ player, value }) {
         {displayName(player.playerName)}
         {club ? <span className="muted ms-1.5 text-xs font-normal">{club}</span> : null}
       </span>
-      <span className="flex-none font-black tabular-nums">{formatDecimal(value, 1)}</span>
+      <span className="flex-none font-bold tabular-nums">{formatDecimal(value, 1)}</span>
     </span>
   );
 }
@@ -158,7 +158,7 @@ export default function CompareSuggestions({ seasonCode, onPick }) {
         <Panel as="section" aria-labelledby="star-matchups" className="p-4">
           <div className="mb-3">
             <p className="eyebrow mb-0.5">STAR MATCHUPS</p>
-            <h2 id="star-matchups" className="text-lg font-bold">
+            <h2 id="star-matchups" className="panel-title">
               {matchups[0].game.roundName ?? `Round ${round.roundNumber}`}
             </h2>
           </div>
@@ -173,7 +173,7 @@ export default function CompareSuggestions({ seasonCode, onPick }) {
         <Panel as="section" aria-labelledby="suggested-pairs" className="p-4">
           <div className="mb-3">
             <p className="eyebrow mb-0.5">LEADERS</p>
-            <h2 id="suggested-pairs" className="text-lg font-bold">
+            <h2 id="suggested-pairs" className="panel-title">
               Suggested pairs
             </h2>
           </div>

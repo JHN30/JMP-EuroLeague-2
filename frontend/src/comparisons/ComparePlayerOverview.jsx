@@ -205,7 +205,7 @@ function LineRow({ stat, a, b }) {
   );
   return (
     <m.li variants={listItem} data-better={better ?? undefined} className={`${LINE_GRID} border-base-300 gap-y-0.5 border-b py-2 text-sm last:border-0`}>
-      <span className="col-span-2 col-start-2 row-start-1 text-center text-xs font-bold tracking-wide uppercase sm:col-span-1 sm:col-start-1 sm:text-left">
+      <span className="col-span-2 col-start-2 row-start-1 text-center micro-label text-base-content sm:col-span-1 sm:col-start-1 sm:text-left">
         <HeaderTip tip={stat.title}>{stat.label}</HeaderTip>
       </span>
       <Place ranking={a} className="col-start-1 row-start-1 sm:col-start-2" />
@@ -534,7 +534,7 @@ function HighsPanel({ games, entityA, entityB, playerA, playerB, seasonCode }) {
           {LINE_STATS.map((stat) => (
             <li key={stat.key} className="grid grid-cols-[minmax(0,1fr)_2.5rem_minmax(0,1fr)] items-center gap-x-3 py-1">
               <HighValue view={highsA[stat.key]} stat={stat} seasonCode={seasonCode} side="a" />
-              <span className="text-center text-xs font-bold tracking-wide uppercase">
+              <span className="text-center micro-label text-base-content">
                 <HeaderTip tip={`Most ${stat.full.toLowerCase()} in a game this season`}>{stat.label}</HeaderTip>
               </span>
               <HighValue view={highsB[stat.key]} stat={stat} seasonCode={seasonCode} side="b" />

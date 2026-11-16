@@ -146,7 +146,7 @@ export function MostValuable({ seasonCode }) {
                     <TeamTag code={entry.clubCode} name={entry.clubName} tvCode={entry.clubTvCode} crestUrl={entry.crestUrl} />
                   </div>
                   <div className="flex-none text-right">
-                    <p className="text-lg font-black leading-tight tabular-nums">{Number(entry.value).toFixed(1)}</p>
+                    <p className="text-lg font-display font-bold leading-tight tabular-nums">{Number(entry.value).toFixed(1)}</p>
                     <p className="muted text-xs tabular-nums">
                       WS{Number.isFinite(rapm) ? ` · RAPM ${signed(rapm)}` : ""}
                     </p>
@@ -221,7 +221,7 @@ function BestClub({ seasonCode, label, best }) {
         </Link>
       </div>
       <div className="flex-none text-right">
-        <p className="text-xl font-black leading-tight tabular-nums">
+        <p className="text-xl font-display font-bold leading-tight tabular-nums">
           {best.record.won}-{best.record.lost}
         </p>
         {best.level > 0 ? <p className="muted text-xs">+{best.level} level</p> : null}
@@ -246,11 +246,11 @@ export function HomeVsRoad({ seasonCode, playedGames }) {
             <div className="flex flex-wrap items-end justify-between gap-x-4 gap-y-2">
               <div>
                 <p className="micro-label">Home wins</p>
-                <p className="text-4xl font-black leading-none tabular-nums text-primary">{homePercent}%</p>
+                <p className="stat-value text-3xl text-primary sm:text-4xl">{homePercent}%</p>
               </div>
               <div className="text-right">
                 <p className="micro-label">Home margin</p>
-                <p className="text-2xl font-black leading-none tabular-nums">{signed(summary.margin)}</p>
+                <p className="stat-value text-3xl">{signed(summary.margin)}</p>
                 <p className="muted text-xs">points a game</p>
               </div>
             </div>

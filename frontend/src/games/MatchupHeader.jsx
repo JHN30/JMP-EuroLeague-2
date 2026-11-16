@@ -69,7 +69,7 @@ function MatchInfo({ items }) {
     <dl className="mt-3 grid grid-cols-2 gap-x-3 gap-y-2 border-t border-base-300 pt-3 text-center sm:auto-cols-fr sm:grid-flow-col sm:grid-cols-none">
       {shown.map((item) => (
         <div key={item.label} className={`min-w-0${spans(item) ? " max-sm:col-span-2" : ""}`}>
-          <dt className="muted text-xs font-semibold tracking-wide uppercase">{item.label}</dt>
+          <dt className="micro-label">{item.label}</dt>
           <dd className="mt-0.5 text-sm font-semibold wrap-break-word sm:text-base">{item.value}</dd>
         </div>
       ))}
@@ -122,18 +122,18 @@ export default function MatchupHeader({ game, officials = [], venue = null, seas
         <div className="flex flex-col items-center gap-1 text-center">
           {game.played ? (
             <>
-              <p className="text-3xl leading-none font-extrabold tabular-nums sm:text-5xl">
+              <p className="stat-value text-3xl sm:text-5xl">
                 <span className={localWon ? "text-primary" : ""}>{game.localScore ?? "-"}</span>
                 <span className="muted px-1 font-normal sm:px-2"> - </span>
                 <span className={roadWon ? "text-primary" : ""}>{game.roadScore ?? "-"}</span>
               </p>
-              <p className="muted text-xs font-semibold tracking-wide uppercase">{game.gameStatus === "Walkover" ? "Forfeit" : "Final"}</p>
+              <p className="micro-label">{game.gameStatus === "Walkover" ? "Forfeit" : "Final"}</p>
             </>
           ) : cancelled ? (
             <span className="stat-badge stat-badge-neutral inline-flex">Not played</span>
           ) : (
             <>
-              <p className="text-3xl leading-none font-extrabold tabular-nums sm:text-5xl">{formatTipOff(game.scheduledAt)}</p>
+              <p className="stat-value text-3xl sm:text-5xl">{formatTipOff(game.scheduledAt)}</p>
               <span className="stat-badge stat-badge-neutral inline-flex">{STATUS_LABELS[game.status] ?? "Scheduled"}</span>
             </>
           )}

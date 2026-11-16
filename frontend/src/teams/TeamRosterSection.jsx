@@ -65,7 +65,7 @@ function groupByPosition(registrations) {
 function Fact({ label, value, sub, className = "" }) {
   return (
     <div className={`flex flex-col ${className}`}>
-      <span className="muted text-xs font-bold uppercase tracking-wide">{label}</span>
+      <span className="micro-label">{label}</span>
       <span className="text-lg font-semibold tabular-nums">{value}</span>
       {sub ? <span className="muted text-xs">{sub}</span> : null}
     </div>
@@ -109,9 +109,9 @@ function RosterCard({ entry, stats, seasonCode }) {
         <div className="flex items-start justify-between gap-2">
           <div className="min-w-0">
             <p className="muted truncate text-[0.7rem] font-bold uppercase tracking-[0.18em]">{first}</p>
-            <p className="truncate text-lg font-extrabold uppercase leading-tight" title={last}>{last}</p>
+            <p className="font-display truncate text-lg font-bold uppercase leading-tight" title={last}>{last}</p>
           </div>
-          <p className="flex-none text-3xl font-black leading-none tabular-nums">
+          <p className="stat-value flex-none text-3xl">
             <span className="muted mr-0.5 text-sm font-bold">#</span>
             {entry.dorsal ?? "-"}
           </p>
@@ -173,7 +173,7 @@ function CoachLine({ coach }) {
       <span className="truncate font-semibold" title={displayName(coach.name)}>
         {displayName(coach.name)}
       </span>
-      <span className="flex-none text-xs font-bold uppercase tracking-wide text-primary">{COACH_ROLES[coach.roleCode] ?? "Staff"}</span>
+      <span className="flex-none eyebrow">{COACH_ROLES[coach.roleCode] ?? "Staff"}</span>
       {coach.countryCode ? <span className="muted flex-none text-xs">{coach.countryCode}</span> : null}
     </m.li>
   );
@@ -183,7 +183,7 @@ function CoachingStaff({ coaches }) {
   if (coaches.length === 0) return null;
   return (
     <section aria-label="Coaching staff">
-      <h3 className="mb-3 flex items-baseline gap-2 text-xl font-bold">
+      <h3 className="panel-title mb-3 flex items-baseline gap-2">
         Coaching staff
         <span className="muted text-sm font-semibold">{coaches.length}</span>
       </h3>
@@ -233,7 +233,7 @@ function RosterCards({ registrations, statsByPersonKey, coaches, seasonCode }) {
         const notPlayed = entries.filter((entry) => !played.includes(entry));
         return (
           <section key={position} aria-label={position}>
-            <h3 className="mb-3 flex items-baseline gap-2 text-xl font-bold">
+            <h3 className="panel-title mb-3 flex items-baseline gap-2">
               {position}
               <span className="muted text-sm font-semibold">{entries.length}</span>
             </h3>

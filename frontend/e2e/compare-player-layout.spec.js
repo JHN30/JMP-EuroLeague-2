@@ -330,12 +330,12 @@ test.describe("on a phone", () => {
 test("every statistic row of the player comparison has a hover tip", async ({ page }) => {
   test.setTimeout(120_000);
   const { slug, a, b } = await livePlayers(page);
-  const rowNames = page.locator("main span.text-xs.font-bold.tracking-wide.uppercase");
+  const rowNames = page.locator("main span.micro-label");
   for (const tab of ["Overview", "Statistics"]) {
     await openTab(page, slug, a, b, tab);
     await expect(rowNames.first()).toBeVisible({ timeout: 30_000 });
     expect(await rowNames.count()).toBeGreaterThan(1);
-    await expect(page.locator("main span.text-xs.font-bold.tracking-wide.uppercase:not(:has(.header-tip-label))")).toHaveCount(0);
+    await expect(page.locator("main span.micro-label:not(:has(.header-tip-label))")).toHaveCount(0);
   }
 });
 

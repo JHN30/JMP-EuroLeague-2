@@ -132,7 +132,7 @@ export function CategoryCard({ title, tip, entries, isLoading, isError, onRetry,
   return (
     <Panel className="flex flex-col p-4 lg:p-3">
       <div className="mb-3 flex items-center justify-between gap-2 lg:mb-1">
-        <h3 className="min-w-0 truncate text-lg font-bold lg:text-base" title={tip}>
+        <h3 className="panel-title min-w-0 truncate" title={tip}>
           {title}
         </h3>
         <button type="button" aria-label="See the full leaderboard" className="btn btn-ghost btn-xs hidden flex-none lg:inline-flex" onClick={onOpen}>
@@ -170,7 +170,7 @@ export function CategoryCard({ title, tip, entries, isLoading, isError, onRetry,
                       </div>
                       <ShareBar share={entry.share} className="mt-1 hidden h-0.5 lg:block" />
                     </div>
-                    <span className={`font-black tabular-nums ${top ? "text-xl text-primary sm:text-2xl lg:text-xl" : "text-lg lg:text-base"}`}>{entry.valueText}</span>
+                    <span className={`font-display font-bold tabular-nums ${top ? "text-xl text-primary sm:text-2xl lg:text-xl" : "text-lg lg:text-base"}`}>{entry.valueText}</span>
                   </div>
                   <ShareBar share={entry.share} className="mt-1.5 ml-10 h-1 lg:hidden" />
                 </Row>
@@ -300,7 +300,7 @@ export function StatSelect({ families, stats, activeKey, onChoose }) {
 // value's heading is a button that flips the order, highest or lowest first.
 export function BoardHeader({ columns = [], valueLabel, sort }) {
   return (
-    <div className="board-row muted border-b border-base-300 text-xs font-bold tracking-wide uppercase" style={{ "--extra": columns.length }}>
+    <div className="board-row micro-label border-b border-base-300" style={{ "--extra": columns.length }}>
       <span aria-hidden="true">#</span>
       <span aria-hidden="true">Name</span>
       {columns.map((column) => (
@@ -358,7 +358,7 @@ export function BoardRow({ rank, change, avatar, name, sub, columns = [], valueT
             transition={{ duration: 0.5, ease: EASE_OUT }}
           />
         </span>
-        <span className="ml-auto w-16 flex-none text-right text-lg font-black tabular-nums lg:text-base">{valueText}</span>
+        <span className="ml-auto w-16 flex-none text-right text-lg font-display font-bold tabular-nums lg:text-base">{valueText}</span>
       </span>
     </>
   );

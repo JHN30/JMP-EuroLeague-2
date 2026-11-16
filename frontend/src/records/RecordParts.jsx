@@ -45,7 +45,7 @@ export function Holder({ record, size = "h-9 w-9", short = false, compact = fals
     <span className="font-semibold">{text}</span>
   );
   return (
-    <div className="flex min-w-0 items-center gap-2.5">
+    <div className={`flex min-w-0 items-center ${inline ? "gap-2" : "gap-2.5"}`}>
       {/* A player always has a picture: the headshot, or the silhouette when there is none. */}
       {!record.isClub ? <Avatar imageUrl={record.portraitUrl} size={`${size} flex-none`} /> : null}
       {record.crestUrl ? <Avatar crest imageUrl={record.crestUrl} size={`${size} flex-none`} /> : null}
@@ -108,7 +108,7 @@ function PodiumRow({ record, rank, seasonCode }) {
           <NewBadge record={record} seasonCode={seasonCode} />
         </p>
       </div>
-      <span className={`flex-none text-xl font-black tabular-nums ${rank === 1 ? "text-primary" : ""}`}>{record.valueText}</span>
+      <span className={`flex-none text-xl font-display font-bold tabular-nums ${rank === 1 ? "text-primary" : ""}`}>{record.valueText}</span>
     </m.li>
   );
 }
@@ -226,19 +226,19 @@ function BoardRow({ record, rank, best, lowerIsBetter, seasonCode, wide }) {
   }
   return (
     <m.li variants={listItem} className="border-b border-base-300 py-1.5 last:border-0">
-      <div className="flex items-center gap-2.5">
+      <div className="flex items-center gap-2">
         <RankBadge rank={rank} />
         <div className="min-w-0 flex-1">
           <Holder record={record} size="h-7 w-7" inline short />
         </div>
-        <span className="font-black tabular-nums">{record.valueText}</span>
+        <span className="font-bold tabular-nums">{record.valueText}</span>
       </div>
-      <div className="mt-0.5 flex items-center gap-3 ps-9.5 text-xs">
+      <div className="mt-0.5 flex items-center gap-2 ps-9 text-xs">
         <span className="muted min-w-0 flex-1 wrap-break-word">
           <WhenLink record={record} />
         </span>
         <NewBadge record={record} seasonCode={seasonCode} />
-        <span className="w-16 flex-none">{share}</span>
+        <span className="w-12 flex-none">{share}</span>
       </div>
     </m.li>
   );

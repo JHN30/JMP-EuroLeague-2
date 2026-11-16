@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Chart } from "../lib/chartSetup";
+import { chartTheme, axis, tooltip } from "../lib/chartTheme";
+import { useActiveTheme } from "../lib/useActiveTheme";
 import { Link, useParams } from "react-router";
 import { useLiveSearchParams } from "../lib/useLiveSearchParams";
 import { shortTeamName, teamCode } from "../games/gameUtils";
@@ -51,16 +53,6 @@ function latestSeasonCode(seasons) {
 async function fetchCrossSeasonTeams(seasons) {
   const data = await getHeadToHeadTeams(latestSeasonCode(seasons));
   return [...(data.teams ?? [])].sort((a, b) => (a.name ?? "").localeCompare(b.name ?? ""));
-}
-
-function useActiveTheme() {
-  const [theme, setTheme] = useState(() => document.documentElement.dataset.theme);
-  useEffect(() => {
-    const observer = new MutationObserver(() => setTheme(document.documentElement.dataset.theme));
-    observer.observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
-    return () => observer.disconnect();
-  }, []);
-  return theme;
 }
 
 function gameTitle(game) {
@@ -147,27 +139,26 @@ function MarginTimeline({ matchups, teamA, teamB, teamAId }) {
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return undefined;
-    const text = getComputedStyle(canvas).getPropertyValue("--color-base-content").trim();
-    const primary = getComputedStyle(canvas).getPropertyValue("--color-primary").trim();
-    const secondary = getComputedStyle(canvas).getPropertyValue("--color-secondary").trim();
+    const colours = chartTheme(canvas);
     const sides = played.map((game) => sideForA(game, teamAId));
     chartRef.current = new Chart(canvas, {
       type: "bar",
       data: {
         labels: thinAxisLabels(played.map((game) => `${game.seasonCode} R${game.roundNumber ?? "?"}`), maxLabels),
-        datasets: [{ label: `${nameA} margin`, data: sides.map(({ scoreA, scoreB }) => scoreA - scoreB), backgroundColor: sides.map(({ scoreA, scoreB }) => (scoreA >= scoreB ? primary : secondary)) }],
+        datasets: [{ label: `${nameA} margin`, data: sides.map(({ scoreA, scoreB }) => scoreA - scoreB), backgroundColor: sides.map(({ scoreA, scoreB }) => (scoreA >= scoreB ? colours.primary : colours.secondary)) }],
       },
       options: {
         responsive: true,
         maintainAspectRatio: false,
         scales: {
           // The thinned labels are blanks between the shown ones, so the axis must not skip any itself.
-          x: { ticks: { color: text, autoSkip: false, maxRotation: 0 }, grid: { color: "transparent" } },
-          y: { ticks: { color: text }, grid: { color: `color-mix(in srgb, ${text} 20%, transparent)` } },
+          x: axis(colours, { ticks: { autoSkip: false, maxRotation: 0 }, grid: { color: "transparent" } }),
+          y: axis(colours),
         },
         plugins: {
           legend: { display: false },
           tooltip: {
+            ...tooltip(colours),
             mode: "index",
             intersect: false,
             callbacks: {

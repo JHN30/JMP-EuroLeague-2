@@ -4,7 +4,8 @@ import EmptyText from "../lib/EmptyText";
 import { formatMissing, formatPeriod, formatSignedDiff } from "../lib/format";
 import Panel from "../lib/Panel";
 import PanelHeader from "../lib/PanelHeader";
-import { useActiveTheme, themeColor } from "../lib/useActiveTheme";
+import { chartTheme, axis, tooltip } from "../lib/chartTheme";
+import { useActiveTheme } from "../lib/useActiveTheme";
 import { buildMarginSeries, eventMoment, momentLabel } from "./gameFlowData";
 import { teamCode, teamName } from "./gameUtils";
 import { TeamName } from "./TeamLabel";
@@ -180,7 +181,8 @@ function flowDecorationsPlugin({ periods, home, road, textColor }) {
       }
       ctx.setLineDash([]);
       ctx.fillStyle = `color-mix(in srgb, ${textColor} 80%, transparent)`;
-      ctx.font = "700 18px system-ui, sans-serif";
+      // The site's display face (--font-display in index.css).
+      ctx.font = '700 18px "Barlow Condensed", "Arial Narrow", sans-serif';
       ctx.textBaseline = "top";
       ctx.fillText(home.code, chartArea.left + 10, chartArea.top + 8);
       ctx.textBaseline = "bottom";
@@ -210,12 +212,11 @@ export function ScoreFlowChart({ flow, localTeam, roadTeam, compact = false }) {
     if (!canvas || scoringEvents.length < 2) return undefined;
 
     const { points, periods, gameSeconds } = buildMarginSeries(scoringEvents);
-    const textColor = themeColor(canvas, "--color-base-content");
+    const colours = chartTheme(canvas);
     // The home side is the theme's orange and the road side its second colour, as on the shot chart: a lead is not good or bad.
-    const homeColor = themeColor(canvas, "--color-primary");
-    const roadColor = themeColor(canvas, "--color-secondary");
-    const tiedColor = `color-mix(in srgb, ${textColor} 55%, transparent)`;
-    const gridColor = `color-mix(in srgb, ${textColor} 30%, transparent)`;
+    const homeColor = colours.primary;
+    const roadColor = colours.secondary;
+    const tiedColor = colours.strongGrid;
     const sideColor = (margin) => (margin > 0 ? homeColor : margin < 0 ? roadColor : tiedColor);
 
     // Both halves are the same size, like a lead tracker: the bound is the biggest lead of either side rounded up to a
@@ -241,7 +242,7 @@ export function ScoreFlowChart({ flow, localTeam, roadTeam, compact = false }) {
             pointHoverRadius: 5,
             pointHoverBorderWidth: 2,
             pointBackgroundColor: (context) => sideColor(context.parsed?.y ?? 0),
-            pointBorderColor: textColor,
+            pointBorderColor: colours.text,
           },
         ],
       },
@@ -250,7 +251,7 @@ export function ScoreFlowChart({ flow, localTeam, roadTeam, compact = false }) {
         maintainAspectRatio: false,
         layout: { padding: { top: 4, right: 6 } },
         scales: {
-          x: {
+          x: axis(colours, {
             type: "linear",
             min: 0,
             max: gameSeconds,
@@ -259,25 +260,25 @@ export function ScoreFlowChart({ flow, localTeam, roadTeam, compact = false }) {
               scale.ticks = periods.map((period) => ({ value: (period.start + period.end) / 2 }));
             },
             ticks: {
-              color: textColor,
               autoSkip: false,
               maxRotation: 0,
               callback: (value) => formatPeriod(periods.find((period) => value >= period.start && value <= period.end)?.number),
             },
             grid: { display: false },
             border: { display: false },
-          },
-          y: {
+          }),
+          y: axis(colours, {
             min: -bound,
             max: bound,
-            ticks: { color: textColor, stepSize: step, callback: (value) => Math.abs(value) },
-            grid: { color: gridColor, lineWidth: 1, tickBorderDash: [2, 3] },
+            ticks: { stepSize: step, callback: (value) => Math.abs(value) },
+            grid: { lineWidth: 1, tickBorderDash: [2, 3] },
             border: { display: false, dash: [2, 3] },
-          },
+          }),
         },
         plugins: {
           legend: { display: false },
           tooltip: {
+            ...tooltip(colours),
             mode: "nearest",
             axis: "x",
             intersect: false,
@@ -299,7 +300,7 @@ export function ScoreFlowChart({ flow, localTeam, roadTeam, compact = false }) {
       },
       plugins: [
         leadBarsPlugin({ points, homeColor: `color-mix(in srgb, ${homeColor} 90%, transparent)`, roadColor: `color-mix(in srgb, ${roadColor} 90%, transparent)` }),
-        flowDecorationsPlugin({ periods, home, road, textColor }),
+        flowDecorationsPlugin({ periods, home, road, textColor: colours.text }),
       ],
     });
 

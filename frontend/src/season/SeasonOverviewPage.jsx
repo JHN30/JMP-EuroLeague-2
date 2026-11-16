@@ -21,7 +21,8 @@ import { currentStage, groupedStageCodes, hasLoadingIssues, LOADING_ISSUES_NOTE,
 import { useSeasonFormat } from "../lib/useSeasonFormat";
 import { useSummaryTableStage } from "../lib/useSummaryTableStage";
 import { isGroupedTable, mostWinsEntry } from "../standings/standingsGroups";
-import { useActiveTheme, themeColor } from "../lib/useActiveTheme";
+import { chartTheme, axis, tooltip } from "../lib/chartTheme";
+import { useActiveTheme } from "../lib/useActiveTheme";
 import { isForfeit } from "../lib/forfeit";
 import { formatDate, formatPerGame, formatSeasonLabel } from "../lib/format";
 import { teamCode } from "../games/gameUtils";
@@ -418,10 +419,8 @@ function ScoringTrendChart({ playedGames }) {
     const canvas = canvasRef.current;
     if (!canvas || points.length < 2) return undefined;
 
-    const primary = themeColor(canvas, "--color-primary");
-    const textColor = themeColor(canvas, "--color-base-content");
-    const gridColor = `color-mix(in srgb, ${textColor} 20%, transparent)`;
-    const fillColor = `color-mix(in srgb, ${primary} 15%, transparent)`;
+    const colours = chartTheme(canvas);
+    const primary = colours.primary;
     // The Top 16 is a table stage, not postseason: the divider starts at the first knockout round.
     const postseasonStart = points.findIndex((point) => point.phaseCode !== "RS" && point.phaseCode !== "TS");
     const hasPostseason = postseasonStart > 0;
@@ -429,7 +428,7 @@ function ScoringTrendChart({ playedGames }) {
 
     chartRef.current = new Chart(canvas, {
       type: "line",
-      plugins: hasPostseason ? [postseasonDivider(postseasonStart, `color-mix(in srgb, ${textColor} 55%, transparent)`, textColor)] : [],
+      plugins: hasPostseason ? [postseasonDivider(postseasonStart, colours.strongGrid, colours.text)] : [],
       data: {
         labels: points.map((point) => point.name),
         datasets: [
@@ -437,7 +436,7 @@ function ScoringTrendChart({ playedGames }) {
             label: "Average points per team",
             data: values,
             borderColor: primary,
-            backgroundColor: fillColor,
+            backgroundColor: colours.fill(primary),
             fill: true,
             // A full season has dozens of rounds: thinner marks keep a narrow chart readable as a line.
             borderWidth: (context) => (context.chart.width < SMALL_CHART_WIDTH ? 2 : 4),
@@ -453,22 +452,22 @@ function ScoringTrendChart({ playedGames }) {
         maintainAspectRatio: false,
         layout: { padding: { top: hasPostseason ? 16 : 0 } },
         scales: {
-          x: {
-            title: { display: true, text: hasPostseason && !hasTop16 ? "Regular season round" : "Round", color: textColor },
+          x: axis(colours, {
+            title: { display: true, text: hasPostseason && !hasTop16 ? "Regular season round" : "Round", color: colours.text },
             ticks: {
-              color: textColor,
               autoSkip: false,
               maxRotation: 0,
               callback: (value) => axisRoundLabel(points[value], points.length),
             },
-            grid: { color: (context) => (axisRoundLabel(points[context.index], points.length) ? gridColor : "transparent") },
-          },
-          y: { title: { display: true, text: "Points per team", color: textColor }, ticks: { color: textColor }, grid: { color: gridColor } },
+            grid: { color: (context) => (axisRoundLabel(points[context.index], points.length) ? colours.grid : "transparent") },
+          }),
+          y: axis(colours, { title: { display: true, text: "Points per team", color: colours.text } }),
         },
         plugins: {
           legend: { display: false },
           // A tap or hover anywhere along the chart reads the nearest round: a finger cannot hit a 2px marker.
           tooltip: {
+            ...tooltip(colours),
             mode: "index",
             intersect: false,
             callbacks: {

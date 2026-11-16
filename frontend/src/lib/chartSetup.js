@@ -31,4 +31,11 @@ Chart.register(
   Tooltip,
 );
 
+// Charts draw in the page's own font (Inter, set in index.css) instead of Chart.js's Helvetica. Fonts load with
+// `font-display: swap`, so a chart drawn before Inter arrived is redrawn once it has; charts drawn later measure with it.
+Chart.defaults.font.family = getComputedStyle(document.body).fontFamily;
+document.fonts?.addEventListener("loadingdone", () => {
+  for (const chart of Object.values(Chart.instances)) chart.update("none");
+});
+
 export { Chart };

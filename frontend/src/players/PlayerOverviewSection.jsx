@@ -12,7 +12,8 @@ import Panel from "../lib/Panel";
 import PanelHeader from "../lib/PanelHeader";
 import RevealImage from "../lib/RevealImage";
 import { formatStatValue } from "../lib/statsFields";
-import { themeColor, useActiveTheme } from "../lib/useActiveTheme";
+import { chartTheme, radarScale, tooltip } from "../lib/chartTheme";
+import { useActiveTheme } from "../lib/useActiveTheme";
 import { ordinal, rankTier } from "../teams/teamLeague";
 import { PROFILE_AXES, SEASON_LINE, rankPlayer, statNumber } from "./playerOverview";
 import { CREST_WIDTH, sizedImageUrl } from "../lib/imageSize";
@@ -71,9 +72,8 @@ function ProfileRadar({ axes }) {
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return undefined;
-    const primary = themeColor(canvas, "--color-primary");
-    const textColor = themeColor(canvas, "--color-base-content");
-    const gridColor = `color-mix(in srgb, ${textColor} 20%, transparent)`;
+    const colours = chartTheme(canvas);
+    const primary = colours.primary;
 
     const chart = new Chart(canvas, {
       type: "radar",
@@ -84,7 +84,7 @@ function ProfileRadar({ axes }) {
             label: "Percentile",
             data: axes.map((axis) => axis.percentile ?? 0),
             borderColor: primary,
-            backgroundColor: `color-mix(in srgb, ${primary} 25%, transparent)`,
+            backgroundColor: colours.radarFill(primary),
             borderWidth: 2,
             pointBackgroundColor: primary,
           },
@@ -94,18 +94,11 @@ function ProfileRadar({ axes }) {
         responsive: true,
         maintainAspectRatio: false,
         scales: {
-          r: {
-            min: 0,
-            max: 100,
-            ticks: { stepSize: 25, color: textColor, backdropColor: "transparent" },
-            grid: { color: gridColor },
-            angleLines: { color: gridColor },
-            pointLabels: { color: textColor },
-          },
+          r: radarScale(colours),
         },
         plugins: {
           legend: { display: false },
-          tooltip: { callbacks: { label: (context) => `${context.label}: ${ordinal(context.parsed.r)} percentile` } },
+          tooltip: { ...tooltip(colours), callbacks: { label: (context) => `${context.label}: ${ordinal(context.parsed.r)} percentile` } },
         },
       },
     });

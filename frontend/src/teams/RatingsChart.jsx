@@ -1,6 +1,7 @@
 import { useEffect, useRef } from "react";
 import { Chart } from "../lib/chartSetup";
-import { themeColor, useActiveTheme } from "../lib/useActiveTheme";
+import { chartTheme, axis, tooltip } from "../lib/chartTheme";
+import { useActiveTheme } from "../lib/useActiveTheme";
 import { formatDecimal, formatSignedDecimal } from "../lib/format";
 
 // What the club's offense and defense did in each round: offensive and defensive rating (points per 100 possessions) as two lines,
@@ -20,12 +21,9 @@ export default function RatingsChart({ rounds, offense, defense, games, averages
     const canvas = canvasRef.current;
     if (!canvas) return undefined;
 
-    const primary = themeColor(canvas, "--color-primary");
-    const success = themeColor(canvas, "--color-success");
-    const error = themeColor(canvas, "--color-error");
-    const textColor = themeColor(canvas, "--color-base-content");
-    const gridColor = `color-mix(in srgb, ${textColor} 15%, transparent)`;
-    const defenseColor = `color-mix(in srgb, ${textColor} 70%, transparent)`;
+    const colours = chartTheme(canvas);
+    const primary = colours.primary;
+    const defenseColor = colours.mix(colours.text, 70);
     const flat = (value) => rounds.map(() => value);
     // A dashed line at a season average: no dots, no tooltip entry, no legend entry (the caption names it).
     const average = (data, color) => ({
@@ -57,8 +55,8 @@ export default function RatingsChart({ rounds, offense, defense, games, averages
             spanGaps: true,
             fill: {
               target: 1,
-              above: `color-mix(in srgb, ${success} 28%, transparent)`,
-              below: `color-mix(in srgb, ${error} 28%, transparent)`,
+              above: colours.mix(colours.success, 28),
+              below: colours.mix(colours.error, 28),
             },
           },
           {
@@ -81,13 +79,13 @@ export default function RatingsChart({ rounds, offense, defense, games, averages
         responsive: true,
         maintainAspectRatio: false,
         scales: {
-          x: { ticks: { color: textColor }, grid: { color: gridColor } },
-          y: { ticks: { color: textColor }, grid: { color: gridColor }, grace: "12%" },
+          x: axis(colours),
+          y: axis(colours, { grace: "12%" }),
         },
         plugins: {
           legend: {
             labels: {
-              color: textColor,
+              color: colours.text,
               usePointStyle: true,
               pointStyleWidth: 10,
               boxHeight: 8,
@@ -96,6 +94,7 @@ export default function RatingsChart({ rounds, offense, defense, games, averages
             },
           },
           tooltip: {
+            ...tooltip(colours),
             mode: "index",
             intersect: false,
             filter: (item) => !item.dataset.isAverage,

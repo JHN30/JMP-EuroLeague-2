@@ -2,7 +2,8 @@ import { useEffect, useRef } from "react";
 import { Chart } from "../lib/chartSetup";
 import HeaderTip from "../lib/HeaderTip";
 import Panel from "../lib/Panel";
-import { themeColor, useActiveTheme } from "../lib/useActiveTheme";
+import { chartTheme, axis, tooltip } from "../lib/chartTheme";
+import { useActiveTheme } from "../lib/useActiveTheme";
 import { rollingAverage } from "./trendMath";
 
 // `compact` puts the kicker beside the title, the note in a tip on the title and `subtitle` (what must stay visible) after it;
@@ -48,17 +49,15 @@ export function LineTrend({ kicker, title, note, subtitle, actions, labels, seri
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return undefined;
-    const colors = [themeColor(canvas, "--color-primary"), themeColor(canvas, "--color-accent")];
-    const textColor = themeColor(canvas, "--color-base-content");
-    const gridColor = `color-mix(in srgb, ${textColor} 14%, transparent)`;
-    const strongGrid = `color-mix(in srgb, ${textColor} 55%, transparent)`;
+    const colours = chartTheme(canvas);
+    const colors = [colours.primary, colours.accent];
 
     const lines = series.map((entry, index) => ({
       label: entry.label,
       data: entry.points,
       series: index,
-      borderColor: rolling ? `color-mix(in srgb, ${colors[index % colors.length]} 40%, transparent)` : colors[index % colors.length],
-      backgroundColor: `color-mix(in srgb, ${colors[index % colors.length]} 14%, transparent)`,
+      borderColor: rolling ? colours.mix(colors[index % colors.length], 40) : colors[index % colors.length],
+      backgroundColor: colours.fill(colors[index % colors.length]),
       borderWidth: rolling ? 1.5 : 2.5,
       borderDash: index === 0 ? [] : [7, 4],
       pointRadius: markers ? (rolling ? 2 : 3) : 0,
@@ -84,7 +83,7 @@ export function LineTrend({ kicker, title, note, subtitle, actions, labels, seri
       : [];
     // With rolling lines the legend names each series once, by its average line in the full colour.
     const legendLabels = {
-      color: textColor,
+      color: colours.text,
       usePointStyle: true,
       // The point is drawn boxHeight across: kept to the box width, with room before the name.
       boxWidth: 8,
@@ -108,16 +107,16 @@ export function LineTrend({ kicker, title, note, subtitle, actions, labels, seri
         maintainAspectRatio: false,
         interaction: { mode: "index", intersect: false },
         scales: {
-          x: { ticks: { color: textColor, maxTicksLimit: 8, autoSkip: true, maxRotation: 0 }, grid: { display: false } },
-          y: {
-            ticks: { color: textColor },
-            title: axisTitle ? { display: true, text: axisTitle, color: textColor } : { display: false },
-            grid: { color: (context) => (zero && context.tick.value === 0 ? strongGrid : gridColor) },
-          },
+          x: axis(colours, { ticks: { maxTicksLimit: 8, autoSkip: true, maxRotation: 0 }, grid: { display: false } }),
+          y: axis(colours, {
+            title: axisTitle ? { display: true, text: axisTitle, color: colours.text } : { display: false },
+            grid: { color: (context) => (zero && context.tick.value === 0 ? colours.strongGrid : colours.grid) },
+          }),
         },
         plugins: {
           legend: { labels: legendLabels },
           tooltip: {
+            ...tooltip(colours),
             callbacks: {
               label: (context) => (context.parsed.y === null ? null : `${context.dataset.label}: ${context.parsed.y.toFixed(digits)}`),
               afterLabel: (context) => (context.dataset.average ? "" : (series[context.dataset.series]?.notes?.[context.dataIndex] ?? "")),
@@ -153,11 +152,9 @@ export function MarginTrend({ kicker, title, note, subtitle, labels, margins, no
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return undefined;
-    const good = themeColor(canvas, "--color-success");
-    const bad = themeColor(canvas, "--color-error");
-    const textColor = themeColor(canvas, "--color-base-content");
-    const gridColor = `color-mix(in srgb, ${textColor} 14%, transparent)`;
-    const strongGrid = `color-mix(in srgb, ${textColor} 55%, transparent)`;
+    const colours = chartTheme(canvas);
+    const good = colours.success;
+    const bad = colours.error;
 
     const chart = new Chart(canvas, {
       type: "bar",
@@ -169,12 +166,13 @@ export function MarginTrend({ kicker, title, note, subtitle, labels, margins, no
         responsive: true,
         maintainAspectRatio: false,
         scales: {
-          x: { ticks: { color: textColor, maxTicksLimit: 8, autoSkip: true, maxRotation: 0 }, grid: { display: false } },
-          y: { ticks: { color: textColor }, grid: { color: (context) => (context.tick.value === 0 ? strongGrid : gridColor) } },
+          x: axis(colours, { ticks: { maxTicksLimit: 8, autoSkip: true, maxRotation: 0 }, grid: { display: false } }),
+          y: axis(colours, { grid: { color: (context) => (context.tick.value === 0 ? colours.strongGrid : colours.grid) } }),
         },
         plugins: {
           legend: { display: false },
           tooltip: {
+            ...tooltip(colours),
             callbacks: {
               label: (context) => `Margin: ${context.parsed.y > 0 ? "+" : ""}${context.parsed.y}`,
               afterLabel: (context) => notes?.[context.dataIndex] ?? "",

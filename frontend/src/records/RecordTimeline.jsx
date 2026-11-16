@@ -1,7 +1,8 @@
 import { Chart } from "../lib/chartSetup";
 import { useEffect, useMemo, useRef } from "react";
 import { useNavigate } from "react-router";
-import { themeColor, useActiveTheme } from "../lib/useActiveTheme";
+import { chartTheme, axis, tooltip } from "../lib/chartTheme";
+import { useActiveTheme } from "../lib/useActiveTheme";
 import { useMediaQuery } from "../lib/useMediaQuery";
 import { usePrefersReducedMotion } from "../lib/usePrefersReducedMotion";
 import Panel from "../lib/Panel";
@@ -38,10 +39,7 @@ export default function RecordTimeline({ bySeason, progression, overallKey, labe
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas || slots.length === 0) return undefined;
-    const primary = themeColor(canvas, "--color-primary");
-    const text = themeColor(canvas, "--color-base-content");
-    const muted = `color-mix(in srgb, ${text} 25%, transparent)`;
-    const grid = `color-mix(in srgb, ${text} 15%, transparent)`;
+    const colours = chartTheme(canvas);
     const slotAt = (event, chart) => {
       const [hit] = chart.getElementsAtEventForMode(event, "index", { intersect: false }, true);
       return hit ? slots[hit.index] : null;
@@ -58,9 +56,9 @@ export default function RecordTimeline({ bySeason, progression, overallKey, labe
             order: 0,
             data: slots.map((slot) => slot.standing),
             stepped: "middle",
-            borderColor: text,
+            borderColor: colours.text,
             borderWidth: 2,
-            backgroundColor: text,
+            backgroundColor: colours.text,
             pointRadius: slots.map((slot) => (slot.setRecord ? 4 : 0)),
             pointHoverRadius: slots.map((slot) => (slot.setRecord ? 5 : 0)),
           },
@@ -69,7 +67,7 @@ export default function RecordTimeline({ bySeason, progression, overallKey, labe
             label: "Season best",
             order: 1,
             data: slots.map((slot) => slot.record?.value ?? null),
-            backgroundColor: slots.map((slot) => (slot.setRecord ? primary : muted)),
+            backgroundColor: slots.map((slot) => (slot.setRecord ? colours.primary : colours.faint)),
             borderRadius: 3,
           },
         ],
@@ -80,13 +78,14 @@ export default function RecordTimeline({ bySeason, progression, overallKey, labe
         animation: reducedMotion ? false : undefined,
         interaction: { mode: "index", intersect: false },
         scales: {
-          x: { ticks: { color: text, autoSkip: true, maxRotation: 0 }, grid: { display: false } },
+          x: axis(colours, { ticks: { autoSkip: true, maxRotation: 0 }, grid: { display: false } }),
           // A percentage is stored as a fraction; the axis reads it as the values do.
-          y: { beginAtZero: true, ticks: { color: text, ...(percent ? { callback: (value) => `${Math.round(value * 100)}%` } : {}) }, grid: { color: grid } },
+          y: axis(colours, { beginAtZero: true, ticks: percent ? { callback: (value) => `${Math.round(value * 100)}%` } : {} }),
         },
         plugins: {
           legend: { display: false },
           tooltip: {
+            ...tooltip(colours),
             filter: (item) => item.dataset.type === "bar" && slots[item.dataIndex].record !== null,
             callbacks: {
               title: (items) => (items.length ? slots[items[0].dataIndex].season : ""),

@@ -8,6 +8,7 @@ import { formatDecimal, formatSignedDecimal } from "../lib/format";
 import Panel from "../lib/Panel";
 import PanelHeader from "../lib/PanelHeader";
 import { TabStrip } from "../lib/TabStrip";
+import { chartTheme, radarScale, tooltip } from "../lib/chartTheme";
 import { themeColor, useActiveTheme } from "../lib/useActiveTheme";
 import { ordinal } from "../teams/teamLeague";
 import { changeFrom, SMALL_SAMPLE_GAMES } from "./careerData";
@@ -181,8 +182,7 @@ function OverlayRadar({ series }) {
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return undefined;
-    const textColor = themeColor(canvas, "--color-base-content");
-    const gridColor = `color-mix(in srgb, ${textColor} 20%, transparent)`;
+    const colours = chartTheme(canvas);
 
     const chart = new Chart(canvas, {
       type: "radar",
@@ -194,7 +194,7 @@ function OverlayRadar({ series }) {
             label: entry.label,
             data: entry.percentiles.map((percentile) => percentile ?? 0),
             borderColor: colour,
-            backgroundColor: `color-mix(in srgb, ${colour} 14%, transparent)`,
+            backgroundColor: colours.radarFill(colour),
             borderWidth: 2,
             borderDash: entry.small ? [5, 4] : [],
             pointBackgroundColor: colour,
@@ -205,19 +205,12 @@ function OverlayRadar({ series }) {
         responsive: true,
         maintainAspectRatio: false,
         scales: {
-          r: {
-            min: 0,
-            max: 100,
-            ticks: { stepSize: 25, color: textColor, backdropColor: "transparent" },
-            grid: { color: gridColor },
-            angleLines: { color: gridColor },
-            pointLabels: { color: textColor },
-          },
+          r: radarScale(colours),
         },
         plugins: {
           // The season chips above choose what is drawn, so the legend is only a key.
-          legend: { position: "bottom", labels: { color: textColor, usePointStyle: true }, onClick: () => {} },
-          tooltip: { callbacks: { label: (context) => `${context.dataset.label}: ${ordinal(context.parsed.r)} percentile` } },
+          legend: { position: "bottom", labels: { color: colours.text, usePointStyle: true }, onClick: () => {} },
+          tooltip: { ...tooltip(colours), callbacks: { label: (context) => `${context.dataset.label}: ${ordinal(context.parsed.r)} percentile` } },
         },
       },
     });

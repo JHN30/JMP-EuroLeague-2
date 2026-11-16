@@ -2,9 +2,11 @@ import { useCallback, useEffect, useState } from "react";
 
 const THEME_KEY = "euroleague-theme";
 
+// `browserColor` is the phone browser bar (meta theme-color): base-200 of each theme block in index.css, the header's colour,
+// as sRGB hex. Keep it in step when base-200 changes (index.html starts with the dark one).
 export const THEMES = {
-  "dark-euroleague": { name: "dark-euroleague", title: "Dark", browserColor: "#151517" },
-  "light-euroleague": { name: "light-euroleague", title: "Light", browserColor: "#f6f2ec" },
+  "dark-euroleague": { name: "dark-euroleague", title: "Dark", browserColor: "#0b121a" },
+  "light-euroleague": { name: "light-euroleague", title: "Light", browserColor: "#eef2f7" },
 };
 
 function readStoredTheme() {

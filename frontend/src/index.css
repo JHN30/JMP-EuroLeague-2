@@ -1351,33 +1351,8 @@ button {
 .kpi-strip-5 > :last-child:nth-child(odd) {
   grid-column: 1 / -1;
 }
-/* Head-to-head's four plain cards sit two by two until there is room for four across (lg); the chips are compact below sm. */
-.kpi-strip.kpi-strip-quad {
-  grid-auto-flow: row;
-  grid-auto-columns: auto;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  overflow-x: visible;
-  padding-bottom: 0;
-}
-.kpi-strip-quad .kpi-chip {
-  padding: 0.9rem 0.85rem;
-}
-.kpi-strip-quad .kpi-chip .value {
-  line-height: 1.1;
-  overflow-wrap: break-word;
-}
-@media (min-width: 40rem) {
-  .kpi-strip-quad .kpi-chip {
-    padding: 0.9rem 1.1rem;
-  }
-}
 @media (min-width: 64rem) {
-  .kpi-strip.kpi-strip-quad {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-  }
-}
-@media (min-width: 64rem) {
-  .kpi-strip:not(.kpi-strip-4):not(.kpi-strip-5):not(.kpi-strip-quad) {
+  .kpi-strip:not(.kpi-strip-4):not(.kpi-strip-5) {
     grid-auto-flow: row;
     grid-auto-columns: auto;
     grid-template-columns: repeat(5, 1fr);
@@ -2446,14 +2421,14 @@ button {
   padding: 0.55rem 0.25rem;
   grid-template-columns: 2rem minmax(0, 1fr) 4.5rem;
 }
-@media (min-width: 640px) {
+@media (min-width: 40rem) {
   .board-row {
     gap: 0.75rem;
     padding: 0.55rem 0.5rem;
     grid-template-columns: 4.25rem minmax(0, 1fr) repeat(var(--extra, 0), 3.5rem) 9.5rem;
   }
 }
-@media (min-width: 1024px) {
+@media (min-width: 64rem) {
   .board-row {
     padding: 0.3rem 0.5rem;
     grid-template-columns: 4.25rem minmax(0, 1fr) repeat(var(--extra, 0), 3.5rem) 14rem;
@@ -2474,7 +2449,7 @@ button {
   display: flex;
   align-items: center;
 }
-@media (min-width: 1024px) {
+@media (min-width: 64rem) {
   .bk-out::after {
     content: "";
     position: absolute;

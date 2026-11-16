@@ -212,7 +212,7 @@ function TeamPlayers({ team, shots, activePlayer, onSelectPlayer }) {
                 <th className="text-center">FG%</th>
                 <th className="text-center">3PT</th>
                 <th className="text-center">eFG%</th>
-                <th className="max-md:hidden">Most made from</th>
+                <th className="max-sm:hidden">Most made from</th>
               </tr>
             </thead>
             <tbody>
@@ -240,7 +240,7 @@ function TeamPlayers({ team, shots, activePlayer, onSelectPlayer }) {
                     <td className="text-center tabular-nums">{formatPercentage(fgPct(player.all))}</td>
                     <td className="text-center tabular-nums">{player.threes.attempts === 0 ? formatMissing(null) : `${player.threes.made}-${player.threes.attempts}`}</td>
                     <td className="text-center tabular-nums">{formatPercentage(player.efg)}</td>
-                    <td className="text-xs max-md:hidden">{mostMadeZone(player.own)}</td>
+                    <td className="text-xs max-sm:hidden">{mostMadeZone(player.own)}</td>
                   </tr>
                 );
               })}

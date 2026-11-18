@@ -1,5 +1,5 @@
 import { Fragment } from "react";
-import { formatCount, formatSignedDecimal, formatSignedDiff } from "../lib/format";
+import { formatCount, formatDecimal, formatSignedDecimal, formatSignedDiff } from "../lib/format";
 import HeaderTip from "../lib/HeaderTip";
 import { tierForPosition } from "../lib/seasonFormat";
 import Panel from "../lib/Panel";
@@ -155,7 +155,7 @@ function OverviewTable({ standings, seasonCode, view, showTiers, tierLines, tier
                 <td className="hidden sm:table-cell">{figures?.gamesPlayed ?? "-"}</td>
                 <td>{figures?.gamesWon ?? "-"}</td>
                 <td>{figures?.gamesLost ?? "-"}</td>
-                <td>{figures?.winPercentage ?? "-"}</td>
+                <td>{figures?.winPercentage != null ? formatDecimal(figures.winPercentage) : "-"}</td>
                 <td>{formatCount(figures?.pointsFor)}</td>
                 <td>{formatCount(figures?.pointsAgainst)}</td>
                 <td className="font-semibold">{formatSignedDiff(figures?.pointsDifference)}</td>

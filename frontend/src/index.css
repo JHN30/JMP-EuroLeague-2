@@ -591,7 +591,9 @@ button {
   width: 1.75rem;
   height: 1.75rem;
 }
-/* The Overview table: tight stat cells and slightly smaller numbers on a phone, so four stats fit at rest. */
+/* The Overview table: tight stat cells and slightly smaller numbers on a phone, so four stats fit at rest. The table is
+   squeezed to its narrowest width inside the scroll box, so the stat cells never wrap: a record such as 7-3 would otherwise
+   break after its hyphen and double every row's height. */
 .standings-table thead th,
 .standings-table tbody tr:not(.tier-row) td {
   padding-inline: 0.25rem;
@@ -599,6 +601,7 @@ button {
 .standings-table thead th:nth-child(n + 3),
 .standings-table tbody tr:not(.tier-row) td:nth-child(n + 3) {
   font-size: 0.75rem;
+  white-space: nowrap;
 }
 /* The first stat column (wins, as GP is hidden here) keeps a little air next to the pinned edge. */
 .standings-table thead th:nth-child(4),

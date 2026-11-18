@@ -85,6 +85,38 @@ test("the KPI strip is two compact columns below 1280px and five across from it"
   });
 });
 
+test("every stat header and cell of the Overview table stays on one line on a phone", async ({ page }) => {
+  await openStandings(page, FINISHED);
+  await atWidths(page, [320, 375, 639], async () => {
+    // A cell has wrapped when its text lines sit at different heights (the Form cell's W and L badges included).
+    // findBrokenWords cannot catch this: it treats a hyphen as a word break, and a record such as 7-3 breaks right there.
+    const wrapped = await table(page).evaluate((tableEl) =>
+      [...tableEl.querySelectorAll("thead th:nth-child(n + 3), tbody tr:not(.tier-row) td:nth-child(n + 3)")]
+        .filter((cell) => {
+          const tops = [];
+          const walker = document.createTreeWalker(cell, NodeFilter.SHOW_TEXT);
+          for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+            if (!node.textContent.trim()) continue;
+            const range = document.createRange();
+            range.selectNodeContents(node);
+            for (const rect of range.getClientRects()) if (rect.width > 0) tops.push(rect.top);
+          }
+          return tops.length > 1 && Math.max(...tops) - Math.min(...tops) > 4;
+        })
+        .map((cell) => `${cell.cellIndex}:${cell.textContent.trim()}`),
+    );
+    expect(wrapped).toEqual([]);
+  });
+});
+
+test("the PCT column always shows one decimal, so 75 reads 75.0", async ({ page }) => {
+  await openStandings(page, FINISHED);
+  // Columns: #, Team, GP, W, L, PCT.
+  const pct = await table(page).locator("tbody tr:not(.tier-row) td:nth-child(6)").allTextContents();
+  expect(pct.length).toBeGreaterThan(0);
+  for (const value of pct) expect(value).toMatch(/^\d{1,3}\.\d$/);
+});
+
 for (const { name, season, view } of [
   { name: "live season, Overall", season: undefined },
   { name: "live season, Last 10", season: undefined, view: "Last 10" },

@@ -70,20 +70,22 @@ import { remembered } from "../db/remembered";
 import { DEFAULT_METRIC, findRecordMetric, getRecordBook, getRecordRows, getSeasonHighs, MIN_SEASON_GAMES as RECORD_MIN_GAMES, perGameAvailable, RECORD_KINDS, RECORD_PERS, recordFormat } from "../db/season-records";
 import { getSeasonStats, SORTABLE_STATS_FIELDS, type SortableStatsField, type StatsFilters } from "../db/season-stats";
 
-export const seasonRouter = Router();
+// Case-sensitive and strict, so `/E2025/SHOTS` or a trailing slash is a 404 rather than another spelling of a cached address.
+export const seasonRouter = Router({ caseSensitive: true, strict: true });
 
 function sendError(res: Response, status: number, code: string, message: string): void {
   res.status(status).json({ error: { code, message } });
 }
 
-function hasMalformedEncoding(segment: string | undefined): boolean {
-  if (segment === undefined) return false;
-  try {
-    decodeURIComponent(segment);
-    return false;
-  } catch {
-    return true;
-  }
+// The query parameters one route reads. Any other, including one that only another route reads, is a 400 before the route
+// runs: otherwise it would be ignored, and each new value would be a new address for the same answer, missing the response
+// cache and reading the database again (finding F-01). A route that starts reading a parameter must list it here.
+function allowQuery(...names: string[]) {
+  const allowed = new Set(names);
+  return (req: Request, res: Response, next: NextFunction) => {
+    if (Object.keys(req.query).every((name) => allowed.has(name))) next();
+    else sendError(res, 400, "INVALID_QUERY", "Invalid query");
+  };
 }
 
 function pageParameter(value: unknown, fallback: number, minimum: number, maximum: number): number | null {
@@ -238,14 +240,6 @@ function requestedStatsOrder(req: Request, res: Response): "asc" | "desc" | null
   return value;
 }
 
-seasonRouter.use((req, res, next) => {
-  if (hasMalformedEncoding(req.path.split("/")[1])) {
-    sendError(res, 400, "INVALID_SEASON", "Unsupported season");
-    return;
-  }
-  next();
-});
-
 // A season is addressed by its code ("E2026") or by its year alone ("2026", which is what the site's addresses show).
 async function requestedSeason(req: Request, res: Response): Promise<Season | null> {
   const requested = req.params.seasonCode;
@@ -262,22 +256,22 @@ async function requestedSeason(req: Request, res: Response): Promise<Season | nu
   return season;
 }
 
-seasonRouter.get("/", async (_req, res) => {
+seasonRouter.get("/", allowQuery(), async (_req, res) => {
   res.json({ seasons: await getSeasons() });
 });
 
-seasonRouter.get("/:seasonCode", async (req, res) => {
+seasonRouter.get("/:seasonCode", allowQuery(), async (req, res) => {
   const season = await requestedSeason(req, res);
   if (season) res.json({ season });
 });
 
-seasonRouter.get("/:seasonCode/phases", async (req, res) => {
+seasonRouter.get("/:seasonCode/phases", allowQuery(), async (req, res) => {
   const season = await requestedSeason(req, res);
   if (!season) return;
   res.json({ phases: await getPhases(season.seasonCode) });
 });
 
-seasonRouter.get("/:seasonCode/phases/:phaseCode/rounds", async (req, res) => {
+seasonRouter.get("/:seasonCode/phases/:phaseCode/rounds", allowQuery(), async (req, res) => {
   const season = await requestedSeason(req, res);
   if (!season) return;
   const phaseCode = req.params.phaseCode;
@@ -290,7 +284,7 @@ seasonRouter.get("/:seasonCode/phases/:phaseCode/rounds", async (req, res) => {
   res.json({ rounds: await getRounds(season.seasonCode, phaseCode) });
 });
 
-seasonRouter.get("/:seasonCode/phases/:phaseCode/standings", async (req, res) => {
+seasonRouter.get("/:seasonCode/phases/:phaseCode/standings", allowQuery("round"), async (req, res) => {
   const season = await requestedSeason(req, res);
   if (!season) return;
   const phaseCode = req.params.phaseCode;
@@ -323,7 +317,7 @@ seasonRouter.get("/:seasonCode/phases/:phaseCode/standings", async (req, res) =>
 });
 
 // The standings race: where every club stood, and its record, after each round of the phase that has standings.
-seasonRouter.get("/:seasonCode/phases/:phaseCode/standings/race", async (req, res) => {
+seasonRouter.get("/:seasonCode/phases/:phaseCode/standings/race", allowQuery(), async (req, res) => {
   const season = await requestedSeason(req, res);
   if (!season) return;
   const phaseCode = req.params.phaseCode;
@@ -336,7 +330,7 @@ seasonRouter.get("/:seasonCode/phases/:phaseCode/standings/race", async (req, re
   res.json({ rounds: await getStandingsRace(season.seasonCode, phaseCode) });
 });
 
-seasonRouter.get("/:seasonCode/phases/:phaseCode/results", async (req, res) => {
+seasonRouter.get("/:seasonCode/phases/:phaseCode/results", allowQuery(), async (req, res) => {
   const season = await requestedSeason(req, res);
   if (!season) return;
   const phaseCode = req.params.phaseCode;
@@ -349,7 +343,7 @@ seasonRouter.get("/:seasonCode/phases/:phaseCode/results", async (req, res) => {
   res.json({ results: await getPhaseResults(season.seasonCode, phaseCode) });
 });
 
-seasonRouter.get("/:seasonCode/advanced/game-flow", async (req, res) => {
+seasonRouter.get("/:seasonCode/advanced/game-flow", allowQuery("scope"), async (req, res) => {
   const season = await requestedSeason(req, res);
   if (!season) return;
   const scope = requestedAdvancedScope(req, res, season.seasonCode);
@@ -358,7 +352,7 @@ seasonRouter.get("/:seasonCode/advanced/game-flow", async (req, res) => {
   res.json({ scope: requestedScope, clubs: await getGameFlow(season.seasonCode, requestedScope) });
 });
 
-seasonRouter.get("/:seasonCode/advanced/standings", async (req, res) => {
+seasonRouter.get("/:seasonCode/advanced/standings", allowQuery("round", "scope"), async (req, res) => {
   const season = await requestedSeason(req, res);
   if (!season) return;
   const scopeValue = requestedAdvancedScope(req, res, season.seasonCode);
@@ -496,7 +490,7 @@ const advancedBoard = remembered(async function advancedBoard(
 // played so far (`games`: 25, 50 (default), 67, 75, 90 or 100 percent, or "all"), where the games played so far are the most any
 // player has in the board's rows. `total` is how many players qualify, and `offset` and `limit` page through them; `order=asc`
 // ranks the lowest first (fewest turnovers).
-seasonRouter.get("/:seasonCode/advanced/leaders", async (req, res) => {
+seasonRouter.get("/:seasonCode/advanced/leaders", allowQuery("games", "limit", "metric", "offset", "order", "scope"), async (req, res) => {
   const season = await requestedSeason(req, res);
   if (!season) return;
   const metric = req.query.metric === undefined ? "per" : req.query.metric;
@@ -585,7 +579,7 @@ const FORM_PHASES = STAGE_CODES;
 
 // Who is hot and who has moved: every qualified player's per-game numbers over their last N games and over the phase, and
 // their rank on each stat now and before the latest round. `games` is the length of "hot right now" (default 5).
-seasonRouter.get("/:seasonCode/leaders/form", async (req, res) => {
+seasonRouter.get("/:seasonCode/leaders/form", allowQuery("games", "phase"), async (req, res) => {
   const season = await requestedSeason(req, res);
   if (!season) return;
   const phase = req.query.phase === undefined ? "RS" : req.query.phase;
@@ -603,7 +597,7 @@ seasonRouter.get("/:seasonCode/leaders/form", async (req, res) => {
   res.json({ phase, games, lastRound, players });
 });
 
-seasonRouter.get("/:seasonCode/season-stats", async (req, res) => {
+seasonRouter.get("/:seasonCode/season-stats", allowQuery("club", "limit", "minGames", "mode", "offset", "order", "personKey", "phase", "qualified", "sort"), async (req, res) => {
   const season = await requestedSeason(req, res);
   if (!season) return;
   const phase = requestedStatsPhase(req, res, season.seasonCode);
@@ -638,7 +632,7 @@ const MAX_LEADER_STATS = 10;
 
 // The qualified leader of each listed stat (`stats`, comma-separated sortable fields), in one answer: what
 // /season-stats?sort=<stat>&order=desc&limit=1&qualified=true gives for each, so a page of leader cards is one request.
-seasonRouter.get("/:seasonCode/season-stats/leaders", async (req, res) => {
+seasonRouter.get("/:seasonCode/season-stats/leaders", allowQuery("mode", "phase", "stats"), async (req, res) => {
   const season = await requestedSeason(req, res);
   if (!season) return;
   const phase = requestedStatsPhase(req, res, season.seasonCode);
@@ -658,7 +652,7 @@ seasonRouter.get("/:seasonCode/season-stats/leaders", async (req, res) => {
 
 // The records: one route per kind, each ranking one metric of the catalogue over the loaded seasons (see db/season-records.ts).
 for (const kind of RECORD_KINDS) {
-  seasonRouter.get(`/:seasonCode/records/${kind}`, async (req, res) => {
+  seasonRouter.get(`/:seasonCode/records/${kind}`, allowQuery("metric", "per"), async (req, res) => {
     const season = await requestedSeason(req, res);
     if (!season) return;
     const requested = req.query.metric === undefined ? DEFAULT_METRIC[kind] : req.query.metric;
@@ -687,30 +681,30 @@ for (const kind of RECORD_KINDS) {
 }
 
 // The record book: the headline records of every kind, over the loaded seasons (see db/season-records.ts).
-seasonRouter.get("/:seasonCode/records/book", async (req, res) => {
+seasonRouter.get("/:seasonCode/records/book", allowQuery(), async (req, res) => {
   if (await requestedSeason(req, res)) res.json(await getRecordBook());
 });
 
 // Overview's season highs: the season's best single game for points, rebounds, assists, steals, blocks and PIR.
-seasonRouter.get("/:seasonCode/season-highs", async (req, res) => {
+seasonRouter.get("/:seasonCode/season-highs", allowQuery(), async (req, res) => {
   const season = await requestedSeason(req, res);
   if (season) res.json(await getSeasonHighs(season.seasonCode));
 });
 
-seasonRouter.get("/:seasonCode/teams", async (req, res) => {
+seasonRouter.get("/:seasonCode/teams", allowQuery(), async (req, res) => {
   const season = await requestedSeason(req, res);
   if (season) res.json({ teams: await getTeams(season.seasonCode) });
 });
 
 // The head-to-head page's clubs and meetings span every loaded season, whichever season is in the address.
-seasonRouter.get("/:seasonCode/head-to-head/teams", async (req, res) => {
+seasonRouter.get("/:seasonCode/head-to-head/teams", allowQuery(), async (req, res) => {
   if (!await requestedSeason(req, res)) return;
   const seasonCodes = (await getSeasons()).map((season) => season.seasonCode);
   const teams = await getTeamsAcrossSeasons(seasonCodes);
   res.json({ teams: teams.sort((a, b) => (a.name ?? "").localeCompare(b.name ?? "")) });
 });
 
-seasonRouter.get("/:seasonCode/head-to-head/games", async (req, res) => {
+seasonRouter.get("/:seasonCode/head-to-head/games", allowQuery("teamA", "teamB"), async (req, res) => {
   if (!await requestedSeason(req, res)) return;
   const { teamA, teamB } = req.query;
   if (!validIdentity(teamA) || !validIdentity(teamB)) {
@@ -721,7 +715,7 @@ seasonRouter.get("/:seasonCode/head-to-head/games", async (req, res) => {
   res.json({ games: await getHeadToHeadGames(seasonCodes, teamA, teamB) });
 });
 
-seasonRouter.get("/:seasonCode/teams/:clubCode", async (req, res) => {
+seasonRouter.get("/:seasonCode/teams/:clubCode", allowQuery(), async (req, res) => {
   const season = await requestedSeason(req, res);
   if (!season) return;
   const clubCode = req.params.clubCode;
@@ -737,7 +731,7 @@ seasonRouter.get("/:seasonCode/teams/:clubCode", async (req, res) => {
   res.json({ team, club });
 });
 
-seasonRouter.get("/:seasonCode/teams/:clubCode/roster", async (req, res) => {
+seasonRouter.get("/:seasonCode/teams/:clubCode/roster", allowQuery("limit", "offset"), async (req, res) => {
   const season = await requestedSeason(req, res);
   if (!season) return;
   const clubCode = req.params.clubCode;
@@ -756,7 +750,7 @@ seasonRouter.get("/:seasonCode/teams/:clubCode/roster", async (req, res) => {
 });
 
 // The head coach and assistants, for the roster page. Staff come from the same registrations as players.
-seasonRouter.get("/:seasonCode/teams/:clubCode/coaches", async (req, res) => {
+seasonRouter.get("/:seasonCode/teams/:clubCode/coaches", allowQuery(), async (req, res) => {
   const season = await requestedSeason(req, res);
   if (!season) return;
   const clubCode = req.params.clubCode;
@@ -771,7 +765,7 @@ seasonRouter.get("/:seasonCode/teams/:clubCode/coaches", async (req, res) => {
   res.json({ coaches: await getTeamCoaches(season.seasonCode, clubCode) });
 });
 
-seasonRouter.get("/:seasonCode/teams/:clubCode/games", async (req, res) => {
+seasonRouter.get("/:seasonCode/teams/:clubCode/games", allowQuery("limit", "offset", "order", "status"), async (req, res) => {
   const season = await requestedSeason(req, res);
   if (!season) return;
   const clubCode = req.params.clubCode;
@@ -793,7 +787,7 @@ seasonRouter.get("/:seasonCode/teams/:clubCode/games", async (req, res) => {
   res.json({ games: result.items, pagination: { ...page, hasMore: result.hasMore } });
 });
 
-seasonRouter.get("/:seasonCode/teams/:clubCode/team-stats", async (req, res) => {
+seasonRouter.get("/:seasonCode/teams/:clubCode/team-stats", allowQuery("phase"), async (req, res) => {
   const season = await requestedSeason(req, res);
   if (!season) return;
   const clubCode = req.params.clubCode;
@@ -816,7 +810,7 @@ seasonRouter.get("/:seasonCode/teams/:clubCode/team-stats", async (req, res) => 
 });
 
 // Every club's season totals for one phase, for ranking a club against the league.
-seasonRouter.get("/:seasonCode/team-stats", async (req, res) => {
+seasonRouter.get("/:seasonCode/team-stats", allowQuery("phase"), async (req, res) => {
   const season = await requestedSeason(req, res);
   if (!season) return;
   const phaseCode = req.query.phase;
@@ -841,7 +835,7 @@ function requestedAdvancedScope(req: Request, res: Response, seasonCode: string)
 
 // The advanced figures of a club's players (PER, Win Shares, Win Shares per 40, usage, true shooting, PIE, game score) as they
 // stand after the scope's last round. The page decides which players are worth showing.
-seasonRouter.get("/:seasonCode/teams/:clubCode/players-advanced", async (req, res) => {
+seasonRouter.get("/:seasonCode/teams/:clubCode/players-advanced", allowQuery("scope"), async (req, res) => {
   const season = await requestedSeason(req, res);
   if (!season) return;
   const clubCode = req.params.clubCode;
@@ -865,7 +859,7 @@ seasonRouter.get("/:seasonCode/teams/:clubCode/players-advanced", async (req, re
 // Trend, splits and play-by-play for one club in one scope. The trend is one point per round of
 // cumulative values (never summed), each with the round's own ratings beside it (`round...` fields: what the club did in that round
 // alone, from the difference of the cumulative points and possessions); the splits are the state after the club's latest round in the scope.
-seasonRouter.get("/:seasonCode/teams/:clubCode/advanced", async (req, res) => {
+seasonRouter.get("/:seasonCode/teams/:clubCode/advanced", allowQuery("scope"), async (req, res) => {
   const season = await requestedSeason(req, res);
   if (!season) return;
   const clubCode = req.params.clubCode;
@@ -912,7 +906,7 @@ seasonRouter.get("/:seasonCode/teams/:clubCode/advanced", async (req, res) => {
 
 const LINEUP_SIZES = [2, 3, 5];
 
-seasonRouter.get("/:seasonCode/teams/:clubCode/lineups", async (req, res) => {
+seasonRouter.get("/:seasonCode/teams/:clubCode/lineups", allowQuery("limit", "minPossessions", "scope", "size"), async (req, res) => {
   const season = await requestedSeason(req, res);
   if (!season) return;
   const clubCode = req.params.clubCode;
@@ -948,7 +942,7 @@ seasonRouter.get("/:seasonCode/teams/:clubCode/lineups", async (req, res) => {
   res.json({ scope: lineupScope, size, minPossessions, lineups });
 });
 
-seasonRouter.get("/:seasonCode/players", async (req, res) => {
+seasonRouter.get("/:seasonCode/players", allowQuery("club", "limit", "offset", "position", "search"), async (req, res) => {
   const season = await requestedSeason(req, res);
   if (!season) return;
   const page = requestedPage(req, res);
@@ -972,7 +966,7 @@ seasonRouter.get("/:seasonCode/players", async (req, res) => {
   res.json({ players: result.items, pagination: { ...page, hasMore: result.hasMore, total: result.total } });
 });
 
-seasonRouter.get("/:seasonCode/players/:personKey", async (req, res) => {
+seasonRouter.get("/:seasonCode/players/:personKey", allowQuery(), async (req, res) => {
   const season = await requestedSeason(req, res);
   if (!season) return;
   const personKey = req.params.personKey;
@@ -1088,7 +1082,7 @@ async function getExtendedAdvanced(seasonCode: string, scope: string, personKey:
 // Round-by-round PER, Win Shares and USG% for one player in one scope, plus on/off (one row per club, so a
 // traded player has several) and the whole-season RAPM. Sample sizes come back with the values; the page
 // decides what to hide.
-seasonRouter.get("/:seasonCode/players/:personKey/advanced", async (req, res) => {
+seasonRouter.get("/:seasonCode/players/:personKey/advanced", allowQuery("extended", "scope"), async (req, res) => {
   const season = await requestedSeason(req, res);
   if (!season) return;
   const personKey = req.params.personKey;
@@ -1159,7 +1153,7 @@ seasonRouter.get("/:seasonCode/players/:personKey/advanced", async (req, res) =>
   });
 });
 
-seasonRouter.get("/:seasonCode/players/:personKey/registrations", async (req, res) => {
+seasonRouter.get("/:seasonCode/players/:personKey/registrations", allowQuery(), async (req, res) => {
   const season = await requestedSeason(req, res);
   if (!season) return;
   const personKey = req.params.personKey;
@@ -1174,7 +1168,7 @@ seasonRouter.get("/:seasonCode/players/:personKey/registrations", async (req, re
   res.json({ registrations: await getPlayerRegistrations(season.seasonCode, personKey) });
 });
 
-seasonRouter.get("/:seasonCode/players/:personKey/games", async (req, res) => {
+seasonRouter.get("/:seasonCode/players/:personKey/games", allowQuery("limit", "offset"), async (req, res) => {
   const season = await requestedSeason(req, res);
   if (!season) return;
   const personKey = req.params.personKey;
@@ -1211,7 +1205,7 @@ async function careerSeasonCodes(req: Request, res: Response): Promise<{ personK
 // The player's Season by season tab in one answer: a card for every loaded season the player is in, oldest first,
 // whichever season is in the address. Each card holds what the tab used to fetch per season: the player, his
 // registrations, his per-game season statistics for the regular season and for every phase, and his game log.
-seasonRouter.get("/:seasonCode/players/:personKey/career", async (req, res) => {
+seasonRouter.get("/:seasonCode/players/:personKey/career", allowQuery(), async (req, res) => {
   const career = await careerSeasonCodes(req, res);
   if (!career) return;
   const { personKey } = career;
@@ -1245,7 +1239,7 @@ seasonRouter.get("/:seasonCode/players/:personKey/career", async (req, res) => {
 // The Season by season tab's PER, Win Shares and USG%: the last round of the player's advanced figures in each season,
 // for the regular season and for every phase (null where the season has none). Apart from the cards so that a failure
 // here leaves the rest of the tab standing, and a failed answer is never cached, so a retry reaches the database.
-seasonRouter.get("/:seasonCode/players/:personKey/career/advanced", async (req, res) => {
+seasonRouter.get("/:seasonCode/players/:personKey/career/advanced", allowQuery(), async (req, res) => {
   const career = await careerSeasonCodes(req, res);
   if (!career) return;
   const { personKey } = career;
@@ -1265,7 +1259,7 @@ seasonRouter.get("/:seasonCode/players/:personKey/career/advanced", async (req, 
   res.json({ seasons });
 });
 
-seasonRouter.get("/:seasonCode/players/:personKey/shots", async (req, res) => {
+seasonRouter.get("/:seasonCode/players/:personKey/shots", allowQuery("phase"), async (req, res) => {
   const season = await requestedSeason(req, res);
   if (!season) return;
   const personKey = req.params.personKey;
@@ -1288,7 +1282,7 @@ seasonRouter.get("/:seasonCode/players/:personKey/shots", async (req, res) => {
 
 // Every field-goal attempt of a phase by one position's players (or by everyone without `position`), as compact rows:
 // the player Shooting tab's comparison side.
-seasonRouter.get("/:seasonCode/shots", async (req, res) => {
+seasonRouter.get("/:seasonCode/shots", allowQuery("phase", "position"), async (req, res) => {
   const season = await requestedSeason(req, res);
   if (!season) return;
   const phase = req.query.phase;
@@ -1325,7 +1319,7 @@ function requestedGameOrder(req: Request, res: Response): "asc" | "desc" | null 
   return value;
 }
 
-seasonRouter.get("/:seasonCode/games", async (req, res) => {
+seasonRouter.get("/:seasonCode/games", allowQuery("cards", "limit", "offset", "order", "phase", "round", "status"), async (req, res) => {
   const season = await requestedSeason(req, res);
   if (!season) return;
   const page = requestedPage(req, res);
@@ -1378,7 +1372,7 @@ seasonRouter.get("/:seasonCode/games", async (req, res) => {
   res.json({ games: result.items, pagination: { ...page, hasMore: result.hasMore, total: result.total } });
 });
 
-seasonRouter.get("/:seasonCode/games/:gameCode", async (req, res) => {
+seasonRouter.get("/:seasonCode/games/:gameCode", allowQuery(), async (req, res) => {
   const season = await requestedSeason(req, res);
   if (!season) return;
   const gameCode = requestedGameCode(req.params.gameCode, res);
@@ -1395,7 +1389,7 @@ seasonRouter.get("/:seasonCode/games/:gameCode", async (req, res) => {
   res.json({ game, officials, venue });
 });
 
-seasonRouter.get("/:seasonCode/games/:gameCode/box-score", async (req, res) => {
+seasonRouter.get("/:seasonCode/games/:gameCode/box-score", allowQuery(), async (req, res) => {
   const season = await requestedSeason(req, res);
   if (!season) return;
   const gameCode = requestedGameCode(req.params.gameCode, res);
@@ -1413,7 +1407,7 @@ const GAME_SEASON_SCOPE = "all";
 // A team average over fewer games than this is mostly the game itself, so it is hidden.
 const MIN_SEASON_GAMES = 3;
 
-seasonRouter.get("/:seasonCode/games/:gameCode/advanced", async (req, res) => {
+seasonRouter.get("/:seasonCode/games/:gameCode/advanced", allowQuery(), async (req, res) => {
   const season = await requestedSeason(req, res);
   if (!season) return;
   const gameCode = requestedGameCode(req.params.gameCode, res);
@@ -1490,7 +1484,7 @@ seasonRouter.get("/:seasonCode/games/:gameCode/advanced", async (req, res) => {
 });
 
 // Score flow, shot splits and counted possessions of one game, straight from the pipeline's per-game team tables.
-seasonRouter.get("/:seasonCode/games/:gameCode/team-flow", async (req, res) => {
+seasonRouter.get("/:seasonCode/games/:gameCode/team-flow", allowQuery(), async (req, res) => {
   const season = await requestedSeason(req, res);
   if (!season) return;
   const gameCode = requestedGameCode(req.params.gameCode, res);
@@ -1504,7 +1498,7 @@ seasonRouter.get("/:seasonCode/games/:gameCode/team-flow", async (req, res) => {
 });
 
 // Each player's on-court intervals and the game's five-man units, straight from the pipeline's per-game tables.
-seasonRouter.get("/:seasonCode/games/:gameCode/lineups", async (req, res) => {
+seasonRouter.get("/:seasonCode/games/:gameCode/lineups", allowQuery(), async (req, res) => {
   const season = await requestedSeason(req, res);
   if (!season) return;
   const gameCode = requestedGameCode(req.params.gameCode, res);
@@ -1516,7 +1510,7 @@ seasonRouter.get("/:seasonCode/games/:gameCode/lineups", async (req, res) => {
   res.json(await getGameLineups(season.seasonCode, gameCode));
 });
 
-seasonRouter.get("/:seasonCode/games/:gameCode/play-by-play", async (req, res) => {
+seasonRouter.get("/:seasonCode/games/:gameCode/play-by-play", allowQuery(), async (req, res) => {
   const season = await requestedSeason(req, res);
   if (!season) return;
   const gameCode = requestedGameCode(req.params.gameCode, res);
@@ -1528,7 +1522,7 @@ seasonRouter.get("/:seasonCode/games/:gameCode/play-by-play", async (req, res) =
   res.json(await getPlayByPlay(season.seasonCode, gameCode));
 });
 
-seasonRouter.get("/:seasonCode/games/:gameCode/shots", async (req, res) => {
+seasonRouter.get("/:seasonCode/games/:gameCode/shots", allowQuery(), async (req, res) => {
   const season = await requestedSeason(req, res);
   if (!season) return;
   const gameCode = requestedGameCode(req.params.gameCode, res);
@@ -1542,7 +1536,7 @@ seasonRouter.get("/:seasonCode/games/:gameCode/shots", async (req, res) => {
 
 // The season's competition format (stages, groups, qualification, win targets, exceptions) with each stage's loaded data and
 // any place where the data contradicts the format.
-seasonRouter.get("/:seasonCode/format", async (req, res) => {
+seasonRouter.get("/:seasonCode/format", allowQuery(), async (req, res) => {
   const season = await requestedSeason(req, res);
   if (!season) return;
   const format = await getSeasonFormat(season.seasonCode);
@@ -1553,7 +1547,7 @@ seasonRouter.get("/:seasonCode/format", async (req, res) => {
   res.json({ format });
 });
 
-seasonRouter.get("/:seasonCode/postseason-series", async (req, res) => {
+seasonRouter.get("/:seasonCode/postseason-series", allowQuery(), async (req, res) => {
   const season = await requestedSeason(req, res);
   if (!season) return;
   res.json(await getPostseasonSeries(season.seasonCode));
@@ -1563,24 +1557,8 @@ seasonRouter.use((_req, res) => {
   sendError(res, 404, "ROUTE_NOT_FOUND", "Season catalog route not found");
 });
 
-seasonRouter.use((error: unknown, req: Request, res: Response, _next: NextFunction) => {
-  if (error instanceof URIError && "status" in error && error.status === 400) {
-    const [, seasonCode, section, phaseCode, action] = req.path.split("/");
-    if (hasMalformedEncoding(seasonCode)) {
-      sendError(res, 400, "INVALID_SEASON", "Unsupported season");
-    } else if (section === "phases" && (action === "rounds" || action === "standings") && hasMalformedEncoding(phaseCode)) {
-      sendError(res, 404, "PHASE_NOT_FOUND", "Phase not found");
-    } else if (section === "teams" && hasMalformedEncoding(phaseCode)) {
-      sendError(res, 400, "INVALID_TEAM_CODE", "Invalid team code");
-    } else if (section === "players" && hasMalformedEncoding(phaseCode)) {
-      sendError(res, 400, "INVALID_PLAYER_KEY", "Invalid player key");
-    } else if (section === "games" && hasMalformedEncoding(phaseCode)) {
-      sendError(res, 400, "INVALID_GAME_CODE", "Invalid game code");
-    } else {
-      sendError(res, 404, "ROUTE_NOT_FOUND", "Season catalog route not found");
-    }
-    return;
-  }
+// A malformed %-encoding never gets here: responseCache refuses any `%` in the path before the router runs.
+seasonRouter.use((error: unknown, _req: Request, res: Response, _next: NextFunction) => {
   if (error instanceof CatalogDatabaseError) {
     sendError(res, 503, "DATABASE_UNAVAILABLE", "Database unavailable");
     return;

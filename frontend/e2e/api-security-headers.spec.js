@@ -15,8 +15,9 @@ function expectHardenedHeaders(headers, label) {
 }
 
 test("a season answer carries the security headers both uncached and from the response cache", async ({ page }) => {
-  // The routes ignore a query parameter they don't know, and the cache keys on the full address, so this address is new to it.
-  const path = `/seasons/2025/teams?headersProbe=${Date.now()}-${Math.random().toString(36).slice(2)}`;
+  // A player search no one has made before (it matches no player) is an address new to the cache. An unknown query
+  // parameter can't serve here: the API refuses it.
+  const path = `/seasons/2025/players?search=probe${Date.now()}${Math.random().toString(36).slice(2)}`;
   const options = { headers: { Origin: DEV_ORIGIN } };
 
   const first = await page.request.get(`${API}${path}`, options);

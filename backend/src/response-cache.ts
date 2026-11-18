@@ -12,23 +12,41 @@ const MAX_ENTRIES = 1000;
 // for new data or headers to show at once. Development sends nothing, so a change of database or data shows at once.
 const BROWSER_CACHE = ENV.NODE_ENV === "production" ? "private, max-age=300" : null;
 
-const entries = new Map<string, { body: string; expiresAt: number }>();
+// The bodies' total size is capped too: one season's shot map alone is about 1.5 MB, so 1000 large answers could hold
+// gigabytes. Counted as UTF-8 bytes (the JSON is almost all ASCII), close to what the strings take in memory.
+const MAX_BYTES = 100 * 1024 * 1024;
+let storedBytes = 0;
+
+const entries = new Map<string, { body: string; bytes: number; expiresAt: number }>();
+
 // The answers being worked out now, by key: the body once it is a 200, or null when it will not be cached.
 const pending = new Map<string, Promise<string | null>>();
 
+function drop(key: string) {
+  const entry = entries.get(key);
+  if (!entry) return;
+  storedBytes -= entry.bytes;
+  entries.delete(key);
+}
+
 function remember(key: string, body: string) {
   const now = Date.now();
-  entries.delete(key);
+  drop(key);
+  const bytes = Buffer.byteLength(body);
+  if (bytes > MAX_BYTES) return;
   // Every entry lives DATA_TTL_MS from when it was stored and a re-store moves it to the end, so the map is in expiry order:
   // expired entries are all at the front, and dropping them here frees what no one has asked for again.
   for (const [oldKey, old] of entries) {
     if (old.expiresAt > now) break;
-    entries.delete(oldKey);
+    drop(oldKey);
   }
-  entries.set(key, { body, expiresAt: now + DATA_TTL_MS });
-  if (entries.size > MAX_ENTRIES) {
+  entries.set(key, { body, bytes, expiresAt: now + DATA_TTL_MS });
+  storedBytes += bytes;
+  // Over either cap, the entries closest to expiring go first.
+  while (entries.size > MAX_ENTRIES || storedBytes > MAX_BYTES) {
     const oldest = entries.keys().next().value;
-    if (oldest !== undefined) entries.delete(oldest);
+    if (oldest === undefined) break;
+    drop(oldest);
   }
 }
 
@@ -85,21 +103,40 @@ function runRoute(key: string, res: Response, next: NextFunction, share: boolean
   next();
 }
 
-// Caches successful GET replies by full URL (the records routes by one URL for every season). Identical requests that arrive
-// while the first is still running share its answer. Errors are never stored or shared: a request that was waiting on one
-// runs the route itself.
+// Caches successful GET replies by canonical address (the records routes by one address for every season). Identical
+// requests that arrive while the first is still running share its answer. Errors are never stored or shared: a request
+// that was waiting on one runs the route itself.
+// Only canonical addresses reach the routes, so an address that differs in spelling but not in meaning can neither skip
+// the cache (a fresh database read each time) nor fill it with copies:
+// - the mount must be spelled exactly (the router itself is case-sensitive and strict, so its route words and a trailing
+//   slash must be too);
+// - no `%` in the path, as every path value (season, club, player, game and phase codes) is plain letters and digits;
+// - each query parameter given once (the routes read single strings).
+// Each route also refuses any parameter it does not read (`allowQuery` in routes/seasons.ts), before any database work.
+// The cache key is rebuilt from the path and the decoded parameters in name order.
 export function responseCache(req: Request, res: Response, next: NextFunction) {
+  if (req.baseUrl !== "/api/seasons") {
+    res.sendStatus(404);
+    return;
+  }
+  const query = req.query as Record<string, unknown>;
+  const names = Object.keys(query).sort();
+  if (req.path.includes("%") || names.some((name) => typeof query[name] !== "string")) {
+    res.status(400).json({ error: { code: "INVALID_QUERY", message: "Invalid query" } });
+    return;
+  }
   if (req.method !== "GET") {
     next();
     return;
   }
-  const key = cacheKey(req.originalUrl);
+  const search = names.map((name) => `${encodeURIComponent(name)}=${encodeURIComponent(query[name] as string)}`).join("&");
+  const key = cacheKey(`${req.baseUrl}${req.path}${search ? `?${search}` : ""}`);
   const hit = entries.get(key);
   if (hit && hit.expiresAt > Date.now()) {
     sendHit(res, hit.body);
     return;
   }
-  if (hit) entries.delete(key);
+  if (hit) drop(key);
 
   const waiting = pending.get(key);
   if (waiting) {

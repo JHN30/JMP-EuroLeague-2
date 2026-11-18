@@ -269,7 +269,11 @@ export async function getPlayers(
   { search, clubCode, position }: PlayerListFilters = {},
 ): Promise<CountedPage<PlayerListEntry>> {
   const conditions = [playerScope(seasonCode)];
-  if (search) conditions.push(or(ilike(people.name, `%${search}%`), ilike(people.jerseyName, `%${search}%`))!);
+  if (search) {
+    // The text is matched literally: `%` and `_` would otherwise be ILIKE wildcards (backslash is PostgreSQL's escape).
+    const pattern = `%${search.replace(/[\\%_]/g, "\\$&")}%`;
+    conditions.push(or(ilike(people.name, pattern), ilike(people.jerseyName, pattern))!);
+  }
   // A club or a position matches a player registration of the season, so a player who changed clubs is under each club,
   // with the position that registration names.
   if (clubCode || position) {

@@ -95,8 +95,11 @@ function pageParameter(value: unknown, fallback: number, minimum: number, maximu
   return Number.isSafeInteger(number) && number >= minimum && number <= maximum ? number : null;
 }
 
-function requestedPage(req: Request, res: Response): { limit: number; offset: number } | null {
-  const limit = pageParameter(req.query.limit, 50, 1, 100);
+// The most players /season-stats returns at once (the frontend's league list; a season has about 300-350).
+const LEAGUE_LIST_LIMIT = 500;
+
+function requestedPage(req: Request, res: Response, maxLimit = 100): { limit: number; offset: number } | null {
+  const limit = pageParameter(req.query.limit, 50, 1, maxLimit);
   const offset = pageParameter(req.query.offset, 0, 0, 10000);
   if (limit === null || offset === null) {
     sendError(res, 400, "INVALID_QUERY", "Invalid pagination query");
@@ -516,7 +519,7 @@ seasonRouter.get("/:seasonCode/advanced/leaders", allowQuery("games", "limit", "
   const games = req.query.games === undefined ? DEFAULT_GAME_SHARE : req.query.games;
   const limit = pageParameter(req.query.limit, 50, 1, 100);
   const offset = pageParameter(req.query.offset, 0, 0, 900);
-  if (typeof games !== "string" || (games !== "all" && !(games in LEADER_GAME_SHARES)) || limit === null || offset === null) {
+  if (typeof games !== "string" || (games !== "all" && !Object.hasOwn(LEADER_GAME_SHARES, games)) || limit === null || offset === null) {
     sendError(res, 400, "INVALID_QUERY", "Invalid leaderboard filter");
     return;
   }
@@ -604,7 +607,8 @@ seasonRouter.get("/:seasonCode/season-stats", allowQuery("club", "limit", "minGa
   if (phase === null) return;
   const mode = requestedStatsMode(req, res);
   if (mode === null) return;
-  const page = requestedPage(req, res);
+  // Up to 500 rows: a player's ranks are measured against the whole league list, read in one request.
+  const page = requestedPage(req, res, LEAGUE_LIST_LIMIT);
   if (!page) return;
   const personKey = requestedPersonKeyFilter(req, res);
   if (personKey === null) return;
@@ -639,8 +643,10 @@ seasonRouter.get("/:seasonCode/season-stats/leaders", allowQuery("mode", "phase"
   if (phase === null) return;
   const mode = requestedStatsMode(req, res);
   if (mode === null) return;
+  // The list must be in sorted order (unique, as sorted implies with the strict check), so one set of stats has one address
+  // and one cache entry; the answer is keyed by stat, so the order never mattered to it.
   const stats = typeof req.query.stats === "string" ? req.query.stats.split(",") : [];
-  if (stats.length === 0 || stats.length > MAX_LEADER_STATS || new Set(stats).size !== stats.length
+  if (stats.length === 0 || stats.length > MAX_LEADER_STATS || stats.some((stat, index) => index > 0 && stats[index - 1] >= stat)
     || !stats.every((stat) => SORTABLE_STATS_FIELDS.includes(stat))) {
     sendError(res, 400, "INVALID_QUERY", "Invalid stats");
     return;
@@ -1202,6 +1208,18 @@ async function careerSeasonCodes(req: Request, res: Response): Promise<{ personK
   return { personKey, seasonCodes: loaded.map((season) => season.seasonCode).filter((code) => playerSeasons.has(code)) };
 }
 
+// The career routes read each season with a handful of queries. Two seasons at a time keeps a long career (up to 27
+// seasons) from starting every query at once and queueing every other request behind them on the connection pool.
+const CAREER_SEASONS_AT_ONCE = 2;
+
+async function forEachSeasonInTurn<T>(seasonCodes: string[], read: (seasonCode: string) => Promise<T>): Promise<T[]> {
+  const results: T[] = [];
+  for (let start = 0; start < seasonCodes.length; start += CAREER_SEASONS_AT_ONCE) {
+    results.push(...await Promise.all(seasonCodes.slice(start, start + CAREER_SEASONS_AT_ONCE).map(read)));
+  }
+  return results;
+}
+
 // The player's Season by season tab in one answer: a card for every loaded season the player is in, oldest first,
 // whichever season is in the address. Each card holds what the tab used to fetch per season: the player, his
 // registrations, his per-game season statistics for the regular season and for every phase, and his game log.
@@ -1209,8 +1227,8 @@ seasonRouter.get("/:seasonCode/players/:personKey/career", allowQuery(), async (
   const career = await careerSeasonCodes(req, res);
   if (!career) return;
   const { personKey } = career;
-  const cards = await Promise.all(
-    career.seasonCodes.map(async (seasonCode) => {
+  const cards = await forEachSeasonInTurn(
+    career.seasonCodes, async (seasonCode) => {
       const [player, registrations, regularStats, allStats, gameLog] = await Promise.all([
         getPlayer(seasonCode, personKey),
         getPlayerRegistrations(seasonCode, personKey),
@@ -1226,7 +1244,7 @@ seasonRouter.get("/:seasonCode/players/:personKey/career", allowQuery(), async (
         entries: { RS: regularStats.items[0] ?? null, all: allStats.items[0] ?? null },
         games: gameLog.items,
       };
-    }),
+    },
   );
   const seasons = cards.filter((card) => card !== null);
   if (seasons.length === 0) {
@@ -1247,15 +1265,13 @@ seasonRouter.get("/:seasonCode/players/:personKey/career/advanced", allowQuery()
     sendError(res, 404, "PLAYER_NOT_FOUND", "Player not found");
     return;
   }
-  const seasons = await Promise.all(
-    career.seasonCodes.map(async (seasonCode) => {
-      const [regular, all] = await Promise.all([
-        getPlayerLastAdvancedRound(seasonCode, "RS", personKey),
-        getPlayerLastAdvancedRound(seasonCode, "all", personKey),
-      ]);
-      return { seasonCode, advanced: { RS: regular, all } };
-    }),
-  );
+  const seasons = await forEachSeasonInTurn(career.seasonCodes, async (seasonCode) => {
+    const [regular, all] = await Promise.all([
+      getPlayerLastAdvancedRound(seasonCode, "RS", personKey),
+      getPlayerLastAdvancedRound(seasonCode, "all", personKey),
+    ]);
+    return { seasonCode, advanced: { RS: regular, all } };
+  });
   res.json({ seasons });
 });
 

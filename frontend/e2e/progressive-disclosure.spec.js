@@ -166,11 +166,11 @@ test("loads a player game log once for the Overview form and the Games tab, and 
   leaderboardRequests.length = 0;
   await page.goto(`/${SEASON}/leaders?phase=RS&metric=pointsScored`);
   await expect(page.getByText("Showing 1-25 of 50 players")).toBeVisible();
-  expect(leaderboardRequests).toEqual([{ offset: 0, limit: 100 }]);
+  expect(leaderboardRequests).toEqual([{ offset: 0, limit: 500 }]);
 
   await page.getByRole("button", { name: "Next page" }).click();
   await expect(page.getByText("Showing 26-50 of 50 players")).toBeVisible();
-  expect(leaderboardRequests).toEqual([{ offset: 0, limit: 100 }]);
+  expect(leaderboardRequests).toEqual([{ offset: 0, limit: 500 }]);
 
   await page.goto(`/${SEASON}/compare?phase=RS`);
   await page.getByRole("combobox", { name: "Team A" }).click();

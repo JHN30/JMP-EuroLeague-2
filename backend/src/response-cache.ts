@@ -125,7 +125,8 @@ export function responseCache(req: Request, res: Response, next: NextFunction) {
     res.status(400).json({ error: { code: "INVALID_QUERY", message: "Invalid query" } });
     return;
   }
-  if (req.method !== "GET") {
+  // Express runs a GET route for HEAD and sends no body, so HEAD is answered from the cache and shares pending answers too.
+  if (req.method !== "GET" && req.method !== "HEAD") {
     next();
     return;
   }

@@ -146,9 +146,10 @@ export async function getLeaderStats(seasonCode, { phase, mode, limit, offset, s
 }
 
 // The qualified leader of each stat in `stats` (sortable season-stats fields): `{ leaders: { <stat>: player or null } }`.
+// The API takes the list sorted, so a set of stats has one address however a page orders it.
 export async function getSeasonLeaders(seasonCode, { phase, mode, stats }) {
   const { data } = await api.get(`/seasons/${seasonCode}/season-stats/leaders`, {
-    params: { phase, mode, stats: stats.join(",") },
+    params: { phase, mode, stats: [...new Set(stats)].sort().join(",") },
   });
   return data;
 }

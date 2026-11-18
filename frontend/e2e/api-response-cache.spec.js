@@ -46,6 +46,44 @@ test("a team's stage shots need a valid phase and a club of the season", async (
   expect(clubs.size).toBeGreaterThan(1);
 });
 
+test("the leaders' games filter takes only its own values, not inherited property names", async ({ page }) => {
+  for (const games of ["constructor", "toString", "__proto__"]) {
+    expect((await page.request.get(`${API}/seasons/E2025/advanced/leaders?games=${games}`)).status(), games).toBe(400);
+  }
+  expect((await page.request.get(`${API}/seasons/E2025/advanced/leaders?games=50`)).status()).toBe(200);
+});
+
+test("player search matches % and _ literally, not as wildcards", async ({ page }) => {
+  const count = async (search) => {
+    const response = await page.request.get(`${API}/seasons/E2025/players?search=${encodeURIComponent(search)}&limit=5`);
+    expect(response.status(), search).toBe(200);
+    return (await response.json()).players.length;
+  };
+  expect(await count("_")).toBe(0);
+  expect(await count("%")).toBe(0);
+  expect(await count("a")).toBeGreaterThan(0);
+});
+
+test("the season leaders take their stats list sorted, so one set of stats has one address", async ({ page }) => {
+  const leaders = (stats) => page.request.get(`${API}/seasons/E2025/season-stats/leaders?phase=RS&mode=perGame&stats=${stats}`);
+  expect((await leaders("assists,pointsScored")).status()).toBe(200);
+  for (const stats of ["pointsScored,assists", "assists,assists"]) expect((await leaders(stats)).status(), stats).toBe(400);
+});
+
+test("a HEAD request is answered from the response cache like a GET", async ({ page }) => {
+  const path = `${API}/seasons/2025/players?search=${freshSearch()}`;
+  expect((await page.request.head(path)).headers()["x-cache"]).toBe("MISS");
+  expect((await page.request.head(path)).headers()["x-cache"]).toBe("HIT");
+  expect((await page.request.get(path)).headers()["x-cache"]).toBe("HIT");
+});
+
+test("the league list can be read in one request of up to 500 players, and other lists stay at 100", async ({ page }) => {
+  const stats = (limit) => page.request.get(`${API}/seasons/E2025/season-stats?phase=RS&mode=perGame&limit=${limit}`);
+  expect((await stats(500)).status()).toBe(200);
+  expect((await stats(501)).status()).toBe(400);
+  expect((await page.request.get(`${API}/seasons/E2025/players?limit=101`)).status()).toBe(400);
+});
+
 test("another spelling of a route word, the mount or a trailing slash is a 404", async ({ page }) => {
   for (const path of ["/SEASONS/E2025/teams", "/Seasons/E2025/teams", "/seasons/E2025/TEAMS", "/seasons/E2025/teams/"]) {
     const response = await page.request.get(`${API}${path}`);

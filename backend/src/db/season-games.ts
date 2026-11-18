@@ -759,7 +759,8 @@ export async function getShots(seasonCode: string, gameCode: number) {
 }
 
 // One player's field-goal attempts across the season's games of one phase, so the player Shooting tab does not
-// download both teams' shots for every game.
+// download both teams' shots for every game. No played check, unlike getTeamShots: the tab counts its games from the
+// player's game log, which has none either, so its shots and its game count cover the same games.
 export async function getPlayerShots(seasonCode: string, personKey: string, phaseCode: string) {
   const rows = await catalogRead(() =>
     db
@@ -800,6 +801,10 @@ export async function getTeamShots(seasonCode: string, clubCode: string, phaseCo
         eq(shots.seasonCode, seasonCode),
         eq(games.phaseCode, phaseCode),
         or(eq(games.localClubCode, clubCode), eq(games.roadClubCode, clubCode)),
+        // Only games counted as played: the same three checks the tab uses for its game count.
+        eq(games.played, true),
+        isNotNull(games.localScore),
+        isNotNull(games.roadScore),
         inArray(shots.actionCode, FIELD_GOAL_ACTION_CODES),
       ))
       .orderBy(asc(shots.gameCode), asc(shots.shotOrdinal)),

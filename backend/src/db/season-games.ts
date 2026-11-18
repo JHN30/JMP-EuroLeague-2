@@ -783,6 +783,31 @@ export async function getPlayerShots(seasonCode: string, personKey: string, phas
   return { shots: rows };
 }
 
+// Every field-goal attempt in one phase's games of a club, its own and its opponents', so the team Shooting tab reads one
+// answer instead of one per game.
+export async function getTeamShots(seasonCode: string, clubCode: string, phaseCode: string) {
+  const rows = await catalogRead(() =>
+    db
+      .select(SHOT_COLUMNS)
+      .from(shots)
+      .innerJoin(games, and(
+        eq(games.competitionCode, shots.competitionCode),
+        eq(games.seasonCode, shots.seasonCode),
+        eq(games.gameCode, shots.gameCode),
+      ))
+      .where(and(
+        eq(shots.competitionCode, COMPETITION_CODE),
+        eq(shots.seasonCode, seasonCode),
+        eq(games.phaseCode, phaseCode),
+        or(eq(games.localClubCode, clubCode), eq(games.roadClubCode, clubCode)),
+        inArray(shots.actionCode, FIELD_GOAL_ACTION_CODES),
+      ))
+      .orderBy(asc(shots.gameCode), asc(shots.shotOrdinal)),
+  );
+
+  return { shots: rows };
+}
+
 // Shot context flags packed into one number in a compact shot row.
 const FAST_BREAK_FLAG = 1;
 const SECOND_CHANCE_FLAG = 2;

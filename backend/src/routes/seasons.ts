@@ -23,7 +23,7 @@ import {
   getTeams,
   getTeamsAcrossSeasons,
 } from "../db/season-identities";
-import { getBoxScore, getGame, getGameOfficials, getGames, getGameVenue, getHeadToHeadGames, getLeagueTeamStats, getPhaseResults, getPlayByPlay, getPlayerGameLog, getPlayerShots, getPositionShots, getPostseasonSeries, getShots, getTeamGames, getTeamStatsSummary } from "../db/season-games";
+import { getBoxScore, getGame, getGameOfficials, getGames, getGameVenue, getHeadToHeadGames, getLeagueTeamStats, getPhaseResults, getPlayByPlay, getPlayerGameLog, getPlayerShots, getPositionShots, getPostseasonSeries, getShots, getTeamGames, getTeamShots, getTeamStatsSummary } from "../db/season-games";
 import { getSeasonFormat } from "../db/season-format";
 import { seasonScopes, seasonStageCodes } from "../db/season-format-registry";
 import { getLatestStandingsRound, getStandings, getStandingsRace } from "../db/season-standings";
@@ -1278,6 +1278,28 @@ seasonRouter.get("/:seasonCode/players/:personKey/shots", allowQuery("phase"), a
     return;
   }
   res.json(await getPlayerShots(season.seasonCode, personKey, phase));
+});
+
+// Every field-goal attempt in a phase's games of one club, its own and its opponents': the team Shooting tab.
+seasonRouter.get("/:seasonCode/teams/:clubCode/shots", allowQuery("phase"), async (req, res) => {
+  const season = await requestedSeason(req, res);
+  if (!season) return;
+  const clubCode = req.params.clubCode;
+  if (!validIdentity(clubCode)) {
+    sendError(res, 400, "INVALID_TEAM_CODE", "Invalid team code");
+    return;
+  }
+  const phase = req.query.phase;
+  if (typeof phase !== "string" || !FORM_PHASES.includes(phase)) {
+    sendError(res, 400, "INVALID_PHASE", "Invalid phase");
+    return;
+  }
+  if (!inSeasonFormat(season.seasonCode, phase, res)) return;
+  if (!await getTeam(season.seasonCode, clubCode)) {
+    sendError(res, 404, "TEAM_NOT_FOUND", "Team not found");
+    return;
+  }
+  res.json(await getTeamShots(season.seasonCode, clubCode, phase));
 });
 
 // Every field-goal attempt of a phase by one position's players (or by everyone without `position`), as compact rows:

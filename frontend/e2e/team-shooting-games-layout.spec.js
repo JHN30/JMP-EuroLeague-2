@@ -282,7 +282,8 @@ test("a stage the club went past or missed in a finished season says which", asy
 
 // ---- The Shooting tab ----
 
-const SHOTS_URL = (url) => /\/api\/seasons\/[^/]+\/games\/\d+\/shots$/.test(url.pathname);
+// The tab reads the club's shots for the stage in one request (its own and its opponents').
+const SHOTS_URL = (url) => /\/api\/seasons\/[^/]+\/teams\/[^/]+\/shots$/.test(url.pathname);
 
 // One field-goal attempt: `club` is the page's club or its opponent, coordinates are centimetres from the hoop.
 const shot = (ordinal, club, actionCode, coordX, coordY, overrides = {}) => ({
@@ -384,8 +385,8 @@ test("the studio's filters narrow both courts, with no player filter, and free t
   await page.getByLabel("Period").selectOption({ label: "Q1" });
   await expect.poll(() => headerValue(opponentsPanel, "2PT").textContent()).not.toBe(opponentsBefore);
   await page.getByLabel("Play context").selectOption({ label: "Fast breaks" });
-  // One made fast-break two per side in each mocked game, and the same shots are served for each of the three played games.
-  await expect(headerValue(opponentsPanel, "2PT")).toHaveText(/^3-3 /);
+  // The mocked stage answer has one made fast-break two per side in the first quarter.
+  await expect(headerValue(opponentsPanel, "2PT")).toHaveText(/^1-1 /);
   await expectNoSidewaysScroll(page);
 });
 

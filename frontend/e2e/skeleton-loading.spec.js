@@ -658,7 +658,7 @@ test.describe("Team page", () => {
     { tab: "Statistics", pattern: "teams/PAN/team-stats", label: "Loading team statistics" },
     { tab: "Roster", pattern: "teams/PAN/roster", label: "Loading the roster" },
     { tab: "Games", pattern: "teams/PAN/games", label: "Loading the games" },
-    { tab: "Shooting", pattern: "games/[^/]+/shots", label: /^Aggregating \d+ shooting charts$/ },
+    { tab: "Shooting", pattern: "teams/PAN/shots", label: /^Aggregating \d+ shooting charts$/ },
     { tab: "Advanced", pattern: "teams/PAN/advanced", label: "Loading advanced team stats" },
   ]) {
     test(`the ${tab} tab shows its skeleton while it loads, then its content`, async ({ page }) => {

@@ -1,23 +1,24 @@
-import { useQueries, useQuery } from "@tanstack/react-query";
-import { getPlayerShots, getPositionShots, getShots } from "./api";
+import { useQuery } from "@tanstack/react-query";
+import { getPlayerShots, getPositionShots, getTeamShots } from "./api";
 
-// What the team and player Shooting tabs share: loading every played game's shot list, a player's season shots, and the
-// shots of every player at one position.
+// What the team and player Shooting tabs share: a club's shots in a phase (its own and its opponents'), a player's season
+// shots, and the shots of every player at one position.
 
-// Every played game's shot list, combined. Games are cached one by one, so a game seen on another page is not fetched twice.
-export function useSeasonShots(seasonCode, playedGames) {
-  const queries = useQueries({
-    queries: playedGames.map((game) => ({
-      queryKey: ["shots", seasonCode, game.gameCode],
-      queryFn: () => getShots(seasonCode, game.gameCode),
-    })),
+// The same empty list on every render while nothing has loaded, so a memo over the shots does not rerun.
+const NO_SHOTS = [];
+
+// One club's games' shots in a phase, both sides, in a single request.
+export function useTeamShots(seasonCode, clubCode, phaseCode, enabled) {
+  const query = useQuery({
+    queryKey: ["teamShots", seasonCode, clubCode, phaseCode],
+    queryFn: () => getTeamShots(seasonCode, clubCode, phaseCode),
+    enabled,
   });
   return {
-    loading: queries.some((query) => query.isLoading),
-    errored: queries.some((query) => query.isError),
-    mappedGames: queries.filter((query) => query.isSuccess).length,
-    shots: queries.flatMap((query) => query.data?.shots ?? []),
-    retry: () => queries.forEach((query) => query.refetch()),
+    loading: query.isLoading,
+    errored: query.isError,
+    shots: query.data?.shots ?? NO_SHOTS,
+    retry: () => query.refetch(),
   };
 }
 

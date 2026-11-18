@@ -1,8 +1,9 @@
+import { useMemo } from "react";
 import AsyncState from "../lib/AsyncState";
 import { SkeletonShooting } from "../lib/Skeleton";
 import EmptyText from "../lib/EmptyText";
 import { formatCount } from "../lib/format";
-import { useSeasonShots } from "../lib/shootingData";
+import { useTeamShots } from "../lib/shootingData";
 import ShootingStudio from "../games/ShootingStudio";
 
 // Every opponent's shots are one side of the studio, under this code.
@@ -19,7 +20,12 @@ export default function TeamShootingSection({ seasonCode, phaseCode, stageName, 
   const playedGames = games.filter(
     (game) => game.phaseCode === phaseCode && game.played && game.localScore != null && game.roadScore != null,
   );
-  const { loading, errored, shots, retry } = useSeasonShots(seasonCode, playedGames);
+  const { loading, errored, shots, retry } = useTeamShots(seasonCode, team.clubCode, phaseCode, playedGames.length > 0);
+  // Every opponent's shot is relabelled as the opponents' side, once per loaded answer rather than on every render.
+  const sideShots = useMemo(
+    () => shots.map((shot) => (shot.clubCode === team.clubCode ? shot : { ...shot, clubCode: OPPONENTS_CODE })),
+    [shots, team.clubCode],
+  );
 
   if (playedGames.length === 0) {
     return <EmptyText>{`No played games yet in the ${stageName} to map shot locations from.`}</EmptyText>;
@@ -37,7 +43,6 @@ export default function TeamShootingSection({ seasonCode, phaseCode, stageName, 
     return <AsyncState status="error" message="Could not load season shot locations." onRetry={retry} />;
   }
 
-  const sideShots = shots.map((shot) => (shot.clubCode === team.clubCode ? shot : { ...shot, clubCode: OPPONENTS_CODE }));
   const summary = teamStatsSummaryQuery.data;
   const freeThrows = (teamIndex) => {
     const side = teamIndex === 0 ? summary?.own : summary?.opponent;

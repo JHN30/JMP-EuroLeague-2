@@ -7,14 +7,6 @@
 > finding is `open` or `fixed`, then archives resolved findings with the work
 > and resets this file.
 
-### F-02 [P2] open - The team Shooting tab sends one request per played game
-
-**File:** frontend/src/lib/shootingData.js:9 (used by frontend/src/teams/TeamShootingSection.jsx:22)
-**Found:** 2026-11-18 by /audit (scope: full; lens: performance)
-**Why it matters:** `useSeasonShots` runs one `/games/:gameCode/shots` query per played game, about 30-40 requests per team and stage, and the tab shows a skeleton until the last one lands. The flattened `shots` array and the `sideShots` copy (TeamShootingSection.jsx:40) are also rebuilt on every render, handing ShootingStudio a new array each time.
-**Suggested fix:** Add a `club` filter to the existing `/:seasonCode/shots` route (the club's shots plus its opponents' shots in its games), as the player and position tabs already use one request; memoise `sideShots`.
-**Resolution:**
-
 ### F-03 [P3] open - Career routes start up to ~135 queries at once on a 10-connection pool with no statement timeout
 
 **File:** backend/src/routes/seasons.ts:1214, :1250; backend/src/db/client.ts:5
@@ -61,4 +53,12 @@
 **Found:** 2026-11-18 by /audit independent (scope: current; lens: performance)
 **Why it matters:** `/season-stats/leaders?stats=a,b` and `stats=b,a` give the same leaders but are separate cache entries, and each runs one `getSeasonStats` query per stat (not memoised). With about 40 sortable fields and up to 10 per list, the orderings are effectively unlimited, so a caller can keep this route missing both caches (reproduced locally: both orders answer 200 `X-Cache: MISS`). Each answer is small and the cache is now capped at 100 MB, so the cost is database queries (up to 10 per request), not memory or large egress. Residual of F-01's "reordered `stats=` lists".
 **Suggested fix:** Either refuse a `stats` list that is not in a fixed order (sorted, or the order of `SORTABLE_STATS_FIELDS`) with a 400 and have `getSeasonLeaders` in frontend/src/lib/api.js send it sorted, or sort the names when building the key in `responseCache`. Current requirement lost: None.
+**Resolution:**
+
+### F-10 [P3] unverified - Team stage shots include games the page does not count as played
+
+**File:** backend/src/db/season-games.ts (`getTeamShots`)
+**Found:** 2026-11-18 by /audit (scope: current; lens: all)
+**Why it matters:** The old loader fetched shots only for games the page counts as played (`played` and both scores set). `getTeamShots` takes every game of the stage that has shot rows, as `getPlayerShots` already does. If the live data ever holds shots for a game in progress, the team courts would include them, while the loading label's game count and the free-throw totals would not. The local data shows none: 522 unplayed 2026 games, no shots, and the counts match for all 20 teams.
+**Suggested fix:** If live games can carry shots, add `eq(games.played, true)` to `getTeamShots` (and to `getPlayerShots` for the player tab).
 **Resolution:**

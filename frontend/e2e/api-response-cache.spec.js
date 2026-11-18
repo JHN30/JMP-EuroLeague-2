@@ -33,6 +33,19 @@ test("a parameter another route reads, but this one does not, is refused with a 
   expect((await page.request.get(`${API}/seasons/E2025/players?search=${freshSearch()}&limit=5`)).status()).toBe(200);
 });
 
+test("a team's stage shots need a valid phase and a club of the season", async ({ page }) => {
+  for (const [query, status] of [["", 400], ["?phase=XX", 400], ["?phase=RS&limit=5", 400]]) {
+    expect((await page.request.get(`${API}/seasons/E2025/teams/OLY/shots${query}`)).status(), query || "no phase").toBe(status);
+  }
+  expect((await page.request.get(`${API}/seasons/E2025/teams/ZZZ/shots?phase=RS`)).status()).toBe(404);
+  const ok = await page.request.get(`${API}/seasons/E2025/teams/OLY/shots?phase=RS`);
+  expect(ok.status()).toBe(200);
+  // Both sides of every game: the club's own shots and its opponents'.
+  const clubs = new Set((await ok.json()).shots.map((shot) => shot.clubCode));
+  expect(clubs.has("OLY")).toBe(true);
+  expect(clubs.size).toBeGreaterThan(1);
+});
+
 test("another spelling of a route word, the mount or a trailing slash is a 404", async ({ page }) => {
   for (const path of ["/SEASONS/E2025/teams", "/Seasons/E2025/teams", "/seasons/E2025/TEAMS", "/seasons/E2025/teams/"]) {
     const response = await page.request.get(`${API}${path}`);

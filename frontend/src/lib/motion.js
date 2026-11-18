@@ -30,15 +30,17 @@ export const listItem = {
   show: { opacity: 1, y: 0, transition: { duration: 0.3, ease: EASE_OUT } },
 };
 
+// A clickable card grows a little on hover and gives a little on press.
 export const cardHover = {
-  whileHover: { y: -3 },
+  whileHover: { scale: 1.03 },
   whileTap: { scale: 0.97 },
   transition: { type: "spring", stiffness: 420, damping: 28 },
 };
 
-// Wide cards (the Games page): a lighter lift and press than cardHover, which suits small tiles.
+// Wide cards (the Games page): half cardHover's growth and a lighter press, as 3% of a wide card is many pixels and would
+// reach into the gap beside it.
 export const wideCardHover = {
-  whileHover: { y: -2 },
+  whileHover: { scale: 1.015 },
   whileTap: { scale: 0.985 },
   transition: { type: "spring", stiffness: 420, damping: 30 },
 };

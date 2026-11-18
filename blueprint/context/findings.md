@@ -7,16 +7,6 @@
 > finding is `open` or `fixed`, then archives resolved findings with the work
 > and resets this file.
 
-### F-03 [P3] open - Career routes start up to ~135 queries at once on a 10-connection pool with no statement timeout
-
-**File:** backend/src/routes/seasons.ts:1214, :1250; backend/src/db/client.ts:5
-**Found:** 2026-11-18 by /audit (scope: full; lens: performance)
-**Why it matters:** `/players/:personKey/career` runs 5 queries per season the player played (up to 27 seasons) all in parallel; the pool has pg's default 10 connections, so one cold career request queues every other request behind it. No `statement_timeout` bounds a slow query. Answers are cached afterwards, so this hits only cold requests.
-**Suggested fix:** Set `max` and `statement_timeout` on the Pool; later, batch the per-season queries with `season_code = ANY(...)`.
-**Resolution:** Repaired on fix/small-api-hardening-and-loading-fixes: both career routes read two seasons at a time (`forEachSeasonInTurn`, at most 10 queries in flight); answers byte-identical to master for a 14-season career. The statement timeout is not part of this fix: whether Neon's pooled connection accepts it could not be checked locally. Awaiting review.
-2026-11-18 independent review of e5b687c..740edfa: the fan-out part is repaired (seasons.ts:1213-1221, at most 2 seasons in flight, results in season order; a failing season still rejects the route, and later chunks are no longer started). Back to `open` because the finding's title and first suggested fix are only partly done: client.ts:5 still sets neither `max` nor `statement_timeout`, so one slow query is still unbounded. Close it once the timeout is added, or narrow/accept it by the user's decision.
-2026-11-18 independent review of e5b687c..745105a: still `open` (P3, does not block). seasons.ts:1215-1221 has not changed and remains correct. client.ts:5-10 still sets neither `max` nor `statement_timeout`.
-
 ### F-10 [P3] unverified - Team stage shots include games the page does not count as played
 
 **File:** backend/src/db/season-games.ts (`getTeamShots`)

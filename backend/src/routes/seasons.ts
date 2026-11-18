@@ -121,7 +121,9 @@ function requestedSearch(req: Request, res: Response): string | undefined | null
   }
   const trimmed = value.trim();
   if (trimmed.length === 0) return undefined;
-  if (trimmed.length > 100) {
+  // No name holds a control character, and PostgreSQL refuses a NUL in text outright (which would fail the query and
+  // read as an outage), so they are a bad request.
+  if (trimmed.length > 100 || /[\u0000-\u001f\u007f]/.test(trimmed)) {
     sendError(res, 400, "INVALID_QUERY", "Invalid search query");
     return null;
   }

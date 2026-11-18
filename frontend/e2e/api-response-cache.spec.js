@@ -64,6 +64,20 @@ test("player search matches % and _ literally, not as wildcards", async ({ page 
   expect(await count("a")).toBeGreaterThan(0);
 });
 
+test("player search refuses control characters with a 400, not a database error", async ({ page }) => {
+  const search = (text) => page.request.get(`${API}/seasons/E2025/players?search=${encodeURIComponent(text)}&limit=5`);
+  for (const text of ["ab\u0000c", "ab\u0001c", "ab\u007fc"]) {
+    const response = await search(text);
+    expect(response.status(), JSON.stringify(text)).toBe(400);
+    expect((await response.json()).error.code).toBe("INVALID_QUERY");
+  }
+  // Accents, commas and spaces are ordinary search text.
+  expect((await search("Bogdanović")).status()).toBe(200);
+  const named = await search("Abalde, Alberto");
+  expect(named.status()).toBe(200);
+  expect((await named.json()).players.length).toBe(1);
+});
+
 test("the season leaders take their stats list sorted, so one set of stats has one address", async ({ page }) => {
   const leaders = (stats) => page.request.get(`${API}/seasons/E2025/season-stats/leaders?phase=RS&mode=perGame&stats=${stats}`);
   expect((await leaders("assists,pointsScored")).status()).toBe(200);

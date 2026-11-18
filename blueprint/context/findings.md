@@ -24,11 +24,3 @@
 **Why it matters:** The old loader fetched shots only for games the page counts as played (`played` and both scores set). `getTeamShots` takes every game of the stage that has shot rows, as `getPlayerShots` already does. If the live data ever holds shots for a game in progress, the team courts would include them, while the loading label's game count and the free-throw totals would not. The local data shows none: 522 unplayed 2026 games, no shots, and the counts match for all 20 teams.
 **Suggested fix:** If live games can carry shots, add `eq(games.played, true)` to `getTeamShots` (and to `getPlayerShots` for the player tab).
 **Resolution:**
-
-### F-12 [P3] open - A NUL byte in the player search answers 503 "Database unavailable"
-
-**File:** backend/src/routes/seasons.ts:114 (`requestedSearch`)
-**Found:** 2026-11-18 by /audit independent (scope: current; lens: security)
-**Why it matters:** PostgreSQL rejects a `\0` in a text parameter, so `/players?search=ab%00c` reaches the database, fails, and gets 503 `DATABASE_UNAVAILABLE`. That should be a 400. The search reports a client error as an outage and can add server error logs or alerts. This predates the F-06 repair, which does not touch it. It is not injection: the value is still a bound parameter.
-**Suggested fix:** In `requestedSearch`, answer 400 `INVALID_QUERY` when the text contains a control character, for example `/[\u0000-\u001f]/`. Current requirement lost: None.
-**Resolution:**

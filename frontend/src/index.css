@@ -31,7 +31,7 @@
   --color-error-content: oklch(16% 0.05 25);
   --color-rank-leader: oklch(84% 0.17 88);
   --color-rank-leader-content: oklch(22% 0.05 88);
-  /* The page's two corner glows (.app-shell). */
+  /* The strength of the page's glows (.app-shell::before). */
   --glow-primary: 24%;
   --glow-accent: 16%;
 
@@ -124,15 +124,40 @@ button {
   min-height: 100vh;
   color: var(--color-base-content);
   background-color: var(--color-base-200);
+  /* Keeps the glow layer below above the page colour and behind every page's content. */
+  isolation: isolate;
+}
+
+/* The page's glows: orange at the top left, emerald at the top right and a faint cyan below the bottom edge. They sit on a
+   layer fixed to the window, so they stay at the edges of a long page as it scrolls, and each fades out in eased steps rather
+   than one linear ramp, which left a visible edge. A pseudo-element rather than background-attachment: fixed, which iOS
+   ignores and which repaints on every scroll. */
+.app-shell::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
   background-image:
-    radial-gradient(circle at 12% 0%, color-mix(in srgb, var(--color-primary) var(--glow-primary), transparent), transparent 34rem),
-    radial-gradient(circle at 88% 12%, color-mix(in srgb, var(--color-accent) var(--glow-accent), transparent), transparent 28rem),
-    linear-gradient(135deg, color-mix(in srgb, var(--color-base-content) 4%, transparent) 1px, transparent 1px);
-  background-size:
-    auto,
-    auto,
-    30px 30px;
-  background-repeat: no-repeat, no-repeat, repeat;
+    radial-gradient(
+      ellipse 48rem 34rem at 0% 0%,
+      color-mix(in srgb, var(--color-primary) var(--glow-primary), transparent) 0%,
+      color-mix(in srgb, var(--color-primary) calc(var(--glow-primary) * 0.55), transparent) 35%,
+      color-mix(in srgb, var(--color-primary) calc(var(--glow-primary) * 0.18), transparent) 65%,
+      transparent 100%
+    ),
+    radial-gradient(
+      ellipse 44rem 32rem at 100% 8%,
+      color-mix(in srgb, var(--color-accent) var(--glow-accent), transparent) 0%,
+      color-mix(in srgb, var(--color-accent) calc(var(--glow-accent) * 0.55), transparent) 35%,
+      color-mix(in srgb, var(--color-accent) calc(var(--glow-accent) * 0.18), transparent) 65%,
+      transparent 100%
+    ),
+    radial-gradient(
+      ellipse 50rem 30rem at 50% 115%,
+      color-mix(in srgb, var(--color-secondary) calc(var(--glow-accent) * 0.6), transparent) 0%,
+      transparent 70%
+    );
 }
 
 /* Breakpoints: three layouts. Mobile (320 to 639px) is the unprefixed style, tablet starts at
@@ -795,6 +820,21 @@ button {
   height: var(--app-nav-height);
   background: color-mix(in srgb, var(--color-base-200) 92%, transparent);
   border-bottom: 1px solid var(--color-base-300);
+}
+
+/* What scrolls under the bar is blurred, so the rows showing through its 8% transparency don't read. The fill stays at 92%:
+   a browser that does not blur some layers (headless Chromium leaves a scrolling table sharp) then looks as before. The blur
+   sits on a layer behind the bar's content, not on the bar: a backdrop-filter on the bar would make it the containing block
+   of the phone menu's fixed scrim, which would then cover only the bar. */
+@supports (backdrop-filter: blur(1px)) {
+  .app-nav::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    backdrop-filter: blur(14px) saturate(140%);
+  }
 }
 
 /* The phone menu on a screen under 37rem (592px) tall: ten rows and the season footer give a few pixels, so the menu fits without

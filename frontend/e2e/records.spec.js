@@ -138,7 +138,7 @@ test("shows linked player-game records", async ({ page }) => {
   await page.goto(DETAIL);
   await tab(page, "Player games").click();
   await expect(page.getByText("The best single games by one player.")).toBeVisible();
-  await expect(page.getByRole("link", { name: "Game Player" }).first()).toHaveAttribute("href", "/2025/players/p2");
+  await expect(page.getByRole("link", { name: "Game Player" }).first()).toHaveAttribute("href", "/2025/players/game-player-p2");
   await expect(page.getByRole("link", { name: "Game", exact: true }).first()).toHaveAttribute("href", "/2025/games/42");
 });
 
@@ -147,7 +147,7 @@ test("shows linked team-season records, with the club's crest from the row", asy
   await page.goto(DETAIL);
   await tab(page, "Team seasons").click();
   await expect(page.getByText("The highest season totals by one club.")).toBeVisible();
-  await expect(page.getByRole("link", { name: "Olympiacos" }).first()).toHaveAttribute("href", "/2025/teams/OLY");
+  await expect(page.getByRole("link", { name: "Olympiacos" }).first()).toHaveAttribute("href", "/2025/teams/olympiacos-oly");
   await expect(page.locator("main img[src='/logo-header.png']").first()).toBeVisible();
 });
 
@@ -160,7 +160,7 @@ test("shows team-game records: the club, its opponent, the date and the game", a
   await expect(podium.first()).toContainText("vs FC Barcelona");
   // A game's day, with its season on hover.
   await expect(podium.first().locator('[title="2025-26"]')).toHaveText(/2025/);
-  await expect(podium.first().getByRole("link", { name: "Real Madrid" })).toHaveAttribute("href", "/2025/teams/MAD");
+  await expect(podium.first().getByRole("link", { name: "Real Madrid" })).toHaveAttribute("href", "/2025/teams/real-madrid-mad");
   await expect(podium.first().getByRole("link", { name: "Game", exact: true })).toHaveAttribute("href", "/2025/games/77");
   await expect(podium.first().locator("img[src='/logo-header.png']")).toBeVisible();
   // The table has the same club, opponent and game link, the link beside the season.
@@ -182,7 +182,7 @@ test("the podium, the timeline and the Top 50 read from the rows, with the pictu
   await expect(podium.nth(0)).toContainText("2026-27");
   await expect(podium.nth(1)).toContainText("Ben Two");
   await expect(podium.nth(2)).toContainText("Al One");
-  await expect(page.getByRole("link", { name: "Cal Three" }).first()).toHaveAttribute("href", "/2026/players/p3");
+  await expect(page.getByRole("link", { name: "Cal Three" }).first()).toHaveAttribute("href", "/2026/players/cal-three-p3");
   await expect(podium.nth(0).locator("img[src='/logo-header.png']")).toBeVisible();
   await expect(podium.nth(0).locator("img[src='/favicon-32x32.png']")).toBeVisible();
   // A row without pictures shows none, and nothing breaks.
@@ -215,7 +215,7 @@ test("the podium, the timeline and the Top 50 read from the rows, with the pictu
   await expect(best.nth(3)).toContainText("New record +40");
   await expect(best.nth(3)).toContainText("Record");
   await expect(best.getByText("Record", { exact: true })).toHaveCount(1);
-  await expect(page.getByRole("link", { name: "Old Zero" })).toHaveAttribute("href", "/2005/players/p0");
+  await expect(page.getByRole("link", { name: "Old Zero" })).toHaveAttribute("href", "/2005/players/old-zero-p0");
 
   // The Top 50: the four rows, in rank order, with the pictures on the rows that have them; the 2005 season is not among them.
   const rows = page.locator("#records-top > li");
@@ -254,7 +254,7 @@ test("One per player keeps each player's best row, ranked from 1, and stays on a
   const board = page.locator("section", { has: page.getByRole("heading", { name: /^Top 50/ }) });
   // The three players who appear most, each linked, in the order they first appear.
   await expect(board.getByText(/^Most entries:/)).toHaveText("Most entries: Player Name0 2 · Player Name1 2 · Player Name2 2");
-  await expect(board.getByText(/^Most entries:/).getByRole("link", { name: "Player Name0" })).toHaveAttribute("href", "/2026/players/m0");
+  await expect(board.getByText(/^Most entries:/).getByRole("link", { name: "Player Name0" })).toHaveAttribute("href", "/2026/players/player-name0-m0");
   const toggle = page.getByRole("checkbox", { name: "One per player" });
   await toggle.check();
   await expect(page.getByRole("heading", { name: "Top 50 · 20 players" })).toBeVisible();
@@ -482,7 +482,7 @@ test("the record book: the headline records of every type, each opening its deta
   await expect(rows.first()).toContainText("CCC");
   await expect(rows.first()).toContainText("2026-27");
   await expect(rows.first()).toContainText("+40 over Ben Two");
-  await expect(rows.first().getByRole("link", { name: "Cal Three" })).toHaveAttribute("href", "/2026/players/p3");
+  await expect(rows.first().getByRole("link", { name: "Cal Three" })).toHaveAttribute("href", "/2026/players/cal-three-p3");
   // A kind with one row has no lead to tell.
   const teamSeasons = page.locator("section[aria-labelledby^=book-]", { has: page.getByRole("heading", { name: /^Team seasons/ }) }).locator("ol > li");
   await expect(teamSeasons.first()).toContainText("Olympiacos");

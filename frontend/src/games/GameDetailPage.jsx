@@ -20,6 +20,7 @@ import LabelledSelect from "../lib/LabelledSelect";
 import Panel from "../lib/Panel";
 import PanelHeader from "../lib/PanelHeader";
 import { useDocumentTitle } from "../lib/useDocumentTitle";
+import { codeFromSegment, gamePath, useCanonicalPath } from "../lib/pagePaths";
 import { sectionContainer, sectionItem } from "../lib/motion";
 import { AnimatedBody, AnimatedRow } from "../standings/motionTable";
 import ScrollingTable from "../standings/ScrollingTable";
@@ -589,7 +590,8 @@ function GameFlowTab({ events, periodScores, localTeam, roadTeam, forfeit }) {
 }
 
 export default function GameDetailPage() {
-  const { seasonCode, gameCode } = useParams();
+  const { seasonCode, gameCode: gameSegment } = useParams();
+  const gameCode = codeFromSegment(gameSegment);
   const cancelled = useSeasonFormat(seasonCode).data?.status === "cancelled";
   const [selectedTab, setTab] = useState("overview");
 
@@ -599,6 +601,7 @@ export default function GameDetailPage() {
     retry: false,
   });
   const game = gameQuery.data?.game;
+  useCanonicalPath(game && String(game.gameCode) === gameCode ? gamePath(seasonCode, game) : null);
   // An unplayed game has no other tab, whichever one was last open.
   const tab = game?.played === false ? "overview" : selectedTab;
   useDocumentTitle(game ? `${teamName(game.localTeam)} vs ${teamName(game.roadTeam)}` : "Games");

@@ -13,6 +13,7 @@ import { groupLabel, groupStandings, isGroupedTable } from "../standings/standin
 import { WidgetPanel } from "./Dashboard";
 import { LeagueTableSkeleton } from "./HomeSkeleton";
 import Crest from "../lib/Crest";
+import { teamPath } from "../lib/pagePaths";
 
 const MotionLink = m.create(Link);
 
@@ -32,7 +33,7 @@ function StandingRow({ entry, seasonCode, line = null, labels }) {
         <span className={`rank ${entry.basic?.position === 1 ? "rank-1" : ""}`}>
           {entry.basic?.position ?? "-"}
         </span>
-        <Link to={`/${seasonCode}/teams/${entry.clubCode}`} className="link-hover flex flex-1 items-center gap-2 font-medium">
+        <Link to={teamPath(seasonCode, { clubCode: entry.clubCode, name: entry.clubName })} className="link-hover flex flex-1 items-center gap-2 font-medium">
           <Crest url={entry?.crestUrl} className="h-6 w-6 flex-none" animate={false} />
           {entry.clubTvCode ? (
             <ShortLabel short={entry.clubTvCode} full={entry.clubName ?? entry.clubCode} />

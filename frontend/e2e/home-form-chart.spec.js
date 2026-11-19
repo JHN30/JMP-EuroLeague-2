@@ -24,7 +24,7 @@ test("the Form board lists every club by wins in its last five games, each with 
   const list = page.getByRole("list", { name: /^Clubs by wins in their last 5 games$/ });
   await expect(list.getByRole("listitem").first()).toBeVisible({ timeout: 30_000 });
   const rows = await list.getByRole("listitem").evaluateAll((els) =>
-    els.map((el) => ({ code: el.querySelector("a").getAttribute("href").split("/").at(-1), record: el.lastElementChild.textContent.trim(), dots: el.querySelectorAll(".ribbon-dot").length })),
+    els.map((el) => ({ code: el.querySelector("a").getAttribute("href").split("/").at(-1).split("-").at(-1).toUpperCase(), record: el.lastElementChild.textContent.trim(), dots: el.querySelectorAll(".ribbon-dot").length })),
   );
   expect(rows.length).toBe(standings.filter((entry) => (lastFive.get(entry.clubCode) ?? []).length > 0).length);
 
@@ -83,7 +83,7 @@ test("Game of the round is the current round's biggest game, picked once for the
 
   // The cards stay in tip-off order, as the API lists them.
   const hrefs = await grid.getByRole("link").evaluateAll((links) => links.map((link) => link.getAttribute("href")));
-  expect(hrefs.map((href) => Number(href.split("/").at(-1)))).toEqual(games.map((game) => game.gameCode));
+  expect(hrefs.map((href) => Number(href.split("-").at(-1)))).toEqual(games.map((game) => game.gameCode));
 });
 
 test("the leader names on Home and on the Season overview have no comma", async ({ page }) => {

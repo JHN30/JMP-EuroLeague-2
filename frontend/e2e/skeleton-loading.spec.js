@@ -331,7 +331,7 @@ test.describe("Compare sections", () => {
     await page.getByRole("tab", { name: "Roster", exact: true }).click();
     const links = page.locator("main a[href*='/players/']");
     await expect(links.first()).toBeVisible({ timeout: 30_000 });
-    const keys = (await links.evaluateAll((els) => els.map((el) => el.getAttribute("href").split("/").pop()))).slice(0, 2);
+    const keys = (await links.evaluateAll((els) => els.map((el) => el.getAttribute("href").split("/").at(-1).split("-").at(-1).toUpperCase()))).slice(0, 2);
     PLAYERS = `/2026/compare?view=players&playerA=${keys[0]}&playerB=${keys[1]}`;
     await page.close();
   });

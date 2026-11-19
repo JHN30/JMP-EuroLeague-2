@@ -428,7 +428,7 @@ test("the header shows the series once, with the last ten meetings in order, eac
   const chips = heroOf(page).locator("ol a");
   await expect(chips).toHaveText(last.map(codeOf));
   const season = (game) => String(2020 + Math.floor(game.gameCode / 100));
-  await expect(chips.last()).toHaveAttribute("href", `/${season(last.at(-1))}/games/${last.at(-1).gameCode}`);
+  await expect(chips.last()).toHaveAttribute("href", new RegExp(`^/${season(last.at(-1))}/games/[a-z0-9-]+-${last.at(-1).gameCode}$`));
 });
 
 test("the records by type of game, the notable meetings and the folded history agree with the meetings", async ({ page }) => {
@@ -462,7 +462,7 @@ test("the records by type of game, the notable meetings and the folded history a
   const rows = historyOf(page).locator("li > a");
   await expect(rows).toHaveCount(11);
   await expect(rows.first()).toContainText("Upcoming");
-  await expect(rows.nth(1)).toHaveAttribute("href", new RegExp(`/games/${PLAYED.at(-1).gameCode}$`));
+  await expect(rows.nth(1)).toHaveAttribute("href", new RegExp(`/games/[a-z0-9-]+-${PLAYED.at(-1).gameCode}$`));
   const more = historyOf(page).getByRole("button", { name: "Show all 40 meetings" });
   await expect(more).toHaveAttribute("aria-expanded", "false");
   await more.click();

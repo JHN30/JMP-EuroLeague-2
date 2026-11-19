@@ -9,6 +9,7 @@ import { Avatar, BarSearch, BOARD_AVATAR, BoardBar, BoardHeader, BoardRow, CardG
 import { advancedScopeForPhase } from "../teams/teamLeague";
 import { barShare, rankRows } from "./leaderData";
 import ForfeitStatsNote from "../lib/ForfeitStatsNote";
+import { teamPath } from "../lib/pagePaths";
 import { LEADER_STATS, TEAM_CARDS, TEAM_SECTION_NAMES, TEAM_TOTAL_CARDS, formatTeamValue, leaderStatByKey, useTeamRows, usable, isUnratedSrs, SRS_UNAVAILABLE, UNADJUSTED_NOTE } from "./teamData";
 
 // ---- Landing ----
@@ -36,7 +37,7 @@ function TeamCard({ stat, seasonCode, rows, mode, onOpen, isLoading, isError, on
         shortName: row.shortName,
         imageUrl: row.crestUrl,
         crest: true,
-        to: `/${seasonCode}/teams/${row.clubCode}`,
+        to: teamPath(seasonCode, { clubCode: row.clubCode, abbreviatedName: row.shortName, name: row.name }),
         team: { code: row.standing?.basic ? `${row.standing.basic.gamesWon}-${row.standing.basic.gamesLost}` : null },
         valueText: formatTeamValue(stat, value, mode),
         share: barShare(value, stat.lowerIsBetter ? worst : best, stat.lowerIsBetter ? best : Math.min(worst, 0)),
@@ -133,7 +134,7 @@ function TeamsBoard({ seasonCode, phaseCode, stage, metric, source, params, setP
                 ]}
                 valueText={formatTeamValue(stat, value, mode)}
                 share={barShare(value, top, bottom)}
-                to={`/${seasonCode}/teams/${row.clubCode}`}
+                to={teamPath(seasonCode, { clubCode: row.clubCode, abbreviatedName: row.shortName, name: row.name })}
               />
             ))}
           </m.ol>

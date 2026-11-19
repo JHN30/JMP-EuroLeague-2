@@ -9,6 +9,7 @@ import { FormCell } from "../standings/standingsCells";
 import { groupPositionLabel } from "../standings/standingsGroups";
 import { shortTeamName, teamCode } from "./gameUtils";
 import Crest from "../lib/Crest";
+import { gamePath } from "../lib/pagePaths";
 
 const MotionLink = m.create(Link);
 
@@ -72,7 +73,7 @@ export default function GameCard({ game, seasonCode, standingByClubCode, cancell
   const upcoming = !game.played && !cancelled;
 
   return (
-    <MotionLink to={`/${seasonCode}/games/${game.gameCode}`} className="fixture-card" variants={listItem} {...wideCardHover}>
+    <MotionLink to={gamePath(seasonCode, game)} className="fixture-card" variants={listItem} {...wideCardHover}>
       {caption ?? (showGroup ? game.groupName : null) ? <span className="micro-label block text-center">{caption ?? game.groupName}</span> : null}
       <div className="fixture-card-body">
         <FixtureTeam team={game.localTeam} entry={localEntry} won={localWon} showGroup={showGroup} scorer={game.played ? game.topScorers?.local : null} showForm={upcoming} />

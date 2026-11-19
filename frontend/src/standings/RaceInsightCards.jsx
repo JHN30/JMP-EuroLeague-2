@@ -3,6 +3,7 @@ import { Link } from "react-router";
 
 import { tierForPosition } from "../lib/seasonFormat";
 import Crest from "../lib/Crest";
+import { teamPath } from "../lib/pagePaths";
 
 function computeInsights(rounds, standingsByRound, teamOrder, tiers) {
   if (teamOrder.length === 0) return null;
@@ -49,7 +50,7 @@ function computeInsights(rounds, standingsByRound, teamOrder, tiers) {
 function InsightCard({ label, team, detail, seasonCode }) {
   return (
     <Link
-      to={team ? `/${seasonCode}/teams/${team.clubCode}` : "#"}
+      to={team ? teamPath(seasonCode, { clubCode: team.clubCode, name: team.clubName }) : "#"}
       className="panel flex flex-col gap-1 p-3 hover:bg-base-200"
     >
       <div className="flex flex-col-reverse items-start gap-2 sm:flex-row sm:justify-between">

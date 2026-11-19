@@ -21,6 +21,7 @@ import { chartNames } from "./playerLabels";
 import HeaderTip from "../lib/HeaderTip";
 import PlayerPairHeader from "./PlayerPairHeader";
 import ResultBadge from "../lib/ResultBadge";
+import { gamePath } from "../lib/pagePaths";
 
 const FORM_GAMES = 5;
 
@@ -305,7 +306,7 @@ function FormList({ views, player, label, side, seasonCode }) {
             {last.map((view) => (
               <li key={view.game.gameCode}>
                 <Link
-                  to={`/${seasonCode}/games/${view.game.gameCode}`}
+                  to={gamePath(seasonCode, view.game)}
                   aria-label={`${view.won ? "Won" : view.won === false ? "Lost" : "Played"} ${view.home ? "vs" : "at"} ${shortTeamName(view.opponent)}: ${Math.round(view.pts)} points, ${Math.round(view.reb)} rebounds, ${Math.round(view.ast)} assists, ${Math.round(view.stl)} steals, ${Math.round(view.blk)} blocks, PIR ${Math.round(view.pir)}`}
                   className={`${GAME_GRID} rounded-field hover:bg-base-200 px-1 py-0.5 text-sm max-sm:min-h-11`}
                 >
@@ -395,7 +396,7 @@ function UpcomingMeetings({ seasonCode, playerA, playerB, title }) {
           return (
             <li key={game.gameCode}>
               <Link
-                to={`/${seasonCode}/games/${game.gameCode}`}
+                to={gamePath(seasonCode, game)}
                 className="rounded-field hover:bg-base-200 grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 px-1 py-1.5 text-sm max-sm:min-h-11"
               >
                 <span className="min-w-0">
@@ -455,7 +456,7 @@ function MeetingsPanel({ games, entityA, entityB, playerA, playerB, seasonCode }
                 const pir = (view, side) => <span className={`font-bold tabular-nums ${higher === side ? SIDE_TEXT[side] : ""}`}>{Math.round(view.pir)}</span>;
                 return (
                   <li key={a.game.gameCode}>
-                    <Link to={`/${seasonCode}/games/${a.game.gameCode}`} className="rounded-field hover:bg-base-200 block px-1 py-1.5">
+                    <Link to={gamePath(seasonCode, a.game)} className="rounded-field hover:bg-base-200 block px-1 py-1.5">
                       <span className="muted block text-center text-xs">
                         {formatDate(a.game.scheduledAt)} &middot; {roundOf(a.game)}
                       </span>
@@ -500,7 +501,7 @@ function HighValue({ view, stat, seasonCode, side }) {
   const label = `${Math.round(view[stat.key])} ${stat.full.toLowerCase()} ${view.home ? "vs" : "at"} ${shortTeamName(view.opponent)}, ${formatDate(view.game.scheduledAt)}`;
   return (
     <Link
-      to={`/${seasonCode}/games/${view.game.gameCode}`}
+      to={gamePath(seasonCode, view.game)}
       title={label}
       aria-label={label}
       className={`rounded-field hover:bg-base-200 flex items-baseline gap-1.5 px-1 py-0.5 max-sm:min-h-11 max-sm:items-center ${side === "a" ? "justify-end" : ""}`}

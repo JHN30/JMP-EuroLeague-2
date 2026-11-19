@@ -24,6 +24,7 @@ import { useElementWidth } from "../lib/useElementWidth";
 import { useDocumentTitle } from "../lib/useDocumentTitle";
 import { thinAxisLabels } from "../lib/chartHelpers";
 import Crest from "../lib/Crest";
+import { gamePath } from "../lib/pagePaths";
 
 // The latest played meetings the history shows before the rest are folded away, and the meetings in the form strip.
 const HISTORY_SHOWN = 10;
@@ -326,7 +327,7 @@ function FormStrip({ played, teamA, teamB, teamAId }) {
           return (
             <li key={`${game.seasonCode}-${game.gameCode}`}>
               <Link
-                to={`/${game.seasonCode}/games/${game.gameCode}`}
+                to={gamePath(game.seasonCode, game)}
                 title={label}
                 aria-label={label}
                 className={`rounded-field flex items-center justify-center text-xs font-bold max-sm:min-h-11 sm:h-7 sm:px-1 ${winnerColour(winner)}`}
@@ -442,7 +443,7 @@ function NotableCard({ label, game, figure, teamA, teamB, teamAId }) {
     </span>
   );
   return (
-    <Link to={`/${game.seasonCode}/games/${game.gameCode}`} className="rounded-box border-base-300 hover:bg-base-200 flex flex-col gap-2 border p-3">
+    <Link to={gamePath(game.seasonCode, game)} className="rounded-box border-base-300 hover:bg-base-200 flex flex-col gap-2 border p-3">
       <span className="eyebrow text-[0.65rem]">{label}</span>
       <span className="flex items-center justify-between gap-2">
         {side(teamA, "A", "text-primary", false)}
@@ -566,7 +567,7 @@ function MeetingHistory({ matchups, teamA, teamB, teamAId }) {
           return (
             <li key={`${game.seasonCode}-${game.gameCode}`}>
               <Link
-                to={`/${game.seasonCode}/games/${game.gameCode}`}
+                to={gamePath(game.seasonCode, game)}
                 className="rounded-field hover:bg-base-200 flex flex-col justify-center gap-0.5 px-1 py-1.5 max-sm:min-h-11 sm:grid sm:grid-cols-[5.5rem_minmax(0,7rem)_minmax(0,1fr)_2.5rem] sm:items-center sm:gap-x-3 lg:grid-cols-[6.5rem_minmax(0,10rem)_minmax(0,1fr)_2.5rem]"
               >
                 <span className="muted flex min-w-0 gap-1 text-xs sm:contents sm:text-sm">

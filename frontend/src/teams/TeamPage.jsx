@@ -23,6 +23,7 @@ import { barFill, cardHover, listContainer, listItem } from "../lib/motion";
 import Panel from "../lib/Panel";
 import PageHeader from "../lib/PageHeader";
 import { displayName, readableName } from "../lib/playerName";
+import { codeFromSegment, teamPath, useCanonicalPath, gamePath, playerPath } from "../lib/pagePaths";
 import PanelHeader from "../lib/PanelHeader";
 import RevealImage from "../lib/RevealImage";
 import ShortLabel from "../lib/ShortLabel";
@@ -151,7 +152,7 @@ function GameLinkRow({ seasonCode, game, clubCode, className = "", children }) {
     // Rows grow a little to fill a stretched panel, never past 3.5rem.
     <li className={`flex flex-1 lg:max-h-14 ${className}`}>
       <Link
-        to={`/${seasonCode}/games/${game.gameCode}`}
+        to={gamePath(seasonCode, game)}
         className="flex w-full items-center gap-3 rounded-field border border-base-300 bg-base-200 px-3 py-2 text-sm transition-colors lg:py-1.5 hover:border-primary max-sm:grid max-sm:grid-cols-[minmax(0,1fr)_auto] max-sm:gap-y-0.5"
       >
         <span className="micro-label w-16 flex-none truncate max-sm:col-start-1 max-sm:row-start-2 max-sm:w-auto">
@@ -436,7 +437,7 @@ function TeamLeaders({ seasonCode, rosterStatsQuery, stageName }) {
         return (
           <MotionLink
             key={category.key}
-            to={`/${seasonCode}/players/${leader.player.personKey}`}
+            to={playerPath(seasonCode, leader.player.personKey, leader.player.playerName)}
             className="kpi-chip kpi-chip-link"
             variants={listItem}
             {...cardHover}
@@ -529,7 +530,8 @@ const SECTIONS = [
 ];
 
 export default function TeamPage() {
-  const { seasonCode, clubCode } = useParams();
+  const { seasonCode, clubCode: teamSegment } = useParams();
+  const clubCode = codeFromSegment(teamSegment);
   const [section, setSection] = useState("overview");
 
   const teamQuery = useQuery({
@@ -538,6 +540,7 @@ export default function TeamPage() {
     retry: false,
   });
   const team = teamQuery.data?.team;
+  useCanonicalPath(team?.clubCode === clubCode ? teamPath(seasonCode, team) : null);
   useDocumentTitle(team ? (team.name ?? team.abbreviatedName ?? team.clubCode) : "Teams");
 
   const phasesQuery = useQuery({

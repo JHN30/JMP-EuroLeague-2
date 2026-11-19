@@ -4,6 +4,7 @@ import CompactMetric from "../lib/CompactMetric";
 import { formatSignedDecimal } from "../lib/format";
 import HeaderStats from "../lib/HeaderStats";
 import { tierEnd } from "../lib/seasonFormat";
+import { teamPath } from "../lib/pagePaths";
 
 function clubLabel(entry) {
   return entry.clubName ?? entry.clubCode;
@@ -49,7 +50,7 @@ export default function StandingsKpiStrip({ seasonCode, phaseCode, round, previo
     if (row.netRating !== null && (bestNet === null || row.netRating > bestNet.netRating)) bestNet = row;
   }
 
-  const teamPage = (entry) => (entry?.clubCode ? `/${seasonCode}/teams/${entry.clubCode}` : undefined);
+  const teamPage = (entry) => (entry?.clubCode ? teamPath(seasonCode, { clubCode: entry.clubCode, name: entry.clubName }) : undefined);
 
   return (
     <HeaderStats className="kpi-strip-5" data-testid="standings-kpi-strip">

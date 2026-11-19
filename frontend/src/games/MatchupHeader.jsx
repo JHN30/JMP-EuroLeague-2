@@ -10,6 +10,7 @@ import { eliminationStageLabel } from "../postseason/eliminationBracket";
 import { groupPositionLabel } from "../standings/standingsGroups";
 import { teamCode, teamName } from "./gameUtils";
 import Crest from "../lib/Crest";
+import { teamPath } from "../lib/pagePaths";
 
 // The badge of a game not yet played, from the warehouse's derived status (the source's own label can still say "Confirmed").
 const STATUS_LABELS = { scheduled: "Scheduled", awaiting_result: "Awaiting result", postponed: "Postponed", cancelled: "Cancelled" };
@@ -30,7 +31,7 @@ function Side({ team, seasonCode, position, groupPlace, won }) {
   const Root = linked ? Link : "div";
   return (
     <Root
-      {...(linked ? { to: `/${seasonCode}/teams/${team.clubCode}` } : {})}
+      {...(linked ? { to: teamPath(seasonCode, team) } : {})}
       className={`flex min-w-0 flex-col items-center gap-1 text-center sm:gap-2${linked ? " group rounded-field" : ""}`}
     >
       <Crest url={team?.crestUrl} header animate={false} keepSlot className="h-12 w-12 flex-none sm:h-20 sm:w-20 lg:h-16 lg:w-16" />

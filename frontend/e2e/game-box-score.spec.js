@@ -55,8 +55,8 @@ test("player names link to their pages and only the game-high is bold", async ({
   await page.goto(`/${SEASON}/games/1`);
   await openBoxScore(page);
 
-  await expect(page.getByRole("link", { name: "SAM STARTER" })).toHaveAttribute("href", `/${SEASON}/players/A-STARTER`);
-  await expect(page.getByRole("link", { name: "SID SITTER" })).toHaveAttribute("href", `/${SEASON}/players/A-DNP`);
+  await expect(page.getByRole("link", { name: "SAM STARTER" })).toHaveAttribute("href", `/${SEASON}/players/sam-starter-a-starter`);
+  await expect(page.getByRole("link", { name: "SID SITTER" })).toHaveAttribute("href", `/${SEASON}/players/sid-sitter-a-dnp`);
 
   const bold = async (rowName, cellIndex) => {
     const cell = page.locator("tbody tr", { hasText: rowName }).locator("td").nth(cellIndex);

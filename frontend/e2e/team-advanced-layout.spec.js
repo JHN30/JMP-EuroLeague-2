@@ -489,7 +489,7 @@ test("the player impact charts are sorted, leave out short samples, link the pla
   await expect(onOff.first()).toContainText("+6.0");
   await expect(onOff.last()).toContainText("-4.0");
   await expect(shares.first()).toContainText("3.0");
-  await expect(onOff.first().getByRole("link")).toHaveAttribute("href", `/${slug}/players/P0`);
+  await expect(onOff.first().getByRole("link")).toHaveAttribute("href", `/${slug}/players/isaac-bonga-aleksandropoulos-p0`);
   await expect(impact.getByText(/Team total/)).toContainText("Team total");
 
   await atWidths(page, [...WIDTHS, 1440], async (width) => {

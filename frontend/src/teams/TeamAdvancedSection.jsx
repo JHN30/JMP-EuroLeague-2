@@ -29,6 +29,7 @@ import {
 import { ordinal, rankOf, rankTier } from "./teamLeague";
 import { fetchTeamRosterStats } from "./teamRosterStats";
 import { PORTRAIT_WIDTH, sizedImageUrl } from "../lib/imageSize";
+import { playerPath } from "../lib/pagePaths";
 
 const SCOPE_LABELS = { RS: "Regular season", TS: "Top 16", all: "All games", PS: "Postseason" };
 const EM_DASH = "—";
@@ -668,7 +669,7 @@ const IMPACT_MIN_SECONDS = 100 * 60;
 
 function PlayerName({ seasonCode, player }) {
   return (
-    <Link to={`/${seasonCode}/players/${player.personKey}`} className="link link-hover block truncate font-semibold" title={displayName(player.playerName)}>
+    <Link to={playerPath(seasonCode, player.personKey, player.playerName)} className="link link-hover block truncate font-semibold" title={displayName(player.playerName)}>
       {displayName(player.playerName)}
     </Link>
   );

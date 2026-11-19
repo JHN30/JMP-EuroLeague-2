@@ -14,6 +14,7 @@ import ShortLabel from "../lib/ShortLabel";
 import { SkeletonChip } from "../lib/Skeleton";
 import { Avatar, BOARD_AVATAR, RankBadge, TeamTag } from "../leaders/LeaderParts";
 import Crest from "../lib/Crest";
+import { gamePath, playerPath, teamPath } from "../lib/pagePaths";
 
 const MotionLink = m.create(Link);
 
@@ -51,7 +52,7 @@ function HighCard({ seasonCode, card }) {
     );
   }
   return (
-    <MotionLink to={`/${seasonCode}/games/${record.gameCode}`} className="kpi-chip kpi-chip-link" variants={listItem} {...cardHover}>
+    <MotionLink to={gamePath(seasonCode, { gameCode: record.gameCode })} className="kpi-chip kpi-chip-link" variants={listItem} {...cardHover}>
       <div className="kpi-chip-body">
         <span className="label">{label}</span>
         <span className="name">{displayName(record.playerName ?? record.personKey)}</span>
@@ -138,7 +139,7 @@ export function MostValuable({ seasonCode }) {
             const rapm = rapmByPlayer.get(String(entry.personKey));
             return (
               <m.li key={entry.personKey} variants={listItem} className="flex flex-1 border-b border-base-300 last:border-0">
-                <Link to={`/${seasonCode}/players/${entry.personKey}`} className="board-row-link flex flex-1 items-center gap-2 py-2 sm:gap-3">
+                <Link to={playerPath(seasonCode, entry.personKey, entry.playerName)} className="board-row-link flex flex-1 items-center gap-2 py-2 sm:gap-3">
                   <RankBadge rank={index + 1} compact />
                   <Avatar imageUrl={entry.imageUrl} size={BOARD_AVATAR} />
                   <div className="min-w-0 flex-1">
@@ -205,7 +206,7 @@ function BestClub({ seasonCode, label, best }) {
       <Crest url={best?.team?.crestUrl} className="h-8 w-8 flex-none" animate={false} />
       <div className="min-w-0 flex-1">
         <p className="micro-label">{label}</p>
-        <Link to={`/${seasonCode}/teams/${best.team.clubCode}`} className="link-hover block truncate font-semibold">
+        <Link to={teamPath(seasonCode, best.team)} className="link-hover block truncate font-semibold">
           {name}
         </Link>
       </div>

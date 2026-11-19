@@ -1,5 +1,6 @@
 import { Component } from "react";
 import { useLocation } from "react-router";
+import { pageIdentity } from "./lib/pagePaths";
 
 class ErrorBoundary extends Component {
   state = { hasError: false };
@@ -31,5 +32,6 @@ class ErrorBoundary extends Component {
 
 export default function RouteErrorBoundary({ children }) {
   const location = useLocation();
-  return <ErrorBoundary key={location.pathname}>{children}</ErrorBoundary>;
+  // A new page starts without the last page's error; a detail page moving to its canonical address is the same page.
+  return <ErrorBoundary key={pageIdentity(location.pathname)}>{children}</ErrorBoundary>;
 }

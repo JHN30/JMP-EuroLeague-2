@@ -1,5 +1,6 @@
 import { useLayoutEffect } from "react";
 import { useLocation, useNavigate } from "react-router";
+import { pageIdentity } from "./pagePaths";
 
 // The page of each history entry visited in this session, by the entry's index (the router keeps it in the browser's history
 // state). It lets a detail page's back link tell whether the entry before it is the list it points to. Held in memory only: a
@@ -27,7 +28,9 @@ export function useBackLinkClick(to) {
   return (event) => {
     if (!to || event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
     const idx = idxOf();
-    if (typeof idx === "number" && idx > 0 && pathAt.get(idx - 1) === to.split("?")[0]) {
+    // By page, not by spelling: a link may hold a game's bare code while the entry before has its canonical address.
+    const previous = typeof idx === "number" && idx > 0 ? pathAt.get(idx - 1) : undefined;
+    if (previous !== undefined && pageIdentity(previous) === pageIdentity(to.split("?")[0])) {
       event.preventDefault();
       navigate(-1);
     }

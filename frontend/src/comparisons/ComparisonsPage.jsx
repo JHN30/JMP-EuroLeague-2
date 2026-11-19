@@ -14,6 +14,7 @@ import { useDebouncedValue } from "../lib/useDebouncedValue";
 import { usePhaseParam } from "../lib/usePhaseParam";
 import { TabPanel, TabStrip } from "../lib/TabStrip";
 import BackLink from "../lib/BackLink";
+import { gamePath } from "../lib/pagePaths";
 import CompareFixtures, { ComparisonContext } from "./CompareFixtures";
 import CompareSkeleton from "./CompareSkeleton";
 import CompareSuggestions from "./CompareSuggestions";
@@ -561,7 +562,7 @@ function ComparisonsBody({
   return (
     <m.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3, ease: EASE_OUT }}>
       {cameFromGame ? (
-        <BackLink to={`/${seasonCode}/games/${fromGame}`} label="Game" />
+        <BackLink to={gamePath(seasonCode, { gameCode: fromGame })} label="Game" />
       ) : (
         <BackLink to={`/${seasonCode}/compare?view=${view}`} label={view === "teams" ? "Games" : "Players"} onBack={handleBack} />
       )}

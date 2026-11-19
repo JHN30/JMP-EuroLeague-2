@@ -9,6 +9,7 @@ import { useCurrentPhaseCode } from "../lib/useCurrentPhaseCode";
 import { displayName } from "../lib/playerName";
 import LeaderPhoto from "../lib/LeaderPhoto";
 import { SkeletonChip } from "../lib/Skeleton";
+import { playerPath } from "../lib/pagePaths";
 import { WidgetPanel } from "./Dashboard";
 
 const MotionLink = m.create(Link);
@@ -47,7 +48,7 @@ function HotCard({ seasonCode, stat, player }) {
   const recent = player.recent[stat.key];
   const season = player.season[stat.key];
   return (
-    <MotionLink to={`/${seasonCode}/players/${player.personKey}`} className="kpi-chip kpi-chip-link" variants={listItem} {...cardHover}>
+    <MotionLink to={playerPath(seasonCode, player.personKey, player.playerName)} className="kpi-chip kpi-chip-link" variants={listItem} {...cardHover}>
       <div className="kpi-chip-body">
         <span className="label">{stat.label} · last {FORM_GAMES}</span>
         <span className="name">{displayName(player.playerName ?? player.personKey)}</span>

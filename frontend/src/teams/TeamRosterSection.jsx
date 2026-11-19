@@ -18,6 +18,7 @@ import { barWidthScale } from "../statistics/statBarScale";
 import { ROSTER_TABLE_LEVELS, usesPerRound } from "./rosterTableColumns";
 import { fetchTeamRosterStats, playedForOtherClubs } from "./teamRosterStats";
 import { PORTRAIT_WIDTH, sizedImageUrl } from "../lib/imageSize";
+import { playerPath } from "../lib/pagePaths";
 
 const MotionLink = m.create(Link);
 
@@ -150,7 +151,7 @@ function RosterCard({ entry, stats, seasonCode }) {
   const className =
     "group flex min-h-28 overflow-hidden rounded-box sm:min-h-34 border border-base-300 bg-base-100 transition-colors hover:border-primary";
   return entry.player ? (
-    <MotionLink to={`/${seasonCode}/players/${entry.player.personKey}`} className={className} variants={listItem} {...cardHover}>
+    <MotionLink to={playerPath(seasonCode, entry.player.personKey, entry.player.name)} className={className} variants={listItem} {...cardHover}>
       {body}
     </MotionLink>
   ) : (
@@ -208,7 +209,7 @@ function NotPlayedLine({ entries, seasonCode, afterCards }) {
           <span key={entry.registrationKey}>
             {index > 0 ? ", " : null}
             {entry.player ? (
-              <Link to={`/${seasonCode}/players/${entry.player.personKey}`} className="link link-hover whitespace-nowrap">
+              <Link to={playerPath(seasonCode, entry.player.personKey, entry.player.name)} className="link link-hover whitespace-nowrap">
                 {label}
               </Link>
             ) : (
@@ -426,7 +427,7 @@ function RosterTable({ registrations, statsByPersonKey, seasonCode, clubCode }) 
                           <div className="flex items-center gap-1 max-sm:flex-col max-sm:items-start max-sm:gap-0">
                             {entry.player ? (
                               <Link
-                                to={`/${seasonCode}/players/${entry.player.personKey}`}
+                                to={playerPath(seasonCode, entry.player.personKey, entry.player.name)}
                                 className="link link-hover max-w-20 truncate sm:max-w-48"
                                 title={displayName(entry.player.name ?? "TBD")}
                               >

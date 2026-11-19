@@ -16,6 +16,7 @@ import { useActiveTheme } from "../lib/useActiveTheme";
 import { ordinal, rankTier } from "../teams/teamLeague";
 import { PROFILE_AXES, SEASON_LINE, rankPlayer, statNumber } from "./playerOverview";
 import Crest from "../lib/Crest";
+import { gamePath } from "../lib/pagePaths";
 
 const FORM_GAMES = 10;
 const MIN_FORM_BAR_POINTS = 10;
@@ -230,7 +231,7 @@ function FormBar({ game, seasonCode, height }) {
   return (
     <m.li className="min-w-0 flex-1" variants={listItem}>
       <Link
-        to={`/${seasonCode}/games/${game.gameCode}`}
+        to={gamePath(seasonCode, game)}
         title={label}
         aria-label={label}
         className="group flex h-full flex-col items-center gap-1.5 rounded-field px-0.5 pb-1 hover:bg-base-200"
@@ -291,7 +292,7 @@ function FormPanel({ gamesQuery, own, seasonCode }) {
             ))}
           </m.ol>
           <Link
-            to={`/${seasonCode}/games/${best.gameCode}`}
+            to={gamePath(seasonCode, best)}
             className="mt-3 flex flex-wrap items-baseline gap-x-2 rounded-field border border-base-300 px-3 py-2 text-sm hover:border-primary"
           >
             <span className="micro-label">Best game</span>

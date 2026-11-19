@@ -4,6 +4,7 @@ import HeaderTip from "../lib/HeaderTip";
 import { tierForPosition } from "../lib/seasonFormat";
 import { usePrefersReducedMotion } from "../lib/usePrefersReducedMotion";
 import Crest from "../lib/Crest";
+import { teamPath } from "../lib/pagePaths";
 
 // The row tint follows the season's qualification lines; with none, rows are not tinted.
 function tierClass(position, tiers) {
@@ -99,7 +100,7 @@ export default function RaceSnapshotTable({
                 <td>{position ?? "-"}</td>
                 <td>
                   <Link
-                    to={`/${seasonCode}/teams/${team.clubCode}`}
+                    to={teamPath(seasonCode, { clubCode: team.clubCode, abbreviatedName: abbreviatedNames?.get(team.clubCode), name: team.clubName })}
                     aria-label={shortNames?.get(team.clubCode) || abbreviatedNames?.get(team.clubCode) ? teamName(team) : undefined}
                     className="link link-hover flex items-center gap-2 font-medium"
                     onClick={(event) => event.stopPropagation()}

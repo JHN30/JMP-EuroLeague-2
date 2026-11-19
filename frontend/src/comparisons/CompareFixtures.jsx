@@ -12,6 +12,7 @@ import ShortLabel from "../lib/ShortLabel";
 import Panel from "../lib/Panel";
 import { FormCell } from "../standings/standingsCells";
 import Crest from "../lib/Crest";
+import { gamePath } from "../lib/pagePaths";
 
 // A club's side of a game: crest, code (the name from sm), and under it the regular-season record with the last five results beside it
 // (oldest first) from sm; below sm a club's column is too narrow for five results, so the record stands alone.
@@ -150,7 +151,7 @@ export function ComparisonContext({ seasonCode, gameCode, headToHeadTo, centred 
   const links = (
     <>
       {game ? (
-        <Link to={`/${seasonCode}/games/${gameCode}`} className="btn btn-outline btn-sm">
+        <Link to={gamePath(seasonCode, game)} className="btn btn-outline btn-sm">
           {game.played ? "Game overview" : "Game preview"}
         </Link>
       ) : null}

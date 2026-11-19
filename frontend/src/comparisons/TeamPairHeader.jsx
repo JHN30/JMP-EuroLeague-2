@@ -6,6 +6,7 @@ import { getSeasonStandings } from "../lib/api";
 import Panel from "../lib/Panel";
 import { ordinal } from "../lib/seasonFormat";
 import Crest from "../lib/Crest";
+import { teamPath } from "../lib/pagePaths";
 
 // One club: its crest over its name below sm, where a side is too narrow for both on one line, and beside it from sm (TV code
 // below sm, full name from sm), both opening its team page, over its regular-season place and record. `alignEnd` mirrors it from
@@ -14,11 +15,11 @@ function Side({ seasonCode, team, standing, alignEnd = false }) {
   const basic = standing?.basic;
   return (
     <div className={`flex min-w-0 flex-col items-center gap-1 text-center sm:gap-3 ${alignEnd ? "sm:flex-row-reverse sm:text-right" : "sm:flex-row sm:text-left"}`}>
-      <Link to={`/${seasonCode}/teams/${team.clubCode}`} aria-hidden="true" tabIndex={-1} className="flex-none">
+      <Link to={teamPath(seasonCode, team)} aria-hidden="true" tabIndex={-1} className="flex-none">
         <Crest url={team?.crestUrl} header animate={false} keepSlot className="h-9 w-9 flex-none sm:h-12 sm:w-12" />
       </Link>
       <div className="min-w-0">
-        <Link to={`/${seasonCode}/teams/${team.clubCode}`} className="block text-base leading-tight font-bold wrap-anywhere hover:underline sm:text-xl">
+        <Link to={teamPath(seasonCode, team)} className="block text-base leading-tight font-bold wrap-anywhere hover:underline sm:text-xl">
           <TeamName team={team} />
         </Link>
         {basic?.position ? (

@@ -14,6 +14,7 @@ import { groupPositionLabel, isGroupedTable } from "../standings/standingsGroups
 import { cityName } from "./cityName";
 import { ordinal } from "./teamLeague";
 import Crest from "../lib/Crest";
+import { teamPath } from "../lib/pagePaths";
 
 const MotionLink = m.create(Link);
 
@@ -67,7 +68,7 @@ export default function TeamsPage() {
             return (
               <li key={team.clubCode}>
                 <MotionLink
-                  to={`/${seasonCode}/teams/${team.clubCode}`}
+                  to={teamPath(seasonCode, team)}
                   className="card card-border bg-base-100 transition-colors hover:border-primary"
                   variants={listItem}
                   {...cardHover}

@@ -12,6 +12,7 @@ import Panel from "../lib/Panel";
 import PanelHeader from "../lib/PanelHeader";
 import { displayName as fullName } from "../lib/playerName";
 import { TabStrip } from "../lib/TabStrip";
+import { playerPath } from "../lib/pagePaths";
 import { Avatar, BarSearch, BarSelect, BOARD_AVATAR, BoardBar, BoardHeader, BoardPager, BoardRow, CardGrid, CategoryCard, LeadersToolbar, ModeToggle, RankBadge, StatSelect, TeamTag } from "./LeaderParts";
 import { barShare, fetchQualifiedPool, formatPlayerValue, hasVolume, playerValue, rankRows, statNumber, volumeText } from "./leaderData";
 import { DEFAULT_SHARE, FORM_STATS, GAME_SHARES, gameShareFrom, gameShareLabel, gamesNeeded, PLAYER_CARDS, PLAYER_FAMILIES, PLAYER_STATS, PLAYER_TOTAL_CARDS } from "./leaderDefs";
@@ -102,7 +103,7 @@ function PlayerCard({ stat, seasonCode, mode, query, rule, onOpen }) {
         name: displayName(row),
         imageUrl: row.playerImageUrl,
         team: teamOf(row),
-        to: `/${seasonCode}/players/${row.personKey}`,
+        to: playerPath(seasonCode, row.personKey, row.playerName),
         valueText: formatPlayerValue(stat, value, mode),
         share: barShare(value, lowerFirst ? worst : best, lowerFirst ? best : Math.min(worst, 0)),
       }))}
@@ -164,7 +165,7 @@ function FormSection({ seasonCode, phaseCode, openMetric }) {
               const difference = recent - player.season[statKey];
               return (
                 <li key={player.personKey} className="border-b border-base-300 last:border-0">
-                  <Link to={`/${seasonCode}/players/${player.personKey}`} className="board-row-link flex items-center gap-2 py-2 sm:gap-3 lg:py-1">
+                  <Link to={playerPath(seasonCode, player.personKey, player.playerName)} className="board-row-link flex items-center gap-2 py-2 sm:gap-3 lg:py-1">
                     <RankBadge rank={index + 1} compact />
                     <Avatar imageUrl={player.imageUrl} size={BOARD_AVATAR} />
                     <div className="min-w-0 flex-1">
@@ -192,7 +193,7 @@ function FormSection({ seasonCode, phaseCode, openMetric }) {
             <ul className="flex flex-col">
               {[...climbers, ...fallers].map(({ player, change }) => (
                 <li key={player.personKey} className="border-b border-base-300 last:border-0">
-                  <Link to={`/${seasonCode}/players/${player.personKey}`} className="board-row-link flex items-center gap-2 py-2 sm:gap-3 lg:py-1">
+                  <Link to={playerPath(seasonCode, player.personKey, player.playerName)} className="board-row-link flex items-center gap-2 py-2 sm:gap-3 lg:py-1">
                     <span className={`w-10 text-sm font-bold tabular-nums ${change > 0 ? "text-success" : "text-error"}`}>
                       {change > 0 ? "▲" : "▼"}
                       {Math.abs(change)}
@@ -434,7 +435,7 @@ function PlayersBoard({ seasonCode, phaseCode, stage, metric, params, setParams 
                       ]}
                       valueText={formatPlayerValue(stat, value, mode)}
                       share={barShare(value, top, bottom)}
-                      to={`/${seasonCode}/players/${row.personKey}`}
+                      to={playerPath(seasonCode, row.personKey, row.playerName)}
                     />
                   );
                 })}

@@ -8,6 +8,7 @@ import { nameParts } from "../lib/playerName";
 import ShortLabel from "../lib/ShortLabel";
 import { statNumber } from "./playerOverview";
 import Crest from "../lib/Crest";
+import { teamPath } from "../lib/pagePaths";
 
 function Fact({ label, value, sub }) {
   return (
@@ -37,7 +38,7 @@ function ClubChip({ registration, seasonCode }) {
   );
   const className = "flex min-w-0 items-center gap-2";
   return team ? (
-    <Link to={`/${seasonCode}/teams/${team.clubCode}`} className={`${className} link-hover`}>
+    <Link to={teamPath(seasonCode, team)} className={`${className} link-hover`}>
       {content}
     </Link>
   ) : (

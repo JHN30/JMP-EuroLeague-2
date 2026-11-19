@@ -37,7 +37,7 @@ test("each team lists the units that played at least two minutes together, most 
 
   await expect(lineupsBlock(page, "Team B").locator("tbody tr")).toHaveCount(2);
   // Players link to their pages, with names from the box score.
-  await expect(teamA.nth(0).getByRole("link", { name: "ONE, AL" })).toHaveAttribute("href", `/${SEASON}/players/A1`);
+  await expect(teamA.nth(0).getByRole("link", { name: "ONE, AL" })).toHaveAttribute("href", `/${SEASON}/players/al-one-a1`);
 });
 
 test("the minimum-minutes filter changes the rows", async ({ page }) => {

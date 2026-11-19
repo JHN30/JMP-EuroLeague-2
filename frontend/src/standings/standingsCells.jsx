@@ -1,13 +1,14 @@
 import { Link } from "react-router";
 import ResultBadge from "../lib/ResultBadge";
 import Crest from "../lib/Crest";
+import { teamPath } from "../lib/pagePaths";
 
 // With a short name the cell shows it below sm and the full name from sm up; the link is named by the full name at every width.
 export function ClubCell({ entry, seasonCode, shortName }) {
   const fullName = entry.clubName ?? entry.clubCode;
   return (
     <Link
-      to={`/${seasonCode}/teams/${entry.clubCode}`}
+      to={teamPath(seasonCode, { clubCode: entry.clubCode, name: entry.clubName })}
       aria-label={shortName ? fullName : undefined}
       className="link link-hover flex min-w-0 items-center gap-2 font-medium"
     >

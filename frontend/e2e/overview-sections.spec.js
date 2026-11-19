@@ -39,7 +39,7 @@ test("Most valuable lists the top five by win shares, each opening the player", 
   const rows = page.getByRole("list", { name: "Top five by win shares" }).getByRole("link");
   await expect(rows).toHaveCount(entries.length);
   for (const [index, entry] of entries.entries()) {
-    await expect(rows.nth(index)).toHaveAttribute("href", `/${SEASON}/players/${entry.personKey}`);
+    await expect(rows.nth(index)).toHaveAttribute("href", new RegExp(`^/${SEASON}/players/[a-z0-9-]+-${entry.personKey.toLowerCase()}$`));
     await expect(rows.nth(index)).toContainText(Number(entry.value).toFixed(1));
   }
 });

@@ -113,7 +113,7 @@ for (const view of ["Traditional", "Advanced"]) {
       expect(await table.locator(".box-score-photo").first().evaluate((image) => Number(getComputedStyle(image).opacity))).toBe(0);
       expect(await table.locator(".box-score-dorsal").first().evaluate((span) => Number(getComputedStyle(span).opacity))).toBe(1);
       expect(await table.getByText("Forward").evaluateAll((els) => els.every((el) => el.getBoundingClientRect().width === 0))).toBe(true);
-      await expect(table.getByRole("link", { name: LONG_NAME })).toHaveAttribute("href", `/${SEASON}/players/A-LONG`);
+      await expect(table.getByRole("link", { name: LONG_NAME })).toHaveAttribute("href", `/${SEASON}/players/codi-miller-mcintyre-whitaker-alexandropoulos-a-long`);
 
       // The long name wraps inside its cell and is never wider than the pinned column; a short name is not cut mid-word.
       const names = await table.locator("tbody tr td:first-child").evaluateAll((cells) =>

@@ -135,12 +135,21 @@ test("Compare, opened from an unplayed game, goes back to that game", async ({ p
     route.fulfill({ json: { teams: [{ clubCode: "A", name: "Team A" }, { clubCode: "B", name: "Team B" }] } }),
   );
   await page.goto(`/${SEASON}/games/1`);
+  // The game page moves its own entry to the readable address before the Compare link is followed.
+  const canonical = new RegExp(`/${SEASON}/games/[a-z0-9-]+-vs-[a-z0-9-]+-1$`);
+  await expect(page).toHaveURL(canonical);
   await page.getByRole("link", { name: /^Compare / }).click();
+  await expect(page).toHaveURL(/\/compare\?/);
+  const entries = await page.evaluate(() => window.history.length);
 
+  // The link knows only the game's code, yet it is the page one step back, so it steps back instead of adding an entry.
   const back = page.getByRole("link", { name: "Back to Game" });
   await expect(back).toHaveAttribute("href", `/${SEASON}/games/1`);
   await back.click();
-  await expect(page).toHaveURL(new RegExp(`/${SEASON}/games/1$`));
+  await expect(page).toHaveURL(canonical);
+  expect(await page.evaluate(() => window.history.length)).toBe(entries);
+  await page.goForward();
+  await expect(page).toHaveURL(/\/compare\?/);
 });
 
 test("each team's best player and game leaders come from the box score, linked to their pages", async ({ page }) => {
@@ -148,7 +157,7 @@ test("each team's best player and game leaders come from the box score, linked t
   await page.goto(`/${SEASON}/games/1`);
 
   const teamABest = page.getByRole("article", { name: "Team A best player" });
-  await expect(teamABest.getByRole("link", { name: "STARTER, SAM" })).toHaveAttribute("href", `/${SEASON}/players/A-STARTER`);
+  await expect(teamABest.getByRole("link", { name: "STARTER, SAM" })).toHaveAttribute("href", `/${SEASON}/players/sam-starter-a-starter`);
   await expect(teamABest).toContainText("30 PTS · 4 REB · 7 AST");
   await expect(teamABest).toContainText("PIR 25");
   const teamBBest = page.getByRole("article", { name: "Team B best player" });

@@ -142,7 +142,7 @@ test("the Games tab fits every width: highs beside the splits from 1024px, a cha
 
   // The highs: the best game in points, rebounds, assists and PIR, each opening a game.
   await expect(highs.getByRole("link")).toHaveCount(4);
-  await expect(highs.getByRole("link").first()).toHaveAttribute("href", /\/games\/\d+$/);
+  await expect(highs.getByRole("link").first()).toHaveAttribute("href", /\/games\/[a-z0-9-]+-\d+$/);
   await expect(highs.getByRole("link").first()).toHaveAccessibleName(/PTS, the season high/);
 
   // The splits: eight rows; Started and Off the bench split the 40 games in two.

@@ -49,7 +49,7 @@ test("the player cards rank one shared pool, in the order the API ranks each sta
   const cardKeys = async (title) => {
     const card = page.getByRole("heading", { name: title, exact: true }).locator("xpath=ancestor::*[.//ol][1]");
     const hrefs = await card.locator("ol > li a").evaluateAll((links) => links.map((link) => link.getAttribute("href")));
-    return hrefs.map((href) => href.split("/").at(-1));
+    return hrefs.map((href) => href.split("/").at(-1).split("-").at(-1).toUpperCase());
   };
   // Polled, since a card's rows can still be animating in under a busy test run.
   const expectSame = async (title, players) => expect.poll(() => cardKeys(title)).toEqual(players.map((player) => player.personKey));
@@ -73,7 +73,7 @@ test("the player board sorts the shared league list as the API sorts each statis
   });
   const boardKeys = async () => {
     const hrefs = await page.locator("main ol a[href*='/players/']").evaluateAll((links) => links.map((link) => link.getAttribute("href")));
-    return hrefs.map((href) => href.split("/").at(-1));
+    return hrefs.map((href) => href.split("/").at(-1).split("-").at(-1).toUpperCase());
   };
   const open = async (query) => {
     await page.goto(`/2025/leaders?phase=RS&${query}`);

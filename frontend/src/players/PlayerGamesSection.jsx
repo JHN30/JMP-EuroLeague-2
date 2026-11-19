@@ -17,6 +17,7 @@ import { TabStrip } from "../lib/TabStrip";
 import { barWidthScale } from "../statistics/statBarScale";
 import ResultBadge from "../lib/ResultBadge";
 import Crest from "../lib/Crest";
+import { gamePath } from "../lib/pagePaths";
 import {
   BAR_STATS,
   GAME_FILTERS,
@@ -60,7 +61,7 @@ function describe(view) {
   } ${view.clubScore}-${view.opponentScore}`;
 }
 
-const gamePath = (seasonCode, view) => `/${seasonCode}/games/${view.game.gameCode}`;
+const gameLink = (seasonCode, view) => gamePath(seasonCode, view.game);
 
 // A chart value as it reads over its bar: a rate with one decimal, a plus-minus with its sign. An average keeps one
 // decimal even for a count.
@@ -108,7 +109,7 @@ function SeasonHighs({ views, seasonCode }) {
             <li key={stat.key} className="min-w-0">
               {view ? (
                 <Link
-                  to={gamePath(seasonCode, view)}
+                  to={gameLink(seasonCode, view)}
                   aria-label={`${Math.round(view[stat.key])} ${stat.short}, the season high: ${describe(view)}`}
                   className="flex h-full items-center gap-2 rounded-field border border-base-300 px-3 py-2 transition-colors hover:bg-base-200"
                 >
@@ -216,7 +217,7 @@ function GameBars({ views, seasonCode }) {
             return (
               <li key={view.game.gameCode} className="flex min-w-0 flex-1 basis-0">
                 <Link
-                  to={gamePath(seasonCode, view)}
+                  to={gameLink(seasonCode, view)}
                   title={description}
                   aria-label={description}
                   className="group flex w-full flex-col items-center gap-1.5 rounded-field px-0.5 pb-1 transition-colors hover:bg-base-200"
@@ -483,7 +484,7 @@ function GameTable({ views, highs, seasonCode }) {
                       <div className="min-w-0">
                         {/* The start mark sits after the opponent, whose line is short on a phone (a TV code). */}
                         <div className="flex min-w-0 items-center gap-1.5">
-                          <Link to={gamePath(seasonCode, view)} className="link link-hover block max-w-28 truncate font-medium sm:max-w-56" title={describe(view)}>
+                          <Link to={gameLink(seasonCode, view)} className="link link-hover block max-w-28 truncate font-medium sm:max-w-56" title={describe(view)}>
                             {view.home ? "vs" : "@"} <ShortLabel short={opponentCode(view.opponent)} full={opponentName(view.opponent)} />
                           </Link>
                           {view.started ? (

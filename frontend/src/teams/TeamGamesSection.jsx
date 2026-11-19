@@ -15,6 +15,7 @@ import ShortLabel from "../lib/ShortLabel";
 import { TabPanel, TabStrip } from "../lib/TabStrip";
 import { CREST_WIDTH, sizedImageUrl } from "../lib/imageSize";
 import ResultBadge from "../lib/ResultBadge";
+import { gamePath } from "../lib/pagePaths";
 
 const MotionLink = m.create(Link);
 
@@ -145,7 +146,7 @@ function MarginStrip({ played, seasonCode, clubCode }) {
               // Up to 12 games share the strip's whole width from lg; below lg (or with more games) each column is capped.
               <li key={game.gameCode} className={`flex min-w-0 flex-1 basis-0 ${real.length <= 12 ? "max-w-32 lg:max-w-none" : "max-w-24"}`}>
                 <Link
-                  to={`/${seasonCode}/games/${game.gameCode}`}
+                  to={gamePath(seasonCode, game)}
                   title={description}
                   aria-label={description}
                   className="group flex w-full flex-col items-center gap-1 rounded-field px-0.5 py-1 transition-colors hover:bg-base-200"
@@ -196,7 +197,7 @@ function GameRow({ seasonCode, game, clubCode, isNext }) {
 
   return (
     <MotionLink
-      to={`/${seasonCode}/games/${game.gameCode}`}
+      to={gamePath(seasonCode, game)}
       // The next game is tinted so it stands out without hovering; every row keeps the hover border.
       className={`flex items-center gap-3 rounded-field border p-3 transition-colors max-sm:gap-2 hover:border-primary lg:gap-2 lg:py-2 ${isNext ? "border-primary/30 bg-primary/5" : "border-base-300 bg-base-200"}`}
       variants={listItem}

@@ -5,6 +5,7 @@ import ShortLabel from "../lib/ShortLabel";
 import { statNumber } from "../players/playerOverview";
 import { fullName } from "./playerLabels";
 import Crest from "../lib/Crest";
+import { playerPath } from "../lib/pagePaths";
 
 function Club({ row, className = "" }) {
   if (!row?.clubName) return null;
@@ -22,7 +23,7 @@ function PlayerCell({ entity, row, seasonCode }) {
   return (
     <div className="flex min-w-0 flex-col items-center text-center">
       <Avatar imageUrl={row?.playerImageUrl ?? null} size="h-14 w-14" />
-      <Link to={`/${seasonCode}/players/${entity.id}`} className="mt-1 font-semibold hover:underline">
+      <Link to={playerPath(seasonCode, entity.id, row?.playerName ?? entity.label)} className="mt-1 font-semibold hover:underline">
         {fullName(row?.playerName ?? entity.label)}
       </Link>
       <Club row={row} className="justify-center" />
@@ -45,7 +46,7 @@ function CompactCell({ entity, row, seasonCode, mirrored }) {
     <div className={`flex min-w-0 flex-col items-center gap-2 text-center sm:flex-row sm:gap-3 ${mirrored ? "sm:flex-row-reverse sm:text-right" : "sm:text-left"}`}>
       <Avatar imageUrl={row?.playerImageUrl ?? null} size="h-12 w-12 sm:h-14 sm:w-14" />
       <div className="min-w-0">
-        <Link to={`/${seasonCode}/players/${entity.id}`} className="block font-bold hover:underline">
+        <Link to={playerPath(seasonCode, entity.id, row?.playerName ?? entity.label)} className="block font-bold hover:underline">
           {fullName(row?.playerName ?? entity.label)}
         </Link>
         <Club row={row} className={`justify-center ${mirrored ? "sm:justify-end" : "sm:justify-start"}`} />

@@ -19,6 +19,7 @@ import { usePhaseParam } from "../lib/usePhaseParam";
 import PlayerAdvancedSection from "./PlayerAdvancedSection";
 import PlayerCareerSection from "./PlayerCareerSection";
 import { displayName } from "../lib/playerName";
+import { codeFromSegment, playerPath, useCanonicalPath } from "../lib/pagePaths";
 import PlayerHero from "./PlayerHero";
 import PlayerGamesSection from "./PlayerGamesSection";
 import PlayerOverviewSection from "./PlayerOverviewSection";
@@ -49,7 +50,8 @@ function PlayerShootingTab({ seasonCode, phaseCode, phaseName, player, gamesQuer
 }
 
 export default function PlayerPage() {
-  const { seasonCode, personKey } = useParams();
+  const { seasonCode, personKey: playerSegment } = useParams();
+  const personKey = codeFromSegment(playerSegment);
   const [section, setSection] = useState("overview");
 
   const playerQuery = useQuery({
@@ -58,6 +60,7 @@ export default function PlayerPage() {
     retry: false,
   });
   const player = playerQuery.data?.player;
+  useCanonicalPath(player?.personKey === personKey ? playerPath(seasonCode, personKey, player.name) : null);
   useDocumentTitle(player ? displayName(player.name ?? player.jerseyName ?? player.personKey) : "Players");
 
   const registrationsQuery = useQuery({

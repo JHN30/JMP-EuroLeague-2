@@ -10,6 +10,7 @@ import { resultsByClub } from "../standings/breakdownUtils";
 import { ResultsRibbon } from "../standings/StreaksFormView";
 import { WidgetPanel } from "./Dashboard";
 import Crest from "../lib/Crest";
+import { teamPath } from "../lib/pagePaths";
 
 const LAST = 5;
 // Phones list this many clubs before "Show more".
@@ -68,7 +69,7 @@ export default function FormBoard() {
           const name = entry.clubName ?? entry.clubCode;
           return (
             <m.li key={entry.clubCode} variants={listItem} className={`form-board-row${index >= VISIBLE_ON_MOBILE && !showAll ? " form-board-extra" : ""}`}>
-              <Link to={`/${seasonCode}/teams/${entry.clubCode}`} className="link-hover flex min-w-0 flex-1 items-center gap-2 font-medium">
+              <Link to={teamPath(seasonCode, { clubCode: entry.clubCode, name: entry.clubName })} className="link-hover flex min-w-0 flex-1 items-center gap-2 font-medium">
                 <Crest url={entry?.crestUrl} className="h-6 w-6 flex-none" animate={false} />
                 <span className="truncate">{entry.clubTvCode ? <ShortLabel short={entry.clubTvCode} full={name} /> : name}</span>
               </Link>

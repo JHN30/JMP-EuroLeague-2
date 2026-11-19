@@ -256,6 +256,6 @@ test("the leader card opens the leader's page and the scoring card the club with
 
   const hrefs = await chips.evaluateAll((els) => els.map((el) => el.getAttribute("href")));
   expect(hrefs[0]).toMatch(/\/teams\/[^/]+$/);
-  expect(hrefs[1]).toMatch(new RegExp(`/teams/${escapeRegExp(top.team.clubCode)}$`));
+  expect(hrefs[1]).toMatch(new RegExp(`/teams/[a-z0-9-]+-${escapeRegExp(top.team.clubCode.toLowerCase())}$`));
   await expect(chips.nth(1).locator(".value")).toHaveText(top.pointsPerGame.toFixed(1));
 });

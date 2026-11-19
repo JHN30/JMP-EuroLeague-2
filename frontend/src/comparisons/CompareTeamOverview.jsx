@@ -19,6 +19,7 @@ import { absentFromSeason, edgesBetween } from "./teamCompare";
 import useClubEntities from "./useClubEntities";
 import ResultBadge from "../lib/ResultBadge";
 import Crest from "../lib/Crest";
+import { gamePath, playerPath } from "../lib/pagePaths";
 
 const GAMES_LIMIT = 100;
 const EDGES_SHOWN = 3;
@@ -181,7 +182,7 @@ function FormList({ games, club, seasonCode, counts }) {
             return (
               <li key={game.gameCode}>
                 <Link
-                  to={`/${seasonCode}/games/${game.gameCode}`}
+                  to={gamePath(seasonCode, game)}
                   className="flex items-center gap-2 rounded-field px-1 py-0.5 text-sm hover:bg-base-200"
                 >
                   <ResultBadge won={result.won} className="w-6 flex-none" />
@@ -256,7 +257,7 @@ function ScorerList({ players, seasonCode, club }) {
         <ul className="flex flex-col gap-1.5">
           {players.map((player) => (
             <li key={player.personKey}>
-              <Link to={`/${seasonCode}/players/${player.personKey}`} className="flex items-center gap-3 rounded-field px-1 py-1 hover:bg-base-200">
+              <Link to={playerPath(seasonCode, player.personKey, player.playerName)} className="flex items-center gap-3 rounded-field px-1 py-1 hover:bg-base-200">
                 <Avatar imageUrl={player.playerImageUrl} size="h-8 w-8 flex-none" />
                 <span className="min-w-0 flex-1">
                   <span className="block font-semibold">{displayName(player)}</span>
@@ -335,7 +336,7 @@ function MeetingList({ seasonCode, title, meetings, entityA, entityB, gameCode =
           const current = gameCode != null && String(game.gameCode) === String(gameCode);
           return (
             <li key={game.gameCode} className="border-b border-base-300 last:border-0">
-              <Link to={`/${seasonCode}/games/${game.gameCode}`} className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 rounded-field px-1 py-2 hover:bg-base-200">
+              <Link to={gamePath(seasonCode, game)} className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 rounded-field px-1 py-2 hover:bg-base-200">
                 <span className="muted text-sm">
                   {game.roundName ?? (game.roundNumber ? `Round ${game.roundNumber}` : game.phaseName)} · {formatShortDate(game.scheduledAt)}
                   {current && game.played ? thisGame : null}

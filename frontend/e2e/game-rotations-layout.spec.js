@@ -203,7 +203,7 @@ test("each five-man unit is a card below 640px (the names, then the six figures 
     expect(scrolls).toBe(false);
     expect(headerRole).toBe("columnheader");
     await expect(table.getByRole("columnheader", { name: "Net rtg" })).toBeAttached();
-    await expect(table.getByRole("link", { name: "ONE, AL" }).first()).toHaveAttribute("href", `/${SEASON}/players/A1`);
+    await expect(table.getByRole("link", { name: "ONE, AL" }).first()).toHaveAttribute("href", `/${SEASON}/players/al-one-a1`);
   });
 
   await atWidths(page, [640, 768, 1024], async () => {

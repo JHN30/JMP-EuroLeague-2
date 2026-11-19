@@ -18,6 +18,7 @@ import { ProfileComparison, TrendGrid } from "./PlayerCareerCharts";
 import { CAREER_PHASES, careerAverages, careerHighs, careerTotals, clubStints, fetchPlayerCareer, fetchPlayerCareerAdvanced, seasonLine, withAdvanced } from "./careerData";
 import { CREST_WIDTH, sizedImageUrl } from "../lib/imageSize";
 import Crest from "../lib/Crest";
+import { gamePath, playerPath, teamPath } from "../lib/pagePaths";
 
 const PANEL_ID = "player-career-panel";
 const TABLE_ID = "player-career-table";
@@ -222,7 +223,7 @@ function SeasonTable({ lines, cardsByCode, averages, totals, phase, currentSeaso
                 return (
                   <m.tr key={line.seasonCode} variants={listItem} className={line.seasonCode === currentSeasonCode ? "bg-base-200/60" : ""}>
                     <td className="whitespace-nowrap font-semibold">
-                      <Link to={`/${line.seasonCode}/players/${personKey}`} className="link link-hover">
+                      <Link to={playerPath(line.seasonCode, personKey, cardsByCode.get(line.seasonCode)?.player?.name)} className="link link-hover">
                         {line.label}
                       </Link>
                       {/* Below sm the badges sit under the season, so the pinned column stays about a season label wide. */}
@@ -284,7 +285,7 @@ function HighCard({ high }) {
   return (
     <m.div variants={listItem}>
       <Link
-        to={`/${best.seasonCode}/games/${best.game.gameCode}`}
+        to={gamePath(best.seasonCode, best.game)}
         className="flex h-full flex-col gap-1 rounded-box border border-base-300 bg-base-100 p-3 transition-colors hover:border-primary"
       >
         <span className="micro-label">{high.label}</span>
@@ -340,7 +341,7 @@ function TeamsTimeline({ stints, currentSeasonCode }) {
                   </span>
                 </div>
                 <div className="flex flex-col gap-1">
-                  <Link to={`/${last.seasonCode}/teams/${stint.team?.clubCode ?? stint.clubCode}`} className="flex min-w-0 items-center gap-2 hover:text-primary">
+                  <Link to={teamPath(last.seasonCode, { clubCode: stint.team?.clubCode ?? stint.clubCode, abbreviatedName: stint.team?.abbreviatedName, name: stint.team?.name })} className="flex min-w-0 items-center gap-2 hover:text-primary">
                     <Crest url={stint?.team?.crestUrl} className="h-7 w-7 flex-none" />
                     <span className="truncate text-sm font-semibold">{stint.team?.name ?? stint.clubCode}</span>
                     {stint.former ? <span className="badge badge-ghost badge-xs">Former</span> : null}

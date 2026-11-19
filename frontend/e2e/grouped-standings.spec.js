@@ -74,7 +74,7 @@ for (const season of SEASONS) {
       await expect(page.getByRole("region", { name: /^Group / })).toHaveCount(1);
       const selected = groupRegion(page, names[1]);
       const expected = groups[1].standings.map((row) => row.clubCode);
-      expect(await clubLinks(selected).evaluateAll((links) => links.map((link) => link.getAttribute("href").split("/").at(-1)))).toEqual(expected);
+      expect(await clubLinks(selected).evaluateAll((links) => links.map((link) => link.getAttribute("href").split("/").at(-1).split("-").at(-1).toUpperCase()))).toEqual(expected);
       await expect(selected.locator('[data-testid="standings-kpi-strip"]')).toContainText(expected.length === 6 ? "Top 16 cutoff" : "Playoff cutoff");
       for (const view of ["Home", "Away", "Last 10", "Overall"]) {
         await page.getByRole("tab", { name: view, exact: true }).click();
@@ -83,7 +83,7 @@ for (const season of SEASONS) {
       for (const breakdown of ["streaks", "margins", "aheadBehind"]) {
         await page.getByRole("combobox", { name: "Breakdown", exact: true }).selectOption(breakdown);
         await expect(selected.locator(".loading, [aria-busy=\"true\"]")).toHaveCount(0);
-        const shown = await clubLinks(selected).evaluateAll((links) => links.map((link) => link.getAttribute("href").split("/").at(-1)));
+        const shown = await clubLinks(selected).evaluateAll((links) => links.map((link) => link.getAttribute("href").split("/").at(-1).split("-").at(-1).toUpperCase()));
         expect([...new Set(shown)].sort()).toEqual([...expected].sort());
       }
       await page.getByRole("combobox", { name: "Breakdown", exact: true }).selectOption("overview");
@@ -98,7 +98,7 @@ for (const season of SEASONS) {
       await expect(selected.locator(".badge-primary")).toHaveText(`${stage.name}: Round 1`);
       const first = await get(request, season, `/phases/${phase}/standings?round=${rounds[0].number}`);
       for (const row of first.standings.filter((row) => row.groupName === names[1])) {
-        const tableRow = selected.locator("tbody tr", { has: page.locator(`a[href='/${season}/teams/${row.clubCode}']`) });
+        const tableRow = selected.locator("tbody tr", { has: page.locator(`a[href^='/${season}/teams/'][href$='-${row.clubCode.toLowerCase()}']`) });
         await expect(tableRow).toContainText(`${row.basic.gamesWon}-${row.basic.gamesLost}`);
       }
       await slider.press("End");

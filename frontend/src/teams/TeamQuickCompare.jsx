@@ -13,6 +13,7 @@ import { TabPanel, TabStrip } from "../lib/TabStrip";
 import { isGroupedTable } from "../standings/standingsGroups";
 import { COMPARE_ROWS } from "./teamLeague";
 import Crest from "../lib/Crest";
+import { teamPath } from "../lib/pagePaths";
 
 // `to` makes the label a link to the club's page: the opponent's label only, since the page is already the own club's.
 function ClubLabel({ club, to }) {
@@ -28,7 +29,7 @@ function ClubLabel({ club, to }) {
 }
 
 function clubFromTeam(team) {
-  return { clubCode: team.clubCode, name: team.abbreviatedName ?? team.name ?? team.clubCode, tvCode: team.tvCode, crestUrl: team.crestUrl };
+  return { clubCode: team.clubCode, name: team.abbreviatedName ?? team.name ?? team.clubCode, fullName: team.name, tvCode: team.tvCode, crestUrl: team.crestUrl };
 }
 
 // Who this club can be set against: the next opponent, and the league leader (or the runner-up for the leader itself).
@@ -45,7 +46,7 @@ function compareTargets({ clubCode, nextOpponent, standings: tableStandings }) {
   const leaderIsSelf = standings.find((row) => row.basic?.position === 1)?.clubCode === clubCode;
   const rival = standings.find((row) => row.basic?.position === (leaderIsSelf ? 2 : 1));
   if (rival && rival.clubCode !== clubCode) {
-    const club = { clubCode: rival.clubCode, name: rival.clubName ?? rival.clubCode, tvCode: rival.clubTvCode, crestUrl: rival.crestUrl };
+    const club = { clubCode: rival.clubCode, name: rival.clubName ?? rival.clubCode, fullName: rival.clubName, tvCode: rival.clubTvCode, crestUrl: rival.crestUrl };
     const tabLabel = leaderIsSelf ? "Runner-up" : grouped ? "Group leader" : "League leader";
     if (targets[0]?.club.clubCode === rival.clubCode) {
       targets[0].tabLabel = `Next opponent · ${tabLabel.toLowerCase()}`;
@@ -123,7 +124,7 @@ export default function TeamQuickCompare({ seasonCode, clubCode, team, nextOppon
               <div className="flex justify-end">
                 <ClubLabel club={self} />
               </div>
-              <ClubLabel club={active.club} to={`/${seasonCode}/teams/${active.club.clubCode}`} />
+              <ClubLabel club={active.club} to={teamPath(seasonCode, { clubCode: active.club.clubCode, name: active.club.fullName })} />
             </m.div>
             {COMPARE_ROWS.map(({ field, format, ...row }) => (
               <ComparisonRow

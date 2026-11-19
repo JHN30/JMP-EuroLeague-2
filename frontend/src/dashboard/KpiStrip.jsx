@@ -5,6 +5,7 @@ import CompactMetric from "../lib/CompactMetric";
 import { formatPerGame } from "../lib/format";
 import HeaderStats from "../lib/HeaderStats";
 import { useSummaryTableStage } from "../lib/useSummaryTableStage";
+import { teamPath } from "../lib/pagePaths";
 import { isGroupedTable, mostWinsEntry } from "../standings/standingsGroups";
 
 function parseWins(record) {
@@ -60,7 +61,7 @@ export default function KpiStrip() {
     }
   }
 
-  const teamPage = (entry) => (entry?.clubCode ? `/${seasonCode}/teams/${entry.clubCode}` : undefined);
+  const teamPage = (entry) => (entry?.clubCode ? teamPath(seasonCode, { clubCode: entry.clubCode, name: entry.clubName }) : undefined);
 
   return (
     <HeaderStats className="kpi-strip-4" data-testid="home-kpi-strip">

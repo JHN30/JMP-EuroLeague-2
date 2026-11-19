@@ -421,7 +421,7 @@ test("awkward rosters keep their cards and table tidy at 320px: a long name, no 
   expect(await holdsContent(cards)).toBe(true);
   await expect(page.getByText("Not played yet:")).toHaveCount(1);
   await expect(notPlayed).toHaveText(["#7 Ben Bench", "#7 Frank Former", /^#7 Onename$/i]);
-  await expect(notPlayed.first()).toHaveAttribute("href", /\/players\/p3$/);
+  await expect(notPlayed.first()).toHaveAttribute("href", /\/players\/ben-bench-p3$/);
   expect(await holdsContent(page.locator("section[aria-label=Forward] p"))).toBe(true);
   await expectNoSidewaysScroll(page);
 

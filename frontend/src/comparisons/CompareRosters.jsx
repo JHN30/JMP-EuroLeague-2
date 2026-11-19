@@ -21,6 +21,7 @@ import { ROSTER_SUMMARY_TIPS } from "./statTips";
 import { absentFromSeason } from "./teamCompare";
 import useClubEntities from "./useClubEntities";
 import Crest from "../lib/Crest";
+import { playerPath } from "../lib/pagePaths";
 
 const ROSTER_LIMIT = 100;
 
@@ -343,7 +344,7 @@ function ImpactTable({ seasonCode, entity, crestUrl, players, imageOf }) {
                       <div className="flex min-w-0 items-center gap-2">
                         <Avatar imageUrl={imageOf(player.personKey)} size="h-7 w-7 max-sm:hidden" />
                         <div className="min-w-0 flex-1">
-                          <PlayerName name={player.playerName} to={"/" + seasonCode + "/players/" + player.personKey} />
+                          <PlayerName name={player.playerName} to={playerPath(seasonCode, player.personKey, player.playerName)} />
                           <div aria-hidden="true" className="mt-1 h-1 w-24 overflow-hidden rounded-full bg-base-300 max-sm:w-full">
                             <div className="h-full rounded-full bg-primary" style={{ width: (best > 0 ? Math.max(6, (Number(player.winShares) / best) * 100) : 0) + "%" }} />
                           </div>
@@ -401,7 +402,7 @@ function RosterTable({ seasonCode, entity, crestUrl, rows }) {
                       <span className="muted w-6 flex-none text-right tabular-nums">{row.dorsal ?? "—"}</span>
                       <Avatar imageUrl={row.imageUrl} size="h-7 w-7 max-sm:hidden" />
                       <div className="min-w-0">
-                        <PlayerName name={row.name} to={row.personKey ? `/${seasonCode}/players/${row.personKey}` : null} />
+                        <PlayerName name={row.name} to={row.personKey ? playerPath(seasonCode, row.personKey, row.name) : null} />
                         <span className="muted block text-xs leading-tight max-sm:hidden">{[row.position, row.heightCm ? `${row.heightCm} cm` : null, row.weightKg ? `${row.weightKg} kg` : null].filter(Boolean).join(" · ")}</span>
                       </div>
                     </div>

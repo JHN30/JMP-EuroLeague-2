@@ -39,7 +39,7 @@ test("a game's back link returns to the Games list on that game's round", async 
   }
   await link.click();
   await expect(page).toHaveURL((url) => url.pathname + url.search === listPath);
-  await expect(page.locator(`.fixture-card[href$="/games/${game.gameCode}"]`)).toBeVisible({ timeout: 30_000 });
+  await expect(page.locator(`.fixture-card[href$="-${game.gameCode}"]`)).toBeVisible({ timeout: 30_000 });
 });
 
 test("on a phone the sticky bar is the way back, even far down a long page", async ({ page }) => {

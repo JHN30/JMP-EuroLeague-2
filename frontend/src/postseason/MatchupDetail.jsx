@@ -4,6 +4,7 @@ import Panel from "../lib/Panel";
 import CompetitionContext from "../lib/CompetitionContext";
 import { clubScore } from "./bracketModel";
 import Crest from "../lib/Crest";
+import { gamePath } from "../lib/pagePaths";
 
 const STAGE_NAMES = { PI: "Play-In", PO: "Playoffs", FF: "Final Four" };
 
@@ -70,7 +71,7 @@ export default function MatchupDetail({ slot, seasonCode }) {
             const played = game.localScore != null && game.roadScore != null;
             // A played game opens its page; one still to come opens Compare for its two clubs, the home club as Team A.
             const to = played
-              ? "/" + seasonCode + "/games/" + game.gameCode
+              ? gamePath(seasonCode, { gameCode: game.gameCode })
               : "/" + seasonCode + "/compare?view=teams&teamA=" + encodeURIComponent(game.localClubCode) + "&teamB=" + encodeURIComponent(game.roadClubCode) + "&game=" + game.gameCode;
             return (
               <li key={game.gameCode} className="border-b border-base-300 last:border-0">

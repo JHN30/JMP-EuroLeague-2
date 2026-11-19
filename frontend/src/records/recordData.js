@@ -1,6 +1,7 @@
 import { formatCount, formatDate, formatDecimal, formatSeasonLabel, formatSignedDecimal } from "../lib/format";
 import { displayName } from "../lib/playerName";
 import { seasonSlug } from "../lib/seasonSlug";
+import { gamePath, playerPath, teamPath } from "../lib/pagePaths";
 
 // The four kinds of record, each answered by one route of the records API. `description` says what a record of that kind is; it sits under the
 // page title. `club` is true when the holder is a club rather than a player.
@@ -132,7 +133,7 @@ export function describeRecord(family, format, row) {
     key: `${row.seasonCode}-${row.personKey ?? row.clubCode}-${row.gameCode ?? "season"}`,
     holderKey: row.personKey ?? row.clubCode ?? null,
     name: isClub ? (clubName ?? row.clubCode ?? "-") : displayName(row.playerName),
-    to: isClub ? (row.clubCode ? `/${slug}/teams/${row.clubCode}` : null) : row.personKey ? `/${slug}/players/${row.personKey}` : null,
+    to: isClub ? (row.clubCode ? teamPath(slug, { clubCode: row.clubCode, name: row.clubName }) : null) : row.personKey ? playerPath(slug, row.personKey, row.playerName) : null,
     isClub,
     portraitUrl: isClub ? null : (row.playerImageUrl ?? null),
     crestUrl: isClub ? (row.clubImageUrl ?? null) : null,
@@ -144,7 +145,7 @@ export function describeRecord(family, format, row) {
     season: formatSeasonLabel(row.seasonCode),
     date: row.scheduledAt ? formatDate(row.scheduledAt) : null,
     gameCode: row.gameCode ?? null,
-    gameTo: row.gameCode ? `/${slug}/games/${row.gameCode}` : null,
+    gameTo: row.gameCode ? gamePath(slug, { gameCode: row.gameCode }) : null,
     value: row.numericValue,
     valueText: write(row.numericValue),
     format: write,

@@ -181,8 +181,8 @@ test("a team comparison names both clubs in a header over every section, each op
   const links = header.getByRole("link");
   await expect(links).toHaveCount(3);
   await expect(links.nth(2)).toHaveText("All-time head-to-head");
-  await expect(links.nth(0)).toHaveAttribute("href", "/2025/teams/OLY");
-  await expect(links.nth(1)).toHaveAttribute("href", "/2025/teams/PAN");
+  await expect(links.nth(0)).toHaveAttribute("href", "/2025/teams/olympiacos-piraeus-oly");
+  await expect(links.nth(1)).toHaveAttribute("href", "/2025/teams/panathinaikos-aktor-athens-pan");
   // One header: the page's heading names both clubs, and there is no second header panel above it.
   await expect(page.getByRole("heading", { level: 1 })).toHaveCount(1);
   await expect(page.getByRole("heading", { level: 1 })).toHaveText(/^Compare .+ and .+$/);
@@ -193,7 +193,7 @@ test("a team comparison names both clubs in a header over every section, each op
     await expect(header).toBeVisible();
   }
   await links.nth(1).click();
-  await expect(page).toHaveURL(/\/2025\/teams\/PAN$/);
+  await expect(page).toHaveURL(/\/2025\/teams\/panathinaikos-aktor-athens-pan$/);
 });
 
 test("a game's comparison shows each club's place and record, the venue records, streaks and the game among the meetings", async ({ page }) => {
@@ -226,7 +226,7 @@ test("a game's comparison shows each club's place and record, the venue records,
   const [title, link] = [await watch.getByRole("heading", { name: "Top scorers" }).boundingBox(), await watch.getByRole("link", { name: /^Compare .+ and / }).boundingBox()];
   expect(link.y).toBeLessThan(title.y + title.height);
   const meetings = page.locator(".panel", { has: page.getByText("MEETINGS", { exact: true }) });
-  await expect(meetings.locator(`a[href$="/games/${game.gameCode}"]`).getByText("This game")).toBeVisible();
+  await expect(meetings.locator(`a[href*="/games/"][href$="-${game.gameCode}"]`).getByText("This game")).toBeVisible();
   await expect(meetings.getByText("This game")).toHaveCount(1);
 });
 

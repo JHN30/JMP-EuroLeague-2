@@ -9,6 +9,7 @@ import { listContainer } from "../lib/motion";
 import Panel from "../lib/Panel";
 import PanelHeader from "../lib/PanelHeader";
 import { displayName as fullName } from "../lib/playerName";
+import { playerPath } from "../lib/pagePaths";
 import { Avatar, BarSelect, BOARD_AVATAR, BoardBar, BoardHeader, BoardPager, BoardRow, CardGrid, CategoryCard, LeadersToolbar, StageSelect, StatSelect, TeamTag } from "./LeaderParts";
 import { barShare, formatAdvancedValue } from "./leaderData";
 import { ADVANCED_FAMILIES, ADVANCED_SCOPES, ADVANCED_STATS, DEFAULT_SHARE, GAME_SHARES, gameShareFrom, gameShareLabel } from "./leaderDefs";
@@ -47,7 +48,7 @@ function AdvancedCard({ stat, seasonCode, scope, onOpen }) {
         name: displayName(entry),
         imageUrl: entry.imageUrl,
         team: teamOf(entry),
-        to: `/${seasonCode}/players/${entry.personKey}`,
+        to: playerPath(seasonCode, entry.personKey, entry.playerName),
         valueText: formatAdvancedValue(stat, entry.value),
         share: barShare(Number(entry.value), stat.lowerIsBetter ? worst : best, stat.lowerIsBetter ? best : Math.min(worst, 0)),
       }))}
@@ -162,7 +163,7 @@ function AdvancedBoard({ seasonCode, scope, stage, metric, params, setParams }) 
                 ]}
                 valueText={formatAdvancedValue(stat, entry.value)}
                 share={barShare(Number(entry.value), lowestFirst ? Number(entries[entries.length - 1]?.value) : top, lowestFirst ? top : Math.min(0, Number(entries[entries.length - 1]?.value)))}
-                to={`/${seasonCode}/players/${entry.personKey}`}
+                to={playerPath(seasonCode, entry.personKey, entry.playerName)}
               />
             ))}
           </m.ol>

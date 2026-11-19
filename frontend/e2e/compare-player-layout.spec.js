@@ -395,16 +395,16 @@ test("the Overview has the players once, a one-line season line from 640px, and 
   await expect(meetings.getByText("Teammates: played 1 game together this season.")).toBeVisible();
   const rows = meetings.locator("li a");
   await expect(rows).toHaveCount(2);
-  await expect(rows.nth(0)).toHaveAttribute("href", /\/games\/2$/);
+  await expect(rows.nth(0)).toHaveAttribute("href", /\/games\/[a-z0-9-]+-2$/);
   await expect(rows.nth(0)).toContainText("AAA 70-85 BBB");
   await expect(rows.nth(1)).toContainText("AAA 90-80 BBB");
 
   // The season highs: A's best points game is game 3 (31), B's is game 2 (22); each links to its game.
   const highs = page.locator(".panel", { has: page.getByRole("heading", { name: "Season highs" }) });
   const pts = highs.locator("li").first();
-  await expect(pts.locator("a").first()).toHaveAttribute("href", /\/games\/3$/);
+  await expect(pts.locator("a").first()).toHaveAttribute("href", /\/games\/[a-z0-9-]+-3$/);
   await expect(pts.locator("a").first()).toContainText("31");
-  await expect(pts.locator("a").last()).toHaveAttribute("href", /\/games\/2$/);
+  await expect(pts.locator("a").last()).toHaveAttribute("href", /\/games\/[a-z0-9-]+-2$/);
   await expect(pts.locator("a").last()).toContainText("22");
 
   await atWidths(page, [1280, 1024, 640, 320], async (width) => {
@@ -441,7 +441,7 @@ test("players whose clubs have not met yet see the scheduled meetings, soonest f
   const rows = meetings.locator("li a");
   await expect(rows).toHaveCount(2);
   await expect(rows.nth(0)).toContainText("AAA vs BBB");
-  await expect(rows.nth(0)).toHaveAttribute("href", /\/games\/12$/);
+  await expect(rows.nth(0)).toHaveAttribute("href", /\/games\/[a-z0-9-]+-12$/);
   await expect(rows.nth(1)).toContainText("AAA at BBB");
 
   await atWidths(page, [1280, 390, 320], async () => {

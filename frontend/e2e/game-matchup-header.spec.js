@@ -118,7 +118,7 @@ test("each club's crest and name open its team page, and a side to be set is not
   const header = await openGame(page);
   const links = header.getByRole("link");
   await expect(links).toHaveCount(2);
-  await expect(links.nth(0)).toHaveAttribute("href", `/${SEASON}/teams/${PAN.clubCode}`);
+  await expect(links.nth(0)).toHaveAttribute("href", `/${SEASON}/teams/panathinaikos-aktor-athens-a`);
   await expect(links.nth(0)).toContainText("PAO");
   await expect(links.nth(0).locator("img")).toHaveCount(1);
   await expect(links.nth(1)).toContainText("FBT");

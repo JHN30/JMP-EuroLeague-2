@@ -4,7 +4,7 @@ const SEASON = "2025";
 
 function playerRows(offset, limit) {
   return Array.from({ length: limit }, (_, index) => ({
-    personKey: `player-${offset + index + 1}`,
+    personKey: `PLAYER${offset + index + 1}`,
     name: `Player ${offset + index + 1}`,
     countryCode: "RS",
   }));
@@ -32,15 +32,15 @@ test("loads a player game log once for the Overview form and the Games tab, and 
       await route.fulfill({ json: { seasons: [{ seasonCode: SEASON, name: "2024-25" }] } });
       return;
     }
-    if (pathname === `/api/seasons/${SEASON}/players/player-1`) {
-      await route.fulfill({ json: { player: { personKey: "player-1", name: "Player One", countryCode: "RS" } } });
+    if (pathname === `/api/seasons/${SEASON}/players/PLAYER1`) {
+      await route.fulfill({ json: { player: { personKey: "PLAYER1", name: "Player One", countryCode: "RS" } } });
       return;
     }
-    if (pathname === `/api/seasons/${SEASON}/players/player-1/registrations`) {
+    if (pathname === `/api/seasons/${SEASON}/players/PLAYER1/registrations`) {
       await route.fulfill({ json: { registrations: [] } });
       return;
     }
-    if (pathname === `/api/seasons/${SEASON}/players/player-1/games`) {
+    if (pathname === `/api/seasons/${SEASON}/players/PLAYER1/games`) {
       gameLogRequests += 1;
       await route.fulfill({ json: { games: [], pagination: { total: 0, hasMore: false } } });
       return;
@@ -144,7 +144,7 @@ test("loads a player game log once for the Overview form and the Games tab, and 
     await route.fulfill({ status: 404, json: { error: "Unexpected test request" } });
   });
 
-  await page.goto(`/${SEASON}/players/player-1`);
+  await page.goto(`/${SEASON}/players/PLAYER1`);
   await expect(page.getByRole("tab", { name: "Statistics", exact: true })).toBeVisible();
   // The Overview shows recent form, so the log is read once on arrival...
   await expect.poll(() => gameLogRequests).toBe(1);

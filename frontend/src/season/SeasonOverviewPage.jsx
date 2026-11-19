@@ -28,6 +28,7 @@ import { formatDate, formatPerGame, formatSeasonLabel } from "../lib/format";
 import { teamCode } from "../games/gameUtils";
 import { buildEliminationBracket, eliminationStageLabel, eliminationStageOf } from "../postseason/eliminationBracket";
 import Crest from "../lib/Crest";
+import { gamePath, playerPath, teamPath } from "../lib/pagePaths";
 
 const MotionLink = m.create(Link);
 
@@ -70,7 +71,7 @@ async function fetchAllPlayedGames(seasonCode) {
 function HeroChip({ seasonCode, club, label, value }) {
   const Root = club.clubCode ? MotionLink : "div";
   const rootProps = club.clubCode
-    ? { to: `/${seasonCode}/teams/${club.clubCode}`, className: "kpi-chip kpi-chip-link", ...cardHover }
+    ? { to: teamPath(seasonCode, { clubCode: club.clubCode, name: club.clubName }), className: "kpi-chip kpi-chip-link", ...cardHover }
     : { className: "kpi-chip" };
   return (
     <Root {...rootProps}>
@@ -282,7 +283,7 @@ function DefiningGames({ seasonCode, playedGames }) {
             return (
               <MotionLink
                 key={game.gameCode}
-                to={`/${seasonCode}/games/${game.gameCode}`}
+                to={gamePath(seasonCode, game)}
                 className="card card-border bg-base-100 p-3 transition-colors hover:border-primary"
                 variants={listItem}
                 {...cardHover}
@@ -534,7 +535,7 @@ function LeaderCard({ seasonCode, category, query }) {
 
   return (
     <MotionLink
-      to={`/${seasonCode}/players/${leader.personKey}`}
+      to={playerPath(seasonCode, leader.personKey, leader.playerName)}
       className="kpi-chip kpi-chip-link"
       variants={listItem}
       {...cardHover}

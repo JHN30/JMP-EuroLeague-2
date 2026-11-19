@@ -13,6 +13,7 @@ import { shortTeamName, teamCode } from "../games/gameUtils";
 import { WidgetPanel } from "./Dashboard";
 import { LatestScoresSkeleton, VISIBLE_ON_MOBILE } from "./HomeSkeleton";
 import Crest from "../lib/Crest";
+import { gamePath } from "../lib/pagePaths";
 
 const MotionLink = m.create(Link);
 
@@ -37,7 +38,7 @@ export function MatchCard({ game, standingByClubCode, seasonCode, showScore, cla
   const roadWon = showScore && game.localScore != null && game.roadScore != null && game.roadScore > game.localScore;
 
   return (
-    <MotionLink to={`/${seasonCode}/games/${game.gameCode}`} className={`match-card ${featuredReason ? "match-card-featured" : ""} ${className}`}
+    <MotionLink to={gamePath(seasonCode, game)} className={`match-card ${featuredReason ? "match-card-featured" : ""} ${className}`}
       data-testid={featuredReason ? "game-of-the-round" : undefined}
       variants={listItem}
       {...cardHover}

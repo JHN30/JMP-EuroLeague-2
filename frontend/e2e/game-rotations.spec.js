@@ -199,7 +199,7 @@ test("connections link an assist only to the made field goal right before it", a
   // The three assists that cannot be linked count in the note but in no pair.
   await expect(teamA).toContainText("Assisted baskets: 4 of 5");
   await expect(teamA).toContainText("4 of 7 recorded assists were linked to a basket.");
-  await expect(teamA.getByRole("link", { name: "ONE, AL" }).first()).toHaveAttribute("href", `/${SEASON}/players/A1`);
+  await expect(teamA.getByRole("link", { name: "ONE, AL" }).first()).toHaveAttribute("href", `/${SEASON}/players/al-one-a1`);
 
   await expect(connectionsBlock(page, "Team B")).toContainText("No assists recorded.");
 });

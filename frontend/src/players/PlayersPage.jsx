@@ -16,6 +16,7 @@ import ShortLabel from "../lib/ShortLabel";
 import { useDocumentTitle } from "../lib/useDocumentTitle";
 import { ageAtSeasonStart } from "../lib/playerAge";
 import Crest from "../lib/Crest";
+import { playerPath } from "../lib/pagePaths";
 
 const MotionLink = m.create(Link);
 
@@ -34,7 +35,7 @@ function PlayerCard({ player, seasonCode }) {
 
   return (
     <MotionLink
-      to={`/${seasonCode}/players/${player.personKey}`}
+      to={playerPath(seasonCode, player.personKey, player.name)}
       className="group relative flex overflow-hidden rounded-box border border-base-300 bg-base-100 transition-colors hover:border-primary max-sm:flex-col sm:min-h-22"
       variants={listItem}
       {...cardHover}

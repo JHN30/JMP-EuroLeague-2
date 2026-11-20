@@ -12,6 +12,21 @@ const MAX_ENTRIES = 1000;
 // for new data or headers to show at once. Development sends nothing, so a change of database or data shows at once.
 const BROWSER_CACHE = ENV.NODE_ENV === "production" ? "private, max-age=300" : null;
 
+// In production every cache miss (the requests that can read the database) is logged with its country and user agent, but no
+// IP, so Render's logs show who keeps waking Neon's compute. Development and the browser tests stay quiet.
+const LOG_ROUTE_RUNS = ENV.NODE_ENV === "production";
+
+function logRouteRun(key: string, res: Response) {
+  const started = Date.now();
+  res.on("finish", () => {
+    const country = res.req.get("cf-ipcountry") ?? "-";
+    const agent = (res.req.get("user-agent") ?? "-").slice(0, 200);
+    console.log(
+      `cache miss ${res.statusCode} ${Date.now() - started}ms ${res.req.method} ${key} country=${country} ua=${JSON.stringify(agent)}`,
+    );
+  });
+}
+
 // The bodies' total size is capped too: one season's shot map alone is about 1.5 MB, so 1000 large answers could hold
 // gigabytes. Counted as UTF-8 bytes (the JSON is almost all ASCII), close to what the strings take in memory.
 const MAX_BYTES = 100 * 1024 * 1024;
@@ -87,6 +102,7 @@ function runRoute(key: string, res: Response, next: NextFunction, share: boolean
     res.on("close", () => settle(null));
   }
 
+  if (LOG_ROUTE_RUNS) logRouteRun(key, res);
   res.setHeader("X-Cache", "MISS");
   const json = res.json.bind(res);
   res.json = (data: unknown) => {
